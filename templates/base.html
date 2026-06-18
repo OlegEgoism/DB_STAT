@@ -2,44 +2,32 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Database Hub{% endblock %}</title>
-  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}DB INF{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
-  <header class="site-header">
+<header class="site-header">
     <a class="brand" href="{% url 'home' %}">
-      <span class="brand-icon">▰</span>
-      <span>
-        <strong>Database Hub</strong>
-        <small>Центр управления подключениями к базам данных</small>
-      </span>
+        <strong>DB INF</strong>
     </a>
     <nav class="nav" aria-label="Основная навигация">
-      <a href="#">▣ Аудит</a>
-      <a href="#">☗ Регистрация</a>
-      <a class="is-active" href="#">↪ Вход</a>
-      <a href="#">⚙ Настройки</a>
+        <a href="#">Настройки</a>
+        <a class="is-active" href="#">Вход</a>
     </nav>
-  </header>
+</header>
 
-  <main class="page-shell">
+<main class="page-shell">
     {% if messages %}
-      <div class="messages">
-        {% for message in messages %}<div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
-      </div>
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>{% endfor %}
+        </div>
     {% endif %}
     {% block content %}{% endblock %}
-  </main>
+</main>
 
-  <footer class="site-footer">
-    <span>© 2026 Database Hub v2.1</span>
-    <a href="#">◒ Безопасность</a>
-    <a href="#">● Помощь</a>
-    <a href="#">▣ Документация</a>
-    <a href="#">✉ Контакты</a>
-  </footer>
 </body>
 </html>
