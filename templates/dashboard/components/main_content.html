@@ -1,0 +1,61 @@
+<!-- ========== MAIN CONTENT ========== -->
+<div class="main-content" id="mainContent">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <h4 id="pageTitle">Дашборд <small>Общая сводка состояния кластера</small></h4>
+        </div>
+        <div class="topbar-right">
+            <span class="status-indicator">
+                <span class="status-dot green"></span>
+                Кластер работает
+            </span>
+
+            <!-- Connection Manager -->
+            <div class="connection-manager">
+                <span class="conn-status online" id="connStatusIndicator"></span>
+                <select id="connectionSelect" onchange="onConnectionChange(this.value)">
+                    <option value="prod-greenplum">Production GP</option>
+                    <option value="dev-greenplum">Dev Greenplum</option>
+                    <option value="test-postgres">Test PostgreSQL</option>
+                    <option value="analytics">Analytics Cluster</option>
+                </select>
+                <span class="conn-divider"></span>
+                <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="btn-conn" onclick="testConnection()" title="Проверить">
+                    <i class="fas fa-plug"></i>
+                </button>
+                <button class="btn-conn danger" onclick="disconnect()" title="Отключить">
+                    <i class="fas fa-power-off"></i>
+                </button>
+                <span class="conn-divider"></span>
+                <span class="connection-info" id="connectionInfo">localhost:5432</span>
+            </div>
+
+            <span class="topbar-time">
+                <i class="far fa-clock"></i> <span id="currentTime"></span>
+            </span>
+            <button class="refresh-btn" onclick="refreshAll()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    {% include "dashboard/pages/dashboard.html" %}
+    {% include "dashboard/pages/segments.html" %}
+    {% include "dashboard/pages/cluster_health.html" %}
+    {% include "dashboard/pages/databases.html" %}
+    {% include "dashboard/pages/tables.html" %}
+    {% include "dashboard/pages/distribution.html" %}
+    {% include "dashboard/pages/temp_tables.html" %}
+    {% include "dashboard/pages/queries.html" %}
+    {% include "dashboard/pages/locks.html" %}
+    {% include "dashboard/pages/transactions.html" %}
+    {% include "dashboard/pages/memory.html" %}
+    {% include "dashboard/pages/bloat.html" %}
+    {% include "dashboard/pages/maintenance.html" %}
+</div>

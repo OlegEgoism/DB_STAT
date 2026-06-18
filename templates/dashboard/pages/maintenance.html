@@ -1,0 +1,75 @@
+<!-- ============================================================ -->
+    <!-- PAGE: MAINTENANCE -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-maintenance">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-tools"></i> Статистика обслуживания</span>
+                <span class="te6-style-9">последние 50 таблиц</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Схема</th>
+                            <th>Таблица</th>
+                            <th>Строк</th>
+                            <th>Dead rows</th>
+                            <th>Dead %</th>
+                            <th>Последний VACUUM</th>
+                            <th>Последний ANALYZE</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><code>dd04443_bal_raw_f0611</code></td>
+                            <td>1.25B</td>
+                            <td>12.5M</td>
+                            <td><span class="text-warning">1.0%</span></td>
+                            <td>2024-06-17 03:15</td>
+                            <td>2024-06-18 01:00</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><code>fact_sales</code></td>
+                            <td>765.4M</td>
+                            <td>8.8M</td>
+                            <td><span class="text-success">1.1%</span></td>
+                            <td>2024-06-17 04:00</td>
+                            <td>2024-06-18 00:30</td>
+                        </tr>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><code>dd04443_transactions</code></td>
+                            <td>876.5M</td>
+                            <td>15.4M</td>
+                            <td><span class="text-warning">1.8%</span></td>
+                            <td>2024-06-16 22:00</td>
+                            <td>2024-06-17 23:45</td>
+                        </tr>
+                        <tr>
+                            <td class="te6-style-7"><i class="fas fa-exclamation-triangle"></i></td>
+                            <td><code>dc00006_audit_log</code></td>
+                            <td>432.1M</td>
+                            <td>0</td>
+                            <td><span class="text-success">0.0%</span></td>
+                            <td class="te6-style-7"><strong>Никогда</strong></td>
+                            <td class="te6-style-7"><strong>Никогда</strong></td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><code>dim_customer</code></td>
+                            <td>321.1M</td>
+                            <td>2.3M</td>
+                            <td><span class="text-success">0.7%</span></td>
+                            <td>2024-06-17 12:30</td>
+                            <td>2024-06-18 00:15</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>

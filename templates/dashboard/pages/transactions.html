@@ -1,0 +1,77 @@
+<!-- ============================================================ -->
+    <!-- PAGE: TRANSACTIONS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-transactions">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-exchange-alt"></i> Commit / Rollback</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="txChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-pie"></i> Rollback Rate</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="rollbackChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Статистика транзакций</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>База данных</th>
+                                    <th>Коммитов</th>
+                                    <th>Роллбеков</th>
+                                    <th>Всего</th>
+                                    <th>Rollback %</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>2,345,678</td>
+                                    <td>45,234</td>
+                                    <td>2,390,912</td>
+                                    <td><span class="text-success"><strong>1.89%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>1,876,543</td>
+                                    <td>123,456</td>
+                                    <td>1,999,999</td>
+                                    <td><span class="text-warning"><strong>6.17%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>987,654</td>
+                                    <td>12,345</td>
+                                    <td>999,999</td>
+                                    <td><span class="text-success"><strong>1.23%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>postgres</td>
+                                    <td>45,678</td>
+                                    <td>1,234</td>
+                                    <td>46,912</td>
+                                    <td><span class="text-success"><strong>2.63%</strong></span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

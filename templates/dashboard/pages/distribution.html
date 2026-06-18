@@ -1,0 +1,87 @@
+<!-- ============================================================ -->
+    <!-- PAGE: DISTRIBUTION -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-distribution">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-arrows-alt-h"></i> Коэффициент перекоса</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="skewChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-bar"></i> Распределение по сегментам</span>
+                        <span class="te6-style-26">dd04443_bal_raw_f0611</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="segmentDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Таблицы с перекосом</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Схема</th>
+                                    <th>Таблица</th>
+                                    <th>Коэф.</th>
+                                    <th>Мин. строк</th>
+                                    <th>Макс. строк</th>
+                                    <th>Статус</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_bal_raw_f0611</td>
+                                    <td><span class="text-danger"><strong>1.89</strong></span></td>
+                                    <td>98.2M</td>
+                                    <td>185.7M</td>
+                                    <td><span class="status-badge unsync">высокий</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>fact_sales</td>
+                                    <td><span class="text-warning"><strong>1.45</strong></span></td>
+                                    <td>56.8M</td>
+                                    <td>82.3M</td>
+                                    <td><span class="status-badge unsync">средний</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>dc00006_audit_log</td>
+                                    <td><strong>1.23</strong></td>
+                                    <td>34.6M</td>
+                                    <td>42.6M</td>
+                                    <td><span class="status-badge sync">норм.</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_transactions</td>
+                                    <td><strong>1.18</strong></td>
+                                    <td>67.9M</td>
+                                    <td>80.1M</td>
+                                    <td><span class="status-badge sync">норм.</span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

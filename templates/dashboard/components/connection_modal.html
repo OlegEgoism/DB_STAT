@@ -1,0 +1,55 @@
+<!-- ========== CONNECTION MODAL ========== -->
+<div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plug me-2 te6-style-3"></i>Новое подключение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="connectionForm">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="connName" placeholder="Например: Production GP" value="New Connection">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Хост <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="connHost" placeholder="localhost" value="localhost">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Порт <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="connPort" placeholder="5432" value="5432">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">База данных <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="connDatabase" placeholder="postgres" value="postgres">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Пользователь <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="connUser" placeholder="postgres" value="postgres">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Пароль</label>
+                            <input type="password" class="form-control" id="connPassword" placeholder="••••••••">
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="connSSL" checked>
+                                <label class="form-check-label" for="connSSL">
+                                    Использовать SSL
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveConnection()">
+                    <i class="fas fa-check"></i> Подключиться
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
