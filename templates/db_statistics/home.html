@@ -1,33 +1,48 @@
 {% extends "base.html" %}
-{% block title %}Подключения · DB Monitor{% endblock %}
+{% block title %}Активные подключения · Database Hub{% endblock %}
 {% block content %}
-<section class="hero">
-  <div>
-    <p class="eyebrow">Database connections</p>
-    <h1>Подключения к PostgreSQL и Greenplum</h1>
-    <p class="hero-text">Создавайте внешние подключения к БД и открывайте карточку подключения, чтобы посмотреть сведения о сервере, схемах и таблицах.</p>
+<section class="dashboard-panel">
+  <div class="panel-toolbar">
+    <div class="section-heading">
+      <span class="heading-accent"></span>
+      <h1>Активные подключения</h1>
+      <span class="count-badge">{{ connections|length }}</span>
+    </div>
+    <div class="toolbar-actions">
+      <label class="search-box">
+        <span>⌕</span>
+        <input type="search" placeholder="Поиск подключений..." aria-label="Поиск подключений">
+      </label>
+      <a class="create-button" href="#create-connection">+ Создать подключение</a>
+    </div>
+  </div>
+
+  <div class="tabs" aria-label="Фильтры подключений">
+    <button class="is-selected" type="button">Все</button>
+    <button type="button">Продакшн</button>
+    <button type="button">Разработка</button>
+    <button type="button">PostgreSQL</button>
+    <button type="button">Greenplum</button>
+  </div>
+
+  <div id="connections-grid" class="cards-grid">
+    {% for connection in connections %}
+      {% include "db_statistics/partials/connection_card.html" %}
+    {% empty %}
+      <div class="empty-state">
+        <strong>Подключений пока нет</strong>
+        <span>Создайте первое внешнее подключение к PostgreSQL или Greenplum.</span>
+      </div>
+    {% endfor %}
   </div>
 </section>
 
-<section class="layout-grid">
-  <aside class="panel form-panel">
+<section id="create-connection" class="create-panel">
+  <div>
+    <span class="heading-accent"></span>
     <h2>Новое подключение</h2>
-    <p>Данные сохраняются в локальной базе приложения и используются для подключения к внешней БД.</p>
-    {% include "db_statistics/partials/connection_form.html" %}
-  </aside>
-
-  <section class="connections-section">
-    <div class="section-title">
-      <h2>Доступные подключения</h2>
-      <span>{{ connections|length }} шт.</span>
-    </div>
-    <div id="connections-grid" class="cards-grid">
-      {% for connection in connections %}
-        {% include "db_statistics/partials/connection_card.html" %}
-      {% empty %}
-        <div class="empty-state">Пока нет подключений. Создайте первое подключение через форму слева.</div>
-      {% endfor %}
-    </div>
-  </section>
+    <p>Укажите параметры внешней базы данных. После сохранения подключение появится в виде плитки на главной странице.</p>
+  </div>
+  {% include "db_statistics/partials/connection_form.html" %}
 </section>
 {% endblock %}

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ connection.name }} · DB Monitor{% endblock %}
+{% block title %}{{ connection.name }} · Database Hub{% endblock %}
 {% block content %}
 <a class="back-link" href="{% url 'home' %}">← Вернуться к подключениям</a>
-<section class="detail-hero panel">
+<section class="detail-hero">
+  <div class="db-icon large">▰</div>
   <div>
     <p class="eyebrow">{{ connection.get_db_type_display }}</p>
     <h1>{{ connection.name }}</h1>
@@ -20,7 +21,7 @@
     <article class="stat-card"><span>Объекты с колонками</span><strong>{{ metadata.columns|length }}</strong></article>
   </section>
 
-  <section class="panel">
+  <section class="info-panel">
     <h2>Общая информация</h2>
     <dl class="info-list">
       <dt>Версия</dt><dd>{{ metadata.overview.version }}</dd>
@@ -30,11 +31,11 @@
   </section>
 
   <section class="tables-layout">
-    <article class="panel">
+    <article class="info-panel">
       <h2>Схемы</h2>
       <ul class="schema-list">{% for schema in metadata.schemas %}<li>{{ schema.schema_name }}</li>{% endfor %}</ul>
     </article>
-    <article class="panel wide-panel">
+    <article class="info-panel wide-panel">
       <h2>Таблицы и представления</h2>
       <div class="responsive-table"><table><thead><tr><th>Схема</th><th>Имя</th><th>Тип</th></tr></thead><tbody>{% for table in metadata.tables %}<tr><td>{{ table.table_schema }}</td><td>{{ table.table_name }}</td><td>{{ table.table_type }}</td></tr>{% endfor %}</tbody></table></div>
     </article>

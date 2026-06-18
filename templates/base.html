@@ -4,14 +4,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}DB Monitor{% endblock %}</title>
+  <title>{% block title %}Database Hub{% endblock %}</title>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="{% url 'home' %}">DB Monitor</a>
-    <nav class="nav"><a href="{% url 'home' %}">Подключения</a></nav>
+    <a class="brand" href="{% url 'home' %}">
+      <span class="brand-icon">▰</span>
+      <span>
+        <strong>Database Hub</strong>
+        <small>Центр управления подключениями к базам данных</small>
+      </span>
+    </a>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="#">▣ Аудит</a>
+      <a href="#">☗ Регистрация</a>
+      <a class="is-active" href="#">↪ Вход</a>
+      <a href="#">⚙ Настройки</a>
+    </nav>
   </header>
 
   <main class="page-shell">
@@ -24,8 +35,11 @@
   </main>
 
   <footer class="site-footer">
-    <span>Внешняя инспекция PostgreSQL и Greenplum</span>
-    <span>HTMX · Django</span>
+    <span>© 2026 Database Hub v2.1</span>
+    <a href="#">◒ Безопасность</a>
+    <a href="#">● Помощь</a>
+    <a href="#">▣ Документация</a>
+    <a href="#">✉ Контакты</a>
   </footer>
 </body>
 </html>
