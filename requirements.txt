@@ -1,0 +1,5 @@
+Django==6.0.4
+dotenv==0.9.9
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2
+ruff==0.6.9

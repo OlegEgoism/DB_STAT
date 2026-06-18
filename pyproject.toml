@@ -1,0 +1,32 @@
+[tool.ruff]
+# Базовые настройки Ruff для проекта.
+line-length = 280
+target-version = "py312"
+
+# Директории и служебные файлы, исключённые из проверки.
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "migrations",
+]
+
+[tool.ruff.lint]
+# Набор правил: pycodestyle/pyflakes, isort, pyupgrade, bugbear.
+select = ["E", "F", "I", "UP", "B"]
+# E501 игнорируется, так как лимит задаётся в line-length.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# Группировать импорты с алиасами в компактный вид.
+combine-as-imports = true
+# Убирает конфликт с format.skip-magic-trailing-comma = true.
+split-on-trailing-comma = false
+
+[tool.ruff.format]
+# Единый стиль форматирования для всего проекта.
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = true
