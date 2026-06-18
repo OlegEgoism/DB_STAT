@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ connection.name }} · DB Monitor{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'home' %}">← Вернуться к подключениям</a>
+<section class="detail-hero panel">
+  <div>
+    <p class="eyebrow">{{ connection.get_db_type_display }}</p>
+    <h1>{{ connection.name }}</h1>
+    <p>{{ connection.host }}:{{ connection.port }}/{{ connection.database }} · пользователь {{ connection.username }}</p>
+  </div>
+  <span class="connection-state {% if is_connected %}ok{% else %}bad{% endif %}">{% if is_connected %}Подключено{% else %}Ошибка{% endif %}</span>
+</section>
+
+{% if error %}
+  <div class="alert">Не удалось подключиться: {{ error }}</div>
+{% else %}
+  <section class="stats-grid">
+    <article class="stat-card"><span>Схемы</span><strong>{{ metadata.schemas|length }}</strong></article>
+    <article class="stat-card"><span>Таблицы</span><strong>{{ metadata.tables|length }}</strong></article>
+    <article class="stat-card"><span>Объекты с колонками</span><strong>{{ metadata.columns|length }}</strong></article>
+  </section>
+
+  <section class="panel">
+    <h2>Общая информация</h2>
+    <dl class="info-list">
+      <dt>Версия</dt><dd>{{ metadata.overview.version }}</dd>
+      <dt>База</dt><dd>{{ metadata.overview.database_name }}</dd>
+      <dt>Пользователь</dt><dd>{{ metadata.overview.user_name }}</dd>
+    </dl>
+  </section>
+
+  <section class="tables-layout">
+    <article class="panel">
+      <h2>Схемы</h2>
+      <ul class="schema-list">{% for schema in metadata.schemas %}<li>{{ schema.schema_name }}</li>{% endfor %}</ul>
+    </article>
+    <article class="panel wide-panel">
+      <h2>Таблицы и представления</h2>
+      <div class="responsive-table"><table><thead><tr><th>Схема</th><th>Имя</th><th>Тип</th></tr></thead><tbody>{% for table in metadata.tables %}<tr><td>{{ table.table_schema }}</td><td>{{ table.table_name }}</td><td>{{ table.table_type }}</td></tr>{% endfor %}</tbody></table></div>
+    </article>
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,11 @@
+<form class="connection-form" hx-post="{% url 'create_connection' %}" hx-target="this" hx-swap="outerHTML">
+  {% csrf_token %}
+  {% for field in form %}
+    <label>
+      <span>{{ field.label }}</span>
+      {{ field }}
+      {% for error in field.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+    </label>
+  {% endfor %}
+  <button class="primary-button" type="submit">Создать подключение</button>
+</form>

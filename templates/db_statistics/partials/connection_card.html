@@ -1,0 +1,9 @@
+<a class="connection-card" href="{% url 'connection_detail' connection.pk %}">
+  <div class="card-topline">
+    <span class="db-type">{{ connection.get_db_type_display }}</span>
+    <span class="status-dot"></span>
+  </div>
+  <h3>{{ connection.name }}</h3>
+  <p>{{ connection.host }}:{{ connection.port }}</p>
+  <p class="database-name">{{ connection.database }}</p>
+</a>
