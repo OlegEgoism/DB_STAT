@@ -16,20 +16,20 @@
             <!-- Connection Manager -->
             <div class="connection-manager">
                 <span class="conn-status online" id="connStatusIndicator"></span>
-                <select id="connectionSelect" onchange="onConnectionChange(this.value)">
+                <select id="connectionSelect" data-action="change-connection">
                     <option value="prod-greenplum">Production GP</option>
                     <option value="dev-greenplum">Dev Greenplum</option>
                     <option value="test-postgres">Test PostgreSQL</option>
                     <option value="analytics">Analytics Cluster</option>
                 </select>
                 <span class="conn-divider"></span>
-                <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
+                <button class="btn-conn primary" data-action="open-connection-modal" title="Новое подключение">
                     <i class="fas fa-plus"></i>
                 </button>
-                <button class="btn-conn" onclick="testConnection()" title="Проверить">
+                <button class="btn-conn" data-action="test-connection" title="Проверить">
                     <i class="fas fa-plug"></i>
                 </button>
-                <button class="btn-conn danger" onclick="disconnect()" title="Отключить">
+                <button class="btn-conn danger" data-action="disconnect" title="Отключить">
                     <i class="fas fa-power-off"></i>
                 </button>
                 <span class="conn-divider"></span>
@@ -39,7 +39,7 @@
             <span class="topbar-time">
                 <i class="far fa-clock"></i> <span id="currentTime"></span>
             </span>
-            <button class="refresh-btn" onclick="refreshAll()">
+            <button class="refresh-btn" data-action="refresh-all">
                 <i class="fas fa-sync-alt"></i>
             </button>
         </div>

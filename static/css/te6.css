@@ -1124,30 +1124,30 @@
             }
         }
 
-/* Extracted from inline styles in te6.html. */
-.te6-style-1 { flex: 1; overflow-y: auto; padding-bottom: 8px; }
-.te6-style-2 { color: var(--text-muted); font-size: 14px; cursor: pointer; }
-.te6-style-3 { color: var(--accent-blue); }
-.te6-style-4 { max-height: 320px; overflow-y: auto; }
-.te6-style-5 { color: var(--accent-green); }
-.te6-style-6 { font-size:16px; font-weight:400; color: var(--text-muted); }
-.te6-style-7 { color: var(--accent-yellow); }
-.te6-style-8 { color: var(--accent-purple); }
-.te6-style-9 { font-size:12px; color: var(--text-muted); }
-.te6-style-10 { font-size:6px; }
-.te6-style-11 { min-width:160px; }
-.te6-style-12 { color: var(--text-muted); font-size:12px; margin-left:auto; }
-.te6-style-13 { font-size:12px; padding:12px; }
-.te6-style-14 { min-width:70px; }
-.te6-style-15 { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted); }
-.te6-style-16 { position: relative; width: 160px; margin: 0 auto; }
-.te6-style-17 { font-size:14px; }
-.te6-style-18 { color: var(--accent-red); }
-.te6-style-19 { color: var(--accent-cyan); }
-.te6-style-20 { font-weight:500; }
-.te6-style-21 { width:77.5%; background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
-.te6-style-22 { width:71.9%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange)); }
-.te6-style-23 { width:75%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange)); }
-.te6-style-24 { width:87.5%; background: linear-gradient(90deg, var(--accent-red), var(--accent-pink)); }
-.te6-style-25 { font-size:12px; padding:10px; }
-.te6-style-26 { font-size:11px; color: var(--text-muted); }
+/* Helper styles extracted from the dashboard markup. */
+.sidebar-scroll { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+.sidebar-more-icon { color: var(--text-muted); font-size: 14px; cursor: pointer; }
+.text-accent-blue { color: var(--accent-blue); }
+.segment-table-scroll { max-height: 320px; overflow-y: auto; }
+.text-accent-green { color: var(--accent-green); }
+.kpi-unit-muted { font-size:16px; font-weight:400; color: var(--text-muted); }
+.text-accent-yellow { color: var(--accent-yellow); }
+.text-accent-purple { color: var(--accent-purple); }
+.text-muted-small { font-size:12px; color: var(--text-muted); }
+.status-dot-tiny { font-size:6px; }
+.table-search-input { min-width:160px; }
+.toolbar-result-count { color: var(--text-muted); font-size:12px; margin-left:auto; }
+.table-more-row { font-size:12px; padding:12px; }
+.actions-column { min-width:70px; }
+.sql-preview-cell { max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted); }
+.health-chart-wrap { position: relative; width: 160px; margin: 0 auto; }
+.health-summary-text { font-size:14px; }
+.text-accent-red { color: var(--accent-red); }
+.text-accent-cyan { color: var(--accent-cyan); }
+.memory-metric-label { font-weight:500; }
+.progress-shared-buffers { width:77.5%; background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan)); }
+.progress-work-mem { width:71.9%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange)); }
+.progress-statement-mem { width:75%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange)); }
+.progress-vmem-limit { width:87.5%; background: linear-gradient(90deg, var(--accent-red), var(--accent-pink)); }
+.temp-tables-more-row { font-size:12px; padding:10px; }
+.distribution-table-name { font-size:11px; color: var(--text-muted); }

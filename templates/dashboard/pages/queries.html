@@ -13,7 +13,7 @@
                 <option>active</option>
                 <option>idle in transaction</option>
             </select>
-            <span class="te6-style-12">
+            <span class="toolbar-result-count">
                 <i class="fas fa-sync-alt fa-fw"></i> Автообновление: <span id="autoRefresh">вкл</span>
             </span>
         </div>
@@ -29,7 +29,7 @@
                             <th>Длительность</th>
                             <th>Состояние</th>
                             <th>SQL</th>
-                            <th class="te6-style-14">Действия</th>
+                            <th class="actions-column">Действия</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -39,12 +39,12 @@
                             <td>DBeaver</td>
                             <td><span class="text-danger">4м 23с</span></td>
                             <td><span class="status-badge up">active</span></td>
-                            <td class="te6-style-15">
+                            <td class="sql-preview-cell">
                                 SELECT * FROM dd04443_bal_raw_f0611 WHERE date &gt; '2024-01-01'
                             </td>
                             <td>
-                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
-                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                                <button class="btn btn-outline-warning btn-sm" data-toast-message="⏹ Запрос отменен"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" data-toast-message="❌ Сессия завершена"><i class="fas fa-times"></i></button>
                             </td>
                         </tr>
                         <tr>
@@ -53,12 +53,12 @@
                             <td>Python ETL</td>
                             <td><span class="text-warning">2м 15с</span></td>
                             <td><span class="status-badge up">active</span></td>
-                            <td class="te6-style-15">
+                            <td class="sql-preview-cell">
                                 INSERT INTO fact_sales SELECT * FROM stage_sales
                             </td>
                             <td>
-                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
-                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                                <button class="btn btn-outline-warning btn-sm" data-toast-message="⏹ Запрос отменен"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" data-toast-message="❌ Сессия завершена"><i class="fas fa-times"></i></button>
                             </td>
                         </tr>
                         <tr>
@@ -67,12 +67,12 @@
                             <td>Tableau</td>
                             <td><span class="text-warning">1м 47с</span></td>
                             <td><span class="status-badge up">active</span></td>
-                            <td class="te6-style-15">
+                            <td class="sql-preview-cell">
                                 SELECT region, SUM(sales) FROM fact_sales GROUP BY region
                             </td>
                             <td>
-                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
-                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                                <button class="btn btn-outline-warning btn-sm" data-toast-message="⏹ Запрос отменен"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" data-toast-message="❌ Сессия завершена"><i class="fas fa-times"></i></button>
                             </td>
                         </tr>
                         </tbody>
