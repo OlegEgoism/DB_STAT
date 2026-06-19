@@ -214,31 +214,48 @@ function initNavigation() {
         'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
     };
 
+    function activatePage(pageId, pushState = false) {
+        const target = document.getElementById('page-' + pageId);
+        if (!target) return;
+
+        items.forEach(item => item.classList.toggle('active', item.dataset.page === pageId));
+        pages.forEach(page => page.classList.toggle('active', page.id === 'page-' + pageId));
+        document.getElementById('pageTitle').innerHTML = titles[pageId] || pageId;
+        document.body.dataset.initialPage = pageId;
+
+        if (pushState) {
+            const activeItem = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+            if (activeItem?.href) {
+                window.history.pushState({pageId}, '', activeItem.href);
+            }
+        }
+
+        setTimeout(() => {
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.resize) chart.resize();
+            });
+        }, 100);
+
+        if (window.innerWidth <= 992) {
+            document.getElementById('sidebar').classList.remove('open');
+        }
+    }
+
     items.forEach(item => {
         item.addEventListener('click', function (e) {
             e.preventDefault();
-            const pageId = this.dataset.page;
-
-            items.forEach(i => i.classList.remove('active'));
-            this.classList.add('active');
-
-            pages.forEach(p => p.classList.remove('active'));
-            const target = document.getElementById('page-' + pageId);
-            if (target) target.classList.add('active');
-
-            document.getElementById('pageTitle').innerHTML = titles[pageId] || pageId;
-
-            setTimeout(() => {
-                Object.values(charts).forEach(chart => {
-                    if (chart && chart.resize) chart.resize();
-                });
-            }, 100);
-
-            if (window.innerWidth <= 992) {
-                document.getElementById('sidebar').classList.remove('open');
-            }
+            activatePage(this.dataset.page, true);
         });
     });
+
+    const initialPage = document.body.dataset.initialPage || 'dashboard';
+    window.history.replaceState({pageId: initialPage}, '', window.location.href);
+
+    window.addEventListener('popstate', event => {
+        activatePage(event.state?.pageId || initialPage);
+    });
+
+    activatePage(initialPage);
 }
 
 // ============================

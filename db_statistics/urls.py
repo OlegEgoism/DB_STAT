@@ -1,5 +1,13 @@
 """URL routes for the db_statistics app."""
 
-# The project URLconf includes this module, so Django requires urlpatterns to
-# exist and be an iterable even when the app does not expose public routes yet.
-urlpatterns = []
+from django.urls import path
+
+from db_statistics import views
+
+app_name = "db_statistics"
+
+urlpatterns = [
+    path("", views.dashboard, name="dashboard"),
+    path("dashboard/", views.dashboard, name="dashboard_home"),
+    path("<slug:section>/", views.dashboard, name="dashboard_section"),
+]

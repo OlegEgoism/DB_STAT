@@ -16,7 +16,7 @@
     <link href="{% static 'css/te6.css' %}" rel="stylesheet">
     {% endblock %}
 </head>
-<body>
+<body data-initial-page="{{ initial_page|default:'dashboard' }}">
 {% block body %}{% endblock %}
 
 {% block scripts %}

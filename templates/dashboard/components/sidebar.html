@@ -15,7 +15,7 @@
     <div class="sidebar-scroll">
         <div class="nav-section">
             <div class="nav-section-title">Обзор</div>
-            <a class="nav-item active" data-page="dashboard">
+            <a class="nav-item active" href="{% url 'db_statistics:dashboard' %}" data-page="dashboard">
                 <i class="fas fa-chart-pie nav-icon"></i>
                 <span>Дашборд</span>
             </a>
@@ -23,12 +23,12 @@
 
         <div class="nav-section">
             <div class="nav-section-title">Инфраструктура</div>
-            <a class="nav-item" data-page="segments">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'segments' %}" data-page="segments">
                 <i class="fas fa-server nav-icon"></i>
                 <span>Сегменты</span>
                 <span class="badge badge-soft-success">12</span>
             </a>
-            <a class="nav-item" data-page="cluster-health">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'cluster-health' %}" data-page="cluster-health">
                 <i class="fas fa-heartbeat nav-icon"></i>
                 <span>Здоровье</span>
             </a>
@@ -36,20 +36,20 @@
 
         <div class="nav-section">
             <div class="nav-section-title">Данные</div>
-            <a class="nav-item" data-page="databases">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'databases' %}" data-page="databases">
                 <i class="fas fa-database nav-icon"></i>
                 <span>Базы данных</span>
             </a>
-            <a class="nav-item" data-page="tables">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'tables' %}" data-page="tables">
                 <i class="fas fa-table nav-icon"></i>
                 <span>Таблицы</span>
                 <span class="badge badge-soft-warning">50</span>
             </a>
-            <a class="nav-item" data-page="distribution">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'distribution' %}" data-page="distribution">
                 <i class="fas fa-arrows-alt-h nav-icon"></i>
                 <span>Распределение</span>
             </a>
-            <a class="nav-item" data-page="temp-tables">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'temp-tables' %}" data-page="temp-tables">
                 <i class="fas fa-clock nav-icon"></i>
                 <span>Временные</span>
             </a>
@@ -57,16 +57,16 @@
 
         <div class="nav-section">
             <div class="nav-section-title">Производительность</div>
-            <a class="nav-item" data-page="queries">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'queries' %}" data-page="queries">
                 <i class="fas fa-bolt nav-icon"></i>
                 <span>Запросы</span>
                 <span class="badge badge-soft-danger">3</span>
             </a>
-            <a class="nav-item" data-page="locks">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'locks' %}" data-page="locks">
                 <i class="fas fa-lock nav-icon"></i>
                 <span>Блокировки</span>
             </a>
-            <a class="nav-item" data-page="transactions">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'transactions' %}" data-page="transactions">
                 <i class="fas fa-exchange-alt nav-icon"></i>
                 <span>Транзакции</span>
             </a>
@@ -74,15 +74,15 @@
 
         <div class="nav-section">
             <div class="nav-section-title">Администрирование</div>
-            <a class="nav-item" data-page="memory">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'memory' %}" data-page="memory">
                 <i class="fas fa-memory nav-icon"></i>
                 <span>Память</span>
             </a>
-            <a class="nav-item" data-page="bloat">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'bloat' %}" data-page="bloat">
                 <i class="fas fa-expand nav-icon"></i>
                 <span>Раздувание</span>
             </a>
-            <a class="nav-item" data-page="maintenance">
+            <a class="nav-item" href="{% url 'db_statistics:dashboard_section' 'maintenance' %}" data-page="maintenance">
                 <i class="fas fa-tools nav-icon"></i>
                 <span>Обслуживание</span>
             </a>
