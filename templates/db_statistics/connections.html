@@ -78,7 +78,7 @@
             <div class="panel__header">
                 <div>
                     <p class="eyebrow">Сегменты БД</p>
-                    <h2>Состояние кластера</h2>
+                    <h2>{{ dashboard.title|default:"Состояние кластера" }}</h2>
                 </div>
             </div>
             {% if dashboard.error %}
@@ -96,6 +96,7 @@
                         </article>
                     {% endfor %}
                 </div>
+                <h3 class="table-title">{{ dashboard.table_title|default:"Конфигурация" }}</h3>
                 <div class="table-wrap">
                     <table>
                         <thead>

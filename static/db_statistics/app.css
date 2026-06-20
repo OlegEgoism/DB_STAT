@@ -131,6 +131,7 @@ body {
 .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .metric-card { background: #ffffff; border: 1px solid var(--border); border-radius: 10px; padding: 11px; }
 .metric-card strong { display: block; font-size: 22px; margin-top: 4px; }
+.table-title { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
 .table-wrap { background: #ffffff; border: 1px solid var(--border); border-radius: 10px; overflow-x: auto; }
 table { border-collapse: collapse; min-width: 100%; }
 th, td { border-bottom: 1px solid var(--border); padding: 8px 10px; text-align: left; white-space: nowrap; }
