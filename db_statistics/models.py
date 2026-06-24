@@ -10,7 +10,6 @@ from django.db import models
 # ============================================================================
 class DateStamp(models.Model):
     """Временные отметки"""
-
     created = models.DateTimeField(verbose_name="Дата создания", db_comment="Дата создания", auto_now_add=True)
     updated = models.DateTimeField(verbose_name="Дата изменения", db_comment="Дата изменения", auto_now=True)
 
@@ -32,7 +31,6 @@ class Active(models.Model):
 # ============================================================================
 class DBUser(DateStamp, Active):
     """Пользователь"""
-
     USER_ROLE = [
         ("Администратор", "Администратор"),
         ("Аналитик", "Аналитик")
@@ -48,6 +46,7 @@ class DBUser(DateStamp, Active):
         db_table_comment = "Пользователь"
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+        ordering = ['login', ]
 
     def __str__(self):
         return self.login
@@ -103,18 +102,18 @@ class DBAudit(models.Model):
         db_table_comment = "Аудит"
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
+        ordering = ("-created",)
 
 
 class DBPagination(DateStamp):
-    """Пагинация списка"""
-
+    """Пагинация"""
     pagination_size = models.IntegerField(verbose_name="Размер пагинации", db_comment="Размер пагинации", default=10, validators=[MinValueValidator(10), MaxValueValidator(200)], unique=True)
 
     class Meta:
         db_table = "db_pagination"
-        db_table_comment = "Пагинация списка"
-        verbose_name = "Пагинация списка"
-        verbose_name_plural = "Пагинация списка"
+        db_table_comment = "Пагинация"
+        verbose_name = "Пагинация"
+        verbose_name_plural = "Пагинация"
         ordering = ("pagination_size",)
 
     def clean(self):
