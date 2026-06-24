@@ -1,5 +1,7 @@
 from operator import truediv
 
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
@@ -75,3 +77,54 @@ class DBConnection(DateStamp, Active):
 
     def __str__(self):
         return self.name
+
+
+class DBAudit(models.Model):
+    """Аудит"""
+    ACTION_TYPES = [
+        ('create', 'Создание'),
+        ('update', 'Обновление'),
+        ('delete', 'Удаление'),
+        ('register', 'Регистрация'),
+        ('download', 'Скачивание'),
+        ('info', 'Информация'),
+    ]
+
+    username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
+    action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=10, choices=ACTION_TYPES)
+    info = models.TextField(verbose_name="Информация", db_comment="Информация")
+    created = models.DateTimeField(verbose_name="Дата действия", db_comment="Дата действия")
+
+    def __str__(self):
+        return f"{self.action_type} - {self.username}"
+
+    class Meta:
+        db_table = "db_audit"
+        db_table_comment = "Аудит"
+        verbose_name = "Аудит"
+        verbose_name_plural = "Аудит"
+
+
+class DBPagination(DateStamp):
+    """Пагинация списка"""
+
+    pagination_size = models.IntegerField(verbose_name="Размер пагинации", db_comment="Размер пагинации", default=10, validators=[MinValueValidator(10), MaxValueValidator(200)], unique=True)
+
+    class Meta:
+        db_table = "db_pagination"
+        db_table_comment = "Пагинация списка"
+        verbose_name = "Пагинация списка"
+        verbose_name_plural = "Пагинация списка"
+        ordering = ("pagination_size",)
+
+    def clean(self):
+        super().clean()
+        if not self.pk and DBPagination.objects.count() >= 5:
+            raise ValidationError("Нельзя создать больше 5 записей.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return str(self.pagination_size)
