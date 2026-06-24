@@ -1,3 +1,5 @@
+from operator import truediv
+
 from django.db import models
 
 
@@ -36,9 +38,8 @@ class DBUser(DateStamp, Active):
 
     login = models.CharField(verbose_name="Логин", db_comment="Логин", max_length=100, db_index=True, unique=True)
     email = models.EmailField(verbose_name="Почта", db_comment="Почта", unique=True)
-    fio = models.CharField(verbose_name="ФИО", db_comment="ФИО", max_length=250)
     role = models.CharField(verbose_name="Роль", db_comment="Роль", max_length=20, choices=USER_ROLE, default="Аналитик")
-    connections = models.ManyToManyField(to="db_statistics.DBConnection", verbose_name="Подключение к базе данных", db_comment="Подключение к базе данных", related_name="connections_db_user")
+    connections = models.ManyToManyField(to="db_statistics.DBConnection", verbose_name="Подключение к базе данных", db_comment="Подключение к базе данных", blank=True)
 
     class Meta:
         db_table = "db_user"
