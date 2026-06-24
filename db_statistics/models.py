@@ -53,7 +53,7 @@ class DBUser(DateStamp, Active):
 
 
 class DBConnection(DateStamp, Active):
-    """Подключение к базе данных"""
+    """Подключение"""
     DATABASE_TYPES = [
         ("PostgreSQL", "PostgreSQL"),
         ("Greenplum", "Greenplum")
@@ -69,9 +69,9 @@ class DBConnection(DateStamp, Active):
 
     class Meta:
         db_table = "db_connection"
-        db_table_comment = "Подключение к базе данных"
-        verbose_name = "Подключение к базе данных"
-        verbose_name_plural = "Подключения к базам данных"
+        db_table_comment = "Подключение"
+        verbose_name = "Подключение"
+        verbose_name_plural = "Подключения"
         unique_together = ("name", "host", "port", "database")
 
     def __str__(self):
