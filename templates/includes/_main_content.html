@@ -1,0 +1,1239 @@
+<!-- ========== MAIN CONTENT ========== --><div class="main-content" id="mainContent">
+
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <h4 id="pageTitle">Дашборд <small>Общая сводка состояния кластера</small></h4>
+        </div>
+        <div class="topbar-right">
+            {% include 'partials/_cluster_status.html' %}
+
+            <!-- Connection Manager -->
+            <div class="connection-manager">
+                <span class="conn-status online" id="connStatusIndicator"></span>
+                <select id="connectionSelect" onchange="onConnectionChange(this.value)">
+                    <option value="prod-greenplum">Production GP</option>
+                    <option value="dev-greenplum">Dev Greenplum</option>
+                    <option value="test-postgres">Test PostgreSQL</option>
+                    <option value="analytics">Analytics Cluster</option>
+                </select>
+                <span class="conn-divider"></span>
+                <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="btn-conn" onclick="testConnection()" title="Проверить">
+                    <i class="fas fa-plug"></i>
+                </button>
+                <button class="btn-conn danger" onclick="disconnect()" title="Отключить">
+                    <i class="fas fa-power-off"></i>
+                </button>
+                <span class="conn-divider"></span>
+                <span class="connection-info" id="connectionInfo">localhost:5432</span>
+            </div>
+
+            <span class="topbar-time">
+                <i class="far fa-clock"></i> <span id="currentTime"></span>
+            </span>
+            <button class="refresh-btn" onclick="refreshAll()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: DASHBOARD -->
+    <!-- ============================================================ -->
+    <div class="page active" id="page-dashboard">
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Здоровье кластера</span>
+                    <span class="kpi-icon"><i class="fas fa-heartbeat" style="color: var(--accent-green);"></i></span>
+                </div>
+                <div class="kpi-value" style="color: var(--accent-green);">98.7%</div>
+                <div class="kpi-sub">12 сегментов работают</div>
+                <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +0.3% за неделю</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Общий размер БД</span>
+                    <span class="kpi-icon"><i class="fas fa-database" style="color: var(--accent-blue);"></i></span>
+                </div>
+                <div class="kpi-value">1.45 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">TB</span></div>
+                <div class="kpi-sub">15 баз данных</div>
+                <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +2.1% за месяц</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Активные запросы</span>
+                    <span class="kpi-icon"><i class="fas fa-bolt" style="color: var(--accent-yellow);"></i></span>
+                </div>
+                <div class="kpi-value" style="color: var(--accent-yellow);">3</div>
+                <div class="kpi-sub">Самый долгий: 4м 23с</div>
+                <div class="kpi-trend down"><i class="fas fa-arrow-down"></i> -2 за час</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-top">
+                    <span class="kpi-label">Использование соединений</span>
+                    <span class="kpi-icon"><i class="fas fa-users" style="color: var(--accent-purple);"></i></span>
+                </div>
+                <div class="kpi-value">142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span></div>
+                <div class="kpi-sub">28.4% использования</div>
+                <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +5 за час</div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-3 mb-4">
+            <div class="col-xl-6 col-lg-12">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-bar"></i> Активность запросов по часам</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="dashboardActivityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6 col-lg-12">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-donut"></i> Распределение транзакций</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="dashboardTxChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables & Queries -->
+        <div class="row g-3">
+            <div class="col-xl-7 col-lg-12">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-table"></i> Топ-10 самых больших таблиц</span>
+                        <span style="font-size:12px; color: var(--text-muted);">Общий размер: 1.2 TB</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Схема</th>
+                                    <th>Таблица</th>
+                                    <th>Размер</th>
+                                    <th>Индексы</th>
+                                    <th>% от БД</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_bal_raw_f0611</td>
+                                    <td><strong>234.5 GB</strong></td>
+                                    <td>12.3 GB</td>
+                                    <td>16.2%</td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>dc00006_1725_coderules</td>
+                                    <td><strong>187.2 GB</strong></td>
+                                    <td>8.7 GB</td>
+                                    <td>12.9%</td>
+                                </tr>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_transactions</td>
+                                    <td><strong>156.8 GB</strong></td>
+                                    <td>15.2 GB</td>
+                                    <td>10.8%</td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>fact_sales</td>
+                                    <td><strong>134.1 GB</strong></td>
+                                    <td>22.4 GB</td>
+                                    <td>9.2%</td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>fact_orders</td>
+                                    <td><strong>98.6 GB</strong></td>
+                                    <td>11.8 GB</td>
+                                    <td>6.8%</td>
+                                </tr>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_ledger</td>
+                                    <td><strong>87.3 GB</strong></td>
+                                    <td>6.1 GB</td>
+                                    <td>6.0%</td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>dc00006_audit_log</td>
+                                    <td><strong>76.9 GB</strong></td>
+                                    <td>3.4 GB</td>
+                                    <td>5.3%</td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>dim_customer</td>
+                                    <td><strong>54.2 GB</strong></td>
+                                    <td>9.8 GB</td>
+                                    <td>3.7%</td>
+                                </tr>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_invoices</td>
+                                    <td><strong>45.7 GB</strong></td>
+                                    <td>5.3 GB</td>
+                                    <td>3.1%</td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>fact_inventory</td>
+                                    <td><strong>38.4 GB</strong></td>
+                                    <td>7.2 GB</td>
+                                    <td>2.6%</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-5 col-lg-12">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-clock"></i> Самые долгие запросы</span>
+                        <span style="font-size:12px; color: var(--text-muted);">активные</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Пользователь</th>
+                                    <th>Длительность</th>
+                                    <th>Состояние</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dwhnbrb_cube</td>
+                                    <td><span class="text-danger"><i class="fas fa-circle" style="font-size:6px;"></i> 4м 23с</span></td>
+                                    <td><span class="status-badge up">active</span></td>
+                                </tr>
+                                <tr>
+                                    <td>etl_loader</td>
+                                    <td><span class="text-warning"><i class="fas fa-circle" style="font-size:6px;"></i> 2м 15с</span></td>
+                                    <td><span class="status-badge up">active</span></td>
+                                </tr>
+                                <tr>
+                                    <td>report_user</td>
+                                    <td><span class="text-warning"><i class="fas fa-circle" style="font-size:6px;"></i> 1м 47с</span></td>
+                                    <td><span class="status-badge up">active</span></td>
+                                </tr>
+                                <tr>
+                                    <td>pustovalov_oyu</td>
+                                    <td><span class="text-success"><i class="fas fa-circle" style="font-size:6px;"></i> 45с</span></td>
+                                    <td><span class="status-badge info">idle in tx</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dwhnbrb_cube</td>
+                                    <td><span class="text-success"><i class="fas fa-circle" style="font-size:6px;"></i> 32с</span></td>
+                                    <td><span class="status-badge up">active</span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: SEGMENTS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-segments">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-server"></i> Состояние сегментов</span>
+                        <span class="badge badge-soft-success">Все работают</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="segmentsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-list"></i> Детальная информация</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>Сегмент</th>
+                                    <th>Роль</th>
+                                    <th>Статус</th>
+                                    <th>Режим</th>
+                                    <th>Хост</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><strong>0</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node01</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>1</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node01</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>2</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node02</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>3</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node02</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>4</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node03</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>5</strong></td>
+                                    <td>primary</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node03</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>0</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node04</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>1</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node04</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>2</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node05</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>3</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node05</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>4</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node06</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>5</strong></td>
+                                    <td>mirror</td>
+                                    <td><span class="status-badge up">up</span></td>
+                                    <td><span class="status-badge sync">sync</span></td>
+                                    <td>gp-node06</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: CLUSTER HEALTH -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-cluster-health">
+        <div class="row g-3">
+            <div class="col-lg-4">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-heartbeat"></i> Общее состояние</span></div>
+                    <div class="card-body text-center">
+                        <div style="position: relative; width: 160px; margin: 0 auto;">
+                            <canvas id="healthGaugeChart"></canvas>
+                        </div>
+                        <h3 class="mt-3" style="color: var(--accent-green);">98.7%</h3>
+                        <p class="text-muted" style="font-size:14px;">Здоровье кластера</p>
+                        <div class="row mt-3" style="font-size:14px;">
+                            <div class="col-6"><span style="color: var(--accent-green);">●</span> Работает: <strong>12</strong></div>
+                            <div class="col-6"><span style="color: var(--accent-red);">●</span> Не работает: <strong>0</strong></div>
+                            <div class="col-6"><span style="color: var(--accent-cyan);">●</span> Синхр.: <strong>12</strong></div>
+                            <div class="col-6"><span style="color: var(--accent-yellow);">●</span> Не синхр.: <strong>0</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-bar"></i> Метрики сегментов</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="healthMetricsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: DATABASES -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-databases">
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-database"></i> Размеры баз данных</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="dbSizeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Список БД</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>База данных</th>
+                                    <th>Размер</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td><strong>745.2 GB</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td><strong>412.8 GB</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td><strong>156.3 GB</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>postgres</td>
+                                    <td>42.1 GB</td>
+                                </tr>
+                                <tr>
+                                    <td>template1</td>
+                                    <td>28.5 GB</td>
+                                </tr>
+                                <tr>
+                                    <td>template0</td>
+                                    <td>28.5 GB</td>
+                                </tr>
+                                <tr>
+                                    <td>gpperfmon</td>
+                                    <td>12.7 GB</td>
+                                </tr>
+                                <tr>
+                                    <td>gpadmin</td>
+                                    <td>8.9 GB</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: TABLES -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-tables">
+        <div class="filter-bar">
+            <select>
+                <option>Все схемы</option>
+                <option>dd04_finance</option>
+                <option>dwh_cube</option>
+                <option>dc00_sys</option>
+            </select>
+            <input type="text" placeholder="Поиск таблицы..." style="min-width:160px;">
+            <select>
+                <option>Сортировка: по размеру ↓</option>
+            </select>
+            <span style="color: var(--text-muted); font-size:12px; margin-left:auto;">50 из 1,247 таблиц</span>
+        </div>
+        <div class="glass-card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Схема</th>
+                            <th>Таблица</th>
+                            <th>Владелец</th>
+                            <th>Размер</th>
+                            <th>Индексы</th>
+                            <th>Строк</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><strong>dd04443_bal_raw_f0611</strong></td>
+                            <td>etl_user</td>
+                            <td>234.5 GB</td>
+                            <td>12.3 GB</td>
+                            <td>1.2B</td>
+                        </tr>
+                        <tr>
+                            <td>dc00_sys</td>
+                            <td><strong>dc00006_1725_coderules</strong></td>
+                            <td>admin</td>
+                            <td>187.2 GB</td>
+                            <td>8.7 GB</td>
+                            <td>987.7M</td>
+                        </tr>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><strong>dd04443_transactions</strong></td>
+                            <td>etl_user</td>
+                            <td>156.8 GB</td>
+                            <td>15.2 GB</td>
+                            <td>876.5M</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><strong>fact_sales</strong></td>
+                            <td>dwh_user</td>
+                            <td>134.1 GB</td>
+                            <td>22.4 GB</td>
+                            <td>765.4M</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><strong>fact_orders</strong></td>
+                            <td>dwh_user</td>
+                            <td>98.6 GB</td>
+                            <td>11.8 GB</td>
+                            <td>654.3M</td>
+                        </tr>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><strong>dd04443_ledger</strong></td>
+                            <td>etl_user</td>
+                            <td>87.3 GB</td>
+                            <td>6.1 GB</td>
+                            <td>543.2M</td>
+                        </tr>
+                        <tr>
+                            <td>dc00_sys</td>
+                            <td><strong>dc00006_audit_log</strong></td>
+                            <td>admin</td>
+                            <td>76.9 GB</td>
+                            <td>3.4 GB</td>
+                            <td>432.1M</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><strong>dim_customer</strong></td>
+                            <td>dwh_user</td>
+                            <td>54.2 GB</td>
+                            <td>9.8 GB</td>
+                            <td>321.1M</td>
+                        </tr>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><strong>dd04443_invoices</strong></td>
+                            <td>etl_user</td>
+                            <td>45.7 GB</td>
+                            <td>5.3 GB</td>
+                            <td>211.0M</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><strong>fact_inventory</strong></td>
+                            <td>dwh_user</td>
+                            <td>38.4 GB</td>
+                            <td>7.2 GB</td>
+                            <td>198.8M</td>
+                        </tr>
+                        <tr>
+                            <td colspan="6" class="text-center text-muted" style="font-size:12px; padding:12px;">... и еще 1,237 таблиц</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: DISTRIBUTION -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-distribution">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-arrows-alt-h"></i> Коэффициент перекоса</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="skewChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-bar"></i> Распределение по сегментам</span>
+                        <span style="font-size:11px; color: var(--text-muted);">dd04443_bal_raw_f0611</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="segmentDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Таблицы с перекосом</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Схема</th>
+                                    <th>Таблица</th>
+                                    <th>Коэф.</th>
+                                    <th>Мин. строк</th>
+                                    <th>Макс. строк</th>
+                                    <th>Статус</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_bal_raw_f0611</td>
+                                    <td><span class="text-danger"><strong>1.89</strong></span></td>
+                                    <td>98.2M</td>
+                                    <td>185.7M</td>
+                                    <td><span class="status-badge unsync">высокий</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>fact_sales</td>
+                                    <td><span class="text-warning"><strong>1.45</strong></span></td>
+                                    <td>56.8M</td>
+                                    <td>82.3M</td>
+                                    <td><span class="status-badge unsync">средний</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>dc00006_audit_log</td>
+                                    <td><strong>1.23</strong></td>
+                                    <td>34.6M</td>
+                                    <td>42.6M</td>
+                                    <td><span class="status-badge sync">норм.</span></td>
+                                </tr>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>dd04443_transactions</td>
+                                    <td><strong>1.18</strong></td>
+                                    <td>67.9M</td>
+                                    <td>80.1M</td>
+                                    <td><span class="status-badge sync">норм.</span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: TEMP TABLES -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-temp-tables">
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-clock"></i> Временные таблицы</span>
+                        <span class="badge badge-soft-warning">12 активных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Схема</th>
+                                    <th>Таблица</th>
+                                    <th>Размер</th>
+                                    <th>Автор</th>
+                                    <th>Сессия</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>pg_temp_3</td>
+                                    <td><code>temp_etl_20240618_001</code></td>
+                                    <td><strong>12.4 GB</strong></td>
+                                    <td>etl_loader</td>
+                                    <td>PID: 23456</td>
+                                </tr>
+                                <tr>
+                                    <td>pg_temp_7</td>
+                                    <td><code>temp_report_q2_2024</code></td>
+                                    <td><strong>8.7 GB</strong></td>
+                                    <td>report_user</td>
+                                    <td>PID: 28901</td>
+                                </tr>
+                                <tr>
+                                    <td>pg_temp_3</td>
+                                    <td><code>temp_etl_20240618_002</code></td>
+                                    <td><strong>6.2 GB</strong></td>
+                                    <td>etl_loader</td>
+                                    <td>PID: 23456</td>
+                                </tr>
+                                <tr>
+                                    <td>pg_temp_12</td>
+                                    <td><code>temp_dwh_calc_123</code></td>
+                                    <td><strong>4.8 GB</strong></td>
+                                    <td>dwhnbrb_cube</td>
+                                    <td>PID: 31245</td>
+                                </tr>
+                                <tr>
+                                    <td>pg_temp_7</td>
+                                    <td><code>temp_agg_2024_q2</code></td>
+                                    <td><strong>3.1 GB</strong></td>
+                                    <td>report_user</td>
+                                    <td>PID: 28901</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted" style="font-size:12px; padding:10px;">... и еще 7 временных таблиц</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-pie"></i> Размер по пользователям</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="tempUsersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-card mt-3">
+                    <div class="card-header"><span><i class="fas fa-trash"></i> Действия</span></div>
+                    <div class="card-body">
+                        <button class="btn btn-danger btn-sm me-2" onclick="showToast('✅ Удалено 12 временных таблиц')">
+                            <i class="fas fa-trash"></i> Удалить все
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="showToast('📋 Скрипты скопированы')">
+                            <i class="fas fa-copy"></i> DROP скрипты
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: QUERIES -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-queries">
+        <div class="filter-bar">
+            <select>
+                <option>Все пользователи</option>
+                <option>dwhnbrb_cube</option>
+                <option>etl_loader</option>
+            </select>
+            <select>
+                <option>Все состояния</option>
+                <option>active</option>
+                <option>idle in transaction</option>
+            </select>
+            <span style="color: var(--text-muted); font-size:12px; margin-left:auto;">
+                <i class="fas fa-sync-alt fa-fw"></i> Автообновление: <span id="autoRefresh">вкл</span>
+            </span>
+        </div>
+        <div class="glass-card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>Пользователь</th>
+                            <th>Приложение</th>
+                            <th>Длительность</th>
+                            <th>Состояние</th>
+                            <th>SQL</th>
+                            <th style="min-width:70px;">Действия</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td><strong>23456</strong></td>
+                            <td>dwhnbrb_cube</td>
+                            <td>DBeaver</td>
+                            <td><span class="text-danger">4м 23с</span></td>
+                            <td><span class="status-badge up">active</span></td>
+                            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);">
+                                SELECT * FROM dd04443_bal_raw_f0611 WHERE date &gt; '2024-01-01'
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>28901</strong></td>
+                            <td>etl_loader</td>
+                            <td>Python ETL</td>
+                            <td><span class="text-warning">2м 15с</span></td>
+                            <td><span class="status-badge up">active</span></td>
+                            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);">
+                                INSERT INTO fact_sales SELECT * FROM stage_sales
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>31245</strong></td>
+                            <td>report_user</td>
+                            <td>Tableau</td>
+                            <td><span class="text-warning">1м 47с</span></td>
+                            <td><span class="status-badge up">active</span></td>
+                            <td style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);">
+                                SELECT region, SUM(sales) FROM fact_sales GROUP BY region
+                            </td>
+                            <td>
+                                <button class="btn btn-outline-warning btn-sm" onclick="showToast('⏹ Запрос отменен')"><i class="fas fa-stop"></i></button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="showToast('❌ Сессия завершена')"><i class="fas fa-times"></i></button>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: LOCKS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-locks">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-lock"></i> Блокировки</span>
+                <span class="badge badge-soft-danger">2 активные</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Заблок. PID</th>
+                            <th>Пользователь</th>
+                            <th>Длительность</th>
+                            <th>Блок. PID</th>
+                            <th>Блок. пользователь</th>
+                            <th>Объект</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td><span class="text-danger"><strong>45678</strong></span></td>
+                            <td>etl_loader</td>
+                            <td><span class="text-warning">3м 12с</span></td>
+                            <td><span class="text-warning"><strong>23456</strong></span></td>
+                            <td>dwhnbrb_cube</td>
+                            <td><code>dd04443_bal_raw_f0611</code></td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-danger"><strong>48901</strong></span></td>
+                            <td>report_user</td>
+                            <td><span class="text-warning">1м 45с</span></td>
+                            <td><span class="text-warning"><strong>31245</strong></span></td>
+                            <td>dwhnbrb_cube</td>
+                            <td><code>fact_sales</code></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: TRANSACTIONS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-transactions">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-exchange-alt"></i> Commit / Rollback</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="txChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-pie"></i> Rollback Rate</span></div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="rollbackChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Статистика транзакций</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>База данных</th>
+                                    <th>Коммитов</th>
+                                    <th>Роллбеков</th>
+                                    <th>Всего</th>
+                                    <th>Rollback %</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>dd04_finance</td>
+                                    <td>2,345,678</td>
+                                    <td>45,234</td>
+                                    <td>2,390,912</td>
+                                    <td><span class="text-success"><strong>1.89%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>dwh_cube</td>
+                                    <td>1,876,543</td>
+                                    <td>123,456</td>
+                                    <td>1,999,999</td>
+                                    <td><span class="text-warning"><strong>6.17%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>dc00_sys</td>
+                                    <td>987,654</td>
+                                    <td>12,345</td>
+                                    <td>999,999</td>
+                                    <td><span class="text-success"><strong>1.23%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td>postgres</td>
+                                    <td>45,678</td>
+                                    <td>1,234</td>
+                                    <td>46,912</td>
+                                    <td><span class="text-success"><strong>2.63%</strong></span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: MEMORY -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-memory">
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-memory"></i> Параметры памяти</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Значение</th>
+                                    <th>Роль</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>gp_vmem_protect_limit</code></td>
+                                    <td><strong>32 GB</strong></td>
+                                    <td><span class="status-badge warning">Защита OOM</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>shared_buffers</code></td>
+                                    <td><strong>8 GB</strong></td>
+                                    <td><span class="status-badge info">Кэш данных</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>work_mem</code></td>
+                                    <td><strong>256 MB</strong></td>
+                                    <td><span class="status-badge info">Сортировка</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>maintenance_work_mem</code></td>
+                                    <td><strong>2 GB</strong></td>
+                                    <td><span class="status-badge info">VACUUM</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>statement_mem</code></td>
+                                    <td><strong>512 MB</strong></td>
+                                    <td><span class="status-badge info">Лимит запроса</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>max_statement_mem</code></td>
+                                    <td><strong>1 GB</strong></td>
+                                    <td><span class="status-badge info">Макс. лимит</span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-bar"></i> Использование памяти</span></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">shared_buffers</span><span>6.2 GB / 8 GB (77.5%)</span></div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width:77.5%; background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">work_mem (среднее)</span><span>184 MB / 256 MB (71.9%)</span></div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width:71.9%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange));"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">statement_mem (макс.)</span><span>384 MB / 512 MB (75.0%)</span></div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width:75%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange));"></div>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">gp_vmem_protect_limit</span><span>28 GB / 32 GB (87.5%)</span></div>
+                            <div class="progress">
+                                <div class="progress-bar" style="width:87.5%; background: linear-gradient(90deg, var(--accent-red), var(--accent-pink));"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: BLOAT -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-bloat">
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-expand"></i> Раздувание таблиц</span>
+                        <span class="badge badge-soft-warning">5 таблиц</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="bloatChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-list"></i> Детали</span></div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                <tr>
+                                    <th>Таблица</th>
+                                    <th>Вздутие</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>dd04443_bal_raw_f0611</code></td>
+                                    <td><span class="text-danger"><strong>28.5%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>fact_sales</code></td>
+                                    <td><span class="text-warning"><strong>18.2%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>dd04443_transactions</code></td>
+                                    <td><span class="text-warning"><strong>14.7%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>dc00006_audit_log</code></td>
+                                    <td><span class="text-success"><strong>8.3%</strong></span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>dim_customer</code></td>
+                                    <td><span class="text-success"><strong>5.1%</strong></span></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: MAINTENANCE -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-maintenance">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-tools"></i> Статистика обслуживания</span>
+                <span style="font-size:12px; color: var(--text-muted);">последние 50 таблиц</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Схема</th>
+                            <th>Таблица</th>
+                            <th>Строк</th>
+                            <th>Dead rows</th>
+                            <th>Dead %</th>
+                            <th>Последний VACUUM</th>
+                            <th>Последний ANALYZE</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><code>dd04443_bal_raw_f0611</code></td>
+                            <td>1.25B</td>
+                            <td>12.5M</td>
+                            <td><span class="text-warning">1.0%</span></td>
+                            <td>2024-06-17 03:15</td>
+                            <td>2024-06-18 01:00</td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><code>fact_sales</code></td>
+                            <td>765.4M</td>
+                            <td>8.8M</td>
+                            <td><span class="text-success">1.1%</span></td>
+                            <td>2024-06-17 04:00</td>
+                            <td>2024-06-18 00:30</td>
+                        </tr>
+                        <tr>
+                            <td>dd04_finance</td>
+                            <td><code>dd04443_transactions</code></td>
+                            <td>876.5M</td>
+                            <td>15.4M</td>
+                            <td><span class="text-warning">1.8%</span></td>
+                            <td>2024-06-16 22:00</td>
+                            <td>2024-06-17 23:45</td>
+                        </tr>
+                        <tr>
+                            <td style="color: var(--accent-yellow);"><i class="fas fa-exclamation-triangle"></i></td>
+                            <td><code>dc00006_audit_log</code></td>
+                            <td>432.1M</td>
+                            <td>0</td>
+                            <td><span class="text-success">0.0%</span></td>
+                            <td style="color: var(--accent-yellow);"><strong>Никогда</strong></td>
+                            <td style="color: var(--accent-yellow);"><strong>Никогда</strong></td>
+                        </tr>
+                        <tr>
+                            <td>dwh_cube</td>
+                            <td><code>dim_customer</code></td>
+                            <td>321.1M</td>
+                            <td>2.3M</td>
+                            <td><span class="text-success">0.7%</span></td>
+                            <td>2024-06-17 12:30</td>
+                            <td>2024-06-18 00:15</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

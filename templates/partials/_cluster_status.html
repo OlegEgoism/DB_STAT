@@ -1,0 +1,7 @@
+<span class="status-indicator"
+      hx-get="{% url 'cluster_status' %}"
+      hx-trigger="every 30s"
+      hx-swap="outerHTML">
+    <span class="status-dot {{ cluster_status_color|default:'green' }}"></span>
+    {{ cluster_status_text|default:'Кластер работает' }}
+</span>
