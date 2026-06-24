@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBUser, DBConnection
+from db_statistics.models import DBUser, DBConnection, DBPagination, DBAudit
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -36,3 +36,21 @@ class DBConnectionAdmin(BaseAdmin):
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
         return obj.dbuser_set.count()
+
+
+@admin.register(DBAudit)
+class DBAuditAdmin(admin.ModelAdmin):
+    list_display = ("username", "action_type", "created")
+    list_filter = ("action_type",)
+    search_fields = ("username", "info", "username")
+    search_help_text = "Поиск по: пользователю, информации"
+    date_hierarchy = "created"
+    list_per_page = 20
+    fields = ("username", "action_type", "info", "created")
+    readonly_fields = ("username", "action_type", "info", "created")
+
+
+@admin.register(DBPagination)
+class DBPaginationAdmin(BaseAdmin):
+    list_display = ("pagination_size", "created", "updated")
+    fields = ("pagination_size", "created", "updated")
