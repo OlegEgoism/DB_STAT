@@ -96,7 +96,7 @@ class DBAudit(models.Model):
     created = models.DateTimeField(verbose_name="Дата действия", db_comment="Дата действия")
 
     def __str__(self):
-        return f"{self.action_type} - {self.username}"
+        return f"{self.username} - {self.action_type}"
 
     class Meta:
         db_table = "db_audit"
