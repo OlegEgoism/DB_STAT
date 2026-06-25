@@ -9,6 +9,7 @@
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
+    const databaseSizesApiUrl = '/dashboard/database-sizes/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -18,10 +19,10 @@
     ];
 
     const dashboardSnapshots = {
-        'prod-greenplum': {health: '98.7%', healthSub: '12 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.3% за неделю', dbSize: '1453 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '3', queriesSub: 'Самый долгий: 4м 23с', queriesTrend: '<i class="fas fa-arrow-down"></i> -2 за час', connections: '142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span>', connectionsSub: '28.4% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +5 за час', tableSize: 'Общий размер: 1.2 TB', activity: [12, 19, 8, 15, 22, 18, 24, 28, 32, 27, 21, 18], tx: [2345, 45]},
-        'dev-greenplum': {health: '96.2%', healthSub: '8 сегментов работают', healthTrend: '<i class="fas fa-arrow-down"></i> -0.8% за неделю', dbSize: '312 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '1', queriesSub: 'Самый долгий: 1м 12с', queriesTrend: '<i class="fas fa-arrow-down"></i> -1 за час', connections: '38 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 200</span>', connectionsSub: '19.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +2 за час', tableSize: 'Общий размер: 284 GB', activity: [4, 7, 5, 8, 9, 6, 10, 12, 9, 11, 8, 6], tx: [420, 12]},
-        'test-postgres': {health: '99.1%', healthSub: 'PostgreSQL доступен', healthTrend: '<i class="fas fa-arrow-up"></i> +0.1% за неделю', dbSize: '48 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '0', queriesSub: 'Долгих запросов нет', queriesTrend: '<i class="fas fa-minus"></i> без изменений', connections: '12 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 100</span>', connectionsSub: '12.0% использования', connectionsTrend: '<i class="fas fa-arrow-down"></i> -3 за час', tableSize: 'Общий размер: 36 GB', activity: [1, 2, 2, 3, 2, 4, 3, 5, 4, 3, 2, 2], tx: [98, 2]},
-        analytics: {health: '97.8%', healthSub: '10 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.2% за неделю', dbSize: '876 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '5', queriesSub: 'Самый долгий: 6м 05с', queriesTrend: '<i class="fas fa-arrow-up"></i> +2 за час', connections: '96 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 300</span>', connectionsSub: '32.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +8 за час', tableSize: 'Общий размер: 742 GB', activity: [18, 16, 22, 25, 30, 28, 35, 41, 38, 33, 29, 24], tx: [1540, 38]}
+        'prod-greenplum': {health: '98.7%', healthSub: '12 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.3% за неделю', dbSize: '1453 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '3', queriesSub: 'Самый долгий: 4м 23с', queriesTrend: '<i class="fas fa-arrow-down"></i> -2 за час', connections: '142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span>', connectionsSub: '28.4% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +5 за час', tableSize: 'Общий размер: 1.2 TB', dbSizes: [{database_name: 'dd04_finance', size: '745 GB'}, {database_name: 'dwh_cube', size: '413 GB'}, {database_name: 'dc00_sys', size: '156 GB'}, {database_name: 'postgres', size: '42 GB'}], activity: [12, 19, 8, 15, 22, 18, 24, 28, 32, 27, 21, 18], tx: [2345, 45]},
+        'dev-greenplum': {health: '96.2%', healthSub: '8 сегментов работают', healthTrend: '<i class="fas fa-arrow-down"></i> -0.8% за неделю', dbSize: '312 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '1', queriesSub: 'Самый долгий: 1м 12с', queriesTrend: '<i class="fas fa-arrow-down"></i> -1 за час', connections: '38 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 200</span>', connectionsSub: '19.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +2 за час', tableSize: 'Общий размер: 284 GB', dbSizes: [{database_name: 'dev_greenplum', size: '181 GB'}, {database_name: 'postgres', size: '76 GB'}, {database_name: 'template1', size: '55 GB'}], activity: [4, 7, 5, 8, 9, 6, 10, 12, 9, 11, 8, 6], tx: [420, 12]},
+        'test-postgres': {health: '99.1%', healthSub: 'PostgreSQL доступен', healthTrend: '<i class="fas fa-arrow-up"></i> +0.1% за неделю', dbSize: '48 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '0', queriesSub: 'Долгих запросов нет', queriesTrend: '<i class="fas fa-minus"></i> без изменений', connections: '12 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 100</span>', connectionsSub: '12.0% использования', connectionsTrend: '<i class="fas fa-arrow-down"></i> -3 за час', tableSize: 'Общий размер: 36 GB', dbSizes: [{database_name: 'test_postgres', size: '32 GB'}, {database_name: 'postgres', size: '16 GB'}], activity: [1, 2, 2, 3, 2, 4, 3, 5, 4, 3, 2, 2], tx: [98, 2]},
+        analytics: {health: '97.8%', healthSub: '10 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.2% за неделю', dbSize: '876 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '5', queriesSub: 'Самый долгий: 6м 05с', queriesTrend: '<i class="fas fa-arrow-up"></i> +2 за час', connections: '96 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 300</span>', connectionsSub: '32.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +8 за час', tableSize: 'Общий размер: 742 GB', dbSizes: [{database_name: 'analytics', size: '512 GB'}, {database_name: 'mart', size: '244 GB'}, {database_name: 'postgres', size: '120 GB'}], activity: [18, 16, 22, 25, 30, 28, 35, 41, 38, 33, 29, 24], tx: [1540, 38]}
     };
 
     // ============================
@@ -151,6 +152,7 @@
             connectionsSub: `${((usedConnections / maxConnections) * 100).toFixed(1)}% использования`,
             connectionsTrend: '<i class="fas fa-sync-alt"></i> данные обновлены',
             tableSize: `Общий размер: ${Math.max(12, size - 30)} GB`,
+            dbSizes: [{database_name: conn.database || conn.name, size: `${size} GB`}],
             activity: Array.from({length: 12}, (_, index) => 3 + ((seed + index * 7) % 32)),
             tx: [200 + (seed % 2200), seed % 80]
         };
@@ -161,12 +163,34 @@
         if (element) element.innerHTML = value;
     }
 
+    function renderDatabaseSizes(rows) {
+        if (!rows || rows.length === 0) return '';
+        const items = rows.slice(0, 5).map(row => `
+            <div class="db-size-row">
+                <span>${row.database_name}</span>
+                <strong>${row.size}</strong>
+            </div>
+        `).join('');
+        return `<div class="db-size-list">${items}</div>`;
+    }
+
+    function refreshDatabaseSizesFromServer(conn, fallbackRows) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            setHtml('dashboardDbSizeValue', renderDatabaseSizes(fallbackRows));
+            return;
+        }
+
+        connectionRequest(databaseSizesApiUrl, {id: conn.id})
+            .then(data => setHtml('dashboardDbSizeValue', renderDatabaseSizes(data.database_sizes)))
+            .catch(() => setHtml('dashboardDbSizeValue', renderDatabaseSizes(fallbackRows)));
+    }
+
     function refreshDashboardForConnection(conn = getActiveConnection()) {
         const snapshot = getDashboardSnapshot(conn);
         setHtml('dashboardHealthValue', snapshot.health);
         setHtml('dashboardHealthSub', snapshot.healthSub);
         setHtml('dashboardHealthTrend', snapshot.healthTrend);
-        setHtml('dashboardDbSizeValue', snapshot.dbSize);
+        setHtml('dashboardDbSizeValue', renderDatabaseSizes(snapshot.dbSizes) || snapshot.dbSize);
         setHtml('dashboardQueriesValue', snapshot.queries);
         setHtml('dashboardQueriesSub', snapshot.queriesSub);
         setHtml('dashboardQueriesTrend', snapshot.queriesTrend);
@@ -174,6 +198,8 @@
         setHtml('dashboardConnectionsSub', snapshot.connectionsSub);
         setHtml('dashboardConnectionsTrend', snapshot.connectionsTrend);
         setHtml('dashboardTablesTotalSize', snapshot.tableSize);
+
+        refreshDatabaseSizesFromServer(conn, snapshot.dbSizes);
 
         if (charts.dashboardActivity) {
             charts.dashboardActivity.data.datasets[0].data = snapshot.activity;

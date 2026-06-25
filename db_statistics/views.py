@@ -50,17 +50,20 @@ def _read_json_body(request):
         return {}
 
 
+def _connection_kwargs(host, port, database, username, password, ssl=True):
+    return {
+        "host": host,
+        "port": port,
+        "dbname": database,
+        "user": username,
+        "password": password,
+        "connect_timeout": CONNECTION_TIMEOUT_SECONDS,
+        "sslmode": "prefer" if ssl else "disable",
+    }
+
+
 def _test_connection_params(host, port, database, username, password, ssl):
-    sslmode = "prefer" if ssl else "disable"
-    with psycopg2.connect(
-        host=host,
-        port=port,
-        dbname=database,
-        user=username,
-        password=password,
-        connect_timeout=CONNECTION_TIMEOUT_SECONDS,
-        sslmode=sslmode,
-    ) as connection:
+    with psycopg2.connect(**_connection_kwargs(host, port, database, username, password, ssl)) as connection:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
@@ -165,4 +168,37 @@ def delete_connection(request):
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
     return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})
+
+@require_http_methods(["POST"])
+def database_sizes(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    query = """
+        SELECT
+            datname AS database_name,
+            pg_size_pretty(pg_database_size(datname)) AS size
+        FROM pg_database
+        ORDER BY pg_database_size(datname) DESC;
+    """
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query)
+                rows = [{"database_name": row[0], "size": row[1]} for row in cursor.fetchall()]
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить размеры БД: {exc}"}, status=400)
+
+    return JsonResponse({"ok": True, "database_sizes": rows})
 
