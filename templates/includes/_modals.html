@@ -3,11 +3,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение</h5>
+                <h5 class="modal-title" id="connectionModalTitle"><i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="connectionForm">
+                    <input type="hidden" id="connId">
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-label">Название <span class="text-danger">*</span></label>
@@ -57,7 +58,7 @@
                     <i class="fas fa-plug"></i> Проверить
                 </button>
                 <button type="button" class="btn btn-primary" onclick="saveConnection()">
-                    <i class="fas fa-check"></i> Подключиться
+                    <i class="fas fa-check"></i> <span id="connectionSaveText">Подключиться</span>
                 </button>
             </div>
         </div>
