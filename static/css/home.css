@@ -529,45 +529,6 @@
             background: var(--sidebar-border);
         }
 
-        .connection-info {
-            font-size: 11px;
-            color: var(--text-muted);
-            font-weight: 400;
-        }
-
-        .refresh-btn {
-            background: var(--bg-secondary);
-            border: 1px solid var(--sidebar-border);
-            color: var(--text-secondary);
-            padding: 6px 16px;
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: 500;
-            font-family: 'Inter', sans-serif;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            box-shadow: var(--shadow-card);
-        }
-
-        .refresh-btn:hover {
-            background: var(--bg-primary);
-            border-color: #d1d5db;
-            color: var(--text-primary);
-            box-shadow: var(--shadow-card-hover);
-        }
-
-        .topbar-time {
-            font-size: 13px;
-            color: var(--text-muted);
-            background: var(--bg-secondary);
-            padding: 6px 14px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--sidebar-border);
-            box-shadow: var(--shadow-card);
-        }
 
         /* ========== CARDS ========== */
         .glass-card {
