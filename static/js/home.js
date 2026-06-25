@@ -127,7 +127,8 @@
         connections.forEach(conn => {
             const option = document.createElement('option');
             option.value = conn.id;
-            option.textContent = conn.name;
+            const activityMarker = conn.status === 'online' ? '🟢' : '🔴';
+            option.textContent = `${activityMarker} ${conn.name}`;
             select.appendChild(option);
         });
         if (activeConnectionId) {
