@@ -20,8 +20,6 @@
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
         loadConnections();
-        updateClock();
-        setInterval(updateClock, 1000);
         initCharts();
         initNavigation();
         updateConnectionUI();
@@ -155,8 +153,6 @@
         const indicator = document.getElementById('connStatusIndicator');
         indicator.className = 'conn-status ' + (conn.status === 'online' ? 'online' : conn.status === 'connecting' ? 'connecting' : 'offline');
 
-        const info = document.getElementById('connectionInfo');
-        info.textContent = `${conn.host}:${conn.port}`;
     }
 
     function openConnectionModal() {
@@ -257,17 +253,6 @@
     }
 
     // ============================
-    // CLOCK
-    // ============================
-    function updateClock() {
-        const now = new Date();
-        document.getElementById('currentTime').textContent = now.toLocaleString('ru-RU', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-    }
-
-    // ============================
     // NAVIGATION
     // ============================
     function initNavigation() {
@@ -329,15 +314,9 @@
     // REFRESH
     // ============================
     function refreshAll() {
-        const btn = document.querySelector('.refresh-btn');
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        btn.disabled = true;
-
-        setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
-            btn.disabled = false;
-            showToast('✅ Данные обновлены');
-        }, 1200);
+        Object.values(charts).forEach(chart => {
+            if (chart && chart.update) chart.update();
+        });
     }
 
     // ============================
