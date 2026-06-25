@@ -309,14 +309,6 @@
             });
     }
 
-    function disconnect() {
-        const conn = connections.find(c => c.id === activeConnectionId);
-        if (!conn) return;
-        conn.status = 'offline';
-        updateConnectionUI();
-        showToast(`🔌 Отключено от ${conn.name}`);
-    }
-
     // ============================
     // NAVIGATION
     // ============================

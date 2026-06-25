@@ -518,10 +518,6 @@
             background: rgba(79, 140, 255, 0.08);
         }
 
-        .btn-conn.danger:hover {
-            background: rgba(239, 68, 68, 0.08);
-            color: var(--accent-red);
-        }
 
         .conn-divider {
             width: 1px;
