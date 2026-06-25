@@ -43,9 +43,9 @@
                     <span class="kpi-label">Здоровье кластера</span>
                     <span class="kpi-icon"><i class="fas fa-heartbeat" style="color: var(--accent-green);"></i></span>
                 </div>
-                <div class="kpi-value" style="color: var(--accent-green);">98.7%</div>
-                <div class="kpi-sub">12 сегментов работают</div>
-                <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +0.3% за неделю</div>
+                <div class="kpi-value" id="dashboardHealthValue" style="color: var(--accent-green);">98.7%</div>
+                <div class="kpi-sub" id="dashboardHealthSub">12 сегментов работают</div>
+                <div class="kpi-trend up" id="dashboardHealthTrend"><i class="fas fa-arrow-up"></i> +0.3% за неделю</div>
             </div>
 
             <div class="kpi-card">
@@ -53,7 +53,7 @@
                     <span class="kpi-label">Общий размер БД</span>
                     <span class="kpi-icon"><i class="fas fa-database" style="color: var(--accent-blue);"></i></span>
                 </div>
-                <div class="kpi-value">1453 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span></div>
+                <div class="kpi-value" id="dashboardDbSizeValue">1453 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span></div>
             </div>
 
             <div class="kpi-card">
@@ -61,9 +61,9 @@
                     <span class="kpi-label">Активные запросы</span>
                     <span class="kpi-icon"><i class="fas fa-bolt" style="color: var(--accent-yellow);"></i></span>
                 </div>
-                <div class="kpi-value" style="color: var(--accent-yellow);">3</div>
-                <div class="kpi-sub">Самый долгий: 4м 23с</div>
-                <div class="kpi-trend down"><i class="fas fa-arrow-down"></i> -2 за час</div>
+                <div class="kpi-value" id="dashboardQueriesValue" style="color: var(--accent-yellow);">3</div>
+                <div class="kpi-sub" id="dashboardQueriesSub">Самый долгий: 4м 23с</div>
+                <div class="kpi-trend down" id="dashboardQueriesTrend"><i class="fas fa-arrow-down"></i> -2 за час</div>
             </div>
 
             <div class="kpi-card">
@@ -71,9 +71,9 @@
                     <span class="kpi-label">Использование соединений</span>
                     <span class="kpi-icon"><i class="fas fa-users" style="color: var(--accent-purple);"></i></span>
                 </div>
-                <div class="kpi-value">142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span></div>
-                <div class="kpi-sub">28.4% использования</div>
-                <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +5 за час</div>
+                <div class="kpi-value" id="dashboardConnectionsValue">142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span></div>
+                <div class="kpi-sub" id="dashboardConnectionsSub">28.4% использования</div>
+                <div class="kpi-trend up" id="dashboardConnectionsTrend"><i class="fas fa-arrow-up"></i> +5 за час</div>
             </div>
         </div>
 
@@ -111,7 +111,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-table"></i> Топ-10 самых больших таблиц</span>
-                        <span style="font-size:12px; color: var(--text-muted);">Общий размер: 1.2 TB</span>
+                        <span id="dashboardTablesTotalSize" style="font-size:12px; color: var(--text-muted);">Общий размер: 1.2 TB</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
