@@ -63,8 +63,7 @@
             database: document.getElementById('connDatabase').value.trim(),
             user: document.getElementById('connUser').value.trim(),
             password: document.getElementById('connPassword').value,
-            db_type: document.getElementById('connDbType').value,
-            ssl: document.getElementById('connSSL').checked
+            db_type: document.getElementById('connDbType').value
         };
     }
 
@@ -159,7 +158,6 @@
         document.getElementById('connUser').value = 'postgres';
         document.getElementById('connDbType').value = 'PostgreSQL';
         document.getElementById('connPassword').value = '';
-        document.getElementById('connSSL').checked = true;
     }
 
     function editConnection() {
@@ -181,7 +179,6 @@
         document.getElementById('connUser').value = conn.user || 'postgres';
         document.getElementById('connDbType').value = conn.db_type || 'PostgreSQL';
         document.getElementById('connPassword').value = '';
-        document.getElementById('connSSL').checked = conn.ssl !== false;
         modalInstance.show();
     }
 
