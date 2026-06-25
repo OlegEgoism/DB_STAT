@@ -182,7 +182,7 @@ def database_sizes(request):
             datname AS database_name,
             pg_size_pretty(pg_database_size(datname)) AS size
         FROM pg_database
-        ORDER BY pg_database_size(datname) DESC;
+        WHERE datname = %s;
     """
     try:
         with psycopg2.connect(
@@ -195,7 +195,7 @@ def database_sizes(request):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(query)
+                cursor.execute(query, [db_connection.database])
                 rows = [{"database_name": row[0], "size": row[1]} for row in cursor.fetchall()]
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры БД: {exc}"}, status=400)
