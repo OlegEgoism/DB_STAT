@@ -153,3 +153,16 @@ def test_connection(request):
         return JsonResponse({"ok": False, "message": f"Не удалось подключиться к {name}: {exc}"}, status=400)
 
     return JsonResponse({"ok": True, "message": f"Подключение к {name} успешно"})
+
+@require_http_methods(["POST"])
+def delete_connection(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    connection.is_active = False
+    connection.save(update_fields=["is_active", "updated"])
+    return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})
+

@@ -8,6 +8,7 @@
     let connectionModalMode = 'create';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
+    const connectionDeleteApiUrl = '/connections/delete/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -150,17 +151,20 @@
 
     function updateConnectionUI() {
         const conn = connections.find(c => c.id === activeConnectionId);
-        if (!conn) return;
-
         const indicator = document.getElementById('connStatusIndicator');
-        indicator.className = 'conn-status ' + (conn.status === 'online' ? 'online' : conn.status === 'connecting' ? 'connecting' : 'offline');
+        if (!conn) {
+            indicator.className = 'conn-status offline';
+            return;
+        }
 
+        indicator.className = 'conn-status ' + (conn.status === 'online' ? 'online' : conn.status === 'connecting' ? 'connecting' : 'offline');
     }
 
     function openConnectionModal() {
         connectionModalMode = 'create';
         document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение';
         document.getElementById('connectionSaveText').textContent = 'Подключиться';
+        document.getElementById('connectionDeleteBtn').classList.add('d-none');
         document.getElementById('connId').value = '';
         modalInstance.show();
         document.getElementById('connName').value = 'New Connection';
@@ -183,6 +187,7 @@
         connectionModalMode = 'edit';
         document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-pen me-2" style="color: var(--accent-blue);"></i>Редактировать подключение';
         document.getElementById('connectionSaveText').textContent = 'Сохранить';
+        document.getElementById('connectionDeleteBtn').classList.remove('d-none');
         document.getElementById('connId').value = /^\d+$/.test(String(conn.id)) ? conn.id : '';
         document.getElementById('connName').value = conn.name || '';
         document.getElementById('connHost').value = conn.host || 'localhost';
@@ -193,6 +198,38 @@
         document.getElementById('connPassword').value = '';
         document.getElementById('connSSL').checked = conn.ssl !== false;
         modalInstance.show();
+    }
+
+    function deleteConnection() {
+        const payload = getConnectionFormData();
+        const conn = connections.find(c => c.id === activeConnectionId);
+        if (!conn) {
+            showToast('⚠️ Подключение не выбрано');
+            return;
+        }
+
+        if (!confirm(`Удалить подключение "${conn.name}"?`)) {
+            return;
+        }
+
+        const finishDelete = message => {
+            connections = connections.filter(item => item.id !== activeConnectionId);
+            activeConnectionId = connections[0]?.id || null;
+            saveConnections();
+            populateConnectionSelect();
+            updateConnectionUI();
+            modalInstance.hide();
+            showToast(message);
+        };
+
+        if (!payload.id) {
+            finishDelete(`✅ Подключение "${conn.name}" удалено из локального списка`);
+            return;
+        }
+
+        connectionRequest(connectionDeleteApiUrl, {id: payload.id})
+            .then(data => finishDelete(`✅ ${data.message}`))
+            .catch(error => showToast(`❌ ${error.message}`));
     }
 
     function saveConnection() {
