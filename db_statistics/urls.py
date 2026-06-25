@@ -8,4 +8,5 @@ urlpatterns = [
     path("connections/", views.connections, name="connections"),
     path("connections/test/", views.test_connection, name="test_connection"),
     path("connections/delete/", views.delete_connection, name="delete_connection"),
+    path("dashboard/database-sizes/", views.database_sizes, name="database_sizes"),
 ]
