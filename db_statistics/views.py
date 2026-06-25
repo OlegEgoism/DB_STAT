@@ -77,17 +77,31 @@ def connections(request):
     if any(not payload.get(field) for field in required_fields):
         return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
 
+    defaults = {
+        "username": payload["user"].strip(),
+        "db_type": payload.get("db_type") or "PostgreSQL",
+        "is_active": True,
+    }
+    if payload.get("password"):
+        defaults["password"] = payload["password"]
+
+    if payload.get("id"):
+        connection = get_object_or_404(DBConnection, pk=payload["id"], is_active=True)
+        connection.name = payload["name"].strip()
+        connection.host = payload["host"].strip()
+        connection.port = int(payload["port"])
+        connection.database = payload["database"].strip()
+        for field, value in defaults.items():
+            setattr(connection, field, value)
+        connection.save()
+        return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
+
     connection, created = DBConnection.objects.update_or_create(
         name=payload["name"].strip(),
         host=payload["host"].strip(),
         port=int(payload["port"]),
         database=payload["database"].strip(),
-        defaults={
-            "username": payload["user"].strip(),
-            "password": payload.get("password", ""),
-            "db_type": payload.get("db_type") or "PostgreSQL",
-            "is_active": True,
-        },
+        defaults={**defaults, "password": payload.get("password", "")},
     )
     return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
 
@@ -99,15 +113,26 @@ def test_connection(request):
 
     if connection_id:
         connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
-        params = {
-            "host": connection.host,
-            "port": connection.port,
-            "database": connection.database,
-            "username": connection.username,
-            "password": connection.password,
-            "ssl": payload.get("ssl", True),
-        }
-        name = connection.name
+        if all(payload.get(field) for field in ["name", "host", "port", "database", "user"]):
+            params = {
+                "host": payload["host"].strip(),
+                "port": int(payload["port"]),
+                "database": payload["database"].strip(),
+                "username": payload["user"].strip(),
+                "password": payload.get("password") or connection.password,
+                "ssl": payload.get("ssl", True),
+            }
+            name = payload["name"].strip()
+        else:
+            params = {
+                "host": connection.host,
+                "port": connection.port,
+                "database": connection.database,
+                "username": connection.username,
+                "password": connection.password,
+                "ssl": payload.get("ssl", True),
+            }
+            name = connection.name
     else:
         required_fields = ["name", "host", "port", "database", "user"]
         if any(not payload.get(field) for field in required_fields):

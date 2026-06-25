@@ -5,6 +5,7 @@
     let activeConnectionId = 'prod-greenplum';
     let charts = {};
     let modalInstance = null;
+    let connectionModalMode = 'create';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
 
@@ -55,6 +56,7 @@
 
     function getConnectionFormData() {
         return {
+            id: document.getElementById('connId').value,
             name: document.getElementById('connName').value.trim(),
             host: document.getElementById('connHost').value.trim(),
             port: parseInt(document.getElementById('connPort').value),
@@ -156,6 +158,10 @@
     }
 
     function openConnectionModal() {
+        connectionModalMode = 'create';
+        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение';
+        document.getElementById('connectionSaveText').textContent = 'Подключиться';
+        document.getElementById('connId').value = '';
         modalInstance.show();
         document.getElementById('connName').value = 'New Connection';
         document.getElementById('connHost').value = 'localhost';
@@ -165,6 +171,28 @@
         document.getElementById('connDbType').value = 'PostgreSQL';
         document.getElementById('connPassword').value = '';
         document.getElementById('connSSL').checked = true;
+    }
+
+    function editConnection() {
+        const conn = connections.find(c => c.id === activeConnectionId);
+        if (!conn) {
+            showToast('⚠️ Подключение не выбрано');
+            return;
+        }
+
+        connectionModalMode = 'edit';
+        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-pen me-2" style="color: var(--accent-blue);"></i>Редактировать подключение';
+        document.getElementById('connectionSaveText').textContent = 'Сохранить';
+        document.getElementById('connId').value = /^\d+$/.test(String(conn.id)) ? conn.id : '';
+        document.getElementById('connName').value = conn.name || '';
+        document.getElementById('connHost').value = conn.host || 'localhost';
+        document.getElementById('connPort').value = conn.port || '5432';
+        document.getElementById('connDatabase').value = conn.database || 'postgres';
+        document.getElementById('connUser').value = conn.user || 'postgres';
+        document.getElementById('connDbType').value = conn.db_type || 'PostgreSQL';
+        document.getElementById('connPassword').value = '';
+        document.getElementById('connSSL').checked = conn.ssl !== false;
+        modalInstance.show();
     }
 
     function saveConnection() {
@@ -180,7 +208,7 @@
             .then(() => connectionRequest(connectionApiUrl, payload))
             .then(data => {
                 const savedConnection = {...data.connection, status: 'online'};
-                const existingIndex = connections.findIndex(conn => conn.id === savedConnection.id);
+                const existingIndex = connections.findIndex(conn => conn.id === savedConnection.id || (connectionModalMode === 'edit' && conn.id === activeConnectionId));
                 if (existingIndex >= 0) {
                     connections[existingIndex] = savedConnection;
                 } else {
