@@ -473,25 +473,6 @@
             color: var(--text-primary);
         }
 
-        .conn-status {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-
-        .conn-status.online {
-            background: var(--accent-green);
-        }
-
-        .conn-status.offline {
-            background: var(--accent-red);
-        }
-
-        .conn-status.connecting {
-            background: var(--accent-yellow);
-        }
-
         .btn-conn {
             background: transparent;
             border: none;

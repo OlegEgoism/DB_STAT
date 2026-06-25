@@ -24,7 +24,6 @@
         loadConnections();
         initCharts();
         initNavigation();
-        updateConnectionUI();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -100,7 +99,6 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                updateConnectionUI();
             })
             .catch(() => {
                 const saved = localStorage.getItem('gp_connections');
@@ -115,7 +113,6 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                updateConnectionUI();
                 showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
             });
     }
@@ -130,8 +127,7 @@
         connections.forEach(conn => {
             const option = document.createElement('option');
             option.value = conn.id;
-            const icon = conn.status === 'online' ? '🟢' : conn.status === 'connecting' ? '🟡' : '🔴';
-            option.textContent = `${icon} ${conn.name}`;
+            option.textContent = conn.name;
             select.appendChild(option);
         });
         if (activeConnectionId) {
@@ -143,21 +139,9 @@
         activeConnectionId = connId;
         const conn = connections.find(c => c.id === connId);
         if (conn) {
-            updateConnectionUI();
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
-    }
-
-    function updateConnectionUI() {
-        const conn = connections.find(c => c.id === activeConnectionId);
-        const indicator = document.getElementById('connStatusIndicator');
-        if (!conn) {
-            indicator.className = 'conn-status offline';
-            return;
-        }
-
-        indicator.className = 'conn-status ' + (conn.status === 'online' ? 'online' : conn.status === 'connecting' ? 'connecting' : 'offline');
     }
 
     function openConnectionModal() {
@@ -217,7 +201,6 @@
             activeConnectionId = connections[0]?.id || null;
             saveConnections();
             populateConnectionSelect();
-            updateConnectionUI();
             modalInstance.hide();
             showToast(message);
         };
@@ -256,7 +239,6 @@
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
-                updateConnectionUI();
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
@@ -287,7 +269,6 @@
         conn.status = 'connecting';
         populateConnectionSelect();
         document.getElementById('connectionSelect').value = activeConnectionId;
-        updateConnectionUI();
         showToast(`🔍 Проверка ${conn.name}...`);
 
         connectionRequest(connectionTestApiUrl, /^\d+$/.test(String(conn.id)) ? {id: conn.id} : conn)
@@ -296,7 +277,6 @@
                 saveConnections();
                 populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
-                updateConnectionUI();
                 showToast(`✅ ${data.message}`);
             })
             .catch(error => {
@@ -304,7 +284,6 @@
                 saveConnections();
                 populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
-                updateConnectionUI();
                 showToast(`❌ ${error.message}`);
             });
     }
