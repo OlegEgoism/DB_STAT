@@ -5,6 +5,8 @@
     let activeConnectionId = 'prod-greenplum';
     let charts = {};
     let modalInstance = null;
+    const connectionApiUrl = '/connections/';
+    const connectionTestApiUrl = '/connections/test/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -46,27 +48,75 @@
     // ============================
     // CONNECTION MANAGER
     // ============================
-    function loadConnections() {
-        const saved = localStorage.getItem('gp_connections');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                connections = parsed;
-                const defaultIds = defaultConnections.map(c => c.id);
-                const savedIds = connections.map(c => c.id);
-                defaultConnections.forEach(dc => {
-                    if (!savedIds.includes(dc.id)) {
-                        connections.push(dc);
-                    }
-                });
-            } catch (e) {
-                connections = [...defaultConnections];
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+
+    function getConnectionFormData() {
+        return {
+            name: document.getElementById('connName').value.trim(),
+            host: document.getElementById('connHost').value.trim(),
+            port: parseInt(document.getElementById('connPort').value),
+            database: document.getElementById('connDatabase').value.trim(),
+            user: document.getElementById('connUser').value.trim(),
+            password: document.getElementById('connPassword').value,
+            db_type: document.getElementById('connDbType').value,
+            ssl: document.getElementById('connSSL').checked
+        };
+    }
+
+    function validateConnectionPayload(payload) {
+        return payload.name && payload.host && payload.port && payload.database && payload.user;
+    }
+
+    function connectionRequest(url, payload) {
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(payload)
+        }).then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) {
+                throw new Error(data.message || 'Ошибка запроса');
             }
-        } else {
-            connections = [...defaultConnections];
-        }
-        saveConnections();
-        populateConnectionSelect();
+            return data;
+        });
+    }
+
+    function loadConnections() {
+        fetch(connectionApiUrl)
+            .then(response => response.json())
+            .then(data => {
+                connections = data.connections || [];
+                if (connections.length === 0) {
+                    connections = [...defaultConnections];
+                }
+                activeConnectionId = connections[0]?.id || activeConnectionId;
+                populateConnectionSelect();
+                updateConnectionUI();
+            })
+            .catch(() => {
+                const saved = localStorage.getItem('gp_connections');
+                if (saved) {
+                    try {
+                        connections = JSON.parse(saved);
+                    } catch (e) {
+                        connections = [...defaultConnections];
+                    }
+                } else {
+                    connections = [...defaultConnections];
+                }
+                activeConnectionId = connections[0]?.id || activeConnectionId;
+                populateConnectionSelect();
+                updateConnectionUI();
+                showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
+            });
     }
 
     function saveConnections() {
@@ -116,45 +166,54 @@
         document.getElementById('connPort').value = '5432';
         document.getElementById('connDatabase').value = 'postgres';
         document.getElementById('connUser').value = 'postgres';
+        document.getElementById('connDbType').value = 'PostgreSQL';
         document.getElementById('connPassword').value = '';
         document.getElementById('connSSL').checked = true;
     }
 
     function saveConnection() {
-        const name = document.getElementById('connName').value.trim();
-        const host = document.getElementById('connHost').value.trim();
-        const port = parseInt(document.getElementById('connPort').value);
-        const database = document.getElementById('connDatabase').value.trim();
-        const user = document.getElementById('connUser').value.trim();
-        const password = document.getElementById('connPassword').value;
-        const ssl = document.getElementById('connSSL').checked;
+        const payload = getConnectionFormData();
 
-        if (!name || !host || !port || !database || !user) {
+        if (!validateConnectionPayload(payload)) {
             showToast('⚠️ Заполните все обязательные поля');
             return;
         }
 
-        const newConn = {
-            id: 'conn_' + Date.now(),
-            name: name,
-            host: host,
-            port: port,
-            database: database,
-            user: user,
-            ssl: ssl,
-            status: 'online'
-        };
+        showToast(`🔍 Проверка подключения "${payload.name}"...`);
+        connectionRequest(connectionTestApiUrl, payload)
+            .then(() => connectionRequest(connectionApiUrl, payload))
+            .then(data => {
+                const savedConnection = {...data.connection, status: 'online'};
+                const existingIndex = connections.findIndex(conn => conn.id === savedConnection.id);
+                if (existingIndex >= 0) {
+                    connections[existingIndex] = savedConnection;
+                } else {
+                    connections.push(savedConnection);
+                }
+                saveConnections();
+                populateConnectionSelect();
 
-        connections.push(newConn);
-        saveConnections();
-        populateConnectionSelect();
+                document.getElementById('connectionSelect').value = savedConnection.id;
+                activeConnectionId = savedConnection.id;
+                updateConnectionUI();
+                modalInstance.hide();
+                showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
+                refreshAll();
+            })
+            .catch(error => showToast(`❌ ${error.message}`));
+    }
 
-        document.getElementById('connectionSelect').value = newConn.id;
-        activeConnectionId = newConn.id;
-        updateConnectionUI();
-        modalInstance.hide();
-        showToast(`✅ Подключение "${name}" создано`);
-        refreshAll();
+    function testNewConnection() {
+        const payload = getConnectionFormData();
+        if (!validateConnectionPayload(payload)) {
+            showToast('⚠️ Заполните все обязательные поля для проверки');
+            return;
+        }
+
+        showToast(`🔍 Проверка ${payload.name}...`);
+        connectionRequest(connectionTestApiUrl, payload)
+            .then(data => showToast(`✅ ${data.message}`))
+            .catch(error => showToast(`❌ ${error.message}`));
     }
 
     function testConnection() {
@@ -164,12 +223,29 @@
             return;
         }
 
+        conn.status = 'connecting';
+        populateConnectionSelect();
+        document.getElementById('connectionSelect').value = activeConnectionId;
+        updateConnectionUI();
         showToast(`🔍 Проверка ${conn.name}...`);
-        setTimeout(() => {
-            conn.status = 'online';
-            updateConnectionUI();
-            showToast(`✅ Подключение к ${conn.name} успешно`);
-        }, 800);
+
+        connectionRequest(connectionTestApiUrl, /^\d+$/.test(String(conn.id)) ? {id: conn.id} : conn)
+            .then(data => {
+                conn.status = 'online';
+                saveConnections();
+                populateConnectionSelect();
+                document.getElementById('connectionSelect').value = activeConnectionId;
+                updateConnectionUI();
+                showToast(`✅ ${data.message}`);
+            })
+            .catch(error => {
+                conn.status = 'offline';
+                saveConnections();
+                populateConnectionSelect();
+                document.getElementById('connectionSelect').value = activeConnectionId;
+                updateConnectionUI();
+                showToast(`❌ ${error.message}`);
+            });
     }
 
     function disconnect() {

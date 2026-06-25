@@ -30,6 +30,13 @@
                             <input type="text" class="form-control" id="connUser" placeholder="postgres" value="postgres">
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Тип БД <span class="text-danger">*</span></label>
+                            <select class="form-select" id="connDbType">
+                                <option value="PostgreSQL">PostgreSQL</option>
+                                <option value="Greenplum">Greenplum</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label">Пароль</label>
                             <input type="password" class="form-control" id="connPassword" placeholder="••••••••">
                         </div>
@@ -46,6 +53,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="testNewConnection()">
+                    <i class="fas fa-plug"></i> Проверить
+                </button>
                 <button type="button" class="btn btn-primary" onclick="saveConnection()">
                     <i class="fas fa-check"></i> Подключиться
                 </button>
