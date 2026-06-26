@@ -218,22 +218,51 @@ def database_schema_sizes(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
-    schema_sizes_query = """
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "size_bytes"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schema_name",
+        "schema_owner": "schema_owner",
+        "size_bytes": "size_bytes",
+    }
+    sort_column = sort_columns.get(sort, "size_bytes")
+
+    where_sql = ""
+    params = []
+    if search:
+        where_sql = "AND (namespace.nspname ILIKE %s OR owner.rolname ILIKE %s)"
+        params.extend([f"%{search}%", f"%{search}%"])
+
+    schema_sizes_query = f"""
+        WITH schema_sizes AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                COALESCE(owner.rolname, '-') AS schema_owner,
+                SUM(pg_total_relation_size(table_class.oid))::bigint AS size_bytes
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = namespace.nspowner
+            WHERE table_class.relkind IN ('r', 'p', 'm')
+              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+            GROUP BY namespace.nspname, owner.rolname
+        )
         SELECT
-            namespace.nspname AS schema_name,
-            COALESCE(owner.rolname, '-') AS schema_owner,
-            SUM(pg_total_relation_size(table_class.oid))::bigint AS size_bytes,
-            pg_size_pretty(SUM(pg_total_relation_size(table_class.oid))) AS table_size
-        FROM pg_catalog.pg_class AS table_class
-        JOIN pg_catalog.pg_namespace AS namespace
-            ON namespace.oid = table_class.relnamespace
-        LEFT JOIN pg_catalog.pg_roles AS owner
-            ON owner.oid = namespace.nspowner
-        WHERE table_class.relkind IN ('r', 'p', 'm')
-          AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
-          AND namespace.nspname NOT LIKE 'pg_toast%%'
-        GROUP BY namespace.nspname, owner.rolname
-        ORDER BY SUM(pg_total_relation_size(table_class.oid)) DESC;
+            schema_name,
+            schema_owner,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS table_size,
+            COUNT(*) OVER() AS total_count
+        FROM schema_sizes
+        ORDER BY {sort_column} {direction}, schema_name ASC
+        LIMIT %s OFFSET %s;
     """
 
     try:
@@ -247,20 +276,22 @@ def database_schema_sizes(request):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(schema_sizes_query)
-                schemas = [
-                    {
-                        "schema_name": row[0],
-                        "schema_owner": row[1],
-                        "size_bytes": int(row[2]),
-                        "table_size": row[3],
-                    }
-                    for row in cursor.fetchall()
-                ]
+                cursor.execute(schema_sizes_query, [*params, page_size, offset])
+                rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
-    return JsonResponse({"ok": True, "schemas": schemas})
+    schemas = [
+        {
+            "schema_name": row[0],
+            "schema_owner": row[1],
+            "size_bytes": int(row[2]),
+            "table_size": row[3],
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][4]) if rows else 0
+    return JsonResponse({"ok": True, "schemas": schemas, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])

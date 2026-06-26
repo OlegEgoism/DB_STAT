@@ -9,8 +9,7 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
-    let currentSchemaSizes = [];
-    let schemaSizesSortState = {column: 'size_bytes', direction: 'desc'};
+    let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -149,99 +148,119 @@
     function renderSchemaSizesWarning(message) {
         const tbody = document.getElementById('schemaSizesTableBody');
         const count = document.getElementById('schemaSizesCount');
+        const info = document.getElementById('schemaPaginationInfo');
         if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1 из 1';
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
         }
-    }
-
-    function schemaSortValue(schema, column) {
-        if (column === 'size_bytes') return Number(schema.size_bytes) || 0;
-        if (column === 'schema_owner') return schema.schema_owner || '';
-        return schema.schema_name || '';
-    }
-
-    function filteredSchemaSizes() {
-        const search = (document.getElementById('schemaSearchInput')?.value || '').trim().toLowerCase();
-        const filtered = currentSchemaSizes.filter(schema => {
-            const schemaName = String(schema.schema_name || '').toLowerCase();
-            const schemaOwner = String(schema.schema_owner || '').toLowerCase();
-            return schemaName.includes(search) || schemaOwner.includes(search);
-        });
-        const {column, direction} = schemaSizesSortState;
-        const multiplier = direction === 'asc' ? 1 : -1;
-        return filtered.sort((left, right) => {
-            const leftValue = schemaSortValue(left, column);
-            const rightValue = schemaSortValue(right, column);
-            if (typeof leftValue === 'number' && typeof rightValue === 'number') {
-                return (leftValue - rightValue) * multiplier;
-            }
-            return String(leftValue).localeCompare(String(rightValue), 'ru', {numeric: true, sensitivity: 'base'}) * multiplier;
-        });
+        updateSchemaPaginationButtons();
     }
 
     function updateSchemaSortIndicators() {
         document.querySelectorAll('[data-schema-sort]').forEach(button => {
             const icon = button.querySelector('i');
-            const isActive = button.dataset.schemaSort === schemaSizesSortState.column;
+            const isActive = button.dataset.schemaSort === schemaSizesState.sort;
             button.classList.toggle('active', isActive);
             if (!icon) return;
             icon.className = isActive
-                ? `fas fa-sort-${schemaSizesSortState.direction === 'asc' ? 'up' : 'down'}`
+                ? `fas fa-sort-${schemaSizesState.direction === 'asc' ? 'up' : 'down'}`
                 : 'fas fa-sort';
         });
     }
 
-    function renderSchemaSizesTable() {
+    function updateSchemaPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
+        const prev = document.getElementById('schemaPrevPageBtn');
+        const next = document.getElementById('schemaNextPageBtn');
+        if (prev) prev.disabled = schemaSizesState.page <= 1;
+        if (next) next.disabled = schemaSizesState.page >= totalPages;
+    }
+
+    function renderSchemaSizes(data) {
         const tbody = document.getElementById('schemaSizesTableBody');
         const count = document.getElementById('schemaSizesCount');
+        const info = document.getElementById('schemaPaginationInfo');
         if (!tbody) return;
+        schemaSizesState.totalCount = Number(data.total_count) || 0;
+        schemaSizesState.page = Number(data.page) || 1;
+        schemaSizesState.pageSize = Number(data.page_size) || 100;
         updateSchemaSortIndicators();
-        const rows = filteredSchemaSizes();
-        if (count) count.textContent = `${rows.length} из ${currentSchemaSizes.length} схем`;
-        if (!rows.length) {
+        const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
+        if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
+        if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
+        if (!data.schemas?.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Схемы не найдены</td></tr>';
+            updateSchemaPaginationButtons();
             return;
         }
-        tbody.innerHTML = rows.map(schema => `
+        tbody.innerHTML = data.schemas.map(schema => `
             <tr>
                 <td><strong>${schema.schema_name || '-'}</strong></td>
                 <td>${schema.schema_owner || '-'}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
             </tr>
         `).join('');
+        updateSchemaPaginationButtons();
     }
 
     function initSchemaSizesControls() {
-        document.getElementById('schemaSearchInput')?.addEventListener('input', renderSchemaSizesTable);
+        let searchTimer = null;
+        document.getElementById('schemaSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                schemaSizesState.search = this.value.trim();
+                schemaSizesState.page = 1;
+                refreshSchemaSizesForConnection();
+            }, 300);
+        });
         document.querySelectorAll('[data-schema-sort]').forEach(button => {
             button.addEventListener('click', function () {
-                const column = this.dataset.schemaSort;
-                if (schemaSizesSortState.column === column) {
-                    schemaSizesSortState.direction = schemaSizesSortState.direction === 'asc' ? 'desc' : 'asc';
+                const sort = this.dataset.schemaSort;
+                if (schemaSizesState.sort === sort) {
+                    schemaSizesState.direction = schemaSizesState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
-                    schemaSizesSortState = {column, direction: column === 'size_bytes' ? 'desc' : 'asc'};
+                    schemaSizesState.sort = sort;
+                    schemaSizesState.direction = sort === 'size_bytes' ? 'desc' : 'asc';
                 }
-                renderSchemaSizesTable();
+                schemaSizesState.page = 1;
+                refreshSchemaSizesForConnection();
             });
         });
+        document.getElementById('schemaPrevPageBtn')?.addEventListener('click', function () {
+            if (schemaSizesState.page > 1) {
+                schemaSizesState.page -= 1;
+                refreshSchemaSizesForConnection();
+            }
+        });
+        document.getElementById('schemaNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
+            if (schemaSizesState.page < totalPages) {
+                schemaSizesState.page += 1;
+                refreshSchemaSizesForConnection();
+            }
+        });
         updateSchemaSortIndicators();
+        updateSchemaPaginationButtons();
     }
 
     function refreshSchemaSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            currentSchemaSizes = [];
+            schemaSizesState.totalCount = 0;
             renderSchemaSizesWarning('Выберите сохранённое подключение для загрузки размеров схем');
             return;
         }
         renderSchemaSizesWarning('Загрузка размеров схем...');
-        connectionRequest(databaseSchemasApiUrl, {id: conn.id})
-            .then(data => {
-                currentSchemaSizes = data.schemas || [];
-                renderSchemaSizesTable();
-            })
+        connectionRequest(databaseSchemasApiUrl, {
+            id: conn.id,
+            page: schemaSizesState.page,
+            search: schemaSizesState.search,
+            sort: schemaSizesState.sort,
+            direction: schemaSizesState.direction
+        })
+            .then(data => renderSchemaSizes(data))
             .catch(error => {
-                currentSchemaSizes = [];
+                schemaSizesState.totalCount = 0;
                 renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
             });
     }
