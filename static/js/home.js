@@ -13,6 +13,7 @@
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
     const segmentsInfoApiUrl = '/segments/info/';
+    const databaseSizeApiUrl = '/databases/size/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -89,6 +90,51 @@
 
     function validateConnectionPayload(payload) {
         return payload.name && payload.host && payload.port && payload.database && payload.user;
+    }
+
+
+    function formatDatabaseSize(sizeBytes) {
+        const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+        let value = Number(sizeBytes) || 0;
+        let unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            unitIndex += 1;
+        }
+        const precision = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
+        return {value: value.toFixed(precision), unit: units[unitIndex]};
+    }
+
+    function renderDatabaseSize({database = '—', size_bytes: sizeBytes = 0} = {}) {
+        const value = document.getElementById('databaseSizeValue');
+        const unit = document.getElementById('databaseSizeUnit');
+        const name = document.getElementById('databaseSizeName');
+        if (!value || !unit || !name) return;
+        const formatted = formatDatabaseSize(sizeBytes);
+        value.textContent = formatted.value;
+        unit.textContent = formatted.unit;
+        name.textContent = database;
+    }
+
+    function renderDatabaseSizeWarning(message) {
+        const value = document.getElementById('databaseSizeValue');
+        const unit = document.getElementById('databaseSizeUnit');
+        const name = document.getElementById('databaseSizeName');
+        if (!value || !unit || !name) return;
+        value.textContent = '—';
+        unit.textContent = '';
+        name.textContent = message;
+    }
+
+    function refreshDatabaseSizeForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderDatabaseSizeWarning('Выберите сохранённое подключение');
+            return;
+        }
+        renderDatabaseSizeWarning('Обновление размера БД...');
+        connectionRequest(databaseSizeApiUrl, {id: conn.id})
+            .then(data => renderDatabaseSize(data))
+            .catch(error => renderDatabaseSizeWarning(error.message || 'Не удалось получить размер БД'));
     }
 
     function connectionRequest(url, payload) {
@@ -369,6 +415,10 @@
         if (target) target.classList.add('active');
         document.getElementById('pageTitle').innerHTML = pageTitles[pageId] || pageId;
 
+        if (pageId === 'databases') {
+            refreshDatabaseSizeForConnection();
+        }
+
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
                 if (chart && chart.resize) chart.resize();
@@ -560,6 +610,9 @@
     // REFRESH
     // ============================
     function refreshAll() {
+        if (document.getElementById('page-databases')?.classList.contains('active')) {
+            refreshDatabaseSizeForConnection();
+        }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
         });
