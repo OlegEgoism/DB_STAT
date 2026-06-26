@@ -17,6 +17,12 @@
                     <option value="test-postgres">Test PostgreSQL</option>
                     <option value="analytics">Analytics Cluster</option>
                 </select>
+                <span class="connection-database-size" title="Общий размер БД">
+                    <span id="databaseSizeName">Выберите подключение</span>
+                    <span class="connection-database-size-separator">·</span>
+                    <span id="databaseSizeValue">—</span>
+                    <span id="databaseSizeUnit"></span>
+                </span>
                 <span class="conn-divider"></span>
                 <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
                     <i class="fas fa-plus"></i>
@@ -170,20 +176,10 @@
     <!-- ============================================================ -->
     <div class="page" id="page-databases">
         <div class="row g-3">
-            <div class="col-12 col-xl-4">
-                <div class="db-size-summary-card" id="databaseSizeCard">
-                    <div class="db-size-summary-title">Общий размер БД</div>
-                    <div class="db-size-summary-value">
-                        <span id="databaseSizeValue">—</span>
-                        <span id="databaseSizeUnit">GB</span>
-                    </div>
-                    <div class="db-size-summary-name" id="databaseSizeName">Выберите подключение</div>
-                </div>
-            </div>
             <div class="col-12">
                 <div class="glass-card">
                     <div class="card-header">
-                        <span><i class="fas fa-layer-group"></i> Размеры схем</span>
+                        <span><i class="fas fa-layer-group"></i> Размер схем</span>
                         <span class="text-muted" id="schemaSizesCount" style="font-size: 12px;">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">

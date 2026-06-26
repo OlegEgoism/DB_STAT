@@ -29,7 +29,7 @@
 
     const pageTitles = {
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
-        'databases': 'Базы данных <small>Размеры и статистика</small>',
+        'databases': 'Схемы <small>Размер и статистика</small>',
         'tables': 'Таблицы <small>Список и размеры таблиц</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
@@ -48,6 +48,7 @@
         loadConnections();
         initCharts();
         refreshSegmentsForConnection();
+        refreshDatabaseSizeForConnection();
         initNavigation();
         initSegmentsTableSorting();
         initSchemaSizesControls();
@@ -123,25 +124,25 @@
         name.textContent = database;
     }
 
-    function renderDatabaseSizeWarning(message) {
+    function renderDatabaseSizeWarning(message, database = '') {
         const value = document.getElementById('databaseSizeValue');
         const unit = document.getElementById('databaseSizeUnit');
         const name = document.getElementById('databaseSizeName');
         if (!value || !unit || !name) return;
-        value.textContent = '—';
+        value.textContent = message;
         unit.textContent = '';
-        name.textContent = message;
+        name.textContent = database || 'Выберите подключение';
     }
 
     function refreshDatabaseSizeForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderDatabaseSizeWarning('Выберите сохранённое подключение');
+            renderDatabaseSizeWarning('—');
             return;
         }
-        renderDatabaseSizeWarning('Обновление размера БД...');
+        renderDatabaseSizeWarning('обновление...', conn.database || conn.name);
         connectionRequest(databaseSizeApiUrl, {id: conn.id})
             .then(data => renderDatabaseSize(data))
-            .catch(error => renderDatabaseSizeWarning(error.message || 'Не удалось получить размер БД'));
+            .catch(error => renderDatabaseSizeWarning(error.message || 'ошибка', conn.database || conn.name));
     }
 
 
@@ -671,6 +672,7 @@
         if (conn) {
             activatePage('segments');
             refreshSegmentsForConnection(conn);
+            refreshDatabaseSizeForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
@@ -771,6 +773,7 @@
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
                 refreshSegmentsForConnection(savedConnection);
+                refreshDatabaseSizeForConnection(savedConnection);
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
