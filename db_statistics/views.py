@@ -220,12 +220,17 @@ def database_schema_sizes(request):
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
     schema_sizes_query = """
         SELECT
-            sotdschemaname AS schema_name,
-            SUM(sotdsize)::bigint AS size_bytes,
-            pg_size_pretty(SUM(sotdsize)) AS table_size
-        FROM gp_toolkit.gp_size_of_table_disk
-        GROUP BY sotdschemaname
-        ORDER BY SUM(sotdsize) DESC;
+            sizes.sotdschemaname AS schema_name,
+            COALESCE(owner.rolname, '-') AS schema_owner,
+            SUM(sizes.sotdsize)::bigint AS size_bytes,
+            pg_size_pretty(SUM(sizes.sotdsize)) AS table_size
+        FROM gp_toolkit.gp_size_of_table_disk AS sizes
+        LEFT JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.nspname = sizes.sotdschemaname
+        LEFT JOIN pg_catalog.pg_roles AS owner
+            ON owner.oid = namespace.nspowner
+        GROUP BY sizes.sotdschemaname, owner.rolname
+        ORDER BY SUM(sizes.sotdsize) DESC;
     """
 
     try:
@@ -243,8 +248,9 @@ def database_schema_sizes(request):
                 schemas = [
                     {
                         "schema_name": row[0],
-                        "size_bytes": int(row[1]),
-                        "table_size": row[2],
+                        "schema_owner": row[1],
+                        "size_bytes": int(row[2]),
+                        "table_size": row[3],
                     }
                     for row in cursor.fetchall()
                 ]

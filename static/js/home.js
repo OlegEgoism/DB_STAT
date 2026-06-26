@@ -147,18 +147,23 @@
         const count = document.getElementById('schemaSizesCount');
         if (count) count.textContent = 'Нет данных';
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
         }
     }
 
     function schemaSortValue(schema, column) {
         if (column === 'size_bytes') return Number(schema.size_bytes) || 0;
+        if (column === 'schema_owner') return schema.schema_owner || '';
         return schema.schema_name || '';
     }
 
     function filteredSchemaSizes() {
         const search = (document.getElementById('schemaSearchInput')?.value || '').trim().toLowerCase();
-        const filtered = currentSchemaSizes.filter(schema => String(schema.schema_name || '').toLowerCase().includes(search));
+        const filtered = currentSchemaSizes.filter(schema => {
+            const schemaName = String(schema.schema_name || '').toLowerCase();
+            const schemaOwner = String(schema.schema_owner || '').toLowerCase();
+            return schemaName.includes(search) || schemaOwner.includes(search);
+        });
         const {column, direction} = schemaSizesSortState;
         const multiplier = direction === 'asc' ? 1 : -1;
         return filtered.sort((left, right) => {
@@ -191,12 +196,13 @@
         const rows = filteredSchemaSizes();
         if (count) count.textContent = `${rows.length} из ${currentSchemaSizes.length} схем`;
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Схемы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Схемы не найдены</td></tr>';
             return;
         }
         tbody.innerHTML = rows.map(schema => `
             <tr>
                 <td><strong>${schema.schema_name || '-'}</strong></td>
+                <td>${schema.schema_owner || '-'}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
             </tr>
         `).join('');
