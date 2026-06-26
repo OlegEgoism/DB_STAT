@@ -20,7 +20,6 @@
 
     const pageTitles = {
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
-        'cluster-health': 'Здоровье кластера <small>Метрики доступности</small>',
         'databases': 'Базы данных <small>Размеры и статистика</small>',
         'tables': 'Таблицы <small>Список и размеры таблиц</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
@@ -552,50 +551,6 @@
                 },
                 plugins: {
                     legend: {labels: {color: '#4a5568', boxWidth: 12, font: {size: 11, family: 'Inter'}}}
-                }
-            }
-        });
-
-        // ---- 4. Health Gauge ----
-        const ctx4 = document.getElementById('healthGaugeChart').getContext('2d');
-        charts.healthGauge = new Chart(ctx4, {
-            type: 'doughnut',
-            data: {
-                labels: ['Здорово', 'Проблемы'],
-                datasets: [{
-                    data: [98.7, 1.3],
-                    backgroundColor: [colors.green, 'rgba(239,68,68,0.15)'],
-                    borderColor: ['#ffffff', '#ffffff'],
-                    borderWidth: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '80%',
-                plugins: {legend: {display: false}}
-            }
-        });
-
-        // ---- 5. Health Metrics ----
-        const ctx5 = document.getElementById('healthMetricsChart').getContext('2d');
-        charts.healthMetrics = new Chart(ctx5, {
-            type: 'bar',
-            data: {
-                labels: ['Подняты', 'Синхронизированы', 'Primary', 'Mirror'],
-                datasets: [{
-                    label: 'Сегменты',
-                    data: [12, 12, 6, 6],
-                    backgroundColor: [colors.green, colors.green, colors.blue, colors.teal],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}},
-                scales: {
-                    x: {ticks: {color: '#8a9bb0', font: {size: 11, family: 'Inter'}}, grid: {color: 'rgba(0,0,0,0.04)'}},
-                    y: {ticks: {stepSize: 2, color: '#8a9bb0', font: {size: 9, family: 'Inter'}}, grid: {color: 'rgba(0,0,0,0.04)'}}
                 }
             }
         });
