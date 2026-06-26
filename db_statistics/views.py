@@ -220,17 +220,20 @@ def database_schema_sizes(request):
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
     schema_sizes_query = """
         SELECT
-            sizes.sotdschemaname AS schema_name,
+            namespace.nspname AS schema_name,
             COALESCE(owner.rolname, '-') AS schema_owner,
-            SUM(sizes.sotdsize)::bigint AS size_bytes,
-            pg_size_pretty(SUM(sizes.sotdsize)) AS table_size
-        FROM gp_toolkit.gp_size_of_table_disk AS sizes
-        LEFT JOIN pg_catalog.pg_namespace AS namespace
-            ON namespace.nspname = sizes.sotdschemaname
+            SUM(pg_total_relation_size(table_class.oid))::bigint AS size_bytes,
+            pg_size_pretty(SUM(pg_total_relation_size(table_class.oid))) AS table_size
+        FROM pg_catalog.pg_class AS table_class
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = table_class.relnamespace
         LEFT JOIN pg_catalog.pg_roles AS owner
             ON owner.oid = namespace.nspowner
-        GROUP BY sizes.sotdschemaname, owner.rolname
-        ORDER BY SUM(sizes.sotdsize) DESC;
+        WHERE table_class.relkind IN ('r', 'p', 'm')
+          AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+          AND namespace.nspname NOT LIKE 'pg_toast%%'
+        GROUP BY namespace.nspname, owner.rolname
+        ORDER BY SUM(pg_total_relation_size(table_class.oid)) DESC;
     """
 
     try:
