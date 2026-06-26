@@ -135,33 +135,6 @@
             });
     }
 
-    const fallbackSegments = {
-        health: 'Все сегменты подняты и синхронизированы',
-        metrics: [
-            {name: 'Общее количество сегментов', value: 12},
-            {name: 'Cегменты работают', value: 12},
-            {name: 'Cегменты не работают', value: 0},
-            {name: 'Cинхронизированные сегменты', value: 12},
-            {name: 'Основные сегменты', value: 6},
-            {name: 'Зеркальные сегменты', value: 6},
-            {name: 'Процент здоровья', value: 100}
-        ],
-        segments: [
-            {segment: 0, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node01', address: 'gp-node01'},
-            {segment: 1, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node01', address: 'gp-node01'},
-            {segment: 2, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node02', address: 'gp-node02'},
-            {segment: 3, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node02', address: 'gp-node02'},
-            {segment: 4, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node03', address: 'gp-node03'},
-            {segment: 5, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node03', address: 'gp-node03'},
-            {segment: 0, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node04', address: 'gp-node04'},
-            {segment: 1, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node04', address: 'gp-node04'},
-            {segment: 2, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node05', address: 'gp-node05'},
-            {segment: 3, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node05', address: 'gp-node05'},
-            {segment: 4, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node06', address: 'gp-node06'},
-            {segment: 5, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node06', address: 'gp-node06'}
-        ]
-    };
-
     function roleLabel(role) {
         return role === 'p' ? 'primary' : role === 'm' ? 'mirror' : role;
     }
@@ -208,6 +181,31 @@
         charts.segments.update();
     }
 
+    function renderSegmentsWarning(message) {
+        const badge = document.getElementById('segmentHealthBadge');
+        if (badge) {
+            badge.className = 'badge badge-soft-warning';
+            badge.textContent = 'Сегменты недоступны';
+        }
+
+        const metrics = document.getElementById('segmentMetricsSummary');
+        if (metrics) {
+            metrics.innerHTML = `<div class="alert alert-warning mb-0">${message}</div>`;
+        }
+
+        const tbody = document.getElementById('segmentsTableBody');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-warning">${message}</td></tr>`;
+        }
+
+        if (charts.segments) {
+            charts.segments.data.labels = [];
+            charts.segments.data.datasets[0].data = [];
+            charts.segments.data.datasets[1].data = [];
+            charts.segments.update();
+        }
+    }
+
     function renderSegmentsInfo(data) {
         const badge = document.getElementById('segmentHealthBadge');
         if (badge) {
@@ -222,7 +220,7 @@
 
     function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderSegmentsInfo(fallbackSegments);
+            renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum.');
             return;
         }
 
@@ -234,7 +232,7 @@
 
         connectionRequest(segmentsInfoApiUrl, {id: conn.id})
             .then(data => renderSegmentsInfo(data))
-            .catch(() => renderSegmentsInfo(fallbackSegments));
+            .catch(error => renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.'));
     }
 
     function saveConnections() {
