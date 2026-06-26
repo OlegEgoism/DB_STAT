@@ -473,6 +473,34 @@
             color: var(--text-primary);
         }
 
+        .connection-database-size {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            max-width: 220px;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            background: rgba(79, 140, 255, 0.08);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        #databaseSizeName {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #databaseSizeValue {
+            color: var(--text-primary);
+        }
+
+        .connection-database-size-separator,
+        #databaseSizeUnit {
+            color: var(--text-muted);
+        }
+
         .btn-conn {
             background: transparent;
             border: none;
@@ -1117,6 +1145,11 @@
                 font-size: 12px;
             }
 
+            .connection-database-size {
+                max-width: 180px;
+                font-size: 11px;
+            }
+
             .connection-info {
                 display: none;
             }
@@ -1158,6 +1191,13 @@
 
             .connection-manager {
                 width: 100%;
+            }
+
+            .connection-database-size {
+                order: 3;
+                width: 100%;
+                max-width: none;
+                justify-content: center;
             }
 
             .status-indicator {
