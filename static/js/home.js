@@ -292,7 +292,7 @@
         tableSizesState.pageSize = Number(data.page_size) || 100;
         updateTableSortIndicators();
         const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
-        if (count) count.textContent = `${tableSizesState.totalCount} таблиц`;
+        if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
         if (!data.tables?.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Таблицы не найдены</td></tr>';
