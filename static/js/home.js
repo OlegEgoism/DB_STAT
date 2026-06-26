@@ -789,25 +789,6 @@
             }
         });
 
-        // ---- 6. Database Sizes ----
-        const ctx6 = document.getElementById('dbSizeChart').getContext('2d');
-        charts.dbSize = new Chart(ctx6, {
-            type: 'bar',
-            data: {
-                labels: ['dd04_finance', 'dwh_cube', 'dc00_sys', 'postgres', 'template1', 'template0', 'gpperfmon', 'gpadmin'],
-                datasets: [{
-                    label: 'Размер (GB)',
-                    data: [745.2, 412.8, 156.3, 42.1, 28.5, 28.5, 12.7, 8.9],
-                    backgroundColor: [colors.green, colors.blue, colors.purple, colors.orange, colors.yellow, colors.yellow, colors.teal, colors.pink],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}}
-            }
-        });
-
         // ---- 7. Skew ----
         const ctx7 = document.getElementById('skewChart').getContext('2d');
         charts.skew = new Chart(ctx7, {
