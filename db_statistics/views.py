@@ -259,6 +259,103 @@ def database_schema_sizes(request):
 
     return JsonResponse({"ok": True, "schemas": schemas})
 
+
+@require_http_methods(["POST"])
+def database_table_sizes(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "size_bytes"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schema_name",
+        "table_name": "table_name",
+        "table_owner": "table_owner",
+        "size_bytes": "size_bytes",
+        "index_size_bytes": "index_size_bytes",
+        "row_count": "row_count",
+    }
+    sort_column = sort_columns.get(sort, "size_bytes")
+
+    where_sql = ""
+    params = []
+    if search:
+        where_sql = "AND (namespace.nspname ILIKE %s OR table_class.relname ILIKE %s)"
+        params.extend([f"%{search}%", f"%{search}%"])
+
+    table_sizes_query = f"""
+        WITH table_sizes AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                table_class.relname AS table_name,
+                COALESCE(owner.rolname, '-') AS table_owner,
+                pg_total_relation_size(table_class.oid)::bigint AS size_bytes,
+                pg_indexes_size(table_class.oid)::bigint AS index_size_bytes,
+                GREATEST(table_class.reltuples::bigint, 0) AS row_count
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = table_class.relowner
+            WHERE table_class.relkind IN ('r', 'p')
+              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%'
+              {where_sql}
+        )
+        SELECT
+            schema_name,
+            table_name,
+            table_owner,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS table_size,
+            index_size_bytes,
+            pg_size_pretty(index_size_bytes) AS index_size,
+            row_count,
+            COUNT(*) OVER() AS total_count
+        FROM table_sizes
+        ORDER BY {sort_column} {direction}, schema_name ASC, table_name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(table_sizes_query, [*params, page_size, offset])
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"}, status=400)
+
+    tables = [
+        {
+            "schema_name": row[0],
+            "table_name": row[1],
+            "table_owner": row[2],
+            "size_bytes": int(row[3]),
+            "table_size": row[4],
+            "index_size_bytes": int(row[5]),
+            "index_size": row[6],
+            "row_count": int(row[7]),
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][8]) if rows else 0
+    return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
+
 @require_http_methods(["POST"])
 def segments_info(request):
     payload = _read_json_body(request)
