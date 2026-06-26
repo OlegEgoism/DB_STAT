@@ -9,11 +9,14 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
+    let currentSchemaSizes = [];
+    let schemaSizesSortState = {column: 'size_bytes', direction: 'desc'};
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
     const segmentsInfoApiUrl = '/segments/info/';
     const databaseSizeApiUrl = '/databases/size/';
+    const databaseSchemasApiUrl = '/databases/schemas/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -45,6 +48,7 @@
         refreshSegmentsForConnection();
         initNavigation();
         initSegmentsTableSorting();
+        initSchemaSizesControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -135,6 +139,101 @@
         connectionRequest(databaseSizeApiUrl, {id: conn.id})
             .then(data => renderDatabaseSize(data))
             .catch(error => renderDatabaseSizeWarning(error.message || 'Не удалось получить размер БД'));
+    }
+
+
+    function renderSchemaSizesWarning(message) {
+        const tbody = document.getElementById('schemaSizesTableBody');
+        const count = document.getElementById('schemaSizesCount');
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        }
+    }
+
+    function schemaSortValue(schema, column) {
+        if (column === 'size_bytes') return Number(schema.size_bytes) || 0;
+        return schema.schema_name || '';
+    }
+
+    function filteredSchemaSizes() {
+        const search = (document.getElementById('schemaSearchInput')?.value || '').trim().toLowerCase();
+        const filtered = currentSchemaSizes.filter(schema => String(schema.schema_name || '').toLowerCase().includes(search));
+        const {column, direction} = schemaSizesSortState;
+        const multiplier = direction === 'asc' ? 1 : -1;
+        return filtered.sort((left, right) => {
+            const leftValue = schemaSortValue(left, column);
+            const rightValue = schemaSortValue(right, column);
+            if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+                return (leftValue - rightValue) * multiplier;
+            }
+            return String(leftValue).localeCompare(String(rightValue), 'ru', {numeric: true, sensitivity: 'base'}) * multiplier;
+        });
+    }
+
+    function updateSchemaSortIndicators() {
+        document.querySelectorAll('[data-schema-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.schemaSort === schemaSizesSortState.column;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${schemaSizesSortState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function renderSchemaSizesTable() {
+        const tbody = document.getElementById('schemaSizesTableBody');
+        const count = document.getElementById('schemaSizesCount');
+        if (!tbody) return;
+        updateSchemaSortIndicators();
+        const rows = filteredSchemaSizes();
+        if (count) count.textContent = `${rows.length} из ${currentSchemaSizes.length} схем`;
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Схемы не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(schema => `
+            <tr>
+                <td><strong>${schema.schema_name || '-'}</strong></td>
+                <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
+            </tr>
+        `).join('');
+    }
+
+    function initSchemaSizesControls() {
+        document.getElementById('schemaSearchInput')?.addEventListener('input', renderSchemaSizesTable);
+        document.querySelectorAll('[data-schema-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const column = this.dataset.schemaSort;
+                if (schemaSizesSortState.column === column) {
+                    schemaSizesSortState.direction = schemaSizesSortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    schemaSizesSortState = {column, direction: column === 'size_bytes' ? 'desc' : 'asc'};
+                }
+                renderSchemaSizesTable();
+            });
+        });
+        updateSchemaSortIndicators();
+    }
+
+    function refreshSchemaSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            currentSchemaSizes = [];
+            renderSchemaSizesWarning('Выберите сохранённое подключение для загрузки размеров схем');
+            return;
+        }
+        renderSchemaSizesWarning('Загрузка размеров схем...');
+        connectionRequest(databaseSchemasApiUrl, {id: conn.id})
+            .then(data => {
+                currentSchemaSizes = data.schemas || [];
+                renderSchemaSizesTable();
+            })
+            .catch(error => {
+                currentSchemaSizes = [];
+                renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
+            });
     }
 
     function connectionRequest(url, payload) {
@@ -417,6 +516,7 @@
 
         if (pageId === 'databases') {
             refreshDatabaseSizeForConnection();
+            refreshSchemaSizesForConnection();
         }
 
         setTimeout(() => {
@@ -612,6 +712,7 @@
     function refreshAll() {
         if (document.getElementById('page-databases')?.classList.contains('active')) {
             refreshDatabaseSizeForConnection();
+            refreshSchemaSizesForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
