@@ -8,5 +8,6 @@ urlpatterns = [
     path("connections/", views.connections, name="connections"),
     path("connections/test/", views.test_connection, name="test_connection"),
     path("connections/delete/", views.delete_connection, name="delete_connection"),
+    path("databases/size/", views.database_size, name="database_size"),
     path("segments/info/", views.segments_info, name="segments_info"),
 ]
