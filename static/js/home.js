@@ -181,21 +181,52 @@
         charts.segments.update();
     }
 
+    function formatSegmentError(message) {
+        const normalized = String(message || '').replace(/\s+/g, ' ').trim();
+        if (normalized.includes('gp_segment_configuration') || normalized.includes('не существует')) {
+            return {
+                title: 'Сегменты недоступны для выбранного подключения',
+                text: 'Выбранное подключение не похоже на Greenplum или у пользователя нет доступа к gp_segment_configuration. Выберите Greenplum-подключение или проверьте права доступа.'
+            };
+        }
+        return {
+            title: 'Не удалось обновить информацию о сегментах',
+            text: normalized || 'Проверьте доступность подключения и повторите попытку.'
+        };
+    }
+
+    function setSegmentsChartEmpty(isVisible, text = 'Информация о сегментах недоступна') {
+        const empty = document.getElementById('segmentsChartEmpty');
+        if (!empty) return;
+        empty.classList.toggle('d-none', !isVisible);
+        const label = empty.querySelector('span');
+        if (label) label.textContent = text;
+    }
+
     function renderSegmentsWarning(message) {
+        const warning = formatSegmentError(message);
         const badge = document.getElementById('segmentHealthBadge');
         if (badge) {
             badge.className = 'badge badge-soft-warning';
-            badge.textContent = 'Сегменты недоступны';
+            badge.textContent = 'Недоступно';
         }
 
+        const warningHtml = `
+            <div class="segment-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div>
+                    <strong>${warning.title}</strong>
+                    <span>${warning.text}</span>
+                </div>
+            </div>
+        `;
+
         const metrics = document.getElementById('segmentMetricsSummary');
-        if (metrics) {
-            metrics.innerHTML = `<div class="alert alert-warning mb-0">${message}</div>`;
-        }
+        if (metrics) metrics.innerHTML = warningHtml;
 
         const tbody = document.getElementById('segmentsTableBody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-warning">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5">${warningHtml}</td></tr>`;
         }
 
         if (charts.segments) {
@@ -204,6 +235,7 @@
             charts.segments.data.datasets[1].data = [];
             charts.segments.update();
         }
+        setSegmentsChartEmpty(true, warning.title);
     }
 
     function renderSegmentsInfo(data) {
@@ -213,6 +245,7 @@
             badge.className = `badge ${hasProblem ? 'badge-soft-danger' : 'badge-soft-success'}`;
             badge.textContent = data.health || 'Нет данных';
         }
+        setSegmentsChartEmpty(false);
         renderSegmentMetrics(data.metrics || []);
         renderSegmentsTable(data.segments || []);
         updateSegmentsChart(data.segments || []);
