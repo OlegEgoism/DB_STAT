@@ -9,7 +9,6 @@
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
-    const databaseSizesApiUrl = '/dashboard/database-sizes/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -18,20 +17,12 @@
         {id: 'analytics', name: 'Analytics Cluster', host: 'analytics.example.com', port: 5432, database: 'analytics', user: 'analytics_user', ssl: true, status: 'online'}
     ];
 
-    const dashboardSnapshots = {
-        'prod-greenplum': {health: '98.7%', healthSub: '12 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.3% за неделю', dbSize: '1453 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '3', queriesSub: 'Самый долгий: 4м 23с', queriesTrend: '<i class="fas fa-arrow-down"></i> -2 за час', connections: '142 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 500</span>', connectionsSub: '28.4% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +5 за час', tableSize: 'Общий размер: 1.2 TB', dbSizes: [{database_name: 'dd04_finance', size: '745 GB'}, {database_name: 'dwh_cube', size: '413 GB'}, {database_name: 'dc00_sys', size: '156 GB'}, {database_name: 'postgres', size: '42 GB'}], activity: [12, 19, 8, 15, 22, 18, 24, 28, 32, 27, 21, 18], tx: [2345, 45]},
-        'dev-greenplum': {health: '96.2%', healthSub: '8 сегментов работают', healthTrend: '<i class="fas fa-arrow-down"></i> -0.8% за неделю', dbSize: '312 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '1', queriesSub: 'Самый долгий: 1м 12с', queriesTrend: '<i class="fas fa-arrow-down"></i> -1 за час', connections: '38 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 200</span>', connectionsSub: '19.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +2 за час', tableSize: 'Общий размер: 284 GB', dbSizes: [{database_name: 'dev_greenplum', size: '181 GB'}, {database_name: 'postgres', size: '76 GB'}, {database_name: 'template1', size: '55 GB'}], activity: [4, 7, 5, 8, 9, 6, 10, 12, 9, 11, 8, 6], tx: [420, 12]},
-        'test-postgres': {health: '99.1%', healthSub: 'PostgreSQL доступен', healthTrend: '<i class="fas fa-arrow-up"></i> +0.1% за неделю', dbSize: '48 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '0', queriesSub: 'Долгих запросов нет', queriesTrend: '<i class="fas fa-minus"></i> без изменений', connections: '12 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 100</span>', connectionsSub: '12.0% использования', connectionsTrend: '<i class="fas fa-arrow-down"></i> -3 за час', tableSize: 'Общий размер: 36 GB', dbSizes: [{database_name: 'test_postgres', size: '32 GB'}, {database_name: 'postgres', size: '16 GB'}], activity: [1, 2, 2, 3, 2, 4, 3, 5, 4, 3, 2, 2], tx: [98, 2]},
-        analytics: {health: '97.8%', healthSub: '10 сегментов работают', healthTrend: '<i class="fas fa-arrow-up"></i> +0.2% за неделю', dbSize: '876 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>', queries: '5', queriesSub: 'Самый долгий: 6м 05с', queriesTrend: '<i class="fas fa-arrow-up"></i> +2 за час', connections: '96 <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ 300</span>', connectionsSub: '32.0% использования', connectionsTrend: '<i class="fas fa-arrow-up"></i> +8 за час', tableSize: 'Общий размер: 742 GB', dbSizes: [{database_name: 'analytics', size: '512 GB'}, {database_name: 'mart', size: '244 GB'}, {database_name: 'postgres', size: '120 GB'}], activity: [18, 16, 22, 25, 30, 28, 35, 41, 38, 33, 29, 24], tx: [1540, 38]}
-    };
-
     // ============================
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
         loadConnections();
         initCharts();
-        refreshDashboardForConnection();
         initNavigation();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
@@ -107,7 +98,6 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                refreshDashboardForConnection();
             })
             .catch(() => {
                 const saved = localStorage.getItem('gp_connections');
@@ -122,93 +112,8 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                refreshDashboardForConnection();
                 showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
             });
-    }
-
-    function getActiveConnection() {
-        return connections.find(c => c.id === activeConnectionId) || null;
-    }
-
-    function getDashboardSnapshot(conn) {
-        if (!conn) return dashboardSnapshots['prod-greenplum'];
-        if (dashboardSnapshots[conn.id]) return dashboardSnapshots[conn.id];
-
-        const seed = String(conn.id || conn.name || conn.database || 'db').split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-        const size = 80 + (seed % 920);
-        const activeQueries = seed % 7;
-        const usedConnections = 20 + (seed % 180);
-        const maxConnections = 200 + (seed % 4) * 100;
-        return {
-            health: `${95 + (seed % 45) / 10}%`,
-            healthSub: conn.db_type === 'Greenplum' ? 'Сегменты доступны' : 'PostgreSQL доступен',
-            healthTrend: '<i class="fas fa-sync-alt"></i> обновлено при смене подключения',
-            dbSize: `${size} <span style="font-size:16px; font-weight:400; color: var(--text-muted);">GB</span>`,
-            queries: String(activeQueries),
-            queriesSub: activeQueries ? `Активно по ${conn.database}` : 'Долгих запросов нет',
-            queriesTrend: '<i class="fas fa-sync-alt"></i> данные обновлены',
-            connections: `${usedConnections} <span style="font-size:16px; font-weight:400; color: var(--text-muted);">/ ${maxConnections}</span>`,
-            connectionsSub: `${((usedConnections / maxConnections) * 100).toFixed(1)}% использования`,
-            connectionsTrend: '<i class="fas fa-sync-alt"></i> данные обновлены',
-            tableSize: `Общий размер: ${Math.max(12, size - 30)} GB`,
-            dbSizes: [{database_name: conn.database || conn.name, size: `${size} GB`}],
-            activity: Array.from({length: 12}, (_, index) => 3 + ((seed + index * 7) % 32)),
-            tx: [200 + (seed % 2200), seed % 80]
-        };
-    }
-
-    function setHtml(id, value) {
-        const element = document.getElementById(id);
-        if (element) element.innerHTML = value;
-    }
-
-    function renderDatabaseSizes(rows) {
-        if (!rows || rows.length === 0) return '';
-        const items = rows.slice(0, 5).map(row => `
-            <div class="db-size-row">
-                <span>${row.database_name}</span>
-                <strong>${row.size}</strong>
-            </div>
-        `).join('');
-        return `<div class="db-size-list">${items}</div>`;
-    }
-
-    function refreshDatabaseSizesFromServer(conn, fallbackRows) {
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            setHtml('dashboardDbSizeValue', renderDatabaseSizes(fallbackRows));
-            return;
-        }
-
-        connectionRequest(databaseSizesApiUrl, {id: conn.id})
-            .then(data => setHtml('dashboardDbSizeValue', renderDatabaseSizes(data.database_sizes)))
-            .catch(() => setHtml('dashboardDbSizeValue', renderDatabaseSizes(fallbackRows)));
-    }
-
-    function refreshDashboardForConnection(conn = getActiveConnection()) {
-        const snapshot = getDashboardSnapshot(conn);
-        setHtml('dashboardHealthValue', snapshot.health);
-        setHtml('dashboardHealthSub', snapshot.healthSub);
-        setHtml('dashboardHealthTrend', snapshot.healthTrend);
-        setHtml('dashboardDbSizeValue', renderDatabaseSizes(snapshot.dbSizes) || snapshot.dbSize);
-        setHtml('dashboardQueriesValue', snapshot.queries);
-        setHtml('dashboardQueriesSub', snapshot.queriesSub);
-        setHtml('dashboardQueriesTrend', snapshot.queriesTrend);
-        setHtml('dashboardConnectionsValue', snapshot.connections);
-        setHtml('dashboardConnectionsSub', snapshot.connectionsSub);
-        setHtml('dashboardConnectionsTrend', snapshot.connectionsTrend);
-        setHtml('dashboardTablesTotalSize', snapshot.tableSize);
-
-        refreshDatabaseSizesFromServer(conn, snapshot.dbSizes);
-
-        if (charts.dashboardActivity) {
-            charts.dashboardActivity.data.datasets[0].data = snapshot.activity;
-            charts.dashboardActivity.update();
-        }
-        if (charts.dashboardTx) {
-            charts.dashboardTx.data.datasets[0].data = snapshot.tx;
-            charts.dashboardTx.update();
-        }
     }
 
     function saveConnections() {
@@ -234,7 +139,6 @@
         activeConnectionId = connId;
         const conn = connections.find(c => c.id === connId);
         if (conn) {
-            refreshDashboardForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
@@ -295,8 +199,7 @@
             activeConnectionId = connections[0]?.id || null;
             saveConnections();
             populateConnectionSelect();
-            refreshDashboardForConnection();
-            modalInstance.hide();
+                modalInstance.hide();
             showToast(message);
         };
 
@@ -334,7 +237,6 @@
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
-                refreshDashboardForConnection(savedConnection);
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
@@ -391,7 +293,6 @@
         const items = document.querySelectorAll('.nav-item');
         const pages = document.querySelectorAll('.page');
         const titles = {
-            'dashboard': 'Дашборд <small>Общая сводка состояния кластера</small>',
             'segments': 'Сегменты <small>Состояние и конфигурация</small>',
             'cluster-health': 'Здоровье кластера <small>Метрики доступности</small>',
             'databases': 'Базы данных <small>Размеры и статистика</small>',
@@ -491,56 +392,6 @@
                 }
             }
         };
-
-        // ---- 1. Dashboard Activity ----
-        const ctx1 = document.getElementById('dashboardActivityChart').getContext('2d');
-        charts.dashboardActivity = new Chart(ctx1, {
-            type: 'bar',
-            data: {
-                labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
-                datasets: [{
-                    label: 'Запросов',
-                    data: [12, 8, 5, 3, 15, 42, 68, 85, 73, 54, 28, 18],
-                    backgroundColor: 'rgba(79, 140, 255, 0.3)',
-                    borderColor: colors.blue,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }, {
-                    label: 'Долгие (>1мин)',
-                    data: [2, 1, 0, 0, 3, 5, 8, 12, 9, 6, 4, 2],
-                    backgroundColor: 'rgba(245, 158, 11, 0.3)',
-                    borderColor: colors.yellow,
-                    borderWidth: 1,
-                    borderRadius: 4
-                }]
-            },
-            options: chartOptions
-        });
-
-        // ---- 2. Dashboard Transactions ----
-        const ctx2 = document.getElementById('dashboardTxChart').getContext('2d');
-        charts.dashboardTx = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['Коммиты', 'Роллбеки'],
-                datasets: [{
-                    data: [94.2, 5.8],
-                    backgroundColor: [colors.green, colors.red],
-                    borderColor: ['#ffffff', '#ffffff'],
-                    borderWidth: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {color: '#4a5568', boxWidth: 12, padding: 15, font: {size: 12, family: 'Inter'}}
-                    }
-                }
-            }
-        });
 
         // ---- 3. Segments ----
         const ctx3 = document.getElementById('segmentsChart').getContext('2d');
