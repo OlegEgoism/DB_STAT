@@ -11,12 +11,14 @@
     let segmentsSortState = {column: 'segment', direction: 'asc'};
     let currentSchemaSizes = [];
     let schemaSizesSortState = {column: 'size_bytes', direction: 'desc'};
+    let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
     const segmentsInfoApiUrl = '/segments/info/';
     const databaseSizeApiUrl = '/databases/size/';
     const databaseSchemasApiUrl = '/databases/schemas/';
+    const tableSizesApiUrl = '/tables/sizes/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -49,6 +51,7 @@
         initNavigation();
         initSegmentsTableSorting();
         initSchemaSizesControls();
+        initTableSizesControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -240,6 +243,129 @@
                 currentSchemaSizes = [];
                 renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
             });
+    }
+
+
+    function formatRowCount(value) {
+        const number = Number(value) || 0;
+        return new Intl.NumberFormat('ru-RU').format(number);
+    }
+
+    function renderTableSizesWarning(message) {
+        const tbody = document.getElementById('tableSizesTableBody');
+        const count = document.getElementById('tableSizesCount');
+        const info = document.getElementById('tablePaginationInfo');
+        if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1 из 1';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${message}</td></tr>`;
+        updateTablePaginationButtons();
+    }
+
+    function updateTableSortIndicators() {
+        document.querySelectorAll('[data-table-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.tableSort === tableSizesState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${tableSizesState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function updateTablePaginationButtons() {
+        const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
+        const prev = document.getElementById('tablePrevPageBtn');
+        const next = document.getElementById('tableNextPageBtn');
+        if (prev) prev.disabled = tableSizesState.page <= 1;
+        if (next) next.disabled = tableSizesState.page >= totalPages;
+    }
+
+    function renderTableSizes(data) {
+        const tbody = document.getElementById('tableSizesTableBody');
+        const count = document.getElementById('tableSizesCount');
+        const info = document.getElementById('tablePaginationInfo');
+        if (!tbody) return;
+        tableSizesState.totalCount = Number(data.total_count) || 0;
+        tableSizesState.page = Number(data.page) || 1;
+        tableSizesState.pageSize = Number(data.page_size) || 100;
+        updateTableSortIndicators();
+        const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
+        if (count) count.textContent = `${tableSizesState.totalCount} таблиц`;
+        if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
+        if (!data.tables?.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Таблицы не найдены</td></tr>';
+            updateTablePaginationButtons();
+            return;
+        }
+        tbody.innerHTML = data.tables.map(table => `
+            <tr>
+                <td>${table.schema_name || '-'}</td>
+                <td><strong>${table.table_name || '-'}</strong></td>
+                <td>${table.table_owner || '-'}</td>
+                <td>${table.table_size || '-'}</td>
+                <td>${table.index_size || '-'}</td>
+                <td>${formatRowCount(table.row_count)}</td>
+            </tr>
+        `).join('');
+        updateTablePaginationButtons();
+    }
+
+    function refreshTableSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderTableSizesWarning('Выберите сохранённое подключение для загрузки размеров таблиц');
+            return;
+        }
+        renderTableSizesWarning('Загрузка размеров таблиц...');
+        connectionRequest(tableSizesApiUrl, {
+            id: conn.id,
+            page: tableSizesState.page,
+            search: tableSizesState.search,
+            sort: tableSizesState.sort,
+            direction: tableSizesState.direction
+        })
+            .then(data => renderTableSizes(data))
+            .catch(error => renderTableSizesWarning(error.message || 'Не удалось получить размеры таблиц'));
+    }
+
+    function initTableSizesControls() {
+        let searchTimer = null;
+        document.getElementById('tableSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                tableSizesState.search = this.value.trim();
+                tableSizesState.page = 1;
+                refreshTableSizesForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-table-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.tableSort;
+                if (tableSizesState.sort === sort) {
+                    tableSizesState.direction = tableSizesState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    tableSizesState.sort = sort;
+                    tableSizesState.direction = ['size_bytes', 'index_size_bytes', 'row_count'].includes(sort) ? 'desc' : 'asc';
+                }
+                tableSizesState.page = 1;
+                refreshTableSizesForConnection();
+            });
+        });
+        document.getElementById('tablePrevPageBtn')?.addEventListener('click', function () {
+            if (tableSizesState.page > 1) {
+                tableSizesState.page -= 1;
+                refreshTableSizesForConnection();
+            }
+        });
+        document.getElementById('tableNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
+            if (tableSizesState.page < totalPages) {
+                tableSizesState.page += 1;
+                refreshTableSizesForConnection();
+            }
+        });
+        updateTableSortIndicators();
+        updateTablePaginationButtons();
     }
 
     function connectionRequest(url, payload) {
@@ -524,6 +650,9 @@
             refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
         }
+        if (pageId === 'tables') {
+            refreshTableSizesForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -719,6 +848,9 @@
         if (document.getElementById('page-databases')?.classList.contains('active')) {
             refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
+        }
+        if (document.getElementById('page-tables')?.classList.contains('active')) {
+            refreshTableSizesForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();

@@ -219,120 +219,46 @@
     <!-- PAGE: TABLES -->
     <!-- ============================================================ -->
     <div class="page" id="page-tables">
-        <div class="filter-bar">
-            <select>
-                <option>Все схемы</option>
-                <option>dd04_finance</option>
-                <option>dwh_cube</option>
-                <option>dc00_sys</option>
-            </select>
-            <input type="text" placeholder="Поиск таблицы..." style="min-width:160px;">
-            <select>
-                <option>Сортировка: по размеру ↓</option>
-            </select>
-            <span style="color: var(--text-muted); font-size:12px; margin-left:auto;">50 из 1,247 таблиц</span>
-        </div>
         <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-table"></i> Размер таблиц</span>
+                <span class="text-muted" id="tableSizesCount" style="font-size: 12px;">Нет данных</span>
+            </div>
+            <div class="database-table-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="tableSearchInput" placeholder="Поиск по схеме или таблице...">
+                </div>
+            </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table">
+                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-sm">
                         <thead>
                         <tr>
-                            <th>Схема</th>
-                            <th>Таблица</th>
-                            <th>Владелец</th>
-                            <th>Размер</th>
-                            <th>Индексы</th>
-                            <th>Строк</th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="table_owner">Владелец <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="index_size_bytes">Индексы <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-table-sort="row_count">Строк <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="tableSizesTableBody">
                         <tr>
-                            <td>dd04_finance</td>
-                            <td><strong>dd04443_bal_raw_f0611</strong></td>
-                            <td>etl_user</td>
-                            <td>234.5 GB</td>
-                            <td>12.3 GB</td>
-                            <td>1.2B</td>
-                        </tr>
-                        <tr>
-                            <td>dc00_sys</td>
-                            <td><strong>dc00006_1725_coderules</strong></td>
-                            <td>admin</td>
-                            <td>187.2 GB</td>
-                            <td>8.7 GB</td>
-                            <td>987.7M</td>
-                        </tr>
-                        <tr>
-                            <td>dd04_finance</td>
-                            <td><strong>dd04443_transactions</strong></td>
-                            <td>etl_user</td>
-                            <td>156.8 GB</td>
-                            <td>15.2 GB</td>
-                            <td>876.5M</td>
-                        </tr>
-                        <tr>
-                            <td>dwh_cube</td>
-                            <td><strong>fact_sales</strong></td>
-                            <td>dwh_user</td>
-                            <td>134.1 GB</td>
-                            <td>22.4 GB</td>
-                            <td>765.4M</td>
-                        </tr>
-                        <tr>
-                            <td>dwh_cube</td>
-                            <td><strong>fact_orders</strong></td>
-                            <td>dwh_user</td>
-                            <td>98.6 GB</td>
-                            <td>11.8 GB</td>
-                            <td>654.3M</td>
-                        </tr>
-                        <tr>
-                            <td>dd04_finance</td>
-                            <td><strong>dd04443_ledger</strong></td>
-                            <td>etl_user</td>
-                            <td>87.3 GB</td>
-                            <td>6.1 GB</td>
-                            <td>543.2M</td>
-                        </tr>
-                        <tr>
-                            <td>dc00_sys</td>
-                            <td><strong>dc00006_audit_log</strong></td>
-                            <td>admin</td>
-                            <td>76.9 GB</td>
-                            <td>3.4 GB</td>
-                            <td>432.1M</td>
-                        </tr>
-                        <tr>
-                            <td>dwh_cube</td>
-                            <td><strong>dim_customer</strong></td>
-                            <td>dwh_user</td>
-                            <td>54.2 GB</td>
-                            <td>9.8 GB</td>
-                            <td>321.1M</td>
-                        </tr>
-                        <tr>
-                            <td>dd04_finance</td>
-                            <td><strong>dd04443_invoices</strong></td>
-                            <td>etl_user</td>
-                            <td>45.7 GB</td>
-                            <td>5.3 GB</td>
-                            <td>211.0M</td>
-                        </tr>
-                        <tr>
-                            <td>dwh_cube</td>
-                            <td><strong>fact_inventory</strong></td>
-                            <td>dwh_user</td>
-                            <td>38.4 GB</td>
-                            <td>7.2 GB</td>
-                            <td>198.8M</td>
-                        </tr>
-                        <tr>
-                            <td colspan="6" class="text-center text-muted" style="font-size:12px; padding:12px;">... и еще 1,237 таблиц</td>
+                            <td colspan="6" class="text-muted">Выберите сохранённое подключение для загрузки размеров таблиц</td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <div class="table-pagination">
+                <button class="btn-conn secondary" type="button" id="tablePrevPageBtn">
+                    <i class="fas fa-chevron-left"></i> Назад
+                </button>
+                <span id="tablePaginationInfo">Страница 1 из 1</span>
+                <button class="btn-conn secondary" type="button" id="tableNextPageBtn">
+                    Далее <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
