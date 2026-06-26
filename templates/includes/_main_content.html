@@ -192,50 +192,30 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4">
+            <div class="col-12">
                 <div class="glass-card">
-                    <div class="card-header"><span><i class="fas fa-list"></i> Список БД</span></div>
+                    <div class="card-header">
+                        <span><i class="fas fa-layer-group"></i> Размеры схем</span>
+                        <span class="text-muted" id="schemaSizesCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="database-table-toolbar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="schemaSearchInput" placeholder="Поиск по схеме...">
+                        </div>
+                    </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table">
+                        <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                            <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th>База данных</th>
-                                    <th>Размер</th>
+                                    <th><button class="table-sort-btn" type="button" data-schema-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
+                                    <th><button class="table-sort-btn" type="button" data-schema-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
                                 </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="schemaSizesTableBody">
                                 <tr>
-                                    <td>dd04_finance</td>
-                                    <td><strong>745.2 GB</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>dwh_cube</td>
-                                    <td><strong>412.8 GB</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>dc00_sys</td>
-                                    <td><strong>156.3 GB</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>postgres</td>
-                                    <td>42.1 GB</td>
-                                </tr>
-                                <tr>
-                                    <td>template1</td>
-                                    <td>28.5 GB</td>
-                                </tr>
-                                <tr>
-                                    <td>template0</td>
-                                    <td>28.5 GB</td>
-                                </tr>
-                                <tr>
-                                    <td>gpperfmon</td>
-                                    <td>12.7 GB</td>
-                                </tr>
-                                <tr>
-                                    <td>gpadmin</td>
-                                    <td>8.9 GB</td>
+                                    <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки размеров схем</td>
                                 </tr>
                                 </tbody>
                             </table>

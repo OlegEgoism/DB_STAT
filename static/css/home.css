@@ -1224,3 +1224,41 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        .database-table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-top: 1px solid rgba(233, 236, 239, 0.7);
+            border-bottom: 1px solid rgba(233, 236, 239, 0.7);
+            background: rgba(248, 250, 252, 0.65);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: min(360px, 100%);
+            padding: 9px 12px;
+            border: 1px solid var(--sidebar-border);
+            border-radius: 12px;
+            background: #ffffff;
+            color: var(--text-muted);
+        }
+
+        .search-box input {
+            width: 100%;
+            border: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+            font-weight: 500;
+        }

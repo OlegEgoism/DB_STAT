@@ -209,6 +209,50 @@ def database_size(request):
         }
     )
 
+
+@require_http_methods(["POST"])
+def database_schema_sizes(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    schema_sizes_query = """
+        SELECT
+            sotdschemaname AS schema_name,
+            SUM(sotdsize)::bigint AS size_bytes,
+            pg_size_pretty(SUM(sotdsize)) AS table_size
+        FROM gp_toolkit.gp_size_of_table_disk
+        GROUP BY sotdschemaname
+        ORDER BY SUM(sotdsize) DESC;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(schema_sizes_query)
+                schemas = [
+                    {
+                        "schema_name": row[0],
+                        "size_bytes": int(row[1]),
+                        "table_size": row[2],
+                    }
+                    for row in cursor.fetchall()
+                ]
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
+
+    return JsonResponse({"ok": True, "schemas": schemas})
+
 @require_http_methods(["POST"])
 def segments_info(request):
     payload = _read_json_body(request)
