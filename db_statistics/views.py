@@ -306,7 +306,7 @@ def database_table_sizes(request):
                 ON owner.oid = table_class.relowner
             WHERE table_class.relkind IN ('r', 'p')
               AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
-              AND namespace.nspname NOT LIKE 'pg_toast%'
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
         )
         SELECT
