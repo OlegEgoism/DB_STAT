@@ -646,6 +646,33 @@
         }
 
 
+
+        .segment-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .segment-metric {
+            background: var(--bg-primary);
+            border: 1px solid var(--sidebar-border);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+        }
+
+        .segment-metric .metric-name {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .segment-metric .metric-value {
+            color: var(--text-primary);
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
         /* ========== TABLES ========== */
         .table {
             color: var(--text-primary);

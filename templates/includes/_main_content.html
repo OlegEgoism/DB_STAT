@@ -40,12 +40,13 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-server"></i> Состояние сегментов</span>
-                        <span class="badge badge-soft-success">Все работают</span>
+                        <span class="badge badge-soft-success" id="segmentHealthBadge">Все работают</span>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
                             <canvas id="segmentsChart"></canvas>
                         </div>
+                        <div class="segment-metrics" id="segmentMetricsSummary"></div>
                     </div>
                 </div>
             </div>
@@ -66,7 +67,7 @@
                                     <th>Хост</th>
                                 </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="segmentsTableBody">
                                 <tr>
                                     <td><strong>0</strong></td>
                                     <td>primary</td>

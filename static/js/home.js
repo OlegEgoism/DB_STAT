@@ -9,6 +9,7 @@
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
+    const segmentsInfoApiUrl = '/segments/info/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -23,6 +24,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         loadConnections();
         initCharts();
+        refreshSegmentsForConnection();
         initNavigation();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
@@ -98,6 +100,7 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
+                refreshSegmentsForConnection();
             })
             .catch(() => {
                 const saved = localStorage.getItem('gp_connections');
@@ -112,8 +115,105 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
+                refreshSegmentsForConnection();
                 showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
             });
+    }
+
+    const fallbackSegments = {
+        health: 'Все сегменты подняты и синхронизированы',
+        metrics: [
+            {name: 'Общее количество сегментов', value: 12},
+            {name: 'Cегменты работают', value: 12},
+            {name: 'Cегменты не работают', value: 0},
+            {name: 'Cинхронизированные сегменты', value: 12},
+            {name: 'Основные сегменты', value: 6},
+            {name: 'Зеркальные сегменты', value: 6},
+            {name: 'Процент здоровья', value: 100}
+        ],
+        segments: [
+            {segment: 0, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node01', address: 'gp-node01'},
+            {segment: 1, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node01', address: 'gp-node01'},
+            {segment: 2, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node02', address: 'gp-node02'},
+            {segment: 3, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node02', address: 'gp-node02'},
+            {segment: 4, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6000, hostname: 'gp-node03', address: 'gp-node03'},
+            {segment: 5, role: 'p', preferred_role: 'p', mode: 's', status: 'u', port: 6001, hostname: 'gp-node03', address: 'gp-node03'},
+            {segment: 0, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node04', address: 'gp-node04'},
+            {segment: 1, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node04', address: 'gp-node04'},
+            {segment: 2, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node05', address: 'gp-node05'},
+            {segment: 3, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node05', address: 'gp-node05'},
+            {segment: 4, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7000, hostname: 'gp-node06', address: 'gp-node06'},
+            {segment: 5, role: 'm', preferred_role: 'm', mode: 's', status: 'u', port: 7001, hostname: 'gp-node06', address: 'gp-node06'}
+        ]
+    };
+
+    function roleLabel(role) {
+        return role === 'p' ? 'primary' : role === 'm' ? 'mirror' : role;
+    }
+
+    function statusBadge(status) {
+        return status === 'u' ? '<span class="status-badge up">up</span>' : '<span class="status-badge down">down</span>';
+    }
+
+    function modeBadge(mode) {
+        return mode === 's' ? '<span class="status-badge sync">sync</span>' : '<span class="status-badge unsync">not sync</span>';
+    }
+
+    function renderSegmentMetrics(metrics) {
+        const container = document.getElementById('segmentMetricsSummary');
+        if (!container) return;
+        container.innerHTML = metrics.map(metric => `
+            <div class="segment-metric">
+                <div class="metric-value">${Number(metric.value).toFixed(metric.name.includes('Процент') ? 0 : 0)}</div>
+                <div class="metric-name">${metric.name}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderSegmentsTable(segments) {
+        const tbody = document.getElementById('segmentsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = segments.map(segment => `
+            <tr>
+                <td><strong>${segment.segment}</strong></td>
+                <td>${roleLabel(segment.role)}</td>
+                <td>${statusBadge(segment.status)}</td>
+                <td>${modeBadge(segment.mode)}</td>
+                <td>${segment.hostname || segment.address || '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    function updateSegmentsChart(segments) {
+        if (!charts.segments) return;
+        const contents = [...new Set(segments.filter(segment => Number(segment.segment) >= 0).map(segment => String(segment.segment)))].sort((a, b) => Number(a) - Number(b));
+        charts.segments.data.labels = contents.map(content => `Сегмент ${content}`);
+        charts.segments.data.datasets[0].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'p').length);
+        charts.segments.data.datasets[1].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'm').length);
+        charts.segments.update();
+    }
+
+    function renderSegmentsInfo(data) {
+        const badge = document.getElementById('segmentHealthBadge');
+        if (badge) {
+            const hasProblem = data.health && !data.health.includes('Все сегменты');
+            badge.className = `badge ${hasProblem ? 'badge-soft-danger' : 'badge-soft-success'}`;
+            badge.textContent = data.health || 'Нет данных';
+        }
+        renderSegmentMetrics(data.metrics || []);
+        renderSegmentsTable(data.segments || []);
+        updateSegmentsChart(data.segments || []);
+    }
+
+    function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderSegmentsInfo(fallbackSegments);
+            return;
+        }
+
+        connectionRequest(segmentsInfoApiUrl, {id: conn.id})
+            .then(data => renderSegmentsInfo(data))
+            .catch(() => renderSegmentsInfo(fallbackSegments));
     }
 
     function saveConnections() {
@@ -139,6 +239,7 @@
         activeConnectionId = connId;
         const conn = connections.find(c => c.id === connId);
         if (conn) {
+            refreshSegmentsForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
@@ -199,7 +300,8 @@
             activeConnectionId = connections[0]?.id || null;
             saveConnections();
             populateConnectionSelect();
-                modalInstance.hide();
+            refreshSegmentsForConnection();
+            modalInstance.hide();
             showToast(message);
         };
 
@@ -237,6 +339,7 @@
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
+                refreshSegmentsForConnection(savedConnection);
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
