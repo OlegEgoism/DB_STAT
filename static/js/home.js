@@ -7,6 +7,7 @@
     let modalInstance = null;
     let connectionModalMode = 'create';
     let currentSegments = [];
+    let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -198,6 +199,10 @@
                 } else {
                     segmentsSortState = {column, direction: 'asc'};
                 }
+                if (currentSegmentsWarningHtml) {
+                    updateSegmentsSortIndicators();
+                    return;
+                }
                 renderSegmentsTable(currentSegments);
             });
         });
@@ -219,6 +224,11 @@
         const tbody = document.getElementById('segmentsTableBody');
         if (!tbody) return;
         updateSegmentsSortIndicators();
+        if (currentSegmentsWarningHtml && !segments.length) {
+            tbody.innerHTML = `<tr><td colspan="5">${currentSegmentsWarningHtml}</td></tr>`;
+            return;
+        }
+        currentSegmentsWarningHtml = '';
         tbody.innerHTML = sortSegments(segments).map(segment => `
             <tr>
                 <td><strong>${segment.segment}</strong></td>
@@ -282,6 +292,7 @@
         const metrics = document.getElementById('segmentMetricsSummary');
         if (metrics) metrics.innerHTML = warningHtml;
         currentSegments = [];
+        currentSegmentsWarningHtml = warningHtml;
         updateSegmentsSortIndicators();
 
         const tbody = document.getElementById('segmentsTableBody');
@@ -306,6 +317,7 @@
             badge.textContent = data.health || 'Нет данных';
         }
         setSegmentsChartEmpty(false);
+        currentSegmentsWarningHtml = '';
         currentSegments = data.segments || [];
         renderSegmentMetrics(data.metrics || []);
         renderSegmentsTable(currentSegments);
