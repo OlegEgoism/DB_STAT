@@ -6,6 +6,8 @@
     let charts = {};
     let modalInstance = null;
     let connectionModalMode = 'create';
+    let currentSegments = [];
+    let segmentsSortState = {column: 'segment', direction: 'asc'};
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -40,6 +42,7 @@
         initCharts();
         refreshSegmentsForConnection();
         initNavigation();
+        initSegmentsTableSorting();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -146,6 +149,61 @@
         return mode === 's' ? '<span class="status-badge sync">sync</span>' : '<span class="status-badge unsync">not sync</span>';
     }
 
+
+    function segmentSortValue(segment, column) {
+        if (column === 'segment') {
+            const numericSegment = Number(segment.segment);
+            return Number.isNaN(numericSegment) ? String(segment.segment || '') : numericSegment;
+        }
+        if (column === 'role') return roleLabel(segment.role || '');
+        if (column === 'status') return segment.status === 'u' ? 'up' : 'down';
+        if (column === 'mode') return segment.mode === 's' ? 'sync' : 'not sync';
+        if (column === 'host') return segment.hostname || segment.address || '';
+        return '';
+    }
+
+    function sortSegments(segments) {
+        const {column, direction} = segmentsSortState;
+        const multiplier = direction === 'asc' ? 1 : -1;
+        return [...segments].sort((left, right) => {
+            const leftValue = segmentSortValue(left, column);
+            const rightValue = segmentSortValue(right, column);
+
+            if (typeof leftValue === 'number' && typeof rightValue === 'number') {
+                return (leftValue - rightValue) * multiplier;
+            }
+
+            return String(leftValue).localeCompare(String(rightValue), 'ru', {numeric: true, sensitivity: 'base'}) * multiplier;
+        });
+    }
+
+    function updateSegmentsSortIndicators() {
+        document.querySelectorAll('[data-segments-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.segmentsSort === segmentsSortState.column;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${segmentsSortState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function initSegmentsTableSorting() {
+        document.querySelectorAll('[data-segments-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const column = this.dataset.segmentsSort;
+                if (segmentsSortState.column === column) {
+                    segmentsSortState.direction = segmentsSortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    segmentsSortState = {column, direction: 'asc'};
+                }
+                renderSegmentsTable(currentSegments);
+            });
+        });
+        updateSegmentsSortIndicators();
+    }
+
     function renderSegmentMetrics(metrics) {
         const container = document.getElementById('segmentMetricsSummary');
         if (!container) return;
@@ -160,7 +218,8 @@
     function renderSegmentsTable(segments) {
         const tbody = document.getElementById('segmentsTableBody');
         if (!tbody) return;
-        tbody.innerHTML = segments.map(segment => `
+        updateSegmentsSortIndicators();
+        tbody.innerHTML = sortSegments(segments).map(segment => `
             <tr>
                 <td><strong>${segment.segment}</strong></td>
                 <td>${roleLabel(segment.role)}</td>
@@ -222,6 +281,8 @@
 
         const metrics = document.getElementById('segmentMetricsSummary');
         if (metrics) metrics.innerHTML = warningHtml;
+        currentSegments = [];
+        updateSegmentsSortIndicators();
 
         const tbody = document.getElementById('segmentsTableBody');
         if (tbody) {
@@ -245,9 +306,10 @@
             badge.textContent = data.health || 'Нет данных';
         }
         setSegmentsChartEmpty(false);
+        currentSegments = data.segments || [];
         renderSegmentMetrics(data.metrics || []);
-        renderSegmentsTable(data.segments || []);
-        updateSegmentsChart(data.segments || []);
+        renderSegmentsTable(currentSegments);
+        updateSegmentsChart(currentSegments);
     }
 
     function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
