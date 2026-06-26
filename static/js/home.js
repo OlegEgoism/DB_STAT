@@ -18,6 +18,21 @@
         {id: 'analytics', name: 'Analytics Cluster', host: 'analytics.example.com', port: 5432, database: 'analytics', user: 'analytics_user', ssl: true, status: 'online'}
     ];
 
+    const pageTitles = {
+        'segments': 'Сегменты <small>Состояние и конфигурация</small>',
+        'cluster-health': 'Здоровье кластера <small>Метрики доступности</small>',
+        'databases': 'Базы данных <small>Размеры и статистика</small>',
+        'tables': 'Таблицы <small>Список и размеры таблиц</small>',
+        'distribution': 'Распределение <small>Перекос данных</small>',
+        'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
+        'queries': 'Активные запросы <small>Долгие запросы</small>',
+        'locks': 'Блокировки <small>Кто кого блокирует</small>',
+        'transactions': 'Транзакции <small>Commit / Rollback</small>',
+        'memory': 'Память <small>Параметры памяти</small>',
+        'bloat': 'Раздувание <small>Bloat анализ</small>',
+        'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
+    };
+
     // ============================
     // INIT
     // ============================
@@ -211,6 +226,12 @@
             return;
         }
 
+        const badge = document.getElementById('segmentHealthBadge');
+        if (badge) {
+            badge.className = 'badge badge-soft-info';
+            badge.textContent = 'Обновление...';
+        }
+
         connectionRequest(segmentsInfoApiUrl, {id: conn.id})
             .then(data => renderSegmentsInfo(data))
             .catch(() => renderSegmentsInfo(fallbackSegments));
@@ -235,10 +256,31 @@
         }
     }
 
+    function activatePage(pageId) {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.page === pageId);
+        });
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        const target = document.getElementById('page-' + pageId);
+        if (target) target.classList.add('active');
+        document.getElementById('pageTitle').innerHTML = pageTitles[pageId] || pageId;
+
+        setTimeout(() => {
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.resize) chart.resize();
+            });
+        }, 100);
+
+        if (window.innerWidth <= 992) {
+            document.getElementById('sidebar').classList.remove('open');
+        }
+    }
+
     function onConnectionChange(connId) {
         activeConnectionId = connId;
         const conn = connections.find(c => c.id === connId);
         if (conn) {
+            activatePage('segments');
             refreshSegmentsForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
@@ -393,46 +435,10 @@
     // NAVIGATION
     // ============================
     function initNavigation() {
-        const items = document.querySelectorAll('.nav-item');
-        const pages = document.querySelectorAll('.page');
-        const titles = {
-            'segments': 'Сегменты <small>Состояние и конфигурация</small>',
-            'cluster-health': 'Здоровье кластера <small>Метрики доступности</small>',
-            'databases': 'Базы данных <small>Размеры и статистика</small>',
-            'tables': 'Таблицы <small>Список и размеры таблиц</small>',
-            'distribution': 'Распределение <small>Перекос данных</small>',
-            'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
-            'queries': 'Активные запросы <small>Долгие запросы</small>',
-            'locks': 'Блокировки <small>Кто кого блокирует</small>',
-            'transactions': 'Транзакции <small>Commit / Rollback</small>',
-            'memory': 'Память <small>Параметры памяти</small>',
-            'bloat': 'Раздувание <small>Bloat анализ</small>',
-            'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
-        };
-
-        items.forEach(item => {
+        document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function (e) {
                 e.preventDefault();
-                const pageId = this.dataset.page;
-
-                items.forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-
-                pages.forEach(p => p.classList.remove('active'));
-                const target = document.getElementById('page-' + pageId);
-                if (target) target.classList.add('active');
-
-                document.getElementById('pageTitle').innerHTML = titles[pageId] || pageId;
-
-                setTimeout(() => {
-                    Object.values(charts).forEach(chart => {
-                        if (chart && chart.resize) chart.resize();
-                    });
-                }, 100);
-
-                if (window.innerWidth <= 992) {
-                    document.getElementById('sidebar').classList.remove('open');
-                }
+                activatePage(this.dataset.page);
             });
         });
     }
