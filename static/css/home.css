@@ -744,6 +744,35 @@
             color: var(--text-secondary);
         }
 
+        .table-sort-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            letter-spacing: inherit;
+            text-transform: inherit;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .table-sort-btn i {
+            color: var(--text-muted);
+            font-size: 10px;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .table-sort-btn:hover,
+        .table-sort-btn.active {
+            color: var(--accent-blue);
+        }
+
+        .table-sort-btn.active i {
+            color: var(--accent-blue);
+        }
+
         .table tbody tr:hover {
             background: rgba(0, 0, 0, 0.02);
         }
