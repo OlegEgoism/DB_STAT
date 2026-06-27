@@ -181,7 +181,7 @@
         if (name) name.textContent = 'Выберите подключение';
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
+        if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (connectionTbody) connectionTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
     }
 
@@ -231,11 +231,10 @@
         }
         if (memoryTbody) {
             if (!memorySettings.length) {
-                memoryTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Нет данных о параметрах памяти</td></tr>';
+                memoryTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о параметрах памяти</td></tr>';
             } else {
                 memoryTbody.innerHTML = memorySettings.map(item => `
                     <tr>
-                        <td><code>${item.setting}</code></td>
                         <td>${item.label}</td>
                         <td><strong>${item.value}</strong></td>
                     </tr>
