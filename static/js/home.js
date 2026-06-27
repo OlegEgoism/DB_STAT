@@ -663,7 +663,7 @@
             renderDistributionWarning('Таблицы не найдены');
             return;
         }
-        select.innerHTML = tables.map((table, index) => `<option value="${index}">${table.schema_name}.${table.table_name}</option>`).join('');
+        select.innerHTML = tables.map((table, index) => `<option value="${index}">${table.schema_name}.${table.table_name} — ${table.object_type || 'Таблица'}</option>`).join('');
         refreshDistributionForSelectedTable();
     }
 

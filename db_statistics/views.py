@@ -527,11 +527,16 @@ def distribution_tables(request):
     tables_query = """
         SELECT
             namespace.nspname AS schema_name,
-            table_class.relname AS table_name
+            table_class.relname AS table_name,
+            CASE table_class.relkind
+                WHEN 'm' THEN 'Материализованное представление'
+                WHEN 'p' THEN 'Партиционированная таблица'
+                ELSE 'Таблица'
+            END AS object_type
         FROM pg_catalog.pg_class AS table_class
         JOIN pg_catalog.pg_namespace AS namespace
             ON namespace.oid = table_class.relnamespace
-        WHERE table_class.relkind IN ('r', 'p')
+        WHERE table_class.relkind IN ('r', 'p', 'm')
           AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
           AND namespace.nspname NOT LIKE 'pg_toast%%'
         ORDER BY namespace.nspname ASC, table_class.relname ASC;
@@ -549,7 +554,7 @@ def distribution_tables(request):
         ) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(tables_query)
-                tables = [{"schema_name": row[0], "table_name": row[1]} for row in cursor.fetchall()]
+                tables = [{"schema_name": row[0], "table_name": row[1], "object_type": row[2]} for row in cursor.fetchall()]
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить список таблиц: {exc}"}, status=400)
 
@@ -575,7 +580,7 @@ def distribution_info(request):
             ON namespace.oid = table_class.relnamespace
         WHERE namespace.nspname = %s
           AND table_class.relname = %s
-          AND table_class.relkind IN ('r', 'p')
+          AND table_class.relkind IN ('r', 'p', 'm')
         LIMIT 1;
     """
     distribution_query = sql.SQL("""
