@@ -247,7 +247,6 @@ def database_overview(request):
     connection_info = [
         {"label": "Хост", "value": db_connection.host},
         {"label": "Порт", "value": db_connection.port},
-        {"label": "База данных", "value": db_connection.database},
     ]
     return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings})
 
