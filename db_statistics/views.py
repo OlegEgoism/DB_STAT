@@ -619,6 +619,73 @@ def memory_overview(request):
 
 
 @require_http_methods(["POST"])
+def maintenance_stats(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    maintenance_query = """
+        SELECT
+            schemaname,
+            relname,
+            COALESCE(n_live_tup, 0)::bigint AS live_rows,
+            COALESCE(n_dead_tup, 0)::bigint AS dead_rows,
+            CASE
+                WHEN COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0) = 0 THEN 0
+                ELSE ROUND(COALESCE(n_dead_tup, 0) * 100.0 / (COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0)), 2)
+            END AS dead_percent,
+            CASE
+                WHEN last_vacuum IS NULL THEN last_autovacuum
+                WHEN last_autovacuum IS NULL THEN last_vacuum
+                ELSE GREATEST(last_vacuum, last_autovacuum)
+            END AS last_vacuum_at,
+            CASE
+                WHEN last_analyze IS NULL THEN last_autoanalyze
+                WHEN last_autoanalyze IS NULL THEN last_analyze
+                ELSE GREATEST(last_analyze, last_autoanalyze)
+            END AS last_analyze_at
+        FROM pg_catalog.pg_stat_user_tables
+        ORDER BY COALESCE(n_dead_tup, 0) DESC, schemaname ASC, relname ASC
+        LIMIT 100;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(maintenance_query)
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить статистику обслуживания: {exc}"}, status=400)
+
+    def format_datetime(value):
+        return value.strftime("%Y-%m-%d %H:%M:%S") if value else "Никогда"
+
+    tables = [
+        {
+            "schema_name": row[0],
+            "table_name": row[1],
+            "live_rows": int(row[2] or 0),
+            "dead_rows": int(row[3] or 0),
+            "dead_percent": float(row[4] or 0),
+            "last_vacuum": format_datetime(row[5]),
+            "last_analyze": format_datetime(row[6]),
+        }
+        for row in rows
+    ]
+    return JsonResponse({"ok": True, "tables": tables, "total_count": len(tables)})
+
+
+@require_http_methods(["POST"])
 def database_schema_sizes(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")

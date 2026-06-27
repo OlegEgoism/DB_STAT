@@ -40,6 +40,7 @@
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
+    const maintenanceStatsApiUrl = '/maintenance/stats/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -509,6 +510,51 @@
         connectionRequest(memoryOverviewApiUrl, {id: conn.id})
             .then(data => renderMemoryOverview(data))
             .catch(error => renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти'));
+    }
+
+    function renderMaintenanceStatsWarning(message) {
+        const tbody = document.getElementById('maintenanceStatsTableBody');
+        const count = document.getElementById('maintenanceStatsCount');
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderMaintenanceStats(data) {
+        const tbody = document.getElementById('maintenanceStatsTableBody');
+        const count = document.getElementById('maintenanceStatsCount');
+        const tables = data.tables || [];
+        if (count) count.textContent = `${tables.length} таблиц`;
+        if (!tbody) return;
+        if (!tables.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Статистика обслуживания не найдена</td></tr>';
+            return;
+        }
+        tbody.innerHTML = tables.map(table => {
+            const deadPercent = Number(table.dead_percent) || 0;
+            const deadClass = deadPercent >= 10 ? 'text-danger' : (deadPercent >= 1 ? 'text-warning' : 'text-success');
+            return `
+                <tr>
+                    <td>${escapeHtml(table.schema_name)}</td>
+                    <td><code>${escapeHtml(table.table_name)}</code></td>
+                    <td>${formatRowCount(table.live_rows)}</td>
+                    <td>${formatRowCount(table.dead_rows)}</td>
+                    <td><span class="${deadClass}">${deadPercent}%</span></td>
+                    <td>${escapeHtml(table.last_vacuum)}</td>
+                    <td>${escapeHtml(table.last_analyze)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function refreshMaintenanceStatsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderMaintenanceStatsWarning('Выберите сохранённое подключение для загрузки статистики обслуживания');
+            return;
+        }
+        renderMaintenanceStatsWarning('Загрузка статистики обслуживания...');
+        connectionRequest(maintenanceStatsApiUrl, {id: conn.id})
+            .then(data => renderMaintenanceStats(data))
+            .catch(error => renderMaintenanceStatsWarning(error.message || 'Не удалось получить статистику обслуживания'));
     }
 
     function renderSchemaSizesWarning(message) {
@@ -1485,6 +1531,9 @@
         if (pageId === 'memory') {
             refreshMemoryOverviewForConnection();
         }
+        if (pageId === 'maintenance') {
+            refreshMaintenanceStatsForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1709,6 +1758,9 @@
         }
         if (document.getElementById('page-memory')?.classList.contains('active')) {
             refreshMemoryOverviewForConnection();
+        }
+        if (document.getElementById('page-maintenance')?.classList.contains('active')) {
+            refreshMaintenanceStatsForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
