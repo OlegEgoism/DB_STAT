@@ -21,6 +21,7 @@
     let currentDistributionTotalRows = 0;
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
+    let activeQueriesRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -33,6 +34,7 @@
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
+    const activeQueriesApiUrl = '/queries/active/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -56,6 +58,15 @@
         'bloat': 'Раздувание <small>Bloat анализ</small>',
         'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
     };
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
     // ============================
     // INIT
@@ -268,6 +279,53 @@
         connectionRequest(databaseOverviewApiUrl, {id: conn.id})
             .then(data => renderDatabaseOverview(data))
             .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+    }
+
+    function renderActiveQueriesWarning(message) {
+        const tbody = document.getElementById('activeQueriesTableBody');
+        const count = document.getElementById('activeQueriesCount');
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderActiveQueries(data) {
+        const tbody = document.getElementById('activeQueriesTableBody');
+        const count = document.getElementById('activeQueriesCount');
+        const queries = data.queries || [];
+        if (count) count.textContent = `${queries.length} активных запросов`;
+        if (!tbody) return;
+        if (!queries.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Активные запросы не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = queries.map(query => `
+            <tr>
+                <td><strong>${escapeHtml(query.pid)}</strong></td>
+                <td>${escapeHtml(query.username)}</td>
+                <td>${escapeHtml(query.relation_name)}</td>
+                <td><span class="status-badge up">${escapeHtml(query.state)}</span></td>
+                <td>${escapeHtml(query.duration)}</td>
+                <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(query.sql)}">${escapeHtml(query.sql)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshActiveQueriesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderActiveQueriesWarning('Выберите сохранённое подключение для загрузки активных запросов');
+            return;
+        }
+        const requestId = ++activeQueriesRequestId;
+        renderActiveQueriesWarning('Загрузка активных запросов...');
+        connectionRequest(activeQueriesApiUrl, {id: conn.id})
+            .then(data => {
+                if (requestId !== activeQueriesRequestId) return;
+                renderActiveQueries(data);
+            })
+            .catch(error => {
+                if (requestId !== activeQueriesRequestId) return;
+                renderActiveQueriesWarning(error.message || 'Не удалось получить активные запросы');
+            });
     }
 
     function renderSchemaSizesWarning(message) {
@@ -1232,6 +1290,9 @@
         if (pageId === 'distribution') {
             refreshDistributionTablesForConnection();
         }
+        if (pageId === 'queries') {
+            refreshActiveQueriesForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1444,6 +1505,9 @@
         }
         if (document.getElementById('page-distribution')?.classList.contains('active')) {
             refreshDistributionTablesForConnection();
+        }
+        if (document.getElementById('page-queries')?.classList.contains('active')) {
+            refreshActiveQueriesForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
