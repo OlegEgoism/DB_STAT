@@ -168,56 +168,60 @@
 
     function renderDatabaseOverviewWarning(message) {
         const tbody = document.getElementById('databaseOverviewTableBody');
+        const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const count = document.getElementById('databaseOverviewCount');
+        const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const name = document.getElementById('databaseOverviewName');
+        const version = document.getElementById('databaseOverviewVersion');
         if (count) count.textContent = 'Нет данных';
+        if (memoryCount) memoryCount.textContent = 'Нет данных';
         if (name) name.textContent = 'Выберите подключение';
+        if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        updateDatabaseOverviewChart([]);
-    }
-
-    function databaseOverviewChartScale(metrics) {
-        const maxBytes = Math.max(...metrics.map(item => Number(item.size_bytes) || 0), 0);
-        const mb = 1024 ** 2;
-        const gb = 1024 ** 3;
-        const tb = 1024 ** 4;
-        if (maxBytes >= tb) return {unit: 'TB', divider: tb};
-        if (maxBytes >= gb) return {unit: 'GB', divider: gb};
-        return {unit: 'MB', divider: mb};
-    }
-
-    function updateDatabaseOverviewChart(metrics) {
-        if (!charts.databaseOverview) return;
-        const scale = databaseOverviewChartScale(metrics);
-        charts.databaseOverview.data.labels = metrics.map(item => item.label);
-        charts.databaseOverview.data.datasets[0].label = `Размер (${scale.unit})`;
-        charts.databaseOverview.data.datasets[0].data = metrics.map(item => Number(((Number(item.size_bytes) || 0) / scale.divider).toFixed(2)));
-        charts.databaseOverview.options.scales.y.title.text = `Размер, ${scale.unit}`;
-        charts.databaseOverview.update();
+        if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
     }
 
     function renderDatabaseOverview(data) {
         const tbody = document.getElementById('databaseOverviewTableBody');
+        const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const count = document.getElementById('databaseOverviewCount');
+        const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const name = document.getElementById('databaseOverviewName');
+        const version = document.getElementById('databaseOverviewVersion');
         const metrics = data.metrics || [];
+        const memorySettings = data.memory_settings || [];
         if (count) count.textContent = `${metrics.length} метрик`;
+        if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
         if (name) name.textContent = data.database || '—';
-        updateDatabaseOverviewChart(metrics);
-        if (!tbody) return;
-        if (!metrics.length) {
-            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о размерах БД</td></tr>';
-            return;
+        if (version) version.textContent = data.database_version || '—';
+        if (tbody) {
+            if (!metrics.length) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о размерах БД</td></tr>';
+            } else {
+                tbody.innerHTML = metrics.map(item => {
+                    const formatted = formatDatabaseSize(item.size_bytes);
+                    return `
+                        <tr>
+                            <td>${item.label}</td>
+                            <td><strong>${formatted.value} ${formatted.unit}</strong></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
         }
-        tbody.innerHTML = metrics.map(item => {
-            const formatted = formatDatabaseSize(item.size_bytes);
-            return `
-                <tr>
-                    <td>${item.label}</td>
-                    <td><strong>${formatted.value} ${formatted.unit}</strong></td>
-                </tr>
-            `;
-        }).join('');
+        if (memoryTbody) {
+            if (!memorySettings.length) {
+                memoryTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Нет данных о параметрах памяти</td></tr>';
+            } else {
+                memoryTbody.innerHTML = memorySettings.map(item => `
+                    <tr>
+                        <td><code>${item.setting}</code></td>
+                        <td>${item.label}</td>
+                        <td><strong>${item.value}</strong></td>
+                    </tr>
+                `).join('');
+            }
+        }
     }
 
     function refreshDatabaseOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
@@ -1450,34 +1454,6 @@
                 }
             }
         };
-
-        // ---- 2. Database Overview ----
-        const ctxDbOverview = document.getElementById('databaseOverviewChart').getContext('2d');
-        charts.databaseOverview = new Chart(ctxDbOverview, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Размер',
-                    data: [],
-                    backgroundColor: [colors.blue, colors.purple, colors.green, colors.yellow, colors.teal],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}},
-                scales: {
-                    x: {ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}}, grid: {display: false}},
-                    y: {
-                        beginAtZero: true,
-                        title: {display: true, text: 'Размер, MB', color: '#8a9bb0', font: {size: 11, family: 'Inter'}},
-                        ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}},
-                        grid: {color: 'rgba(0,0,0,0.04)'}
-                    }
-                }
-            }
-        });
 
         // ---- 3. Segments ----
         const ctx3 = document.getElementById('segmentsChart').getContext('2d');

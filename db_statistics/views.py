@@ -204,6 +204,10 @@ def database_overview(request):
               AND namespace.nspname NOT LIKE 'pg_toast%%'
         )
         SELECT
+            version() AS database_version,
+            current_setting('statement_mem', true) AS statement_mem,
+            current_setting('max_statement_mem', true) AS max_statement_mem,
+            current_setting('gp_vmem_protect_limit', true) AS gp_vmem_protect_limit,
             pg_database_size(%s)::bigint AS total_size_bytes,
             COALESCE(SUM(index_size_bytes), 0)::bigint AS index_size_bytes,
             GREATEST(pg_database_size(%s)::bigint - COALESCE(SUM(index_size_bytes), 0)::bigint, 0)::bigint AS data_size_without_indexes_bytes,
@@ -229,13 +233,18 @@ def database_overview(request):
         return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
 
     metrics = [
-        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[0] or 0)},
-        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[1] or 0)},
-        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[2] or 0)},
-        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[3] or 0)},
-        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[4] or 0)},
+        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[4] or 0)},
+        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[5] or 0)},
+        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[6] or 0)},
+        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[7] or 0)},
+        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[8] or 0)},
     ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "metrics": metrics})
+    memory_settings = [
+        {"key": "statement_mem", "label": "Память на один запрос", "setting": "statement_mem", "value": row[1] or "—"},
+        {"key": "max_statement_mem", "label": "Максимальная память на запрос", "setting": "max_statement_mem", "value": row[2] or "—"},
+        {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "setting": "gp_vmem_protect_limit", "value": row[3] or "—"},
+    ]
+    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "metrics": metrics, "memory_settings": memory_settings})
 
 
 @require_http_methods(["POST"])
