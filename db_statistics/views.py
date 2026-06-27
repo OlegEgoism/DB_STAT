@@ -1,6 +1,7 @@
 import json
 
 import psycopg2
+from psycopg2 import sql
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -401,6 +402,121 @@ def database_table_sizes(request):
     total_count = int(rows[0][8]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
+
+
+@require_http_methods(["POST"])
+def distribution_tables(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    tables_query = """
+        SELECT
+            namespace.nspname AS schema_name,
+            table_class.relname AS table_name
+        FROM pg_catalog.pg_class AS table_class
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = table_class.relnamespace
+        WHERE table_class.relkind IN ('r', 'p')
+          AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+          AND namespace.nspname NOT LIKE 'pg_toast%%'
+        ORDER BY namespace.nspname ASC, table_class.relname ASC;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(tables_query)
+                tables = [{"schema_name": row[0], "table_name": row[1]} for row in cursor.fetchall()]
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить список таблиц: {exc}"}, status=400)
+
+    return JsonResponse({"ok": True, "tables": tables})
+
+
+@require_http_methods(["POST"])
+def distribution_info(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    schema_name = (payload.get("schema_name") or "").strip()
+    table_name = (payload.get("table_name") or "").strip()
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+    if not schema_name or not table_name:
+        return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    validate_query = """
+        SELECT 1
+        FROM pg_catalog.pg_class AS table_class
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = table_class.relnamespace
+        WHERE namespace.nspname = %s
+          AND table_class.relname = %s
+          AND table_class.relkind IN ('r', 'p')
+        LIMIT 1;
+    """
+    distribution_query = sql.SQL("""
+        SELECT gp_segment_id::int AS segment_id, COUNT(*)::bigint AS row_count
+        FROM {}.{}
+        GROUP BY gp_segment_id
+        ORDER BY gp_segment_id ASC;
+    """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(validate_query, [schema_name, table_name])
+                if not cursor.fetchone():
+                    return JsonResponse({"ok": False, "message": "Выбранная таблица не найдена"}, status=404)
+                cursor.execute(distribution_query)
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить распределение: {exc}"}, status=400)
+
+    segments = [{"segment_id": int(row[0]), "row_count": int(row[1])} for row in rows]
+    counts = [item["row_count"] for item in segments]
+    total_rows = sum(counts)
+    min_rows = min(counts) if counts else 0
+    max_rows = max(counts) if counts else 0
+    avg_rows = round(total_rows / len(counts), 2) if counts else 0
+    skew_ratio = round(max_rows / min_rows, 2) if min_rows else (float(max_rows) if max_rows else 0)
+    status = "высокий" if skew_ratio >= 1.5 else "средний" if skew_ratio >= 1.2 else "норм."
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "schema_name": schema_name,
+            "table_name": table_name,
+            "segments": segments,
+            "metrics": {
+                "total_rows": total_rows,
+                "min_rows": min_rows,
+                "max_rows": max_rows,
+                "avg_rows": avg_rows,
+                "skew_ratio": skew_ratio,
+                "status": status,
+            },
+        }
+    )
 
 @require_http_methods(["POST"])
 def database_temp_table_sizes(request):
