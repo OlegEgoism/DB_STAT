@@ -20,5 +20,6 @@ urlpatterns = [
     path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
     path("memory/overview/", views.memory_overview, name="memory_overview"),
+    path("maintenance/stats/", views.maintenance_stats, name="maintenance_stats"),
     path("segments/info/", views.segments_info, name="segments_info"),
 ]
