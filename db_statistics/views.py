@@ -51,7 +51,7 @@ def _read_json_body(request):
 
 
 def _escape_like_pattern(value):
-    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    return value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
@@ -328,9 +328,9 @@ def database_table_sizes(request):
         search_pattern = f"%{_escape_like_pattern(search)}%"
         where_sql = """
           AND (
-              namespace.nspname ILIKE %s ESCAPE E'\\'
-              OR table_class.relname ILIKE %s ESCAPE E'\\'
-              OR (namespace.nspname || '.' || table_class.relname) ILIKE %s ESCAPE E'\\'
+              namespace.nspname ILIKE %s ESCAPE '!'
+              OR table_class.relname ILIKE %s ESCAPE '!'
+              OR (namespace.nspname || '.' || table_class.relname) ILIKE %s ESCAPE '!'
           )
         """
         params.extend([search_pattern, search_pattern, search_pattern])
