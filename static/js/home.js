@@ -42,7 +42,7 @@
     ];
 
     const pageTitles = {
-        'database-overview': 'База данных <small>Размеры и структура</small>',
+        'database-overview': 'База данных <small>Версия, хосты и параметры</small>',
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
         'databases': 'Схемы <small>Размер и статистика</small>',
         'tables': 'Таблицы <small>Список и размеры таблиц</small>',
@@ -166,69 +166,87 @@
     }
 
 
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[char]));
+    }
+
     function renderDatabaseOverviewWarning(message) {
-        const tbody = document.getElementById('databaseOverviewTableBody');
-        const count = document.getElementById('databaseOverviewCount');
+        const versionBody = document.getElementById('databaseVersionTableBody');
+        const hostsBody = document.getElementById('databaseHostsTableBody');
+        const settingsBody = document.getElementById('databaseSettingsTableBody');
+        const resgroupHead = document.getElementById('databaseResgroupTableHead');
+        const resgroupBody = document.getElementById('databaseResgroupTableBody');
+        const hostsCount = document.getElementById('databaseHostsCount');
+        const settingsCount = document.getElementById('databaseSettingsCount');
+        const resgroupCount = document.getElementById('databaseResgroupCount');
         const name = document.getElementById('databaseOverviewName');
-        if (count) count.textContent = 'Нет данных';
         if (name) name.textContent = 'Выберите подключение';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        updateDatabaseOverviewChart([]);
-    }
-
-    function databaseOverviewChartScale(metrics) {
-        const maxBytes = Math.max(...metrics.map(item => Number(item.size_bytes) || 0), 0);
-        const mb = 1024 ** 2;
-        const gb = 1024 ** 3;
-        const tb = 1024 ** 4;
-        if (maxBytes >= tb) return {unit: 'TB', divider: tb};
-        if (maxBytes >= gb) return {unit: 'GB', divider: gb};
-        return {unit: 'MB', divider: mb};
-    }
-
-    function updateDatabaseOverviewChart(metrics) {
-        if (!charts.databaseOverview) return;
-        const scale = databaseOverviewChartScale(metrics);
-        charts.databaseOverview.data.labels = metrics.map(item => item.label);
-        charts.databaseOverview.data.datasets[0].label = `Размер (${scale.unit})`;
-        charts.databaseOverview.data.datasets[0].data = metrics.map(item => Number(((Number(item.size_bytes) || 0) / scale.divider).toFixed(2)));
-        charts.databaseOverview.options.scales.y.title.text = `Размер, ${scale.unit}`;
-        charts.databaseOverview.update();
+        if (hostsCount) hostsCount.textContent = 'Нет данных';
+        if (settingsCount) settingsCount.textContent = 'Нет данных';
+        if (resgroupCount) resgroupCount.textContent = 'Нет данных';
+        if (versionBody) versionBody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (hostsBody) hostsBody.innerHTML = '<tr><td class="text-muted">Нет данных</td></tr>';
+        if (settingsBody) settingsBody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных</td></tr>';
+        if (resgroupHead) resgroupHead.innerHTML = '<tr><th>Параметр</th></tr>';
+        if (resgroupBody) resgroupBody.innerHTML = '<tr><td class="text-muted">Нет данных</td></tr>';
     }
 
     function renderDatabaseOverview(data) {
-        const tbody = document.getElementById('databaseOverviewTableBody');
-        const count = document.getElementById('databaseOverviewCount');
+        const versionBody = document.getElementById('databaseVersionTableBody');
+        const hostsBody = document.getElementById('databaseHostsTableBody');
+        const settingsBody = document.getElementById('databaseSettingsTableBody');
+        const resgroupHead = document.getElementById('databaseResgroupTableHead');
+        const resgroupBody = document.getElementById('databaseResgroupTableBody');
+        const hostsCount = document.getElementById('databaseHostsCount');
+        const settingsCount = document.getElementById('databaseSettingsCount');
+        const resgroupCount = document.getElementById('databaseResgroupCount');
         const name = document.getElementById('databaseOverviewName');
-        const metrics = data.metrics || [];
-        if (count) count.textContent = `${metrics.length} метрик`;
+        const hostnames = data.hostnames || [];
+        const settings = data.settings || [];
+        const resgroupRows = data.resgroup_config || [];
         if (name) name.textContent = data.database || '—';
-        updateDatabaseOverviewChart(metrics);
-        if (!tbody) return;
-        if (!metrics.length) {
-            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о размерах БД</td></tr>';
-            return;
+        if (hostsCount) hostsCount.textContent = `${hostnames.length} хостов`;
+        if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
+        if (resgroupCount) resgroupCount.textContent = `${resgroupRows.length} строк`;
+        if (versionBody) {
+            versionBody.innerHTML = `<tr><td>version()</td><td><strong>${escapeHtml(data.version || '—')}</strong></td></tr>`;
         }
-        tbody.innerHTML = metrics.map(item => {
-            const formatted = formatDatabaseSize(item.size_bytes);
-            return `
-                <tr>
-                    <td>${item.label}</td>
-                    <td><strong>${formatted.value} ${formatted.unit}</strong></td>
-                </tr>
-            `;
-        }).join('');
+        if (hostsBody) {
+            hostsBody.innerHTML = hostnames.length
+                ? hostnames.map(hostname => `<tr><td>${escapeHtml(hostname)}</td></tr>`).join('')
+                : '<tr><td class="text-muted">Нет данных</td></tr>';
+        }
+        if (settingsBody) {
+            settingsBody.innerHTML = settings.length
+                ? settings.map(item => `<tr><td>${escapeHtml(item.name)}</td><td><strong>${escapeHtml(item.value)}</strong></td></tr>`).join('')
+                : '<tr><td colspan="2" class="text-muted">Нет данных</td></tr>';
+        }
+        if (resgroupHead && resgroupBody) {
+            const columns = resgroupRows.length ? Object.keys(resgroupRows[0]) : [];
+            resgroupHead.innerHTML = columns.length
+                ? `<tr>${columns.map(column => `<th>${escapeHtml(column)}</th>`).join('')}</tr>`
+                : '<tr><th>Параметр</th></tr>';
+            resgroupBody.innerHTML = resgroupRows.length
+                ? resgroupRows.map(row => `<tr>${columns.map(column => `<td>${escapeHtml(row[column])}</td>`).join('')}</tr>`).join('')
+                : '<tr><td class="text-muted">Нет данных</td></tr>';
+        }
     }
 
     function refreshDatabaseOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderDatabaseOverviewWarning('Выберите сохранённое подключение для загрузки размеров БД');
+            renderDatabaseOverviewWarning('Выберите сохранённое подключение для загрузки информации о БД');
             return;
         }
-        renderDatabaseOverviewWarning('Загрузка размеров БД...');
+        renderDatabaseOverviewWarning('Загрузка информации о БД...');
         connectionRequest(databaseOverviewApiUrl, {id: conn.id})
             .then(data => renderDatabaseOverview(data))
-            .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+            .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить информацию о БД'));
     }
 
     function renderSchemaSizesWarning(message) {
@@ -1451,33 +1469,7 @@
             }
         };
 
-        // ---- 2. Database Overview ----
-        const ctxDbOverview = document.getElementById('databaseOverviewChart').getContext('2d');
-        charts.databaseOverview = new Chart(ctxDbOverview, {
-            type: 'bar',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Размер',
-                    data: [],
-                    backgroundColor: [colors.blue, colors.purple, colors.green, colors.yellow, colors.teal],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}},
-                scales: {
-                    x: {ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}}, grid: {display: false}},
-                    y: {
-                        beginAtZero: true,
-                        title: {display: true, text: 'Размер, MB', color: '#8a9bb0', font: {size: 11, family: 'Inter'}},
-                        ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}},
-                        grid: {color: 'rgba(0,0,0,0.04)'}
-                    }
-                }
-            }
-        });
+        // ---- 2. Database Overview renders server data in tables. ----
 
         // ---- 3. Segments ----
         const ctx3 = document.getElementById('segmentsChart').getContext('2d');

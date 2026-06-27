@@ -183,34 +183,11 @@ def database_overview(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
-    overview_query = """
-        WITH relation_sizes AS (
-            SELECT
-                table_class.oid,
-                table_class.relkind,
-                table_class.relpersistence,
-                namespace.nspname,
-                pg_total_relation_size(table_class.oid)::bigint AS total_size_bytes,
-                CASE
-                    WHEN table_class.relkind IN ('r', 'p', 'm')
-                    THEN pg_indexes_size(table_class.oid)::bigint
-                    ELSE 0::bigint
-                END AS index_size_bytes
-            FROM pg_catalog.pg_class AS table_class
-            JOIN pg_catalog.pg_namespace AS namespace
-                ON namespace.oid = table_class.relnamespace
-            WHERE table_class.relkind IN ('r', 'p', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
-              AND namespace.nspname NOT LIKE 'pg_toast%%'
-        )
-        SELECT
-            pg_database_size(%s)::bigint AS total_size_bytes,
-            COALESCE(SUM(index_size_bytes), 0)::bigint AS index_size_bytes,
-            GREATEST(pg_database_size(%s)::bigint - COALESCE(SUM(index_size_bytes), 0)::bigint, 0)::bigint AS data_size_without_indexes_bytes,
-            COALESCE(SUM(total_size_bytes) FILTER (WHERE relpersistence = 't' OR nspname LIKE 'pg_temp_%%'), 0)::bigint AS temp_table_size_bytes,
-            COALESCE(SUM(total_size_bytes) FILTER (WHERE relkind = 'm'), 0)::bigint AS materialized_view_size_bytes
-        FROM relation_sizes;
-    """
+
+    def fetch_rows(cursor, query):
+        cursor.execute(query)
+        columns = [column.name for column in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     try:
         with psycopg2.connect(
@@ -223,19 +200,39 @@ def database_overview(request):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(overview_query, [db_connection.database, db_connection.database])
-                row = cursor.fetchone()
+                version_rows = fetch_rows(cursor, "SELECT version() AS version;")
+                host_rows = fetch_rows(
+                    cursor,
+                    """
+                    SELECT DISTINCT hostname
+                    FROM gp_segment_configuration
+                    ORDER BY hostname;
+                    """,
+                )
+                resgroup_rows = fetch_rows(
+                    cursor,
+                    """
+                    SELECT *
+                    FROM gp_toolkit.gp_resgroup_config;
+                    """,
+                )
+                settings = []
+                for setting_name in ["statement_mem", "max_statement_mem", "gp_vmem_protect_limit"]:
+                    cursor.execute(f"SHOW {setting_name};")
+                    settings.append({"name": setting_name, "value": cursor.fetchone()[0]})
     except Exception as exc:
-        return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
+        return JsonResponse({"ok": False, "message": f"Не удалось получить информацию о БД: {exc}"}, status=400)
 
-    metrics = [
-        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[0] or 0)},
-        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[1] or 0)},
-        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[2] or 0)},
-        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[3] or 0)},
-        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[4] or 0)},
-    ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "metrics": metrics})
+    return JsonResponse(
+        {
+            "ok": True,
+            "database": db_connection.database,
+            "version": version_rows[0]["version"] if version_rows else "",
+            "hostnames": [row["hostname"] for row in host_rows],
+            "resgroup_config": resgroup_rows,
+            "settings": settings,
+        }
+    )
 
 
 @require_http_methods(["POST"])

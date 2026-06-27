@@ -42,38 +42,72 @@
     <!-- ============================================================ -->
     <div class="page active" id="page-database-overview">
         <div class="row g-3">
-            <div class="col-lg-7">
-                <div class="glass-card">
+            <div class="col-lg-6">
+                <div class="glass-card h-100">
                     <div class="card-header">
-                        <span><i class="fas fa-chart-pie"></i> Размеры БД</span>
+                        <span><i class="fas fa-info-circle"></i> Версия Greenplum/PostgreSQL</span>
                         <span class="text-muted" id="databaseOverviewName" style="font-size: 12px;">Выберите подключение</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="chart-container" style="height: 360px;">
-                            <canvas id="databaseOverviewChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-5">
-                <div class="glass-card">
-                    <div class="card-header">
-                        <span><i class="fas fa-list"></i> Детализация размеров</span>
-                        <span class="text-muted" id="databaseOverviewCount" style="font-size: 12px;">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-sm">
-                                <thead>
-                                <tr>
-                                    <th>Метрика</th>
-                                    <th>Размер</th>
-                                </tr>
-                                </thead>
-                                <tbody id="databaseOverviewTableBody">
-                                <tr>
-                                    <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки размеров БД</td>
-                                </tr>
+                                <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+                                <tbody id="databaseVersionTableBody">
+                                <tr><td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки информации о БД</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card h-100">
+                    <div class="card-header">
+                        <span><i class="fas fa-server"></i> Хосты сегментов</span>
+                        <span class="text-muted" id="databaseHostsCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 260px; overflow-y: auto;">
+                            <table class="table table-sm">
+                                <thead><tr><th>Hostname</th></tr></thead>
+                                <tbody id="databaseHostsTableBody">
+                                <tr><td class="text-muted">Нет данных</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card h-100">
+                    <div class="card-header">
+                        <span><i class="fas fa-sliders-h"></i> Параметры памяти</span>
+                        <span class="text-muted" id="databaseSettingsCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+                                <tbody id="databaseSettingsTableBody">
+                                <tr><td colspan="2" class="text-muted">Нет данных</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-8">
+                <div class="glass-card h-100">
+                    <div class="card-header">
+                        <span><i class="fas fa-users-cog"></i> Resource groups</span>
+                        <span class="text-muted" id="databaseResgroupCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 360px; overflow: auto;">
+                            <table class="table table-sm">
+                                <thead id="databaseResgroupTableHead"><tr><th>Параметр</th></tr></thead>
+                                <tbody id="databaseResgroupTableBody">
+                                <tr><td class="text-muted">Нет данных</td></tr>
                                 </tbody>
                             </table>
                         </div>
