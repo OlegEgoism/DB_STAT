@@ -365,62 +365,42 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-clock"></i> Временные таблицы</span>
-                        <span class="badge badge-soft-warning">12 активных</span>
+                        <span class="text-muted" id="tempTablesCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="database-table-toolbar">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="tempTableSearchInput" placeholder="Поиск по схеме или таблице...">
+                        </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table">
+                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                            <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th>Схема</th>
-                                    <th>Таблица</th>
-                                    <th>Размер</th>
-                                    <th>Автор</th>
-                                    <th>Сессия</th>
+                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
+                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
+                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
+                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="table_owner">Автор <i class="fas fa-sort"></i></button></th>
+                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="session_label">Сессия <i class="fas fa-sort"></i></button></th>
                                 </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="tempTablesTableBody">
                                 <tr>
-                                    <td>pg_temp_3</td>
-                                    <td><code>temp_etl_20240618_001</code></td>
-                                    <td><strong>12.4 GB</strong></td>
-                                    <td>etl_loader</td>
-                                    <td>PID: 23456</td>
-                                </tr>
-                                <tr>
-                                    <td>pg_temp_7</td>
-                                    <td><code>temp_report_q2_2024</code></td>
-                                    <td><strong>8.7 GB</strong></td>
-                                    <td>report_user</td>
-                                    <td>PID: 28901</td>
-                                </tr>
-                                <tr>
-                                    <td>pg_temp_3</td>
-                                    <td><code>temp_etl_20240618_002</code></td>
-                                    <td><strong>6.2 GB</strong></td>
-                                    <td>etl_loader</td>
-                                    <td>PID: 23456</td>
-                                </tr>
-                                <tr>
-                                    <td>pg_temp_12</td>
-                                    <td><code>temp_dwh_calc_123</code></td>
-                                    <td><strong>4.8 GB</strong></td>
-                                    <td>dwhnbrb_cube</td>
-                                    <td>PID: 31245</td>
-                                </tr>
-                                <tr>
-                                    <td>pg_temp_7</td>
-                                    <td><code>temp_agg_2024_q2</code></td>
-                                    <td><strong>3.1 GB</strong></td>
-                                    <td>report_user</td>
-                                    <td>PID: 28901</td>
-                                </tr>
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted" style="font-size:12px; padding:10px;">... и еще 7 временных таблиц</td>
+                                    <td colspan="5" class="text-muted">Выберите сохранённое подключение для загрузки временных таблиц</td>
                                 </tr>
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                    <div class="table-pagination">
+                        <button class="btn-conn secondary" type="button" id="tempTablePrevPageBtn">
+                            <i class="fas fa-chevron-left"></i> Назад
+                        </button>
+                        <span id="tempTablePaginationInfo">Страница 1 из 1</span>
+                        <button class="btn-conn secondary" type="button" id="tempTableNextPageBtn">
+                            Далее <i class="fas fa-chevron-right"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -431,17 +411,6 @@
                         <div class="chart-container">
                             <canvas id="tempUsersChart"></canvas>
                         </div>
-                    </div>
-                </div>
-                <div class="glass-card mt-3">
-                    <div class="card-header"><span><i class="fas fa-trash"></i> Действия</span></div>
-                    <div class="card-body">
-                        <button class="btn btn-danger btn-sm me-2" onclick="showToast('✅ Удалено 12 временных таблиц')">
-                            <i class="fas fa-trash"></i> Удалить все
-                        </button>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="showToast('📋 Скрипты скопированы')">
-                            <i class="fas fa-copy"></i> DROP скрипты
-                        </button>
                     </div>
                 </div>
             </div>

@@ -401,6 +401,109 @@ def database_table_sizes(request):
     total_count = int(rows[0][8]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
+
+@require_http_methods(["POST"])
+def database_temp_table_sizes(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "size_bytes"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schema_name",
+        "table_name": "table_name",
+        "table_owner": "table_owner",
+        "size_bytes": "size_bytes",
+        "session_label": "session_label",
+    }
+    sort_column = sort_columns.get(sort, "size_bytes")
+
+    where_sql = ""
+    params = []
+    if search:
+        search_pattern = f"%{_escape_like_pattern(search)}%"
+        where_sql = """
+          AND (
+              namespace.nspname ILIKE %s ESCAPE '!'
+              OR table_class.relname ILIKE %s ESCAPE '!'
+              OR owner.rolname ILIKE %s ESCAPE '!'
+              OR (namespace.nspname || '.' || table_class.relname) ILIKE %s ESCAPE '!'
+          )
+        """
+        params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+
+    temp_table_sizes_query = f"""
+        WITH temp_table_sizes AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                table_class.relname AS table_name,
+                COALESCE(owner.rolname, '-') AS table_owner,
+                pg_total_relation_size(table_class.oid)::bigint AS size_bytes,
+                CASE
+                    WHEN namespace.nspname ~ '^pg_temp_[0-9]+$'
+                    THEN 'backend ' || substring(namespace.nspname FROM '^pg_temp_([0-9]+)$')
+                    ELSE '-'
+                END AS session_label
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = table_class.relowner
+            WHERE table_class.relkind IN ('r', 'p')
+              AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+        )
+        SELECT
+            schema_name,
+            table_name,
+            table_owner,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS table_size,
+            session_label,
+            COUNT(*) OVER() AS total_count
+        FROM temp_table_sizes
+        ORDER BY {sort_column} {direction}, schema_name ASC, table_name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(temp_table_sizes_query, [*params, page_size, offset])
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
+
+    temp_tables = [
+        {
+            "schema_name": row[0],
+            "table_name": row[1],
+            "table_owner": row[2],
+            "size_bytes": int(row[3]),
+            "table_size": row[4],
+            "session_label": row[5],
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][6]) if rows else 0
+    return JsonResponse({"ok": True, "temp_tables": temp_tables, "page": page, "page_size": page_size, "total_count": total_count})
+
 @require_http_methods(["POST"])
 def segments_info(request):
     payload = _read_json_body(request)
