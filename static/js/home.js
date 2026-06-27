@@ -176,10 +176,23 @@
         updateDatabaseOverviewChart([]);
     }
 
+    function databaseOverviewChartScale(metrics) {
+        const maxBytes = Math.max(...metrics.map(item => Number(item.size_bytes) || 0), 0);
+        const mb = 1024 ** 2;
+        const gb = 1024 ** 3;
+        const tb = 1024 ** 4;
+        if (maxBytes >= tb) return {unit: 'TB', divider: tb};
+        if (maxBytes >= gb) return {unit: 'GB', divider: gb};
+        return {unit: 'MB', divider: mb};
+    }
+
     function updateDatabaseOverviewChart(metrics) {
         if (!charts.databaseOverview) return;
+        const scale = databaseOverviewChartScale(metrics);
         charts.databaseOverview.data.labels = metrics.map(item => item.label);
-        charts.databaseOverview.data.datasets[0].data = metrics.map(item => Number(item.size_bytes) || 0);
+        charts.databaseOverview.data.datasets[0].label = `Размер (${scale.unit})`;
+        charts.databaseOverview.data.datasets[0].data = metrics.map(item => Number(((Number(item.size_bytes) || 0) / scale.divider).toFixed(2)));
+        charts.databaseOverview.options.scales.y.title.text = `Размер, ${scale.unit}`;
         charts.databaseOverview.update();
     }
 
@@ -1441,23 +1454,26 @@
         // ---- 2. Database Overview ----
         const ctxDbOverview = document.getElementById('databaseOverviewChart').getContext('2d');
         charts.databaseOverview = new Chart(ctxDbOverview, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: [],
                 datasets: [{
+                    label: 'Размер',
                     data: [],
                     backgroundColor: [colors.blue, colors.purple, colors.green, colors.yellow, colors.teal],
-                    borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'],
-                    borderWidth: 2
+                    borderRadius: 6
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {color: '#4a5568', boxWidth: 12, padding: 12, font: {size: 11, family: 'Inter'}}
+                ...chartOptions,
+                plugins: {legend: {display: false}},
+                scales: {
+                    x: {ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}}, grid: {display: false}},
+                    y: {
+                        beginAtZero: true,
+                        title: {display: true, text: 'Размер, MB', color: '#8a9bb0', font: {size: 11, family: 'Inter'}},
+                        ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}},
+                        grid: {color: 'rgba(0,0,0,0.04)'}
                     }
                 }
             }
