@@ -38,9 +38,55 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- PAGE: DATABASE OVERVIEW -->
+    <!-- ============================================================ -->
+    <div class="page active" id="page-database-overview">
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-pie"></i> Размеры БД</span>
+                        <span class="text-muted" id="databaseOverviewName" style="font-size: 12px;">Выберите подключение</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container" style="height: 360px;">
+                            <canvas id="databaseOverviewChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-list"></i> Детализация размеров</span>
+                        <span class="text-muted" id="databaseOverviewCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>Метрика</th>
+                                    <th>Размер</th>
+                                </tr>
+                                </thead>
+                                <tbody id="databaseOverviewTableBody">
+                                <tr>
+                                    <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки размеров БД</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- PAGE: SEGMENTS -->
     <!-- ============================================================ -->
-    <div class="page active" id="page-segments">
+    <div class="page" id="page-segments">
         <div class="row g-3">
             <div class="col-12">
                 <div class="glass-card">

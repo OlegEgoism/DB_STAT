@@ -26,6 +26,7 @@
     const connectionDeleteApiUrl = '/connections/delete/';
     const segmentsInfoApiUrl = '/segments/info/';
     const databaseSizeApiUrl = '/databases/size/';
+    const databaseOverviewApiUrl = '/databases/overview/';
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
     const viewsListApiUrl = '/views/list/';
@@ -41,6 +42,7 @@
     ];
 
     const pageTitles = {
+        'database-overview': 'База данных <small>Размеры и структура</small>',
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
         'databases': 'Схемы <small>Размер и статистика</small>',
         'tables': 'Таблицы <small>Список и размеры таблиц</small>',
@@ -63,6 +65,7 @@
         initCharts();
         refreshSegmentsForConnection();
         refreshDatabaseSizeForConnection();
+        refreshDatabaseOverviewForConnection();
         initNavigation();
         initSegmentsTableSorting();
         initSchemaSizesControls();
@@ -162,6 +165,58 @@
             .catch(error => renderDatabaseSizeWarning(error.message || 'ошибка', conn.database || conn.name));
     }
 
+
+    function renderDatabaseOverviewWarning(message) {
+        const tbody = document.getElementById('databaseOverviewTableBody');
+        const count = document.getElementById('databaseOverviewCount');
+        const name = document.getElementById('databaseOverviewName');
+        if (count) count.textContent = 'Нет данных';
+        if (name) name.textContent = 'Выберите подключение';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        updateDatabaseOverviewChart([]);
+    }
+
+    function updateDatabaseOverviewChart(metrics) {
+        if (!charts.databaseOverview) return;
+        charts.databaseOverview.data.labels = metrics.map(item => item.label);
+        charts.databaseOverview.data.datasets[0].data = metrics.map(item => Number(item.size_bytes) || 0);
+        charts.databaseOverview.update();
+    }
+
+    function renderDatabaseOverview(data) {
+        const tbody = document.getElementById('databaseOverviewTableBody');
+        const count = document.getElementById('databaseOverviewCount');
+        const name = document.getElementById('databaseOverviewName');
+        const metrics = data.metrics || [];
+        if (count) count.textContent = `${metrics.length} метрик`;
+        if (name) name.textContent = data.database || '—';
+        updateDatabaseOverviewChart(metrics);
+        if (!tbody) return;
+        if (!metrics.length) {
+            tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о размерах БД</td></tr>';
+            return;
+        }
+        tbody.innerHTML = metrics.map(item => {
+            const formatted = formatDatabaseSize(item.size_bytes);
+            return `
+                <tr>
+                    <td>${item.label}</td>
+                    <td><strong>${formatted.value} ${formatted.unit}</strong></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function refreshDatabaseOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderDatabaseOverviewWarning('Выберите сохранённое подключение для загрузки размеров БД');
+            return;
+        }
+        renderDatabaseOverviewWarning('Загрузка размеров БД...');
+        connectionRequest(databaseOverviewApiUrl, {id: conn.id})
+            .then(data => renderDatabaseOverview(data))
+            .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+    }
 
     function renderSchemaSizesWarning(message) {
         const tbody = document.getElementById('schemaSizesTableBody');
@@ -1104,6 +1159,9 @@
         if (target) target.classList.add('active');
         document.getElementById('pageTitle').innerHTML = pageTitles[pageId] || pageId;
 
+        if (pageId === 'database-overview') {
+            refreshDatabaseOverviewForConnection();
+        }
         if (pageId === 'databases') {
             refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
@@ -1314,6 +1372,9 @@
     // REFRESH
     // ============================
     function refreshAll() {
+        if (document.getElementById('page-database-overview')?.classList.contains('active')) {
+            refreshDatabaseOverviewForConnection();
+        }
         if (document.getElementById('page-databases')?.classList.contains('active')) {
             refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
@@ -1375,6 +1436,31 @@
                 }
             }
         };
+
+        // ---- 2. Database Overview ----
+        const ctxDbOverview = document.getElementById('databaseOverviewChart').getContext('2d');
+        charts.databaseOverview = new Chart(ctxDbOverview, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [colors.blue, colors.purple, colors.green, colors.yellow, colors.teal],
+                    borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {color: '#4a5568', boxWidth: 12, padding: 12, font: {size: 11, family: 'Inter'}}
+                    }
+                }
+            }
+        });
 
         // ---- 3. Segments ----
         const ctx3 = document.getElementById('segmentsChart').getContext('2d');
