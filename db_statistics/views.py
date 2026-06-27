@@ -445,6 +445,64 @@ def blocking_locks(request):
 
 
 @require_http_methods(["POST"])
+def idle_transactions(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    idle_transactions_query = """
+        SELECT
+            pid,
+            usename,
+            application_name,
+            client_addr,
+            state,
+            now() - xact_start AS transaction_duration,
+            now() - state_change AS idle_duration,
+            query
+        FROM pg_catalog.pg_stat_activity
+        WHERE state = 'idle in transaction'
+        ORDER BY xact_start;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(idle_transactions_query)
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить транзакции: {exc}"}, status=400)
+
+    transactions = []
+    for row in rows:
+        transaction_duration = row[5]
+        idle_duration = row[6]
+        transactions.append(
+            {
+                "pid": row[0],
+                "username": row[1] or "—",
+                "application_name": row[2] or "—",
+                "client_addr": str(row[3]) if row[3] else "—",
+                "state": row[4] or "—",
+                "transaction_duration": str(transaction_duration).split(".")[0] if transaction_duration else "—",
+                "idle_duration": str(idle_duration).split(".")[0] if idle_duration else "—",
+                "sql": row[7] or "—",
+            }
+        )
+    return JsonResponse({"ok": True, "transactions": transactions, "total_count": len(transactions)})
+
+
+@require_http_methods(["POST"])
 def database_schema_sizes(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")

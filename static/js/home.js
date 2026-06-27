@@ -23,6 +23,7 @@
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
     let blockingLocksRequestId = 0;
+    let idleTransactionsRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -37,6 +38,7 @@
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
+    const idleTransactionsApiUrl = '/transactions/idle/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -396,6 +398,55 @@
             .catch(error => {
                 if (requestId !== blockingLocksRequestId) return;
                 renderBlockingLocksWarning(error.message || 'Не удалось получить блокировки');
+            });
+    }
+
+    function renderIdleTransactionsWarning(message) {
+        const tbody = document.getElementById('idleTransactionsTableBody');
+        const count = document.getElementById('idleTransactionsCount');
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderIdleTransactions(data) {
+        const tbody = document.getElementById('idleTransactionsTableBody');
+        const count = document.getElementById('idleTransactionsCount');
+        const transactions = data.transactions || [];
+        if (count) count.textContent = `${transactions.length} транзакций`;
+        if (!tbody) return;
+        if (!transactions.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Idle in transaction не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = transactions.map(transaction => `
+            <tr>
+                <td><strong>${escapeHtml(transaction.pid)}</strong></td>
+                <td>${escapeHtml(transaction.username)}</td>
+                <td>${escapeHtml(transaction.application_name)}</td>
+                <td>${escapeHtml(transaction.client_addr)}</td>
+                <td><span class="status-badge warning">${escapeHtml(transaction.state)}</span></td>
+                <td>${escapeHtml(transaction.transaction_duration)}</td>
+                <td>${escapeHtml(transaction.idle_duration)}</td>
+                <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(transaction.sql)}">${escapeHtml(transaction.sql)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshIdleTransactionsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderIdleTransactionsWarning('Выберите сохранённое подключение для загрузки транзакций');
+            return;
+        }
+        const requestId = ++idleTransactionsRequestId;
+        renderIdleTransactionsWarning('Загрузка транзакций...');
+        connectionRequest(idleTransactionsApiUrl, {id: conn.id})
+            .then(data => {
+                if (requestId !== idleTransactionsRequestId) return;
+                renderIdleTransactions(data);
+            })
+            .catch(error => {
+                if (requestId !== idleTransactionsRequestId) return;
+                renderIdleTransactionsWarning(error.message || 'Не удалось получить транзакции');
             });
     }
 
@@ -1367,6 +1418,9 @@
         if (pageId === 'locks') {
             refreshBlockingLocksForConnection();
         }
+        if (pageId === 'transactions') {
+            refreshIdleTransactionsForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1585,6 +1639,9 @@
         }
         if (document.getElementById('page-locks')?.classList.contains('active')) {
             refreshBlockingLocksForConnection();
+        }
+        if (document.getElementById('page-transactions')?.classList.contains('active')) {
+            refreshIdleTransactionsForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
