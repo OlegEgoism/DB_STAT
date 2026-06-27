@@ -371,6 +371,80 @@ def active_queries(request):
 
 
 @require_http_methods(["POST"])
+def blocking_locks(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    blocking_locks_query = """
+        SELECT
+            blocked.pid AS blocked_pid,
+            blocked.usename AS blocked_user,
+            now() - blocked.query_start AS blocked_duration,
+            blocked.query AS blocked_query,
+            blocker.pid AS blocker_pid,
+            blocker.usename AS blocker_user,
+            now() - blocker.query_start AS blocker_duration,
+            blocker.query AS blocker_query
+        FROM pg_catalog.pg_locks AS blocked_locks
+        JOIN pg_catalog.pg_stat_activity AS blocked
+            ON blocked.pid = blocked_locks.pid
+        JOIN pg_catalog.pg_locks AS blocker_locks
+            ON blocker_locks.locktype = blocked_locks.locktype
+           AND blocker_locks.database IS NOT DISTINCT FROM blocked_locks.database
+           AND blocker_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
+           AND blocker_locks.page IS NOT DISTINCT FROM blocked_locks.page
+           AND blocker_locks.tuple IS NOT DISTINCT FROM blocked_locks.tuple
+           AND blocker_locks.virtualxid IS NOT DISTINCT FROM blocked_locks.virtualxid
+           AND blocker_locks.transactionid IS NOT DISTINCT FROM blocked_locks.transactionid
+           AND blocker_locks.classid IS NOT DISTINCT FROM blocked_locks.classid
+           AND blocker_locks.objid IS NOT DISTINCT FROM blocked_locks.objid
+           AND blocker_locks.objsubid IS NOT DISTINCT FROM blocked_locks.objsubid
+           AND blocker_locks.pid <> blocked_locks.pid
+        JOIN pg_catalog.pg_stat_activity AS blocker
+            ON blocker.pid = blocker_locks.pid
+        WHERE NOT blocked_locks.granted
+          AND blocker_locks.granted;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(blocking_locks_query)
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить блокировки: {exc}"}, status=400)
+
+    locks = []
+    for row in rows:
+        blocked_duration = row[2]
+        blocker_duration = row[6]
+        locks.append(
+            {
+                "blocked_pid": row[0],
+                "blocked_user": row[1] or "—",
+                "blocked_duration": str(blocked_duration).split(".")[0] if blocked_duration else "—",
+                "blocked_query": row[3] or "—",
+                "blocker_pid": row[4],
+                "blocker_user": row[5] or "—",
+                "blocker_duration": str(blocker_duration).split(".")[0] if blocker_duration else "—",
+                "blocker_query": row[7] or "—",
+            }
+        )
+    return JsonResponse({"ok": True, "locks": locks, "total_count": len(locks)})
+
+
+@require_http_methods(["POST"])
 def database_schema_sizes(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")

@@ -17,5 +17,6 @@ urlpatterns = [
     path("distribution/info/", views.distribution_info, name="distribution_info"),
     path("temp-tables/sizes/", views.database_temp_table_sizes, name="database_temp_table_sizes"),
     path("queries/active/", views.active_queries, name="active_queries"),
+    path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("segments/info/", views.segments_info, name="segments_info"),
 ]

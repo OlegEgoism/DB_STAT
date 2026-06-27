@@ -22,6 +22,7 @@
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
+    let blockingLocksRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -35,6 +36,7 @@
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
+    const blockingLocksApiUrl = '/locks/blocking/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -345,6 +347,55 @@
             .catch(error => {
                 if (requestId !== activeQueriesRequestId) return;
                 renderActiveQueriesWarning(error.message || 'Не удалось получить активные запросы');
+            });
+    }
+
+    function renderBlockingLocksWarning(message) {
+        const tbody = document.getElementById('blockingLocksTableBody');
+        const count = document.getElementById('blockingLocksCount');
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderBlockingLocks(data) {
+        const tbody = document.getElementById('blockingLocksTableBody');
+        const count = document.getElementById('blockingLocksCount');
+        const locks = data.locks || [];
+        if (count) count.textContent = `${locks.length} блокировок`;
+        if (!tbody) return;
+        if (!locks.length) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Блокировки не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = locks.map(lock => `
+            <tr>
+                <td><span class="text-danger"><strong>${escapeHtml(lock.blocked_pid)}</strong></span></td>
+                <td>${escapeHtml(lock.blocked_user)}</td>
+                <td>${escapeHtml(lock.blocked_duration)}</td>
+                <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(lock.blocked_query)}">${escapeHtml(lock.blocked_query)}</td>
+                <td><span class="text-warning"><strong>${escapeHtml(lock.blocker_pid)}</strong></span></td>
+                <td>${escapeHtml(lock.blocker_user)}</td>
+                <td>${escapeHtml(lock.blocker_duration)}</td>
+                <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(lock.blocker_query)}">${escapeHtml(lock.blocker_query)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshBlockingLocksForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderBlockingLocksWarning('Выберите сохранённое подключение для загрузки блокировок');
+            return;
+        }
+        const requestId = ++blockingLocksRequestId;
+        renderBlockingLocksWarning('Загрузка блокировок...');
+        connectionRequest(blockingLocksApiUrl, {id: conn.id})
+            .then(data => {
+                if (requestId !== blockingLocksRequestId) return;
+                renderBlockingLocks(data);
+            })
+            .catch(error => {
+                if (requestId !== blockingLocksRequestId) return;
+                renderBlockingLocksWarning(error.message || 'Не удалось получить блокировки');
             });
     }
 
@@ -1313,6 +1364,9 @@
         if (pageId === 'queries') {
             refreshActiveQueriesForConnection();
         }
+        if (pageId === 'locks') {
+            refreshBlockingLocksForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1528,6 +1582,9 @@
         }
         if (document.getElementById('page-queries')?.classList.contains('active')) {
             refreshActiveQueriesForConnection();
+        }
+        if (document.getElementById('page-locks')?.classList.contains('active')) {
+            refreshBlockingLocksForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
