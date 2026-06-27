@@ -173,12 +173,10 @@
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
-        const name = document.getElementById('databaseOverviewName');
         const version = document.getElementById('databaseOverviewVersion');
         if (count) count.textContent = 'Нет данных';
         if (memoryCount) memoryCount.textContent = 'Нет данных';
         if (connectionCount) connectionCount.textContent = 'Нет данных';
-        if (name) name.textContent = 'Выберите подключение';
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
@@ -192,7 +190,6 @@
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
-        const name = document.getElementById('databaseOverviewName');
         const version = document.getElementById('databaseOverviewVersion');
         const metrics = data.metrics || [];
         const memorySettings = data.memory_settings || [];
@@ -200,7 +197,6 @@
         if (count) count.textContent = `${metrics.length} метрик`;
         if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
         if (connectionCount) connectionCount.textContent = `${connectionInfo.length} параметров`;
-        if (name) name.textContent = data.database || '—';
         if (version) version.textContent = data.database_version || '—';
         if (connectionTbody) {
             if (!connectionInfo.length) {
