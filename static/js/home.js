@@ -176,6 +176,25 @@
         }[char]));
     }
 
+
+    const databaseSettingLabels = {
+        statement_mem: 'Память на один запрос',
+        max_statement_mem: 'Максимальная память на один запрос',
+        gp_vmem_protect_limit: 'Лимит виртуальной памяти сегмента'
+    };
+
+    const resourceGroupColumnLabels = {
+        groupid: 'ID группы',
+        groupname: 'Название группы',
+        concurrency: 'Параллельность',
+        cpu_max_percent: 'Максимум CPU, %',
+        cpu_weight: 'Вес CPU',
+        cpuset: 'Набор CPU',
+        memory_quota: 'Квота памяти, %',
+        min_cost: 'Минимальная стоимость',
+        io_limit: 'Лимит I/O'
+    };
+
     function renderDatabaseOverviewWarning(message) {
         const versionBody = document.getElementById('databaseVersionTableBody');
         const hostsBody = document.getElementById('databaseHostsTableBody');
@@ -224,13 +243,13 @@
         }
         if (settingsBody) {
             settingsBody.innerHTML = settings.length
-                ? settings.map(item => `<tr><td>${escapeHtml(item.name)}</td><td><strong>${escapeHtml(item.value)}</strong></td></tr>`).join('')
+                ? settings.map(item => `<tr><td title="${escapeHtml(item.name)}">${escapeHtml(databaseSettingLabels[item.name] || item.name)}</td><td><strong>${escapeHtml(item.value)}</strong></td></tr>`).join('')
                 : '<tr><td colspan="2" class="text-muted">Нет данных</td></tr>';
         }
         if (resgroupHead && resgroupBody) {
             const columns = resgroupRows.length ? Object.keys(resgroupRows[0]) : [];
             resgroupHead.innerHTML = columns.length
-                ? `<tr>${columns.map(column => `<th>${escapeHtml(column)}</th>`).join('')}</tr>`
+                ? `<tr>${columns.map(column => `<th title="${escapeHtml(column)}">${escapeHtml(resourceGroupColumnLabels[column] || column)}</th>`).join('')}</tr>`
                 : '<tr><th>Параметр</th></tr>';
             resgroupBody.innerHTML = resgroupRows.length
                 ? resgroupRows.map(row => `<tr>${columns.map(column => `<td>${escapeHtml(row[column])}</td>`).join('')}</tr>`).join('')
