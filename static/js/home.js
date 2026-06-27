@@ -350,7 +350,7 @@
         const info = document.getElementById('tablePaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
         updateTablePaginationButtons();
     }
 
@@ -387,7 +387,7 @@
         if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
         if (!data.tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Таблицы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Таблицы не найдены</td></tr>';
             updateTablePaginationButtons();
             return;
         }
@@ -398,6 +398,7 @@
                 <td>${table.table_owner || '-'}</td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.index_size || '-'}</td>
+                <td>${formatRowCount(table.index_count)}</td>
                 <td>${formatRowCount(table.row_count)}</td>
             </tr>
         `).join('');
@@ -445,7 +446,7 @@
                     tableSizesState.direction = tableSizesState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
                     tableSizesState.sort = sort;
-                    tableSizesState.direction = ['size_bytes', 'index_size_bytes', 'row_count'].includes(sort) ? 'desc' : 'asc';
+                    tableSizesState.direction = ['size_bytes', 'index_size_bytes', 'index_count', 'row_count'].includes(sort) ? 'desc' : 'asc';
                 }
                 tableSizesState.page = 1;
                 refreshTableSizesForConnection();

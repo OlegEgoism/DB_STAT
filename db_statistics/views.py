@@ -382,6 +382,7 @@ def database_table_sizes(request):
         "table_owner": "table_owner",
         "size_bytes": "size_bytes",
         "index_size_bytes": "index_size_bytes",
+        "index_count": "index_count",
         "row_count": "row_count",
     }
     sort_column = sort_columns.get(sort, "size_bytes")
@@ -407,6 +408,11 @@ def database_table_sizes(request):
                 COALESCE(owner.rolname, '-') AS table_owner,
                 pg_total_relation_size(table_class.oid)::bigint AS size_bytes,
                 pg_indexes_size(table_class.oid)::bigint AS index_size_bytes,
+                (
+                    SELECT COUNT(*)::bigint
+                    FROM pg_catalog.pg_index AS index_info
+                    WHERE index_info.indrelid = table_class.oid
+                ) AS index_count,
                 GREATEST(table_class.reltuples::bigint, 0) AS row_count
             FROM pg_catalog.pg_class AS table_class
             JOIN pg_catalog.pg_namespace AS namespace
@@ -426,6 +432,7 @@ def database_table_sizes(request):
             pg_size_pretty(size_bytes) AS table_size,
             index_size_bytes,
             pg_size_pretty(index_size_bytes) AS index_size,
+            index_count,
             row_count,
             COUNT(*) OVER() AS total_count
         FROM table_sizes
@@ -458,11 +465,12 @@ def database_table_sizes(request):
             "table_size": row[4],
             "index_size_bytes": int(row[5]),
             "index_size": row[6],
-            "row_count": int(row[7]),
+            "index_count": int(row[7]),
+            "row_count": int(row[8]),
         }
         for row in rows
     ]
-    total_count = int(rows[0][8]) if rows else 0
+    total_count = int(rows[0][9]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
 
