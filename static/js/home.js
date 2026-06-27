@@ -15,6 +15,9 @@
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
+    let currentDistributionSegments = [];
+    let currentDistributionTotalRows = 0;
+    let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -406,6 +409,8 @@
     }
 
     function renderDistributionWarning(message) {
+        currentDistributionSegments = [];
+        currentDistributionTotalRows = 0;
         const tbody = document.getElementById('distributionTableBody');
         const count = document.getElementById('distributionRowsCount');
         const tableName = document.getElementById('distributionSelectedTableName');
@@ -436,32 +441,61 @@
         charts.segmentDist.update();
     }
 
-    function renderDistributionInfo(data) {
+    function updateDistributionSortIndicators() {
+        document.querySelectorAll('[data-distribution-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.distributionSort === distributionSortState.column;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${distributionSortState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function distributionSortValue(item, column) {
+        if (column === 'share') {
+            return currentDistributionTotalRows ? ((Number(item.row_count) || 0) / currentDistributionTotalRows) * 100 : 0;
+        }
+        if (column === 'row_count') return Number(item.row_count) || 0;
+        return Number(item.segment_id) || 0;
+    }
+
+    function renderDistributionRows() {
         const tbody = document.getElementById('distributionTableBody');
-        const count = document.getElementById('distributionRowsCount');
-        const tableName = document.getElementById('distributionSelectedTableName');
-        const segments = data.segments || [];
-        const totalRows = Number(data.metrics?.total_rows) || 0;
-        if (tableName) tableName.textContent = `${data.schema_name}.${data.table_name}`;
-        if (count) count.textContent = `${segments.length} сегментов`;
-        updateDistributionMetrics(data.metrics || {});
-        updateSegmentDistributionChart(segments);
         if (!tbody) return;
-        if (!segments.length) {
+        updateDistributionSortIndicators();
+        if (!currentDistributionSegments.length) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Нет данных о распределении строк</td></tr>';
             return;
         }
-        tbody.innerHTML = segments.map(item => {
-            const rows = Number(item.row_count) || 0;
-            const share = totalRows ? ((rows / totalRows) * 100).toFixed(2) : '0.00';
+        const multiplier = distributionSortState.direction === 'asc' ? 1 : -1;
+        const rows = [...currentDistributionSegments].sort((left, right) => {
+            return (distributionSortValue(left, distributionSortState.column) - distributionSortValue(right, distributionSortState.column)) * multiplier;
+        });
+        tbody.innerHTML = rows.map(item => {
+            const rowsCount = Number(item.row_count) || 0;
+            const share = currentDistributionTotalRows ? ((rowsCount / currentDistributionTotalRows) * 100).toFixed(2) : '0.00';
             return `
                 <tr>
                     <td><strong>sg${item.segment_id}</strong></td>
-                    <td>${formatRowCount(rows)}</td>
+                    <td>${formatRowCount(rowsCount)}</td>
                     <td>${share}%</td>
                 </tr>
             `;
         }).join('');
+    }
+
+    function renderDistributionInfo(data) {
+        const count = document.getElementById('distributionRowsCount');
+        const tableName = document.getElementById('distributionSelectedTableName');
+        currentDistributionSegments = data.segments || [];
+        currentDistributionTotalRows = Number(data.metrics?.total_rows) || 0;
+        if (tableName) tableName.textContent = `${data.schema_name}.${data.table_name}`;
+        if (count) count.textContent = `${currentDistributionSegments.length} сегментов`;
+        updateDistributionMetrics(data.metrics || {});
+        updateSegmentDistributionChart(currentDistributionSegments);
+        renderDistributionRows();
     }
 
     function refreshDistributionForSelectedTable() {
@@ -526,6 +560,18 @@
 
     function initDistributionControls() {
         document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
+        document.querySelectorAll('[data-distribution-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const column = this.dataset.distributionSort;
+                if (distributionSortState.column === column) {
+                    distributionSortState.direction = distributionSortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    distributionSortState = {column, direction: column === 'segment_id' ? 'asc' : 'desc'};
+                }
+                renderDistributionRows();
+            });
+        });
+        updateDistributionSortIndicators();
     }
 
     function renderTempTablesWarning(message) {
