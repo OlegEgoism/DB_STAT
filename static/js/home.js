@@ -406,7 +406,7 @@
         const info = document.getElementById('tempTablePaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
         updateTempTablePaginationButtons();
     }
 
@@ -443,7 +443,7 @@
         if (count) count.textContent = `${data.temp_tables?.length || 0} из ${tempTablesState.totalCount} временных таблиц`;
         if (info) info.textContent = `Страница ${tempTablesState.page} из ${totalPages}`;
         if (!data.temp_tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Временные таблицы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Временные таблицы не найдены</td></tr>';
             updateTempTablePaginationButtons();
             return;
         }
@@ -453,7 +453,6 @@
                 <td><strong>${table.table_name || '-'}</strong></td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.table_owner || '-'}</td>
-                <td>${table.session_label || '-'}</td>
             </tr>
         `).join('');
         updateTempTablePaginationButtons();
