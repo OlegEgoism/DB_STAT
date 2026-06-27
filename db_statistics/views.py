@@ -187,7 +187,33 @@ def database_overview(request):
     def fetch_rows(cursor, query):
         cursor.execute(query)
         columns = [column.name for column in cursor.description]
+    def fetch_rows(cursor, query):
+        cursor.execute(query)
+        columns = [column.name for column in cursor.description]
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+                version_rows = fetch_rows(cursor, "SELECT version() AS version;")
+                resgroup_rows = fetch_rows(
+                    cursor,
+                    """
+                    SELECT *
+                    FROM gp_toolkit.gp_resgroup_config;
+                    """,
+                )
+                settings = []
+                for setting_name in ["statement_mem", "max_statement_mem", "gp_vmem_protect_limit"]:
+                    cursor.execute(f"SHOW {setting_name};")
+                    settings.append({"name": setting_name, "value": cursor.fetchone()[0]})
+    return JsonResponse(
+        {
+            "ok": True,
+            "database": db_connection.database,
+            "metrics": metrics,
+            "version": version_rows[0]["version"] if version_rows else "",
+            "resgroup_config": resgroup_rows,
+            "settings": settings,
+        }
+    )
 
     try:
         with psycopg2.connect(

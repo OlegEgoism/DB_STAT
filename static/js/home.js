@@ -176,10 +176,79 @@
         }[char]));
     }
 
-
     const databaseSettingLabels = {
         statement_mem: 'Память на один запрос',
         max_statement_mem: 'Максимальная память на один запрос',
+        gp_vmem_protect_limit: 'Лимит виртуальной памяти сегмента'
+    };
+
+    const resourceGroupColumnLabels = {
+        groupid: 'ID группы',
+        groupname: 'Название группы',
+        concurrency: 'Параллельность',
+        cpu_max_percent: 'Максимум CPU, %',
+        cpu_weight: 'Вес CPU',
+        cpuset: 'Набор CPU',
+        memory_quota: 'Квота памяти, %',
+        min_cost: 'Минимальная стоимость',
+        io_limit: 'Лимит I/O'
+    };
+
+
+        const versionBody = document.getElementById('databaseVersionTableBody');
+        const settingsBody = document.getElementById('databaseSettingsTableBody');
+        const settingsCount = document.getElementById('databaseSettingsCount');
+        const resgroupHead = document.getElementById('databaseResgroupTableHead');
+        const resgroupBody = document.getElementById('databaseResgroupTableBody');
+        const resgroupCount = document.getElementById('databaseResgroupCount');
+        if (settingsCount) settingsCount.textContent = 'Нет данных';
+        if (resgroupCount) resgroupCount.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (versionBody) versionBody.innerHTML = `<tr><td class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (settingsBody) settingsBody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных</td></tr>';
+        if (resgroupHead) resgroupHead.innerHTML = '<tr><th>Параметр</th></tr>';
+        if (resgroupBody) resgroupBody.innerHTML = '<tr><td class="text-muted">Нет данных</td></tr>';
+        const versionBody = document.getElementById('databaseVersionTableBody');
+        const settingsBody = document.getElementById('databaseSettingsTableBody');
+        const settingsCount = document.getElementById('databaseSettingsCount');
+        const resgroupHead = document.getElementById('databaseResgroupTableHead');
+        const resgroupBody = document.getElementById('databaseResgroupTableBody');
+        const resgroupCount = document.getElementById('databaseResgroupCount');
+        const settings = data.settings || [];
+        const resgroupRows = data.resgroup_config || [];
+        if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
+        if (resgroupCount) resgroupCount.textContent = `${resgroupRows.length} строк`;
+        if (tbody) {
+            if (!metrics.length) {
+                tbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о размерах БД</td></tr>';
+            } else {
+                tbody.innerHTML = metrics.map(item => {
+                    const formatted = formatDatabaseSize(item.size_bytes);
+                    return `
+                        <tr>
+                            <td>${escapeHtml(item.label)}</td>
+                            <td><strong>${formatted.value} ${formatted.unit}</strong></td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+        if (versionBody) {
+            versionBody.innerHTML = `<tr><td><strong>${escapeHtml(data.version || '—')}</strong></td></tr>`;
+        }
+        if (settingsBody) {
+            settingsBody.innerHTML = settings.length
+                ? settings.map(item => `<tr><td title="${escapeHtml(item.name)}">${escapeHtml(databaseSettingLabels[item.name] || item.name)}</td><td><strong>${escapeHtml(item.value)}</strong></td></tr>`).join('')
+                : '<tr><td colspan="2" class="text-muted">Нет данных</td></tr>';
+        }
+        if (resgroupHead && resgroupBody) {
+            const columns = resgroupRows.length ? Object.keys(resgroupRows[0]) : [];
+            resgroupHead.innerHTML = columns.length
+                ? `<tr>${columns.map(column => `<th title="${escapeHtml(column)}">${escapeHtml(resourceGroupColumnLabels[column] || column)}</th>`).join('')}</tr>`
+                : '<tr><th>Параметр</th></tr>';
+            resgroupBody.innerHTML = resgroupRows.length
+                ? resgroupRows.map(row => `<tr>${columns.map(column => `<td>${escapeHtml(row[column])}</td>`).join('')}</tr>`).join('')
+                : '<tr><td class="text-muted">Нет данных</td></tr>';
         gp_vmem_protect_limit: 'Лимит виртуальной памяти сегмента'
     };
 
