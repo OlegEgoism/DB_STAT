@@ -419,7 +419,7 @@
         const info = document.getElementById('viewPaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
         updateViewPaginationButtons();
     }
 
@@ -456,7 +456,7 @@
         if (count) count.textContent = `${data.views?.length || 0} из ${viewsState.totalCount} представлений`;
         if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
         if (!data.views?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Представления не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Представления не найдены</td></tr>';
             updateViewPaginationButtons();
             return;
         }
@@ -466,6 +466,9 @@
                 <td><strong>${view.view_name || '-'}</strong></td>
                 <td>${view.view_owner || '-'}</td>
                 <td>${view.view_type || '-'}</td>
+                <td>${view.view_size || '-'}</td>
+                <td>${view.index_size || '-'}</td>
+                <td>${formatRowCount(view.row_count)}</td>
             </tr>
         `).join('');
         updateViewPaginationButtons();
@@ -512,7 +515,7 @@
                     viewsState.direction = viewsState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
                     viewsState.sort = sort;
-                    viewsState.direction = 'asc';
+                    viewsState.direction = ['size_bytes', 'index_size_bytes', 'row_count'].includes(sort) ? 'desc' : 'asc';
                 }
                 viewsState.page = 1;
                 refreshViewsForConnection();
