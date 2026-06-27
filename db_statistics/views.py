@@ -244,7 +244,17 @@ def database_overview(request):
         {"key": "max_statement_mem", "label": "Максимальная память на запрос", "setting": "max_statement_mem", "value": row[2] or "—"},
         {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "setting": "gp_vmem_protect_limit", "value": row[3] or "—"},
     ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "metrics": metrics, "memory_settings": memory_settings})
+    connection_info = [
+        {"label": "Название подключения", "value": db_connection.name},
+        {"label": "Хост", "value": db_connection.host},
+        {"label": "Порт", "value": db_connection.port},
+        {"label": "База данных", "value": db_connection.database},
+        {"label": "Тип БД", "value": db_connection.db_type},
+        {"label": "Активно", "value": "Да" if db_connection.is_active else "Нет"},
+        {"label": "Создано", "value": db_connection.created.strftime("%Y-%m-%d %H:%M:%S") if db_connection.created else "—"},
+        {"label": "Обновлено", "value": db_connection.updated.strftime("%Y-%m-%d %H:%M:%S") if db_connection.updated else "—"},
+    ]
+    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings})
 
 
 @require_http_methods(["POST"])
