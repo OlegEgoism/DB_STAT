@@ -51,6 +51,50 @@ def _read_json_body(request):
         return {}
 
 
+
+def _parse_pg_size_to_bytes(value):
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    parts = text.split()
+    if len(parts) == 1:
+        number_part = ''.join(ch for ch in text if ch.isdigit() or ch in '.,-')
+        unit_part = text[len(number_part):].strip() or 'B'
+    else:
+        number_part, unit_part = parts[0], parts[1]
+    try:
+        number = float(number_part.replace(',', '.'))
+    except ValueError:
+        return None
+    unit = unit_part.lower()
+    multipliers = {
+        'b': 1,
+        'byte': 1,
+        'bytes': 1,
+        'kb': 1024,
+        'kib': 1024,
+        'mb': 1024 ** 2,
+        'mib': 1024 ** 2,
+        'gb': 1024 ** 3,
+        'gib': 1024 ** 3,
+        'tb': 1024 ** 4,
+        'tib': 1024 ** 4,
+    }
+    return int(number * multipliers.get(unit, 1))
+
+
+def _format_bytes(size_bytes):
+    if size_bytes is None:
+        return "—"
+    value = float(size_bytes)
+    for unit in ["Б", "КБ", "МБ", "ГБ"]:
+        if value < 1024:
+            return f"{value:.2f} {unit}"
+        value /= 1024
+    return f"{value:.2f} ТБ"
+
 def _escape_like_pattern(value):
     return value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
 
@@ -500,6 +544,78 @@ def idle_transactions(request):
             }
         )
     return JsonResponse({"ok": True, "transactions": transactions, "total_count": len(transactions)})
+
+
+@require_http_methods(["POST"])
+def memory_overview(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    memory_query = """
+        SELECT
+            current_setting('gp_vmem_protect_limit', true) AS gp_vmem_protect_limit,
+            current_setting('shared_buffers', true) AS shared_buffers,
+            current_setting('work_mem', true) AS work_mem,
+            current_setting('maintenance_work_mem', true) AS maintenance_work_mem,
+            current_setting('statement_mem', true) AS statement_mem,
+            current_setting('max_statement_mem', true) AS max_statement_mem;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(memory_query)
+                row = cursor.fetchone()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить параметры памяти: {exc}"}, status=400)
+
+    settings = [
+        {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "value": row[0] or "—", "role": "Защита OOM"},
+        {"key": "shared_buffers", "label": "Кэш данных", "value": row[1] or "—", "role": "Буферы"},
+        {"key": "work_mem", "label": "Память операций", "value": row[2] or "—", "role": "Сортировка/Hash"},
+        {"key": "maintenance_work_mem", "label": "Память обслуживания", "value": row[3] or "—", "role": "VACUUM/CREATE INDEX"},
+        {"key": "statement_mem", "label": "Память запроса", "value": row[4] or "—", "role": "Лимит запроса"},
+        {"key": "max_statement_mem", "label": "Максимальная память запроса", "value": row[5] or "—", "role": "Макс. лимит"},
+    ]
+
+    sizes = {
+        "gp_vmem_protect_limit": _parse_pg_size_to_bytes(row[0]),
+        "shared_buffers": _parse_pg_size_to_bytes(row[1]),
+        "work_mem": _parse_pg_size_to_bytes(row[2]),
+        "maintenance_work_mem": _parse_pg_size_to_bytes(row[3]),
+        "statement_mem": _parse_pg_size_to_bytes(row[4]),
+        "max_statement_mem": _parse_pg_size_to_bytes(row[5]),
+    }
+
+    def usage_row(label, used_key, limit_key):
+        used = sizes.get(used_key)
+        limit = sizes.get(limit_key)
+        percent = round((used * 100 / limit), 2) if used is not None and limit else 0
+        return {
+            "label": label,
+            "used": _format_bytes(used),
+            "limit": _format_bytes(limit),
+            "usage_percent": percent,
+        }
+
+    usage = [
+        usage_row("statement_mem от max_statement_mem", "statement_mem", "max_statement_mem"),
+        usage_row("max_statement_mem от gp_vmem_protect_limit", "max_statement_mem", "gp_vmem_protect_limit"),
+        usage_row("work_mem от max_statement_mem", "work_mem", "max_statement_mem"),
+        usage_row("shared_buffers от gp_vmem_protect_limit", "shared_buffers", "gp_vmem_protect_limit"),
+    ]
+    return JsonResponse({"ok": True, "settings": settings, "usage": usage})
 
 
 @require_http_methods(["POST"])

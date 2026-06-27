@@ -715,10 +715,13 @@
         <div class="row g-3">
             <div class="col-lg-6">
                 <div class="glass-card">
-                    <div class="card-header"><span><i class="fas fa-memory"></i> Параметры памяти</span></div>
+                    <div class="card-header">
+                        <span><i class="fas fa-memory"></i> Параметры памяти</span>
+                        <span class="text-muted" id="memorySettingsCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table table-sm">
                                 <thead>
                                 <tr>
                                     <th>Параметр</th>
@@ -726,36 +729,9 @@
                                     <th>Роль</th>
                                 </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="memorySettingsTableBody">
                                 <tr>
-                                    <td><code>gp_vmem_protect_limit</code></td>
-                                    <td><strong>32 GB</strong></td>
-                                    <td><span class="status-badge warning">Защита OOM</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>shared_buffers</code></td>
-                                    <td><strong>8 GB</strong></td>
-                                    <td><span class="status-badge info">Кэш данных</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>work_mem</code></td>
-                                    <td><strong>256 MB</strong></td>
-                                    <td><span class="status-badge info">Сортировка</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>maintenance_work_mem</code></td>
-                                    <td><strong>2 GB</strong></td>
-                                    <td><span class="status-badge info">VACUUM</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>statement_mem</code></td>
-                                    <td><strong>512 MB</strong></td>
-                                    <td><span class="status-badge info">Лимит запроса</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>max_statement_mem</code></td>
-                                    <td><strong>1 GB</strong></td>
-                                    <td><span class="status-badge info">Макс. лимит</span></td>
+                                    <td colspan="3" class="text-muted">Выберите сохранённое подключение для загрузки параметров памяти</td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -765,31 +741,27 @@
             </div>
             <div class="col-lg-6">
                 <div class="glass-card">
-                    <div class="card-header"><span><i class="fas fa-chart-bar"></i> Использование памяти</span></div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">shared_buffers</span><span>6.2 GB / 8 GB (77.5%)</span></div>
-                            <div class="progress">
-                                <div class="progress-bar" style="width:77.5%; background: linear-gradient(90deg, var(--accent-green), var(--accent-cyan));"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">work_mem (среднее)</span><span>184 MB / 256 MB (71.9%)</span></div>
-                            <div class="progress">
-                                <div class="progress-bar" style="width:71.9%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange));"></div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">statement_mem (макс.)</span><span>384 MB / 512 MB (75.0%)</span></div>
-                            <div class="progress">
-                                <div class="progress-bar" style="width:75%; background: linear-gradient(90deg, var(--accent-yellow), var(--accent-orange));"></div>
-                            </div>
-                        </div>
-                        <div class="mb-0">
-                            <div class="d-flex justify-content-between mb-1"><span style="font-weight:500;">gp_vmem_protect_limit</span><span>28 GB / 32 GB (87.5%)</span></div>
-                            <div class="progress">
-                                <div class="progress-bar" style="width:87.5%; background: linear-gradient(90deg, var(--accent-red), var(--accent-pink));"></div>
-                            </div>
+                    <div class="card-header">
+                        <span><i class="fas fa-chart-bar"></i> Использование памяти</span>
+                        <span class="text-muted" id="memoryUsageCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>Показатель</th>
+                                    <th>Использовано</th>
+                                    <th>Лимит</th>
+                                    <th>%</th>
+                                </tr>
+                                </thead>
+                                <tbody id="memoryUsageTableBody">
+                                <tr>
+                                    <td colspan="4" class="text-muted">Выберите сохранённое подключение для загрузки использования памяти</td>
+                                </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
