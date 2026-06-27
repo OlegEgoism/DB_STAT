@@ -182,20 +182,24 @@
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
         const rolesTbody = document.getElementById('databaseOverviewRolesTableBody');
+        const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
         const rolesCount = document.getElementById('databaseOverviewRolesCount');
+        const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
         const version = document.getElementById('databaseOverviewVersion');
         if (count) count.textContent = 'Нет данных';
         if (memoryCount) memoryCount.textContent = 'Нет данных';
         if (connectionCount) connectionCount.textContent = 'Нет данных';
         if (rolesCount) rolesCount.textContent = 'Нет данных';
+        if (connectionSlotsCount) connectionSlotsCount.textContent = 'Нет данных';
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (connectionTbody) connectionTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (rolesTbody) rolesTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
     }
 
     function renderDatabaseOverview(data) {
@@ -203,19 +207,23 @@
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
         const rolesTbody = document.getElementById('databaseOverviewRolesTableBody');
+        const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
         const rolesCount = document.getElementById('databaseOverviewRolesCount');
+        const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
         const version = document.getElementById('databaseOverviewVersion');
         const metrics = data.metrics || [];
         const memorySettings = data.memory_settings || [];
         const connectionInfo = data.connection_info || [];
         const roleCounts = data.role_counts || [];
+        const connectionSlots = data.connection_slots || [];
         if (count) count.textContent = `${metrics.length} метрик`;
         if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
         if (connectionCount) connectionCount.textContent = `${connectionInfo.length} параметров`;
         if (rolesCount) rolesCount.textContent = `${roleCounts.length} показателя`;
+        if (connectionSlotsCount) connectionSlotsCount.textContent = `${connectionSlots.length} показателя`;
         if (version) version.textContent = data.database_version || '—';
         if (connectionTbody) {
             if (!connectionInfo.length) {
@@ -264,6 +272,18 @@
                     <tr>
                         <td>${item.label}</td>
                         <td><strong>${item.count ?? 0}</strong></td>
+                    </tr>
+                `).join('');
+            }
+        }
+        if (connectionSlotsTbody) {
+            if (!connectionSlots.length) {
+                connectionSlotsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о слотах подключений</td></tr>';
+            } else {
+                connectionSlotsTbody.innerHTML = connectionSlots.map(item => `
+                    <tr>
+                        <td>${item.label}</td>
+                        <td><strong>${item.value ?? '—'}</strong></td>
                     </tr>
                 `).join('');
             }
