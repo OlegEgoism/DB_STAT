@@ -262,7 +262,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
         }
         updateSchemaPaginationButtons();
     }
@@ -300,7 +300,7 @@
         if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
         if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
         if (!data.schemas?.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Схемы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Схемы не найдены</td></tr>';
             updateSchemaPaginationButtons();
             return;
         }
@@ -308,6 +308,7 @@
             <tr>
                 <td><strong>${schema.schema_name || '-'}</strong></td>
                 <td>${schema.schema_owner || '-'}</td>
+                <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
             </tr>
         `).join('');

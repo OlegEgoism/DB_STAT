@@ -309,6 +309,7 @@ def database_schema_sizes(request):
     sort_columns = {
         "schema_name": "schema_name",
         "schema_owner": "schema_owner",
+        "table_count": "table_count",
         "size_bytes": "size_bytes",
     }
     sort_column = sort_columns.get(sort, "size_bytes")
@@ -324,6 +325,7 @@ def database_schema_sizes(request):
             SELECT
                 namespace.nspname AS schema_name,
                 COALESCE(owner.rolname, '-') AS schema_owner,
+                COUNT(table_class.oid)::bigint AS table_count,
                 SUM(pg_total_relation_size(table_class.oid))::bigint AS size_bytes
             FROM pg_catalog.pg_class AS table_class
             JOIN pg_catalog.pg_namespace AS namespace
@@ -339,6 +341,7 @@ def database_schema_sizes(request):
         SELECT
             schema_name,
             schema_owner,
+            table_count,
             size_bytes,
             pg_size_pretty(size_bytes) AS table_size,
             COUNT(*) OVER() AS total_count
@@ -367,12 +370,13 @@ def database_schema_sizes(request):
         {
             "schema_name": row[0],
             "schema_owner": row[1],
-            "size_bytes": int(row[2]),
-            "table_size": row[3],
+            "table_count": int(row[2]),
+            "size_bytes": int(row[3]),
+            "table_size": row[4],
         }
         for row in rows
     ]
-    total_count = int(rows[0][4]) if rows else 0
+    total_count = int(rows[0][5]) if rows else 0
     return JsonResponse({"ok": True, "schemas": schemas, "page": page, "page_size": page_size, "total_count": total_count})
 
 
@@ -921,4 +925,3 @@ def segments_info(request):
         return JsonResponse({"ok": False, "message": f"Не удалось получить информацию о сегментах: {exc}"}, status=400)
 
     return JsonResponse({"ok": True, "segments": segments, "health": health_row[1] if health_row else "Нет данных", "metrics": metrics})
-
