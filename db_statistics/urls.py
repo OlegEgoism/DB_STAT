@@ -19,5 +19,6 @@ urlpatterns = [
     path("queries/active/", views.active_queries, name="active_queries"),
     path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
+    path("memory/overview/", views.memory_overview, name="memory_overview"),
     path("segments/info/", views.segments_info, name="segments_info"),
 ]

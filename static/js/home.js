@@ -39,6 +39,7 @@
     const activeQueriesApiUrl = '/queries/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
+    const memoryOverviewApiUrl = '/memory/overview/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -448,6 +449,66 @@
                 if (requestId !== idleTransactionsRequestId) return;
                 renderIdleTransactionsWarning(error.message || 'Не удалось получить транзакции');
             });
+    }
+
+    function renderMemoryOverviewWarning(message) {
+        const settingsTbody = document.getElementById('memorySettingsTableBody');
+        const usageTbody = document.getElementById('memoryUsageTableBody');
+        const settingsCount = document.getElementById('memorySettingsCount');
+        const usageCount = document.getElementById('memoryUsageCount');
+        if (settingsCount) settingsCount.textContent = 'Нет данных';
+        if (usageCount) usageCount.textContent = 'Нет данных';
+        if (settingsTbody) settingsTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (usageTbody) usageTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderMemoryOverview(data) {
+        const settingsTbody = document.getElementById('memorySettingsTableBody');
+        const usageTbody = document.getElementById('memoryUsageTableBody');
+        const settingsCount = document.getElementById('memorySettingsCount');
+        const usageCount = document.getElementById('memoryUsageCount');
+        const settings = data.settings || [];
+        const usage = data.usage || [];
+        if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
+        if (usageCount) usageCount.textContent = `${usage.length} показателя`;
+        if (settingsTbody) {
+            if (!settings.length) {
+                settingsTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Параметры памяти не найдены</td></tr>';
+            } else {
+                settingsTbody.innerHTML = settings.map(item => `
+                    <tr>
+                        <td><code>${escapeHtml(item.key)}</code></td>
+                        <td><strong>${escapeHtml(item.value)}</strong></td>
+                        <td>${escapeHtml(item.role)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        if (usageTbody) {
+            if (!usage.length) {
+                usageTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Использование памяти не найдено</td></tr>';
+            } else {
+                usageTbody.innerHTML = usage.map(item => `
+                    <tr>
+                        <td>${escapeHtml(item.label)}</td>
+                        <td><strong>${escapeHtml(item.used)}</strong></td>
+                        <td>${escapeHtml(item.limit)}</td>
+                        <td>${escapeHtml(item.usage_percent)}%</td>
+                    </tr>
+                `).join('');
+            }
+        }
+    }
+
+    function refreshMemoryOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderMemoryOverviewWarning('Выберите сохранённое подключение для загрузки памяти');
+            return;
+        }
+        renderMemoryOverviewWarning('Загрузка памяти...');
+        connectionRequest(memoryOverviewApiUrl, {id: conn.id})
+            .then(data => renderMemoryOverview(data))
+            .catch(error => renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти'));
     }
 
     function renderSchemaSizesWarning(message) {
@@ -1421,6 +1482,9 @@
         if (pageId === 'transactions') {
             refreshIdleTransactionsForConnection();
         }
+        if (pageId === 'memory') {
+            refreshMemoryOverviewForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1642,6 +1706,9 @@
         }
         if (document.getElementById('page-transactions')?.classList.contains('active')) {
             refreshIdleTransactionsForConnection();
+        }
+        if (document.getElementById('page-memory')?.classList.contains('active')) {
+            refreshMemoryOverviewForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
