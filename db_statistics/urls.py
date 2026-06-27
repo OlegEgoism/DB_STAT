@@ -11,6 +11,7 @@ urlpatterns = [
     path("databases/size/", views.database_size, name="database_size"),
     path("databases/schemas/", views.database_schema_sizes, name="database_schema_sizes"),
     path("tables/sizes/", views.database_table_sizes, name="database_table_sizes"),
+    path("views/list/", views.database_views_list, name="database_views_list"),
     path("distribution/tables/", views.distribution_tables, name="distribution_tables"),
     path("distribution/info/", views.distribution_info, name="distribution_info"),
     path("temp-tables/sizes/", views.database_temp_table_sizes, name="database_temp_table_sizes"),
