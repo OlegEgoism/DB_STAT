@@ -457,7 +457,7 @@ def database_temp_table_sizes(request):
             LEFT JOIN pg_catalog.pg_roles AS owner
                 ON owner.oid = table_class.relowner
             WHERE table_class.relkind IN ('r', 'p')
-              AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%')
+              AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%%')
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
         )
