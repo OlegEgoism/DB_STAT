@@ -14,6 +14,8 @@
     let tableSizesRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
+    let distributionTables = [];
+    let distributionRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -22,6 +24,8 @@
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
+    const distributionTablesApiUrl = '/distribution/tables/';
+    const distributionInfoApiUrl = '/distribution/info/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -57,6 +61,7 @@
         initSchemaSizesControls();
         initTableSizesControls();
         initTempTablesControls();
+        initDistributionControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -398,6 +403,129 @@
         });
         updateTableSortIndicators();
         updateTablePaginationButtons();
+    }
+
+    function renderDistributionWarning(message) {
+        const tbody = document.getElementById('distributionTableBody');
+        const count = document.getElementById('distributionRowsCount');
+        const tableName = document.getElementById('distributionSelectedTableName');
+        if (count) count.textContent = 'Нет данных';
+        if (tableName) tableName.textContent = 'Выберите таблицу';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
+        updateDistributionMetrics();
+        updateSegmentDistributionChart([]);
+    }
+
+    function updateDistributionMetrics(metrics = {}) {
+        const ratio = document.getElementById('distributionSkewRatio');
+        const total = document.getElementById('distributionTotalRows');
+        const status = document.getElementById('distributionStatus');
+        if (ratio) ratio.textContent = metrics.skew_ratio ?? '—';
+        if (total) total.textContent = metrics.total_rows != null ? formatRowCount(metrics.total_rows) : '—';
+        if (status) status.textContent = metrics.status || '—';
+    }
+
+    function updateSegmentDistributionChart(segments) {
+        if (!charts.segmentDist) return;
+        const counts = segments.map(item => Number(item.row_count) || 0);
+        const maxRows = counts.length ? Math.max(...counts) : 0;
+        const minRows = counts.filter(value => value > 0).length ? Math.min(...counts.filter(value => value > 0)) : 0;
+        charts.segmentDist.data.labels = segments.map(item => `sg${item.segment_id}`);
+        charts.segmentDist.data.datasets[0].data = counts;
+        charts.segmentDist.data.datasets[0].backgroundColor = counts.map(value => value === maxRows && maxRows > 0 ? '#ef4444' : value === minRows && minRows > 0 ? '#10b981' : '#4f8cff');
+        charts.segmentDist.update();
+    }
+
+    function renderDistributionInfo(data) {
+        const tbody = document.getElementById('distributionTableBody');
+        const count = document.getElementById('distributionRowsCount');
+        const tableName = document.getElementById('distributionSelectedTableName');
+        const segments = data.segments || [];
+        const totalRows = Number(data.metrics?.total_rows) || 0;
+        if (tableName) tableName.textContent = `${data.schema_name}.${data.table_name}`;
+        if (count) count.textContent = `${segments.length} сегментов`;
+        updateDistributionMetrics(data.metrics || {});
+        updateSegmentDistributionChart(segments);
+        if (!tbody) return;
+        if (!segments.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Нет данных о распределении строк</td></tr>';
+            return;
+        }
+        tbody.innerHTML = segments.map(item => {
+            const rows = Number(item.row_count) || 0;
+            const share = totalRows ? ((rows / totalRows) * 100).toFixed(2) : '0.00';
+            return `
+                <tr>
+                    <td><strong>sg${item.segment_id}</strong></td>
+                    <td>${formatRowCount(rows)}</td>
+                    <td>${share}%</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function refreshDistributionForSelectedTable() {
+        const select = document.getElementById('distributionTableSelect');
+        const selectedIndex = Number(select?.value);
+        const selectedTable = Number.isInteger(selectedIndex) ? distributionTables[selectedIndex] : null;
+        const requestId = ++distributionRequestId;
+        if (!selectedTable) {
+            renderDistributionWarning('Выберите таблицу для расчёта распределения');
+            return;
+        }
+        const {schema_name: schemaName, table_name: tableName} = selectedTable;
+        const conn = connections.find(c => c.id === activeConnectionId);
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderDistributionWarning('Выберите сохранённое подключение для расчёта распределения');
+            return;
+        }
+        renderDistributionWarning('Загрузка распределения строк по сегментам...');
+        connectionRequest(distributionInfoApiUrl, {id: conn.id, schema_name: schemaName, table_name: tableName})
+            .then(data => {
+                if (requestId === distributionRequestId) renderDistributionInfo(data);
+            })
+            .catch(error => {
+                if (requestId === distributionRequestId) renderDistributionWarning(error.message || 'Не удалось получить распределение');
+            });
+    }
+
+    function renderDistributionTableOptions(tables) {
+        const select = document.getElementById('distributionTableSelect');
+        const count = document.getElementById('distributionTableCount');
+        if (count) count.textContent = `${tables.length} таблиц`;
+        if (!select) return;
+        if (!tables.length) {
+            select.innerHTML = '<option value="">Таблицы не найдены</option>';
+            renderDistributionWarning('Таблицы не найдены');
+            return;
+        }
+        select.innerHTML = tables.map((table, index) => `<option value="${index}">${table.schema_name}.${table.table_name}</option>`).join('');
+        refreshDistributionForSelectedTable();
+    }
+
+    function refreshDistributionTablesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const select = document.getElementById('distributionTableSelect');
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            distributionTables = [];
+            if (select) select.innerHTML = '<option value="">Выберите сохранённое подключение для загрузки таблиц</option>';
+            renderDistributionWarning('Выберите сохранённое подключение для загрузки списка таблиц');
+            return;
+        }
+        if (select) select.innerHTML = '<option value="">Загрузка таблиц...</option>';
+        connectionRequest(distributionTablesApiUrl, {id: conn.id})
+            .then(data => {
+                distributionTables = data.tables || [];
+                renderDistributionTableOptions(distributionTables);
+            })
+            .catch(error => {
+                distributionTables = [];
+                if (select) select.innerHTML = '<option value="">Не удалось загрузить таблицы</option>';
+                renderDistributionWarning(error.message || 'Не удалось загрузить список таблиц');
+            });
+    }
+
+    function initDistributionControls() {
+        document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
     }
 
     function renderTempTablesWarning(message) {
@@ -810,6 +938,9 @@
         if (pageId === 'temp-tables') {
             refreshTempTablesForConnection();
         }
+        if (pageId === 'distribution') {
+            refreshDistributionTablesForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -1014,6 +1145,9 @@
         if (document.getElementById('page-temp-tables')?.classList.contains('active')) {
             refreshTempTablesForConnection();
         }
+        if (document.getElementById('page-distribution')?.classList.contains('active')) {
+            refreshDistributionTablesForConnection();
+        }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
         });
@@ -1083,35 +1217,16 @@
             }
         });
 
-        // ---- 7. Skew ----
-        const ctx7 = document.getElementById('skewChart').getContext('2d');
-        charts.skew = new Chart(ctx7, {
-            type: 'bar',
-            data: {
-                labels: ['dd04443_bal', 'fact_sales', 'dd04443_tx', 'dc00006_audit', 'fact_orders', 'dim_customer'],
-                datasets: [{
-                    label: 'Коэффициент перекоса',
-                    data: [1.89, 1.45, 1.23, 1.18, 1.12, 1.05],
-                    backgroundColor: [colors.red, colors.yellow, colors.yellow, colors.green, colors.green, colors.green],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}}
-            }
-        });
-
         // ---- 8. Segment Distribution ----
         const ctx8 = document.getElementById('segmentDistributionChart').getContext('2d');
         charts.segmentDist = new Chart(ctx8, {
             type: 'bar',
             data: {
-                labels: ['sg0', 'sg1', 'sg2', 'sg3', 'sg4', 'sg5'],
+                labels: [],
                 datasets: [{
-                    label: 'Строк (млн)',
-                    data: [185.7, 178.2, 192.4, 98.2, 165.8, 172.9],
-                    backgroundColor: ['#4f8cff', '#4f8cff', '#4f8cff', '#ef4444', '#4f8cff', '#4f8cff'],
+                    label: 'Строк',
+                    data: [],
+                    backgroundColor: [],
                     borderRadius: 4
                 }]
             },

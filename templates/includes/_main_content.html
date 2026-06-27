@@ -273,23 +273,53 @@
     <!-- ============================================================ -->
     <div class="page" id="page-distribution">
         <div class="row g-3">
-            <div class="col-lg-6">
+            <div class="col-12">
                 <div class="glass-card">
                     <div class="card-header">
-                        <span><i class="fas fa-arrows-alt-h"></i> Коэффициент перекоса</span>
+                        <span><i class="fas fa-arrows-alt-h"></i> Выбор таблицы для анализа распределения</span>
+                        <span class="text-muted" id="distributionTableCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="database-table-toolbar">
+                        <div class="search-box" style="max-width: 520px;">
+                            <i class="fas fa-table"></i>
+                            <select id="distributionTableSelect" class="form-select form-select-sm">
+                                <option value="">Выберите сохранённое подключение для загрузки таблиц</option>
+                            </select>
+                        </div>
+                        <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
+                            <i class="fas fa-sync-alt"></i> Обновить
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-calculator"></i> Перекос данных</span>
                     </div>
                     <div class="card-body">
-                        <div class="chart-container">
-                            <canvas id="skewChart"></canvas>
+                        <div class="kpi-grid" style="grid-template-columns: 1fr;">
+                            <div class="kpi-card">
+                                <div class="kpi-label">Коэффициент перекоса</div>
+                                <div class="kpi-value" id="distributionSkewRatio">—</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">Всего строк</div>
+                                <div class="kpi-value" id="distributionTotalRows">—</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-label">Статус</div>
+                                <div class="kpi-value" id="distributionStatus">—</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-8">
                 <div class="glass-card">
                     <div class="card-header">
-                        <span><i class="fas fa-chart-bar"></i> Распределение по сегментам</span>
-                        <span style="font-size:11px; color: var(--text-muted);">dd04443_bal_raw_f0611</span>
+                        <span><i class="fas fa-chart-bar"></i> Распределение строк по сегментам</span>
+                        <span style="font-size:11px; color: var(--text-muted);" id="distributionSelectedTableName">Выберите таблицу</span>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -300,52 +330,23 @@
             </div>
             <div class="col-12">
                 <div class="glass-card">
-                    <div class="card-header"><span><i class="fas fa-list"></i> Таблицы с перекосом</span></div>
+                    <div class="card-header">
+                        <span><i class="fas fa-list"></i> Распределение строк по сегментам</span>
+                        <span class="text-muted" id="distributionRowsCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table">
+                            <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th>Схема</th>
-                                    <th>Таблица</th>
-                                    <th>Коэф.</th>
-                                    <th>Мин. строк</th>
-                                    <th>Макс. строк</th>
-                                    <th>Статус</th>
+                                    <th>Сегмент</th>
+                                    <th>Количество строк</th>
+                                    <th>Доля</th>
                                 </tr>
                                 </thead>
-                                <tbody>
+                                <tbody id="distributionTableBody">
                                 <tr>
-                                    <td>dd04_finance</td>
-                                    <td>dd04443_bal_raw_f0611</td>
-                                    <td><span class="text-danger"><strong>1.89</strong></span></td>
-                                    <td>98.2M</td>
-                                    <td>185.7M</td>
-                                    <td><span class="status-badge unsync">высокий</span></td>
-                                </tr>
-                                <tr>
-                                    <td>dwh_cube</td>
-                                    <td>fact_sales</td>
-                                    <td><span class="text-warning"><strong>1.45</strong></span></td>
-                                    <td>56.8M</td>
-                                    <td>82.3M</td>
-                                    <td><span class="status-badge unsync">средний</span></td>
-                                </tr>
-                                <tr>
-                                    <td>dc00_sys</td>
-                                    <td>dc00006_audit_log</td>
-                                    <td><strong>1.23</strong></td>
-                                    <td>34.6M</td>
-                                    <td>42.6M</td>
-                                    <td><span class="status-badge sync">норм.</span></td>
-                                </tr>
-                                <tr>
-                                    <td>dd04_finance</td>
-                                    <td>dd04443_transactions</td>
-                                    <td><strong>1.18</strong></td>
-                                    <td>67.9M</td>
-                                    <td>80.1M</td>
-                                    <td><span class="status-badge sync">норм.</span></td>
+                                    <td colspan="3" class="text-muted">Выберите таблицу для расчёта распределения</td>
                                 </tr>
                                 </tbody>
                             </table>
