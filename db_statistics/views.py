@@ -298,6 +298,66 @@ def database_size(request):
 
 
 @require_http_methods(["POST"])
+def active_queries(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    active_queries_query = """
+        SELECT DISTINCT
+            activity.pid,
+            activity.usename,
+            namespace.nspname || '.' || relation.relname AS relation_name,
+            activity.state,
+            now() - activity.query_start AS duration,
+            activity.query
+        FROM pg_catalog.pg_stat_activity AS activity
+        JOIN pg_catalog.pg_locks AS locks
+            ON locks.pid = activity.pid
+           AND locks.relation IS NOT NULL
+        JOIN pg_catalog.pg_class AS relation
+            ON relation.oid = locks.relation
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = relation.relnamespace
+        WHERE activity.state = 'active'
+        ORDER BY duration DESC;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(active_queries_query)
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить активные запросы: {exc}"}, status=400)
+
+    queries = []
+    for row in rows:
+        duration = row[4]
+        queries.append(
+            {
+                "pid": row[0],
+                "username": row[1] or "—",
+                "relation_name": row[2] or "—",
+                "state": row[3] or "—",
+                "duration": str(duration).split(".")[0] if duration else "—",
+                "sql": row[5] or "—",
+            }
+        )
+    return JsonResponse({"ok": True, "queries": queries, "total_count": len(queries)})
+
+
+@require_http_methods(["POST"])
 def database_schema_sizes(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
