@@ -11,6 +11,7 @@
     let segmentsSortState = {column: 'segment', direction: 'asc'};
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let tableSizesRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -332,6 +333,7 @@
     }
 
     function refreshTableSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const requestId = ++tableSizesRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderTableSizesWarning('Выберите сохранённое подключение для загрузки размеров таблиц');
             return;
@@ -344,8 +346,14 @@
             sort: tableSizesState.sort,
             direction: tableSizesState.direction
         })
-            .then(data => renderTableSizes(data))
-            .catch(error => renderTableSizesWarning(error.message || 'Не удалось получить размеры таблиц'));
+            .then(data => {
+                if (requestId === tableSizesRequestId) renderTableSizes(data);
+            })
+            .catch(error => {
+                if (requestId === tableSizesRequestId) {
+                    renderTableSizesWarning(error.message || 'Не удалось получить размеры таблиц');
+                }
+            });
     }
 
     function initTableSizesControls() {
