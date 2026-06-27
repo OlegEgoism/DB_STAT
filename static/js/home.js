@@ -1731,39 +1731,6 @@
             }
         });
 
-        // ---- 10. Transactions ----
-        const ctx10 = document.getElementById('txChart').getContext('2d');
-        charts.tx = new Chart(ctx10, {
-            type: 'bar',
-            data: {
-                labels: ['dd04_finance', 'dwh_cube', 'dc00_sys', 'postgres'],
-                datasets: [
-                    {label: 'Коммиты (тыс)', data: [2345.7, 1876.5, 987.7, 45.7], backgroundColor: colors.green, borderRadius: 4},
-                    {label: 'Роллбеки (тыс)', data: [45.2, 123.5, 12.3, 1.2], backgroundColor: colors.red, borderRadius: 4}
-                ]
-            },
-            options: chartOptions
-        });
-
-        // ---- 11. Rollback ----
-        const ctx11 = document.getElementById('rollbackChart').getContext('2d');
-        charts.rollback = new Chart(ctx11, {
-            type: 'bar',
-            data: {
-                labels: ['dd04_finance', 'dwh_cube', 'dc00_sys', 'postgres'],
-                datasets: [{
-                    label: 'Rollback %',
-                    data: [1.89, 6.17, 1.23, 2.63],
-                    backgroundColor: [colors.green, colors.yellow, colors.green, colors.green],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}}
-            }
-        });
-
         // ---- 12. Bloat ----
         const ctx12 = document.getElementById('bloatChart').getContext('2d');
         charts.bloat = new Chart(ctx12, {
