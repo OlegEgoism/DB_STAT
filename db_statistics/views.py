@@ -212,7 +212,9 @@ def database_overview(request):
             COALESCE(SUM(index_size_bytes), 0)::bigint AS index_size_bytes,
             GREATEST(pg_database_size(%s)::bigint - COALESCE(SUM(index_size_bytes), 0)::bigint, 0)::bigint AS data_size_without_indexes_bytes,
             COALESCE(SUM(total_size_bytes) FILTER (WHERE relpersistence = 't' OR nspname LIKE 'pg_temp_%%'), 0)::bigint AS temp_table_size_bytes,
-            COALESCE(SUM(total_size_bytes) FILTER (WHERE relkind = 'm'), 0)::bigint AS materialized_view_size_bytes
+            COALESCE(SUM(total_size_bytes) FILTER (WHERE relkind = 'm'), 0)::bigint AS materialized_view_size_bytes,
+            (SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE rolcanlogin)::bigint AS user_count,
+            (SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE NOT rolcanlogin)::bigint AS group_count
         FROM relation_sizes;
     """
 
@@ -248,7 +250,11 @@ def database_overview(request):
         {"label": "Хост", "value": db_connection.host},
         {"label": "Порт", "value": db_connection.port},
     ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings})
+    role_counts = [
+        {"label": "Пользователи", "count": int(row[9] or 0)},
+        {"label": "Группы", "count": int(row[10] or 0)},
+    ]
+    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings, "role_counts": role_counts})
 
 
 @require_http_methods(["POST"])
