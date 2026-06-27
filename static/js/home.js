@@ -12,6 +12,8 @@
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesRequestId = 0;
+    let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let tempTablesRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -19,6 +21,7 @@
     const databaseSizeApiUrl = '/databases/size/';
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
+    const tempTablesApiUrl = '/temp-tables/sizes/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -53,6 +56,7 @@
         initSegmentsTableSorting();
         initSchemaSizesControls();
         initTableSizesControls();
+        initTempTablesControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -396,6 +400,129 @@
         updateTablePaginationButtons();
     }
 
+    function renderTempTablesWarning(message) {
+        const tbody = document.getElementById('tempTablesTableBody');
+        const count = document.getElementById('tempTablesCount');
+        const info = document.getElementById('tempTablePaginationInfo');
+        if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1 из 1';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${message}</td></tr>`;
+        updateTempTablePaginationButtons();
+    }
+
+    function updateTempTableSortIndicators() {
+        document.querySelectorAll('[data-temp-table-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.tempTableSort === tempTablesState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${tempTablesState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function updateTempTablePaginationButtons() {
+        const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
+        const prev = document.getElementById('tempTablePrevPageBtn');
+        const next = document.getElementById('tempTableNextPageBtn');
+        if (prev) prev.disabled = tempTablesState.page <= 1;
+        if (next) next.disabled = tempTablesState.page >= totalPages;
+    }
+
+    function renderTempTables(data) {
+        const tbody = document.getElementById('tempTablesTableBody');
+        const count = document.getElementById('tempTablesCount');
+        const info = document.getElementById('tempTablePaginationInfo');
+        if (!tbody) return;
+        tempTablesState.totalCount = Number(data.total_count) || 0;
+        tempTablesState.page = Number(data.page) || 1;
+        tempTablesState.pageSize = Number(data.page_size) || 100;
+        updateTempTableSortIndicators();
+        const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
+        if (count) count.textContent = `${data.temp_tables?.length || 0} из ${tempTablesState.totalCount} временных таблиц`;
+        if (info) info.textContent = `Страница ${tempTablesState.page} из ${totalPages}`;
+        if (!data.temp_tables?.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Временные таблицы не найдены</td></tr>';
+            updateTempTablePaginationButtons();
+            return;
+        }
+        tbody.innerHTML = data.temp_tables.map(table => `
+            <tr>
+                <td>${table.schema_name || '-'}</td>
+                <td><strong>${table.table_name || '-'}</strong></td>
+                <td>${table.table_size || '-'}</td>
+                <td>${table.table_owner || '-'}</td>
+                <td>${table.session_label || '-'}</td>
+            </tr>
+        `).join('');
+        updateTempTablePaginationButtons();
+    }
+
+    function refreshTempTablesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const requestId = ++tempTablesRequestId;
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderTempTablesWarning('Выберите сохранённое подключение для загрузки временных таблиц');
+            return;
+        }
+        renderTempTablesWarning('Загрузка временных таблиц...');
+        connectionRequest(tempTablesApiUrl, {
+            id: conn.id,
+            page: tempTablesState.page,
+            search: tempTablesState.search,
+            sort: tempTablesState.sort,
+            direction: tempTablesState.direction
+        })
+            .then(data => {
+                if (requestId === tempTablesRequestId) renderTempTables(data);
+            })
+            .catch(error => {
+                if (requestId === tempTablesRequestId) {
+                    renderTempTablesWarning(error.message || 'Не удалось получить временные таблицы');
+                }
+            });
+    }
+
+    function initTempTablesControls() {
+        let searchTimer = null;
+        document.getElementById('tempTableSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                tempTablesState.search = this.value.trim();
+                tempTablesState.page = 1;
+                refreshTempTablesForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-temp-table-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.tempTableSort;
+                if (tempTablesState.sort === sort) {
+                    tempTablesState.direction = tempTablesState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    tempTablesState.sort = sort;
+                    tempTablesState.direction = sort === 'size_bytes' ? 'desc' : 'asc';
+                }
+                tempTablesState.page = 1;
+                refreshTempTablesForConnection();
+            });
+        });
+        document.getElementById('tempTablePrevPageBtn')?.addEventListener('click', function () {
+            if (tempTablesState.page > 1) {
+                tempTablesState.page -= 1;
+                refreshTempTablesForConnection();
+            }
+        });
+        document.getElementById('tempTableNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
+            if (tempTablesState.page < totalPages) {
+                tempTablesState.page += 1;
+                refreshTempTablesForConnection();
+            }
+        });
+        updateTempTableSortIndicators();
+        updateTempTablePaginationButtons();
+    }
+
     function connectionRequest(url, payload) {
         return fetch(url, {
             method: 'POST',
@@ -681,6 +808,9 @@
         if (pageId === 'tables') {
             refreshTableSizesForConnection();
         }
+        if (pageId === 'temp-tables') {
+            refreshTempTablesForConnection();
+        }
 
         setTimeout(() => {
             Object.values(charts).forEach(chart => {
@@ -881,6 +1011,9 @@
         }
         if (document.getElementById('page-tables')?.classList.contains('active')) {
             refreshTableSizesForConnection();
+        }
+        if (document.getElementById('page-temp-tables')?.classList.contains('active')) {
+            refreshTempTablesForConnection();
         }
         Object.values(charts).forEach(chart => {
             if (chart && chart.update) chart.update();
