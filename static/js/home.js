@@ -451,8 +451,8 @@
             <tr>
                 <td>${table.schema_name || '-'}</td>
                 <td><strong>${table.table_name || '-'}</strong></td>
-                <td>${table.table_size || '-'}</td>
                 <td>${table.table_owner || '-'}</td>
+                <td>${table.table_size || '-'}</td>
             </tr>
         `).join('');
         updateTempTablePaginationButtons();
