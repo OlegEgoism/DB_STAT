@@ -1121,31 +1121,6 @@
             }
         });
 
-        // ---- 9. Temp Users ----
-        const ctx9 = document.getElementById('tempUsersChart').getContext('2d');
-        charts.tempUsers = new Chart(ctx9, {
-            type: 'doughnut',
-            data: {
-                labels: ['etl_loader', 'report_user', 'dwhnbrb_cube', 'other'],
-                datasets: [{
-                    data: [35.2, 28.6, 18.4, 17.8],
-                    backgroundColor: [colors.blue, colors.green, colors.purple, '#d1d5db'],
-                    borderColor: ['#ffffff', '#ffffff', '#ffffff', '#ffffff'],
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {color: '#4a5568', boxWidth: 12, padding: 12, font: {size: 11, family: 'Inter'}}
-                    }
-                }
-            }
-        });
-
         // ---- 10. Transactions ----
         const ctx10 = document.getElementById('txChart').getContext('2d');
         charts.tx = new Chart(ctx10, {
