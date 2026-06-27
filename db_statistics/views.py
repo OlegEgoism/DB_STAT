@@ -214,7 +214,15 @@ def database_overview(request):
             COALESCE(SUM(total_size_bytes) FILTER (WHERE relpersistence = 't' OR nspname LIKE 'pg_temp_%%'), 0)::bigint AS temp_table_size_bytes,
             COALESCE(SUM(total_size_bytes) FILTER (WHERE relkind = 'm'), 0)::bigint AS materialized_view_size_bytes,
             (SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE rolcanlogin)::bigint AS user_count,
-            (SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE NOT rolcanlogin)::bigint AS group_count
+            (SELECT COUNT(*) FROM pg_catalog.pg_roles WHERE NOT rolcanlogin)::bigint AS group_count,
+            (SELECT COUNT(*) FROM pg_catalog.pg_stat_activity)::bigint AS current_connections,
+            (SELECT setting::int FROM pg_catalog.pg_settings WHERE name = 'max_connections') AS max_connections,
+            (
+                SELECT ROUND(COUNT(*) * 100.0 / setting::int, 2)
+                FROM pg_catalog.pg_stat_activity, pg_catalog.pg_settings
+                WHERE name = 'max_connections'
+                GROUP BY setting
+            ) AS connection_usage_percent
         FROM relation_sizes;
     """
 
@@ -254,7 +262,12 @@ def database_overview(request):
         {"label": "Пользователи", "count": int(row[9] or 0)},
         {"label": "Группы", "count": int(row[10] or 0)},
     ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings, "role_counts": role_counts})
+    connection_slots = [
+        {"label": "Текущие подключения", "value": int(row[11] or 0)},
+        {"label": "Максимум подключений", "value": int(row[12] or 0)},
+        {"label": "Использование", "value": f"{row[13] or 0}%"},
+    ]
+    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings, "role_counts": role_counts, "connection_slots": connection_slots})
 
 
 @require_http_methods(["POST"])
