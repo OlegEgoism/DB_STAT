@@ -12,6 +12,8 @@
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesRequestId = 0;
+    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: ''};
+    let viewsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
@@ -26,6 +28,7 @@
     const databaseSizeApiUrl = '/databases/size/';
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
+    const viewsListApiUrl = '/views/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
@@ -41,6 +44,7 @@
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
         'databases': 'Схемы <small>Размер и статистика</small>',
         'tables': 'Таблицы <small>Список и размеры таблиц</small>',
+        'views': 'Представления <small>Список представлений</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
         'queries': 'Активные запросы <small>Долгие запросы</small>',
@@ -63,6 +67,7 @@
         initSegmentsTableSorting();
         initSchemaSizesControls();
         initTableSizesControls();
+        initViewsControls();
         initTempTablesControls();
         initDistributionControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
@@ -406,6 +411,128 @@
         });
         updateTableSortIndicators();
         updateTablePaginationButtons();
+    }
+
+    function renderViewsWarning(message) {
+        const tbody = document.getElementById('viewsTableBody');
+        const count = document.getElementById('viewsCount');
+        const info = document.getElementById('viewPaginationInfo');
+        if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1 из 1';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+        updateViewPaginationButtons();
+    }
+
+    function updateViewSortIndicators() {
+        document.querySelectorAll('[data-view-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.viewSort === viewsState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${viewsState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function updateViewPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
+        const prev = document.getElementById('viewPrevPageBtn');
+        const next = document.getElementById('viewNextPageBtn');
+        if (prev) prev.disabled = viewsState.page <= 1;
+        if (next) next.disabled = viewsState.page >= totalPages;
+    }
+
+    function renderViews(data) {
+        const tbody = document.getElementById('viewsTableBody');
+        const count = document.getElementById('viewsCount');
+        const info = document.getElementById('viewPaginationInfo');
+        if (!tbody) return;
+        viewsState.totalCount = Number(data.total_count) || 0;
+        viewsState.page = Number(data.page) || 1;
+        viewsState.pageSize = Number(data.page_size) || 100;
+        updateViewSortIndicators();
+        const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
+        if (count) count.textContent = `${data.views?.length || 0} из ${viewsState.totalCount} представлений`;
+        if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
+        if (!data.views?.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Представления не найдены</td></tr>';
+            updateViewPaginationButtons();
+            return;
+        }
+        tbody.innerHTML = data.views.map(view => `
+            <tr>
+                <td>${view.schema_name || '-'}</td>
+                <td><strong>${view.view_name || '-'}</strong></td>
+                <td>${view.view_owner || '-'}</td>
+                <td>${view.view_type || '-'}</td>
+            </tr>
+        `).join('');
+        updateViewPaginationButtons();
+    }
+
+    function refreshViewsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const requestId = ++viewsRequestId;
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderViewsWarning('Выберите сохранённое подключение для загрузки представлений');
+            return;
+        }
+        renderViewsWarning('Загрузка представлений...');
+        connectionRequest(viewsListApiUrl, {
+            id: conn.id,
+            page: viewsState.page,
+            search: viewsState.search,
+            sort: viewsState.sort,
+            direction: viewsState.direction
+        })
+            .then(data => {
+                if (requestId === viewsRequestId) renderViews(data);
+            })
+            .catch(error => {
+                if (requestId === viewsRequestId) {
+                    renderViewsWarning(error.message || 'Не удалось получить представления');
+                }
+            });
+    }
+
+    function initViewsControls() {
+        let searchTimer = null;
+        document.getElementById('viewSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                viewsState.search = this.value.trim();
+                viewsState.page = 1;
+                refreshViewsForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-view-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.viewSort;
+                if (viewsState.sort === sort) {
+                    viewsState.direction = viewsState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    viewsState.sort = sort;
+                    viewsState.direction = 'asc';
+                }
+                viewsState.page = 1;
+                refreshViewsForConnection();
+            });
+        });
+        document.getElementById('viewPrevPageBtn')?.addEventListener('click', function () {
+            if (viewsState.page > 1) {
+                viewsState.page -= 1;
+                refreshViewsForConnection();
+            }
+        });
+        document.getElementById('viewNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
+            if (viewsState.page < totalPages) {
+                viewsState.page += 1;
+                refreshViewsForConnection();
+            }
+        });
+        updateViewSortIndicators();
+        updateViewPaginationButtons();
     }
 
     function renderDistributionWarning(message) {
@@ -981,6 +1108,9 @@
         if (pageId === 'tables') {
             refreshTableSizesForConnection();
         }
+        if (pageId === 'views') {
+            refreshViewsForConnection();
+        }
         if (pageId === 'temp-tables') {
             refreshTempTablesForConnection();
         }
@@ -1187,6 +1317,9 @@
         }
         if (document.getElementById('page-tables')?.classList.contains('active')) {
             refreshTableSizesForConnection();
+        }
+        if (document.getElementById('page-views')?.classList.contains('active')) {
+            refreshViewsForConnection();
         }
         if (document.getElementById('page-temp-tables')?.classList.contains('active')) {
             refreshTempTablesForConnection();

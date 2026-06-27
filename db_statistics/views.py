@@ -405,6 +405,102 @@ def database_table_sizes(request):
 
 
 @require_http_methods(["POST"])
+def database_views_list(request):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "schema_name"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schema_name",
+        "view_name": "view_name",
+        "view_owner": "view_owner",
+        "view_type": "view_type",
+    }
+    sort_column = sort_columns.get(sort, "schema_name")
+
+    where_sql = ""
+    params = []
+    if search:
+        search_pattern = f"%{_escape_like_pattern(search)}%"
+        where_sql = """
+          AND (
+              namespace.nspname ILIKE %s ESCAPE '!'
+              OR view_class.relname ILIKE %s ESCAPE '!'
+              OR owner.rolname ILIKE %s ESCAPE '!'
+              OR (namespace.nspname || '.' || view_class.relname) ILIKE %s ESCAPE '!'
+          )
+        """
+        params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+
+    views_query = f"""
+        WITH database_views AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                view_class.relname AS view_name,
+                COALESCE(owner.rolname, '-') AS view_owner,
+                CASE view_class.relkind
+                    WHEN 'm' THEN 'Материализованное'
+                    ELSE 'Обычное'
+                END AS view_type
+            FROM pg_catalog.pg_class AS view_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = view_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = view_class.relowner
+            WHERE view_class.relkind IN ('v', 'm')
+              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+        )
+        SELECT
+            schema_name,
+            view_name,
+            view_owner,
+            view_type,
+            COUNT(*) OVER() AS total_count
+        FROM database_views
+        ORDER BY {sort_column} {direction}, schema_name ASC, view_name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(views_query, [*params, page_size, offset])
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить представления: {exc}"}, status=400)
+
+    items = [
+        {
+            "schema_name": row[0],
+            "view_name": row[1],
+            "view_owner": row[2],
+            "view_type": row[3],
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][4]) if rows else 0
+    return JsonResponse({"ok": True, "views": items, "page": page, "page_size": page_size, "total_count": total_count})
+
+
+@require_http_methods(["POST"])
 def distribution_tables(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
