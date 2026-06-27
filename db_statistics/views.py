@@ -423,6 +423,9 @@ def database_views_list(request):
         "view_name": "view_name",
         "view_owner": "view_owner",
         "view_type": "view_type",
+        "size_bytes": "size_bytes",
+        "index_size_bytes": "index_size_bytes",
+        "row_count": "row_count",
     }
     sort_column = sort_columns.get(sort, "schema_name")
 
@@ -449,7 +452,10 @@ def database_views_list(request):
                 CASE view_class.relkind
                     WHEN 'm' THEN 'Материализованное'
                     ELSE 'Обычное'
-                END AS view_type
+                END AS view_type,
+                CASE WHEN view_class.relkind = 'm' THEN pg_total_relation_size(view_class.oid)::bigint ELSE 0::bigint END AS size_bytes,
+                CASE WHEN view_class.relkind = 'm' THEN pg_indexes_size(view_class.oid)::bigint ELSE 0::bigint END AS index_size_bytes,
+                CASE WHEN view_class.relkind = 'm' THEN GREATEST(view_class.reltuples::bigint, 0) ELSE 0::bigint END AS row_count
             FROM pg_catalog.pg_class AS view_class
             JOIN pg_catalog.pg_namespace AS namespace
                 ON namespace.oid = view_class.relnamespace
@@ -465,6 +471,11 @@ def database_views_list(request):
             view_name,
             view_owner,
             view_type,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS view_size,
+            index_size_bytes,
+            pg_size_pretty(index_size_bytes) AS index_size,
+            row_count,
             COUNT(*) OVER() AS total_count
         FROM database_views
         ORDER BY {sort_column} {direction}, schema_name ASC, view_name ASC
@@ -493,10 +504,15 @@ def database_views_list(request):
             "view_name": row[1],
             "view_owner": row[2],
             "view_type": row[3],
+            "size_bytes": int(row[4]),
+            "view_size": row[5],
+            "index_size_bytes": int(row[6]),
+            "index_size": row[7],
+            "row_count": int(row[8]),
         }
         for row in rows
     ]
-    total_count = int(rows[0][4]) if rows else 0
+    total_count = int(rows[0][9]) if rows else 0
     return JsonResponse({"ok": True, "views": items, "page": page, "page_size": page_size, "total_count": total_count})
 
 
