@@ -71,7 +71,6 @@
         'memory': 'Память <small>Параметры памяти</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
-        'bloat': 'Раздувание <small>Bloat анализ</small>',
         'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
     };
 
@@ -2240,24 +2239,6 @@
             }
         });
 
-        // ---- 12. Bloat ----
-        const ctx12 = document.getElementById('bloatChart').getContext('2d');
-        charts.bloat = new Chart(ctx12, {
-            type: 'bar',
-            data: {
-                labels: ['dd04443_bal', 'fact_sales', 'dd04443_tx', 'dc00006_audit', 'dim_customer'],
-                datasets: [{
-                    label: 'Процент вздутия',
-                    data: [28.5, 18.2, 14.7, 8.3, 5.1],
-                    backgroundColor: [colors.red, colors.yellow, colors.yellow, colors.green, colors.green],
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                ...chartOptions,
-                plugins: {legend: {display: false}}
-            }
-        });
     }
 
     document.addEventListener('visibilitychange', function () {
