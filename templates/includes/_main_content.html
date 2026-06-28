@@ -812,18 +812,24 @@
                 <span><i class="fas fa-tools"></i> Статистика обслуживания</span>
                 <span class="text-muted" id="maintenanceStatsCount" style="font-size: 12px;">Нет данных</span>
             </div>
+            <div class="database-table-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input id="maintenanceSearchInput" type="text" placeholder="Поиск по схеме или таблице...">
+                </div>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive maintenance-table-scroll">
                     <table class="table">
                         <thead>
                         <tr>
-                            <th>Схема</th>
-                            <th>Таблица</th>
-                            <th>Строк</th>
-                            <th>Dead rows</th>
-                            <th>Dead %</th>
-                            <th>Последний VACUUM</th>
-                            <th>Последний ANALYZE</th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="live_rows">Строк <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_rows">Dead rows <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_percent">Dead % <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_vacuum">Последний VACUUM <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний ANALYZE <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="maintenanceStatsTableBody">
