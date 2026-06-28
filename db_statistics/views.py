@@ -338,46 +338,6 @@ def database_overview(request):
 
 
 @require_http_methods(["POST"])
-def database_size(request):
-    payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
-    size_query = """
-        SELECT
-            pg_database_size(%s) AS size_bytes,
-            pg_size_pretty(pg_database_size(%s)) AS size_pretty;
-    """
-
-    try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.password,
-            )
-        ) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(size_query, [db_connection.database, db_connection.database])
-                size_bytes, size_pretty = cursor.fetchone()
-    except Exception as exc:
-        return JsonResponse({"ok": False, "message": f"Не удалось получить размер БД: {exc}"}, status=400)
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "database": db_connection.database,
-            "size_bytes": int(size_bytes),
-            "size_pretty": size_pretty,
-        }
-    )
-
-
-@require_http_methods(["POST"])
 def active_queries(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
