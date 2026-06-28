@@ -690,32 +690,73 @@ def _database_roles_list(request, *, can_login):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    page_size = int(payload.get("page_size") or (100 if can_login else 10000))
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "name"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "name": "name",
+        "superuser": "superuser",
+        "createdb": "createdb",
+        "createrole": "createrole",
+        "inherit": "inherit",
+        "replication": "replication",
+        "connection_limit": "connection_limit",
+        "valid_until": "valid_until",
+        "member_count": "member_count",
+    }
+    sort_column = sort_columns.get(sort, "name")
     role_type_message = "пользователей" if can_login else "групп"
-    roles_query = """
+
+    where_sql = ""
+    params = [can_login]
+    if search:
+        where_sql = "AND role_info.rolname ILIKE %s ESCAPE '!'"
+        params.append(f"%{_escape_like_pattern(search)}%")
+
+    roles_query = f"""
+        WITH roles AS (
+            SELECT
+                role_info.rolname AS name,
+                role_info.rolsuper AS superuser,
+                role_info.rolcreatedb AS createdb,
+                role_info.rolcreaterole AS createrole,
+                role_info.rolinherit AS inherit,
+                role_info.rolreplication AS replication,
+                role_info.rolconnlimit AS connection_limit,
+                role_info.rolvaliduntil AS valid_until,
+                COUNT(membership.member)::bigint AS member_count
+            FROM pg_catalog.pg_roles AS role_info
+            LEFT JOIN pg_catalog.pg_auth_members AS membership
+                ON membership.roleid = role_info.oid
+            WHERE role_info.rolcanlogin = %s
+              {where_sql}
+            GROUP BY
+                role_info.rolname,
+                role_info.rolsuper,
+                role_info.rolcreatedb,
+                role_info.rolcreaterole,
+                role_info.rolinherit,
+                role_info.rolreplication,
+                role_info.rolconnlimit,
+                role_info.rolvaliduntil
+        )
         SELECT
-            role_info.rolname,
-            role_info.rolsuper,
-            role_info.rolcreatedb,
-            role_info.rolcreaterole,
-            role_info.rolinherit,
-            role_info.rolreplication,
-            role_info.rolconnlimit,
-            role_info.rolvaliduntil,
-            COUNT(membership.member)::bigint AS member_count
-        FROM pg_catalog.pg_roles AS role_info
-        LEFT JOIN pg_catalog.pg_auth_members AS membership
-            ON membership.roleid = role_info.oid
-        WHERE role_info.rolcanlogin = %s
-        GROUP BY
-            role_info.rolname,
-            role_info.rolsuper,
-            role_info.rolcreatedb,
-            role_info.rolcreaterole,
-            role_info.rolinherit,
-            role_info.rolreplication,
-            role_info.rolconnlimit,
-            role_info.rolvaliduntil
-        ORDER BY role_info.rolname ASC;
+            name,
+            superuser,
+            createdb,
+            createrole,
+            inherit,
+            replication,
+            connection_limit,
+            valid_until,
+            member_count,
+            COUNT(*) OVER() AS total_count
+        FROM roles
+        ORDER BY {sort_column} {direction}, name ASC
+        LIMIT %s OFFSET %s;
     """
 
     try:
@@ -729,7 +770,7 @@ def _database_roles_list(request, *, can_login):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(roles_query, [can_login])
+                cursor.execute(roles_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить список {role_type_message}: {exc}"}, status=400)
@@ -748,7 +789,8 @@ def _database_roles_list(request, *, can_login):
         }
         for row in rows
     ]
-    return JsonResponse({"ok": True, "roles": roles, "total_count": len(roles)})
+    total_count = int(rows[0][9]) if rows else 0
+    return JsonResponse({"ok": True, "roles": roles, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])

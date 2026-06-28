@@ -853,19 +853,25 @@
                 <span><i class="fas fa-user"></i> Пользователи</span>
                 <span class="text-muted" id="usersCount" style="font-size: 12px;">Нет данных</span>
             </div>
+            <div class="database-table-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="usersSearchInput" placeholder="Поиск по пользователю...">
+                </div>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
                     <table class="table table-sm">
                         <thead>
                         <tr>
-                            <th>Пользователь</th>
-                            <th>Суперпользователь</th>
-                            <th>Создаёт БД</th>
-                            <th>Создаёт роли</th>
-                            <th>Наследование</th>
-                            <th>Репликация</th>
-                            <th>Лимит подключений</th>
-                            <th>Действует до</th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="name">Пользователь <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="inherit">Наследование <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="replication">Репликация <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-users-sort="valid_until">Действует до <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="usersTableBody">
@@ -875,6 +881,15 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <div class="table-pagination">
+                <button class="btn-conn secondary" type="button" id="usersPrevPageBtn">
+                    <i class="fas fa-chevron-left"></i> Назад
+                </button>
+                <span id="usersPaginationInfo">Страница 1 из 1</span>
+                <button class="btn-conn secondary" type="button" id="usersNextPageBtn">
+                    Далее <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
