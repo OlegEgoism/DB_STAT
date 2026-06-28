@@ -26,6 +26,8 @@
     let idleTransactionsRequestId = 0;
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: ''};
     let maintenanceStatsRequestId = 0;
+    let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
+    let usersRequestId = 0;
     const activePageStorageKey = 'gp_active_page';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -95,6 +97,7 @@
         initTempTablesControls();
         initDistributionControls();
         initMaintenanceStatsControls();
+        initUsersControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -537,6 +540,34 @@
         if (tbody) tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
+    function updateUsersSortIndicators() {
+        document.querySelectorAll('[data-users-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.usersSort === usersState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${usersState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function updateUsersPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
+        const prev = document.getElementById('usersPrevPageBtn');
+        const next = document.getElementById('usersNextPageBtn');
+        if (prev) prev.disabled = usersState.page <= 1;
+        if (next) next.disabled = usersState.page >= totalPages;
+    }
+
+    function renderUsersWarning(message) {
+        const info = document.getElementById('usersPaginationInfo');
+        usersState.totalCount = 0;
+        if (info) info.textContent = 'Страница 1 из 1';
+        renderRolesListWarning('usersTableBody', 'usersCount', 8, message);
+        updateUsersPaginationButtons();
+    }
+
     function renderRolesList(data, tbodyId, countId, emptyMessage, includeMembersCount = false) {
         const tbody = document.getElementById(tbodyId);
         const count = document.getElementById(countId);
@@ -563,15 +594,80 @@
         `).join('');
     }
 
+    function renderUsers(data) {
+        const info = document.getElementById('usersPaginationInfo');
+        const count = document.getElementById('usersCount');
+        usersState.totalCount = Number(data.total_count) || 0;
+        usersState.page = Number(data.page) || 1;
+        usersState.pageSize = Number(data.page_size) || 100;
+        updateUsersSortIndicators();
+        const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
+        renderRolesList(data, 'usersTableBody', null, 'Пользователи не найдены');
+        if (count) count.textContent = `${data.roles?.length || 0} из ${usersState.totalCount} пользователей`;
+        if (info) info.textContent = `Страница ${usersState.page} из ${totalPages}`;
+        updateUsersPaginationButtons();
+    }
+
     function refreshUsersForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const requestId = ++usersRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderRolesListWarning('usersTableBody', 'usersCount', 8, 'Выберите сохранённое подключение для загрузки пользователей');
+            renderUsersWarning('Выберите сохранённое подключение для загрузки пользователей');
             return;
         }
-        renderRolesListWarning('usersTableBody', 'usersCount', 8, 'Загрузка пользователей...');
-        connectionRequest(usersListApiUrl, {id: conn.id})
-            .then(data => renderRolesList(data, 'usersTableBody', 'usersCount', 'Пользователи не найдены'))
-            .catch(error => renderRolesListWarning('usersTableBody', 'usersCount', 8, error.message || 'Не удалось получить список пользователей'));
+        renderUsersWarning('Загрузка пользователей...');
+        connectionRequest(usersListApiUrl, {
+            id: conn.id,
+            page: usersState.page,
+            search: usersState.search,
+            sort: usersState.sort,
+            direction: usersState.direction
+        })
+            .then(data => {
+                if (requestId === usersRequestId) renderUsers(data);
+            })
+            .catch(error => {
+                if (requestId === usersRequestId) renderUsersWarning(error.message || 'Не удалось получить список пользователей');
+            });
+    }
+
+    function initUsersControls() {
+        let searchTimer = null;
+        document.getElementById('usersSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                usersState.search = this.value.trim();
+                usersState.page = 1;
+                refreshUsersForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-users-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.usersSort;
+                if (usersState.sort === sort) {
+                    usersState.direction = usersState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    usersState.sort = sort;
+                    usersState.direction = ['connection_limit', 'valid_until'].includes(sort) ? 'desc' : 'asc';
+                }
+                usersState.page = 1;
+                refreshUsersForConnection();
+            });
+        });
+        document.getElementById('usersPrevPageBtn')?.addEventListener('click', function () {
+            if (usersState.page > 1) {
+                usersState.page -= 1;
+                refreshUsersForConnection();
+            }
+        });
+        document.getElementById('usersNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
+            if (usersState.page < totalPages) {
+                usersState.page += 1;
+                refreshUsersForConnection();
+            }
+        });
+        updateUsersSortIndicators();
+        updateUsersPaginationButtons();
     }
 
     function refreshGroupsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
