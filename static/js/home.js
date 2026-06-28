@@ -43,6 +43,8 @@
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
+    const usersListApiUrl = '/users/list/';
+    const groupsListApiUrl = '/groups/list/';
 
     const defaultConnections = [
         {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
@@ -63,6 +65,8 @@
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
         'transactions': 'Транзакции <small>Commit / Rollback</small>',
         'memory': 'Память <small>Параметры памяти</small>',
+        'users': 'Пользователи <small>Список пользователей</small>',
+        'groups': 'Группы <small>Список групп</small>',
         'bloat': 'Раздувание <small>Bloat анализ</small>',
         'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
     };
@@ -524,6 +528,61 @@
         connectionRequest(memoryOverviewApiUrl, {id: conn.id})
             .then(data => renderMemoryOverview(data))
             .catch(error => renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти'));
+    }
+
+    function renderRolesListWarning(tbodyId, countId, colspan, message) {
+        const tbody = document.getElementById(tbodyId);
+        const count = document.getElementById(countId);
+        if (count) count.textContent = 'Нет данных';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderRolesList(data, tbodyId, countId, emptyMessage, includeMembersCount = false) {
+        const tbody = document.getElementById(tbodyId);
+        const count = document.getElementById(countId);
+        const roles = data.roles || [];
+        const colspan = includeMembersCount ? 9 : 8;
+        if (count) count.textContent = `${roles.length} записей`;
+        if (!tbody) return;
+        if (!roles.length) {
+            tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-muted">${escapeHtml(emptyMessage)}</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = roles.map(role => `
+            <tr>
+                <td><strong>${escapeHtml(role.name)}</strong></td>
+                <td>${escapeHtml(role.superuser)}</td>
+                <td>${escapeHtml(role.createdb)}</td>
+                <td>${escapeHtml(role.createrole)}</td>
+                <td>${escapeHtml(role.inherit)}</td>
+                <td>${escapeHtml(role.replication)}</td>
+                <td>${escapeHtml(role.connection_limit)}</td>
+                ${includeMembersCount ? `<td>${escapeHtml(role.member_count)}</td>` : ''}
+                <td>${escapeHtml(role.valid_until)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshUsersForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderRolesListWarning('usersTableBody', 'usersCount', 8, 'Выберите сохранённое подключение для загрузки пользователей');
+            return;
+        }
+        renderRolesListWarning('usersTableBody', 'usersCount', 8, 'Загрузка пользователей...');
+        connectionRequest(usersListApiUrl, {id: conn.id})
+            .then(data => renderRolesList(data, 'usersTableBody', 'usersCount', 'Пользователи не найдены'))
+            .catch(error => renderRolesListWarning('usersTableBody', 'usersCount', 8, error.message || 'Не удалось получить список пользователей'));
+    }
+
+    function refreshGroupsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Выберите сохранённое подключение для загрузки групп');
+            return;
+        }
+        renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Загрузка групп...');
+        connectionRequest(groupsListApiUrl, {id: conn.id})
+            .then(data => renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true))
+            .catch(error => renderRolesListWarning('groupsTableBody', 'groupsCount', 9, error.message || 'Не удалось получить список групп'));
     }
 
     function renderMaintenanceStatsWarning(message) {
@@ -1682,6 +1741,12 @@
         if (pageId === 'memory') {
             refreshMemoryOverviewForConnection(conn);
         }
+        if (pageId === 'users') {
+            refreshUsersForConnection(conn);
+        }
+        if (pageId === 'groups') {
+            refreshGroupsForConnection(conn);
+        }
         if (pageId === 'maintenance') {
             maintenanceStatsState.page = 1;
             refreshMaintenanceStatsForConnection(conn);
@@ -1930,6 +1995,12 @@
         }
         if (document.getElementById('page-memory')?.classList.contains('active')) {
             refreshMemoryOverviewForConnection();
+        }
+        if (document.getElementById('page-users')?.classList.contains('active')) {
+            refreshUsersForConnection();
+        }
+        if (document.getElementById('page-groups')?.classList.contains('active')) {
+            refreshGroupsForConnection();
         }
         if (document.getElementById('page-maintenance')?.classList.contains('active')) {
             refreshMaintenanceStatsForConnection();

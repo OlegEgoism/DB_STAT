@@ -673,6 +673,94 @@ def memory_overview(request):
     return JsonResponse({"ok": True, "settings": settings, "usage": usage, "size_metrics": size_metrics})
 
 
+def _format_role_timestamp(value):
+    if value is None:
+        return "Бессрочно"
+    return value.strftime("%Y-%m-%d %H:%M:%S") if hasattr(value, "strftime") else str(value)
+
+
+def _role_flag(value):
+    return "Да" if value else "Нет"
+
+
+def _database_roles_list(request, *, can_login):
+    payload = _read_json_body(request)
+    connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+
+    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    role_type_message = "пользователей" if can_login else "групп"
+    roles_query = """
+        SELECT
+            role_info.rolname,
+            role_info.rolsuper,
+            role_info.rolcreatedb,
+            role_info.rolcreaterole,
+            role_info.rolinherit,
+            role_info.rolreplication,
+            role_info.rolconnlimit,
+            role_info.rolvaliduntil,
+            COUNT(membership.member)::bigint AS member_count
+        FROM pg_catalog.pg_roles AS role_info
+        LEFT JOIN pg_catalog.pg_auth_members AS membership
+            ON membership.roleid = role_info.oid
+        WHERE role_info.rolcanlogin = %s
+        GROUP BY
+            role_info.rolname,
+            role_info.rolsuper,
+            role_info.rolcreatedb,
+            role_info.rolcreaterole,
+            role_info.rolinherit,
+            role_info.rolreplication,
+            role_info.rolconnlimit,
+            role_info.rolvaliduntil
+        ORDER BY role_info.rolname ASC;
+    """
+
+    try:
+        with psycopg2.connect(
+            **_connection_kwargs(
+                db_connection.host,
+                db_connection.port,
+                db_connection.database,
+                db_connection.username,
+                db_connection.password,
+            )
+        ) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(roles_query, [can_login])
+                rows = cursor.fetchall()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить список {role_type_message}: {exc}"}, status=400)
+
+    roles = [
+        {
+            "name": row[0],
+            "superuser": _role_flag(row[1]),
+            "createdb": _role_flag(row[2]),
+            "createrole": _role_flag(row[3]),
+            "inherit": _role_flag(row[4]),
+            "replication": _role_flag(row[5]),
+            "connection_limit": "Без лимита" if row[6] == -1 else str(row[6]),
+            "valid_until": _format_role_timestamp(row[7]),
+            "member_count": int(row[8] or 0),
+        }
+        for row in rows
+    ]
+    return JsonResponse({"ok": True, "roles": roles, "total_count": len(roles)})
+
+
+@require_http_methods(["POST"])
+def database_users_list(request):
+    return _database_roles_list(request, can_login=True)
+
+
+@require_http_methods(["POST"])
+def database_groups_list(request):
+    return _database_roles_list(request, can_login=False)
+
+
 @require_http_methods(["POST"])
 def maintenance_stats(request):
     payload = _read_json_body(request)
