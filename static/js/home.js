@@ -30,7 +30,6 @@
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
     const segmentsInfoApiUrl = '/segments/info/';
-    const databaseSizeApiUrl = '/databases/size/';
     const databaseOverviewApiUrl = '/databases/overview/';
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
@@ -83,7 +82,6 @@
         loadConnections();
         initCharts();
         refreshSegmentsForConnection();
-        refreshDatabaseSizeForConnection();
         refreshDatabaseOverviewForConnection();
         initNavigation();
         initSegmentsTableSorting();
@@ -140,7 +138,6 @@
         return payload.name && payload.host && payload.port && payload.database && payload.user;
     }
 
-
     function formatDatabaseSize(sizeBytes) {
         const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
         let value = Number(sizeBytes) || 0;
@@ -152,39 +149,6 @@
         const precision = value >= 100 || unitIndex === 0 ? 0 : value >= 10 ? 1 : 2;
         return {value: value.toFixed(precision), unit: units[unitIndex]};
     }
-
-    function renderDatabaseSize({database = '—', size_bytes: sizeBytes = 0} = {}) {
-        const value = document.getElementById('databaseSizeValue');
-        const unit = document.getElementById('databaseSizeUnit');
-        const name = document.getElementById('databaseSizeName');
-        if (!value || !unit || !name) return;
-        const formatted = formatDatabaseSize(sizeBytes);
-        value.textContent = formatted.value;
-        unit.textContent = formatted.unit;
-        name.textContent = database;
-    }
-
-    function renderDatabaseSizeWarning(message, database = '') {
-        const value = document.getElementById('databaseSizeValue');
-        const unit = document.getElementById('databaseSizeUnit');
-        const name = document.getElementById('databaseSizeName');
-        if (!value || !unit || !name) return;
-        value.textContent = message;
-        unit.textContent = '';
-        name.textContent = database || 'Выберите подключение';
-    }
-
-    function refreshDatabaseSizeForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderDatabaseSizeWarning('—');
-            return;
-        }
-        renderDatabaseSizeWarning('обновление...', conn.database || conn.name);
-        connectionRequest(databaseSizeApiUrl, {id: conn.id})
-            .then(data => renderDatabaseSize(data))
-            .catch(error => renderDatabaseSizeWarning(error.message || 'ошибка', conn.database || conn.name));
-    }
-
 
     function renderDatabaseOverviewWarning(message) {
         const tbody = document.getElementById('databaseOverviewTableBody');
@@ -807,7 +771,6 @@
                 renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
             });
     }
-
 
     function formatRowCount(value) {
         const number = Number(value) || 0;
@@ -1452,7 +1415,6 @@
         return mode === 's' ? '<span class="status-badge sync">sync</span>' : '<span class="status-badge unsync">not sync</span>';
     }
 
-
     function segmentSortValue(segment, column) {
         if (column === 'segment') {
             const numericSegment = Number(segment.segment);
@@ -1675,7 +1637,6 @@
             refreshDatabaseOverviewForConnection();
         }
         if (pageId === 'databases') {
-            refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
         }
         if (pageId === 'tables') {
@@ -1724,7 +1685,6 @@
         if (conn) {
             activatePage('segments');
             refreshSegmentsForConnection(conn);
-            refreshDatabaseSizeForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
@@ -1825,7 +1785,6 @@
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
                 refreshSegmentsForConnection(savedConnection);
-                refreshDatabaseSizeForConnection(savedConnection);
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
@@ -1904,7 +1863,6 @@
             refreshDatabaseOverviewForConnection();
         }
         if (document.getElementById('page-databases')?.classList.contains('active')) {
-            refreshDatabaseSizeForConnection();
             refreshSchemaSizesForConnection();
         }
         if (document.getElementById('page-tables')?.classList.contains('active')) {
