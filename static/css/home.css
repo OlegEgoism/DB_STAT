@@ -1310,11 +1310,22 @@
             background: rgba(248, 250, 252, 0.65);
         }
 
+        .toolbar-control-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-control-group.align-right {
+            margin-left: auto;
+            justify-content: flex-end;
+        }
+
         .toolbar-filter {
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-left: auto;
         }
 
         .toolbar-filter label {
