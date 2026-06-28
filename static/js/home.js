@@ -536,7 +536,7 @@
                     <div class="memory-usage-item">
                         <div class="memory-usage-row">
                             <span class="memory-usage-label">${escapeHtml(item.label)}</span>
-                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)} (${escapeHtml(item.usage_percent)}%)</span>
+                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)}</span>
                         </div>
                         <div class="memory-usage-track">
                             <div class="memory-usage-bar ${barClass}" style="width: ${percent}%;"></div>
