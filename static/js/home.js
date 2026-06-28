@@ -26,6 +26,7 @@
     let idleTransactionsRequestId = 0;
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: ''};
     let maintenanceStatsRequestId = 0;
+    const activePageStorageKey = 'gp_active_page';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -81,9 +82,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         loadConnections();
         initCharts();
-        refreshSegmentsForConnection();
-        refreshDatabaseOverviewForConnection();
         initNavigation();
+        activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
         initSchemaSizesControls();
         initTableSizesControls();
@@ -1383,7 +1383,7 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                refreshSegmentsForConnection();
+                refreshActivePageForConnection();
             })
             .catch(() => {
                 const saved = localStorage.getItem('gp_connections');
@@ -1398,7 +1398,7 @@
                 }
                 activeConnectionId = connections[0]?.id || activeConnectionId;
                 populateConnectionSelect();
-                refreshSegmentsForConnection();
+                refreshActivePageForConnection();
                 showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
             });
     }
@@ -1624,48 +1624,90 @@
         }
     }
 
-    function activatePage(pageId) {
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.page === pageId);
-        });
-        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-        const target = document.getElementById('page-' + pageId);
-        if (target) target.classList.add('active');
-        document.getElementById('pageTitle').innerHTML = pageTitles[pageId] || pageId;
+    function isKnownPage(pageId) {
+        return Boolean(
+            pageId &&
+            pageTitles[pageId] &&
+            document.getElementById('page-' + pageId) &&
+            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId)
+        );
+    }
 
+    function getStoredActivePage() {
+        const pageId = localStorage.getItem(activePageStorageKey);
+        return isKnownPage(pageId) ? pageId : null;
+    }
+
+    function getCurrentActivePageId() {
+        const activeNavItem = document.querySelector('.nav-item.active');
+        if (isKnownPage(activeNavItem?.dataset.page)) return activeNavItem.dataset.page;
+
+        const activePage = document.querySelector('.page.active');
+        if (activePage?.id?.startsWith('page-')) {
+            const pageId = activePage.id.replace('page-', '');
+            if (isKnownPage(pageId)) return pageId;
+        }
+
+        return 'database-overview';
+    }
+
+    function refreshPageData(pageId, conn) {
         if (pageId === 'database-overview') {
-            refreshDatabaseOverviewForConnection();
+            refreshDatabaseOverviewForConnection(conn);
         }
         if (pageId === 'databases') {
-            refreshSchemaSizesForConnection();
+            refreshSchemaSizesForConnection(conn);
         }
         if (pageId === 'tables') {
-            refreshTableSizesForConnection();
+            refreshTableSizesForConnection(conn);
         }
         if (pageId === 'views') {
-            refreshViewsForConnection();
+            refreshViewsForConnection(conn);
         }
         if (pageId === 'temp-tables') {
-            refreshTempTablesForConnection();
+            refreshTempTablesForConnection(conn);
         }
         if (pageId === 'distribution') {
-            refreshDistributionTablesForConnection();
+            refreshDistributionTablesForConnection(conn);
         }
         if (pageId === 'queries') {
-            refreshActiveQueriesForConnection();
+            refreshActiveQueriesForConnection(conn);
         }
         if (pageId === 'locks') {
-            refreshBlockingLocksForConnection();
+            refreshBlockingLocksForConnection(conn);
         }
         if (pageId === 'transactions') {
-            refreshIdleTransactionsForConnection();
+            refreshIdleTransactionsForConnection(conn);
         }
         if (pageId === 'memory') {
-            refreshMemoryOverviewForConnection();
+            refreshMemoryOverviewForConnection(conn);
         }
         if (pageId === 'maintenance') {
             maintenanceStatsState.page = 1;
-            refreshMaintenanceStatsForConnection();
+            refreshMaintenanceStatsForConnection(conn);
+        }
+    }
+
+    function refreshActivePageForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        refreshPageData(getCurrentActivePageId(), conn);
+    }
+
+    function activatePage(pageId, {persist = true, refresh = true} = {}) {
+        const nextPageId = isKnownPage(pageId) ? pageId : 'database-overview';
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.page === nextPageId);
+        });
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById('page-' + nextPageId).classList.add('active');
+        document.getElementById('pageTitle').innerHTML = pageTitles[nextPageId] || nextPageId;
+
+        if (persist) {
+            localStorage.setItem(activePageStorageKey, nextPageId);
+        }
+
+        if (refresh) {
+            refreshPageData(nextPageId);
         }
 
         setTimeout(() => {
