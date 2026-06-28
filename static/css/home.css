@@ -953,6 +953,18 @@
             background: linear-gradient(90deg, #ef4444, #ec4899);
         }
 
+        .maintenance-table-scroll {
+            max-height: 560px;
+            overflow: auto;
+        }
+
+        .maintenance-table-scroll thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.96);
+        }
+
         /* ========== PROGRESS ========== */
         .progress {
             background: rgba(0, 0, 0, 0.06);

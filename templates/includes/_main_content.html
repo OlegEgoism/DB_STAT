@@ -813,7 +813,7 @@
                 <span class="text-muted" id="maintenanceStatsCount" style="font-size: 12px;">Нет данных</span>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive maintenance-table-scroll">
                     <table class="table">
                         <thead>
                         <tr>
@@ -832,6 +832,15 @@
                         </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="table-pagination">
+                    <button class="btn-conn secondary" type="button" id="maintenancePrevPageBtn">
+                        <i class="fas fa-chevron-left"></i> Назад
+                    </button>
+                    <span id="maintenancePageInfo">Страница 1</span>
+                    <button class="btn-conn secondary" type="button" id="maintenanceNextPageBtn">
+                        Вперёд <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </div>
         </div>

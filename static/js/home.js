@@ -24,6 +24,8 @@
     let activeQueriesRequestId = 0;
     let blockingLocksRequestId = 0;
     let idleTransactionsRequestId = 0;
+    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0};
+    let maintenanceStatsRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -90,6 +92,7 @@
         initViewsControls();
         initTempTablesControls();
         initDistributionControls();
+        initMaintenanceStatsControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -562,15 +565,34 @@
     function renderMaintenanceStatsWarning(message) {
         const tbody = document.getElementById('maintenanceStatsTableBody');
         const count = document.getElementById('maintenanceStatsCount');
+        const info = document.getElementById('maintenancePageInfo');
+        maintenanceStatsState.totalCount = 0;
         if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1';
         if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        updateMaintenancePaginationControls();
+    }
+
+    function updateMaintenancePaginationControls() {
+        const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
+        const prev = document.getElementById('maintenancePrevPageBtn');
+        const next = document.getElementById('maintenanceNextPageBtn');
+        if (prev) prev.disabled = maintenanceStatsState.page <= 1;
+        if (next) next.disabled = maintenanceStatsState.page >= totalPages;
     }
 
     function renderMaintenanceStats(data) {
         const tbody = document.getElementById('maintenanceStatsTableBody');
         const count = document.getElementById('maintenanceStatsCount');
+        const info = document.getElementById('maintenancePageInfo');
         const tables = data.tables || [];
-        if (count) count.textContent = `${tables.length} таблиц`;
+        maintenanceStatsState.totalCount = Number(data.total_count) || 0;
+        maintenanceStatsState.page = Number(data.page) || 1;
+        maintenanceStatsState.pageSize = Number(data.page_size) || 100;
+        const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
+        if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
+        if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
+        updateMaintenancePaginationControls();
         if (!tbody) return;
         if (!tables.length) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Статистика обслуживания не найдена</td></tr>';
@@ -598,10 +620,31 @@
             renderMaintenanceStatsWarning('Выберите сохранённое подключение для загрузки статистики обслуживания');
             return;
         }
+        const requestId = ++maintenanceStatsRequestId;
         renderMaintenanceStatsWarning('Загрузка статистики обслуживания...');
-        connectionRequest(maintenanceStatsApiUrl, {id: conn.id})
-            .then(data => renderMaintenanceStats(data))
-            .catch(error => renderMaintenanceStatsWarning(error.message || 'Не удалось получить статистику обслуживания'));
+        connectionRequest(maintenanceStatsApiUrl, {id: conn.id, page: maintenanceStatsState.page})
+            .then(data => {
+                if (requestId === maintenanceStatsRequestId) renderMaintenanceStats(data);
+            })
+            .catch(error => {
+                if (requestId === maintenanceStatsRequestId) renderMaintenanceStatsWarning(error.message || 'Не удалось получить статистику обслуживания');
+            });
+    }
+
+    function initMaintenanceStatsControls() {
+        document.getElementById('maintenancePrevPageBtn')?.addEventListener('click', function () {
+            if (maintenanceStatsState.page > 1) {
+                maintenanceStatsState.page -= 1;
+                refreshMaintenanceStatsForConnection();
+            }
+        });
+        document.getElementById('maintenanceNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
+            if (maintenanceStatsState.page < totalPages) {
+                maintenanceStatsState.page += 1;
+                refreshMaintenanceStatsForConnection();
+            }
+        });
     }
 
     function renderSchemaSizesWarning(message) {
@@ -1620,6 +1663,7 @@
             refreshMemoryOverviewForConnection();
         }
         if (pageId === 'maintenance') {
+            maintenanceStatsState.page = 1;
             refreshMaintenanceStatsForConnection();
         }
 
