@@ -2,7 +2,7 @@
     // STATE
     // ============================
     let connections = [];
-    let activeConnectionId = 'prod-greenplum';
+    let activeConnectionId = null;
     let charts = {};
     let modalInstance = null;
     let connectionModalMode = 'create';
@@ -49,13 +49,6 @@
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
-
-    const defaultConnections = [
-        {id: 'prod-greenplum', name: 'Production GP', host: 'gp-prod.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
-        {id: 'dev-greenplum', name: 'Dev Greenplum', host: 'gp-dev.example.com', port: 5432, database: 'postgres', user: 'gpadmin', ssl: true, status: 'online'},
-        {id: 'test-postgres', name: 'Test PostgreSQL', host: 'localhost', port: 5432, database: 'postgres', user: 'postgres', ssl: false, status: 'online'},
-        {id: 'analytics', name: 'Analytics Cluster', host: 'analytics.example.com', port: 5432, database: 'analytics', user: 'analytics_user', ssl: true, status: 'online'}
-    ];
 
     const pageTitles = {
         'database-overview': 'База данных <small>Размеры и структура</small>',
@@ -1591,28 +1584,16 @@
             .then(response => response.json())
             .then(data => {
                 connections = data.connections || [];
-                if (connections.length === 0) {
-                    connections = [...defaultConnections];
-                }
-                activeConnectionId = connections[0]?.id || activeConnectionId;
+                activeConnectionId = connections[0]?.id || null;
                 populateConnectionSelect();
                 refreshActivePageForConnection();
             })
             .catch(() => {
-                const saved = localStorage.getItem('gp_connections');
-                if (saved) {
-                    try {
-                        connections = JSON.parse(saved);
-                    } catch (e) {
-                        connections = [...defaultConnections];
-                    }
-                } else {
-                    connections = [...defaultConnections];
-                }
-                activeConnectionId = connections[0]?.id || activeConnectionId;
+                connections = [];
+                activeConnectionId = null;
                 populateConnectionSelect();
                 refreshActivePageForConnection();
-                showToast('⚠️ Не удалось загрузить подключения из БД, используется локальный список');
+                showToast('⚠️ Не удалось загрузить список доступных подключений');
             });
     }
 
@@ -1818,13 +1799,17 @@
             .catch(error => renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.'));
     }
 
-    function saveConnections() {
-        localStorage.setItem('gp_connections', JSON.stringify(connections));
-    }
-
     function populateConnectionSelect() {
         const select = document.getElementById('connectionSelect');
         select.innerHTML = '';
+        if (!connections.length) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Нет доступных подключений';
+            select.appendChild(option);
+            select.value = '';
+            return;
+        }
         connections.forEach(conn => {
             const option = document.createElement('option');
             option.value = conn.id;
@@ -2015,7 +2000,6 @@
         const finishDelete = message => {
             connections = connections.filter(item => item.id !== activeConnectionId);
             activeConnectionId = connections[0]?.id || null;
-            saveConnections();
             populateConnectionSelect();
             refreshSegmentsForConnection();
             modalInstance.hide();
@@ -2055,8 +2039,7 @@
                 } else {
                     connections.push(savedConnection);
                 }
-                saveConnections();
-                populateConnectionSelect();
+                    populateConnectionSelect();
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
@@ -2100,15 +2083,13 @@
         connectionRequest(connectionTestApiUrl, /^\d+$/.test(String(conn.id)) ? {id: conn.id} : conn)
             .then(data => {
                 conn.status = 'online';
-                saveConnections();
-                populateConnectionSelect();
+                    populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
                 showToast(`✅ ${data.message}`);
             })
             .catch(error => {
                 conn.status = 'offline';
-                saveConnections();
-                populateConnectionSelect();
+                    populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
                 showToast(`❌ ${error.message}`);
             });

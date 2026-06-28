@@ -21,10 +21,7 @@
             <!-- Connection Manager -->
             <div class="connection-manager">
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)">
-                    <option value="prod-greenplum">Production GP</option>
-                    <option value="dev-greenplum">Dev Greenplum</option>
-                    <option value="test-postgres">Test PostgreSQL</option>
-                    <option value="analytics">Analytics Cluster</option>
+                    <option value="">Загрузка подключений...</option>
                 </select>
                 <span class="conn-divider"></span>
                 {% if user_can_manage_connections %}
