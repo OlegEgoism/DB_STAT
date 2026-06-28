@@ -1,4 +1,5 @@
-<!-- ========== MAIN CONTENT ========== --><div class="main-content" id="mainContent">
+<!-- ========== MAIN CONTENT ========== -->
+<div class="main-content" id="mainContent">
 
     <!-- Top Bar -->
     <div class="topbar">
@@ -43,14 +44,6 @@
     <div class="page active" id="page-database-overview">
         <div class="row g-3">
             <div class="col-12">
-                <div class="glass-card">
-                    <div class="card-body">
-                        <div class="kpi-card" style="margin-bottom: 0;">
-                            <div class="kpi-label">Версия БД</div>
-                            <div class="kpi-sub" id="databaseOverviewVersion">Выберите сохранённое подключение для загрузки версии БД</div>
-                        </div>
-                    </div>
-                </div>
             </div>
             <div class="col-lg-4">
                 <div class="glass-card">
@@ -70,31 +63,6 @@
                                 <tbody id="databaseOverviewBasicSettingsTableBody">
                                 <tr>
                                     <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки основных данных БД</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-4">
-                <div class="glass-card">
-                    <div class="card-header">
-                        <span><i class="fas fa-users"></i> Пользователи и группы</span>
-                        <span class="text-muted" id="databaseOverviewRolesCount" style="font-size: 12px;">Нет данных</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                <tr>
-                                    <th>Тип</th>
-                                    <th>Количество</th>
-                                </tr>
-                                </thead>
-                                <tbody id="databaseOverviewRolesTableBody">
-                                <tr>
-                                    <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки пользователей и групп</td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -127,6 +95,31 @@
                     </div>
                 </div>
             </div>
+            <div class="col-lg-4">
+                <div class="glass-card">
+                    <div class="card-header">
+                        <span><i class="fas fa-users"></i> Пользователи и группы</span>
+                        <span class="text-muted" id="databaseOverviewRolesCount" style="font-size: 12px;">Нет данных</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                <tr>
+                                    <th>Тип</th>
+                                    <th>Количество</th>
+                                </tr>
+                                </thead>
+                                <tbody id="databaseOverviewRolesTableBody">
+                                <tr>
+                                    <td colspan="2" class="text-muted">Выберите сохранённое подключение для загрузки пользователей и групп</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -139,7 +132,6 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-server"></i> Состояние сегментов</span>
-                        <span class="badge badge-soft-success" id="segmentHealthBadge">Все работают</span>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -163,11 +155,21 @@
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th><button class="table-sort-btn" type="button" data-segments-sort="segment">Сегмент <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-segments-sort="role">Роль <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-segments-sort="status">Статус <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-segments-sort="mode">Режим <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-segments-sort="host">Хост <i class="fas fa-sort"></i></button></th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-segments-sort="segment">Сегмент <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-segments-sort="role">Роль <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-segments-sort="status">Статус <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-segments-sort="mode">Режим <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-segments-sort="host">Хост <i class="fas fa-sort"></i></button>
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody id="segmentsTableBody">
@@ -286,10 +288,18 @@
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th><button class="table-sort-btn" type="button" data-schema-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-schema-sort="schema_owner">Владелец <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-schema-sort="table_count">Количество таблиц <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-schema-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-schema-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-schema-sort="schema_owner">Владелец <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-schema-sort="table_count">Количество таблиц <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-schema-sort="size_bytes">Размер <i class="fas fa-sort"></i></button>
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody id="schemaSizesTableBody">
@@ -334,13 +344,27 @@
                     <table class="table table-sm">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="table_owner">Владелец <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="index_size_bytes">Индексы <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="index_count">Количество индексов <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-table-sort="row_count">Строк <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="table_owner">Владелец <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="index_size_bytes">Индексы <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="index_count">Количество индексов <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-table-sort="row_count">Строк <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="tableSizesTableBody">
@@ -373,19 +397,16 @@
                 <span class="text-muted" id="viewsCount" style="font-size: 12px;">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
-                <div class="toolbar-control-group">
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="viewSearchInput" placeholder="Поиск по схеме или представлению...">
-                    </div>
-                    <div class="toolbar-filter">
-                        <label for="viewTypeFilter">Тип</label>
-                        <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
-                            <option value="">Все типы</option>
-                            <option value="ordinary">Обычное</option>
-                            <option value="materialized">Материализованное</option>
-                        </select>
-                    </div>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="viewSearchInput" placeholder="Поиск по схеме или представлению...">
+                </div>
+                <div class="toolbar-filter">
+                    <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
+                        <option value="">Все типы</option>
+                        <option value="ordinary">Обычное</option>
+                        <option value="materialized">Материализованное</option>
+                    </select>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -393,13 +414,27 @@
                     <table class="table table-sm">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="view_name">Представление <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="view_owner">Владелец <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="view_type">Тип <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="index_size_bytes">Индексы <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-view-sort="row_count">Строк <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="view_name">Представление <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="view_owner">Владелец <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="view_type">Тип <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="size_bytes">Размер <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="index_size_bytes">Индексы <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-view-sort="row_count">Строк <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="viewsTableBody">
@@ -445,7 +480,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-3 distribution-analysis-column">
+            <div class="col-lg-2 distribution-analysis-column">
                 <div class="glass-card distribution-analysis-card distribution-metrics-card">
                     <div class="card-header">
                         <span><i class="fas fa-calculator"></i> Перекос данных</span>
@@ -453,7 +488,7 @@
                     <div class="card-body">
                         <div class="kpi-grid" style="grid-template-columns: 1fr;">
                             <div class="kpi-card">
-                                <div class="kpi-label">Используемых сегментов</div>
+                                <div class="kpi-label">Сегментов</div>
                                 <div class="kpi-value" id="distributionUsedSegments">—</div>
                             </div>
                             <div class="kpi-card">
@@ -472,7 +507,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-9 distribution-analysis-column">
+            <div class="col-lg-10 distribution-analysis-column">
                 <div class="glass-card distribution-analysis-card distribution-chart-card">
                     <div class="card-header">
                         <span><i class="fas fa-chart-bar"></i> Распределение строк по сегментам</span>
@@ -496,9 +531,15 @@
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th><button class="table-sort-btn" type="button" data-distribution-sort="segment_id">Сегмент <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-distribution-sort="row_count">Количество строк <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-distribution-sort="share">Доля <i class="fas fa-sort"></i></button></th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-distribution-sort="segment_id">Сегмент <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-distribution-sort="row_count">Количество строк <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-distribution-sort="share">Доля <i class="fas fa-sort"></i></button>
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody id="distributionTableBody">
@@ -536,10 +577,18 @@
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
-                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="table_owner">Владелец <i class="fas fa-sort"></i></button></th>
-                                    <th><button class="table-sort-btn" type="button" data-temp-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button></th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-temp-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-temp-table-sort="table_name">Таблица <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-temp-table-sort="table_owner">Владелец <i class="fas fa-sort"></i></button>
+                                    </th>
+                                    <th>
+                                        <button class="table-sort-btn" type="button" data-temp-table-sort="size_bytes">Размер <i class="fas fa-sort"></i></button>
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody id="tempTablesTableBody">
