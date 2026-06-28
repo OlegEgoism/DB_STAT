@@ -74,6 +74,13 @@
         'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
     };
 
+    const currentDbUserElement = document.getElementById('dbUserData');
+    const currentDbUser = currentDbUserElement ? JSON.parse(currentDbUserElement.textContent || 'null') : null;
+
+    function canManageConnections() {
+        return currentDbUser?.can_manage_connections === true;
+    }
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -1944,6 +1951,10 @@
     }
 
     function openConnectionModal() {
+        if (!canManageConnections()) {
+            showToast('⛔ Создавать подключения может только Администратор');
+            return;
+        }
         connectionModalMode = 'create';
         document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение';
         document.getElementById('connectionSaveText').textContent = 'Подключиться';
@@ -1960,6 +1971,10 @@
     }
 
     function editConnection() {
+        if (!canManageConnections()) {
+            showToast('⛔ Редактировать подключения может только Администратор');
+            return;
+        }
         const conn = connections.find(c => c.id === activeConnectionId);
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
@@ -1982,6 +1997,10 @@
     }
 
     function deleteConnection() {
+        if (!canManageConnections()) {
+            showToast('⛔ Удалять подключения может только Администратор');
+            return;
+        }
         const payload = getConnectionFormData();
         const conn = connections.find(c => c.id === activeConnectionId);
         if (!conn) {
@@ -2014,6 +2033,10 @@
     }
 
     function saveConnection() {
+        if (!canManageConnections()) {
+            showToast('⛔ Сохранять подключения может только Администратор');
+            return;
+        }
         const payload = getConnectionFormData();
 
         if (!validateConnectionPayload(payload)) {
@@ -2046,6 +2069,10 @@
     }
 
     function testNewConnection() {
+        if (!canManageConnections()) {
+            showToast('⛔ Проверять новое подключение может только Администратор');
+            return;
+        }
         const payload = getConnectionFormData();
         if (!validateConnectionPayload(payload)) {
             showToast('⚠️ Заполните все обязательные поля для проверки');
