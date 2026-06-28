@@ -48,6 +48,17 @@ def _can_manage_connections(request):
     return bool(db_user and db_user.role == ADMIN_ROLE)
 
 
+def _available_connections(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return DBConnection.objects.none()
+    return db_user.connections.filter(is_active=True)
+
+
+def _get_connection_for_request(request, connection_id):
+    return get_object_or_404(_available_connections(request), pk=connection_id)
+
+
 @ensure_csrf_cookie
 def home(request):
     """Главная страница мониторинга БД."""
@@ -184,7 +195,7 @@ def _test_connection_params(host, port, database, username, password, ssl):
 @require_http_methods(["GET", "POST"])
 def connections(request):
     if request.method == "GET":
-        items = DBConnection.objects.filter(is_active=True).order_by("name", "host")
+        items = _available_connections(request).order_by("name", "host")
         return JsonResponse({"connections": [_connection_to_dict(item) for item in items]})
 
     if not _can_manage_connections(request):
@@ -204,7 +215,7 @@ def connections(request):
         defaults["password"] = payload["password"]
 
     if payload.get("id"):
-        connection = get_object_or_404(DBConnection, pk=payload["id"], is_active=True)
+        connection = _get_connection_for_request(request, payload["id"])
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
         connection.port = int(payload["port"])
@@ -221,6 +232,9 @@ def connections(request):
         database=payload["database"].strip(),
         defaults={**defaults, "password": payload.get("password", "")},
     )
+    db_user = _current_db_user(request)
+    if db_user:
+        db_user.connections.add(connection)
     return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
 
 
@@ -233,7 +247,7 @@ def test_connection(request):
         return _connection_permission_error()
 
     if connection_id:
-        connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+        connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
             params = {
                 "host": payload["host"].strip(),
@@ -285,7 +299,7 @@ def delete_connection(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    connection = _get_connection_for_request(request, connection_id)
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
     return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})
@@ -298,7 +312,7 @@ def database_overview(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     overview_query = """
         WITH relation_sizes AS (
             SELECT
@@ -429,7 +443,7 @@ def active_queries(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     active_queries_query = """
         SELECT DISTINCT
             activity.pid,
@@ -489,7 +503,7 @@ def blocking_locks(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     blocking_locks_query = """
         SELECT
             blocked.pid AS blocked_pid,
@@ -563,7 +577,7 @@ def idle_transactions(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     idle_transactions_query = """
         SELECT
             pid,
@@ -621,7 +635,7 @@ def memory_overview(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     memory_query = """
         WITH relation_sizes AS (
             SELECT
@@ -734,7 +748,7 @@ def _database_roles_list(request, *, can_login):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = int(payload.get("page_size") or (100 if can_login else 10000))
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -855,7 +869,7 @@ def maintenance_stats(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -959,7 +973,7 @@ def database_schema_sizes(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -1047,7 +1061,7 @@ def database_table_sizes(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -1160,7 +1174,7 @@ def database_views_list(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -1279,7 +1293,7 @@ def distribution_tables(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     tables_query = """
         SELECT
             namespace.nspname AS schema_name,
@@ -1328,7 +1342,7 @@ def distribution_info(request):
     if not schema_name or not table_name:
         return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     validate_query = """
         SELECT 1
         FROM pg_catalog.pg_class AS table_class
@@ -1400,7 +1414,7 @@ def database_temp_table_sizes(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
@@ -1502,7 +1516,7 @@ def segments_info(request):
     if not connection_id:
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
-    db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    db_connection = _get_connection_for_request(request, connection_id)
     config_query = """
         SELECT
             content AS segment,
