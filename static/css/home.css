@@ -646,7 +646,7 @@
         }
 
         .kpi-card .kpi-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 800;
             letter-spacing: -1px;
             line-height: 1.2;
@@ -1360,7 +1360,7 @@
         }
 
         .database-table-toolbar {
-            display: flex;
+            display:-webkit-box;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
@@ -1401,7 +1401,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            width: min(360px, 100%);
+            width: min(400px, 100%);
             padding: 9px 12px;
             border: 1px solid var(--sidebar-border);
             border-radius: 12px;
