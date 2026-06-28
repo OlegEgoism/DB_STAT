@@ -845,6 +845,77 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- PAGE: USERS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-users">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-user"></i> Пользователи</span>
+                <span class="text-muted" id="usersCount" style="font-size: 12px;">Нет данных</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                        <tr>
+                            <th>Пользователь</th>
+                            <th>Суперпользователь</th>
+                            <th>Создаёт БД</th>
+                            <th>Создаёт роли</th>
+                            <th>Наследование</th>
+                            <th>Репликация</th>
+                            <th>Лимит подключений</th>
+                            <th>Действует до</th>
+                        </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки пользователей</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: GROUPS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-groups">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-users"></i> Группы</span>
+                <span class="text-muted" id="groupsCount" style="font-size: 12px;">Нет данных</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                        <tr>
+                            <th>Группа</th>
+                            <th>Суперпользователь</th>
+                            <th>Создаёт БД</th>
+                            <th>Создаёт роли</th>
+                            <th>Наследование</th>
+                            <th>Репликация</th>
+                            <th>Лимит подключений</th>
+                            <th>Участников</th>
+                            <th>Действует до</th>
+                        </tr>
+                        </thead>
+                        <tbody id="groupsTableBody">
+                        <tr>
+                            <td colspan="9" class="text-muted">Выберите сохранённое подключение для загрузки групп</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- PAGE: MAINTENANCE -->
     <!-- ============================================================ -->
     <div class="page" id="page-maintenance">
