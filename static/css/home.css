@@ -938,8 +938,15 @@
         }
 
         .modal-footer {
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 10px;
             border-top: 1px solid var(--sidebar-border);
             padding: 16px 24px;
+        }
+
+        .modal-footer .btn {
+            white-space: nowrap;
         }
 
         .modal .btn-close {
