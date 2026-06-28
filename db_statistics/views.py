@@ -898,6 +898,7 @@ def database_views_list(request):
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
+    view_type = payload.get("view_type") or ""
     sort = payload.get("sort") or "schema_name"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
     sort_columns = {
@@ -913,6 +914,11 @@ def database_views_list(request):
 
     where_sql = ""
     params = []
+    type_sql = ""
+    if view_type == "ordinary":
+        type_sql = "AND view_class.relkind = 'v'"
+    elif view_type == "materialized":
+        type_sql = "AND view_class.relkind = 'm'"
     if search:
         search_pattern = f"%{_escape_like_pattern(search)}%"
         where_sql = """
@@ -946,6 +952,7 @@ def database_views_list(request):
             WHERE view_class.relkind IN ('v', 'm')
               AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
               AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {type_sql}
               {where_sql}
         )
         SELECT
