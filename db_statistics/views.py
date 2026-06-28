@@ -694,29 +694,44 @@ def maintenance_stats(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
     maintenance_query = """
+        WITH maintenance AS (
+            SELECT
+                schemaname,
+                relname,
+                COALESCE(n_live_tup, 0)::bigint AS live_rows,
+                COALESCE(n_dead_tup, 0)::bigint AS dead_rows,
+                CASE
+                    WHEN COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0) = 0 THEN 0
+                    ELSE ROUND(COALESCE(n_dead_tup, 0) * 100.0 / (COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0)), 2)
+                END AS dead_percent,
+                CASE
+                    WHEN last_vacuum IS NULL THEN last_autovacuum
+                    WHEN last_autovacuum IS NULL THEN last_vacuum
+                    ELSE GREATEST(last_vacuum, last_autovacuum)
+                END AS last_vacuum_at,
+                CASE
+                    WHEN last_analyze IS NULL THEN last_autoanalyze
+                    WHEN last_autoanalyze IS NULL THEN last_analyze
+                    ELSE GREATEST(last_analyze, last_autoanalyze)
+                END AS last_analyze_at
+            FROM pg_catalog.pg_stat_user_tables
+        )
         SELECT
             schemaname,
             relname,
-            COALESCE(n_live_tup, 0)::bigint AS live_rows,
-            COALESCE(n_dead_tup, 0)::bigint AS dead_rows,
-            CASE
-                WHEN COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0) = 0 THEN 0
-                ELSE ROUND(COALESCE(n_dead_tup, 0) * 100.0 / (COALESCE(n_live_tup, 0) + COALESCE(n_dead_tup, 0)), 2)
-            END AS dead_percent,
-            CASE
-                WHEN last_vacuum IS NULL THEN last_autovacuum
-                WHEN last_autovacuum IS NULL THEN last_vacuum
-                ELSE GREATEST(last_vacuum, last_autovacuum)
-            END AS last_vacuum_at,
-            CASE
-                WHEN last_analyze IS NULL THEN last_autoanalyze
-                WHEN last_autoanalyze IS NULL THEN last_analyze
-                ELSE GREATEST(last_analyze, last_autoanalyze)
-            END AS last_analyze_at
-        FROM pg_catalog.pg_stat_user_tables
-        ORDER BY COALESCE(n_dead_tup, 0) DESC, schemaname ASC, relname ASC
-        LIMIT 100;
+            live_rows,
+            dead_rows,
+            dead_percent,
+            last_vacuum_at,
+            last_analyze_at,
+            COUNT(*) OVER() AS total_count
+        FROM maintenance
+        ORDER BY dead_rows DESC, schemaname ASC, relname ASC
+        LIMIT %s OFFSET %s;
     """
 
     try:
@@ -730,7 +745,7 @@ def maintenance_stats(request):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(maintenance_query)
+                cursor.execute(maintenance_query, [page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить статистику обслуживания: {exc}"}, status=400)
@@ -750,7 +765,8 @@ def maintenance_stats(request):
         }
         for row in rows
     ]
-    return JsonResponse({"ok": True, "tables": tables, "total_count": len(tables)})
+    total_count = int(rows[0][7]) if rows else 0
+    return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
