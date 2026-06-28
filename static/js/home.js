@@ -1070,10 +1070,14 @@
         renderDistributionRows();
     }
 
+    function distributionTableOptionLabel(table) {
+        return `${table.schema_name}.${table.table_name}`;
+    }
+
     function refreshDistributionForSelectedTable() {
         const select = document.getElementById('distributionTableSelect');
-        const selectedIndex = Number(select?.value);
-        const selectedTable = Number.isInteger(selectedIndex) ? distributionTables[selectedIndex] : null;
+        const selectedValue = (select?.value || '').trim();
+        const selectedTable = distributionTables.find(table => distributionTableOptionLabel(table) === selectedValue);
         const requestId = ++distributionRequestId;
         if (!selectedTable) {
             renderDistributionWarning('Выберите таблицу для расчёта распределения');
@@ -1097,27 +1101,46 @@
 
     function renderDistributionTableOptions(tables) {
         const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
         const count = document.getElementById('distributionTableCount');
         if (count) count.textContent = `${tables.length} таблиц`;
-        if (!select) return;
+        if (!select || !options) return;
         if (!tables.length) {
-            select.innerHTML = '<option value="">Таблицы не найдены</option>';
+            select.value = '';
+            select.placeholder = 'Таблицы не найдены';
+            options.innerHTML = '';
             renderDistributionWarning('Таблицы не найдены');
             return;
         }
-        select.innerHTML = tables.map((table, index) => `<option value="${index}">${table.schema_name}.${table.table_name} — ${table.object_type || 'Таблица'}</option>`).join('');
+        options.innerHTML = tables.map(table => {
+            const label = distributionTableOptionLabel(table);
+            return `<option value="${escapeHtml(label)}" label="${escapeHtml(table.object_type || 'Таблица')}"></option>`;
+        }).join('');
+        select.placeholder = 'Начните вводить схему или название таблицы';
+        if (!tables.some(table => distributionTableOptionLabel(table) === select.value)) {
+            select.value = distributionTableOptionLabel(tables[0]);
+        }
         refreshDistributionForSelectedTable();
     }
 
     function refreshDistributionTablesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             distributionTables = [];
-            if (select) select.innerHTML = '<option value="">Выберите сохранённое подключение для загрузки таблиц</option>';
+            if (select) {
+                select.value = '';
+                select.placeholder = 'Выберите сохранённое подключение для загрузки таблиц';
+            }
+            if (options) options.innerHTML = '';
             renderDistributionWarning('Выберите сохранённое подключение для загрузки списка таблиц');
             return;
         }
-        if (select) select.innerHTML = '<option value="">Загрузка таблиц...</option>';
+        if (select) {
+            select.value = '';
+            select.placeholder = 'Загрузка таблиц...';
+        }
+        if (options) options.innerHTML = '';
         connectionRequest(distributionTablesApiUrl, {id: conn.id})
             .then(data => {
                 distributionTables = data.tables || [];
@@ -1125,13 +1148,23 @@
             })
             .catch(error => {
                 distributionTables = [];
-                if (select) select.innerHTML = '<option value="">Не удалось загрузить таблицы</option>';
+                if (select) {
+                    select.value = '';
+                    select.placeholder = 'Не удалось загрузить таблицы';
+                }
+                if (options) options.innerHTML = '';
                 renderDistributionWarning(error.message || 'Не удалось загрузить список таблиц');
             });
     }
 
     function initDistributionControls() {
         document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
+        document.getElementById('distributionTableSelect')?.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                refreshDistributionForSelectedTable();
+            }
+        });
         document.querySelectorAll('[data-distribution-sort]').forEach(button => {
             button.addEventListener('click', function () {
                 const column = this.dataset.distributionSort;
