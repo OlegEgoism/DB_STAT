@@ -890,7 +890,7 @@
         .distribution-metrics-card .kpi-grid {
             height: 100%;
             margin-bottom: 0;
-            grid-template-rows: repeat(3, minmax(0, 1fr));
+            grid-template-rows: repeat(4, minmax(0, 1fr));
         }
 
         .distribution-metrics-card .kpi-card {

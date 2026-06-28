@@ -994,9 +994,11 @@
     }
 
     function updateDistributionMetrics(metrics = {}) {
+        const usedSegments = document.getElementById('distributionUsedSegments');
         const ratio = document.getElementById('distributionSkewRatio');
         const total = document.getElementById('distributionTotalRows');
         const status = document.getElementById('distributionStatus');
+        if (usedSegments) usedSegments.textContent = metrics.used_segments ?? '—';
         if (ratio) ratio.textContent = metrics.skew_ratio ?? '—';
         if (total) total.textContent = metrics.total_rows != null ? formatRowCount(metrics.total_rows) : '—';
         if (status) status.textContent = metrics.status || '—';
