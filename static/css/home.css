@@ -1302,6 +1302,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
             gap: 12px;
             padding: 14px 16px;
             border-top: 1px solid rgba(233, 236, 239, 0.7);
@@ -1309,11 +1310,19 @@
             background: rgba(248, 250, 252, 0.65);
         }
 
-        .toolbar-control-group {
+        .toolbar-filter {
             display: flex;
             align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .toolbar-filter label {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
         }
 
         .view-type-filter {
