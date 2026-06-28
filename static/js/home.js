@@ -28,6 +28,8 @@
     let maintenanceStatsRequestId = 0;
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
     let usersRequestId = 0;
+    let groupsState = {sort: 'name', direction: 'asc', search: ''};
+    let groupsRequestId = 0;
     const activePageStorageKey = 'gp_active_page';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -98,6 +100,7 @@
         initDistributionControls();
         initMaintenanceStatsControls();
         initUsersControls();
+        initGroupsControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -552,6 +555,18 @@
         });
     }
 
+    function updateGroupsSortIndicators() {
+        document.querySelectorAll('[data-groups-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.groupsSort === groupsState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${groupsState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
     function updateUsersPaginationButtons() {
         const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
         const prev = document.getElementById('usersPrevPageBtn');
@@ -671,14 +686,51 @@
     }
 
     function refreshGroupsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        const requestId = ++groupsRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Выберите сохранённое подключение для загрузки групп');
             return;
         }
         renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Загрузка групп...');
-        connectionRequest(groupsListApiUrl, {id: conn.id})
-            .then(data => renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true))
-            .catch(error => renderRolesListWarning('groupsTableBody', 'groupsCount', 9, error.message || 'Не удалось получить список групп'));
+        connectionRequest(groupsListApiUrl, {
+            id: conn.id,
+            search: groupsState.search,
+            sort: groupsState.sort,
+            direction: groupsState.direction
+        })
+            .then(data => {
+                if (requestId !== groupsRequestId) return;
+                updateGroupsSortIndicators();
+                renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
+            })
+            .catch(error => {
+                if (requestId !== groupsRequestId) return;
+                renderRolesListWarning('groupsTableBody', 'groupsCount', 9, error.message || 'Не удалось получить список групп');
+            });
+    }
+
+    function initGroupsControls() {
+        let searchTimer = null;
+        document.getElementById('groupsSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                groupsState.search = this.value.trim();
+                refreshGroupsForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-groups-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.groupsSort;
+                if (groupsState.sort === sort) {
+                    groupsState.direction = groupsState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    groupsState.sort = sort;
+                    groupsState.direction = ['connection_limit', 'valid_until', 'member_count'].includes(sort) ? 'desc' : 'asc';
+                }
+                refreshGroupsForConnection();
+            });
+        });
+        updateGroupsSortIndicators();
     }
 
     function renderMaintenanceStatsWarning(message) {
