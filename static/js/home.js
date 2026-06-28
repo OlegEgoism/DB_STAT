@@ -413,7 +413,7 @@
         if (count) count.textContent = `${transactions.length} транзакций`;
         if (!tbody) return;
         if (!transactions.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Простаивающие в транзакции не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Транзакции не найдены</td></tr>';
             return;
         }
         tbody.innerHTML = transactions.map(transaction => `
