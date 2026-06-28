@@ -4,6 +4,8 @@ from db_statistics import views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("login/", views.login, name="login"),
+    path("logout/", views.logout, name="logout"),
     path("connections/", views.connections, name="connections"),
     path("connections/test/", views.test_connection, name="test_connection"),
     path("connections/delete/", views.delete_connection, name="delete_connection"),

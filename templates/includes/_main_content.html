@@ -8,6 +8,16 @@
             <h4 id="pageTitle">База данных <small>Размеры и структура</small></h4>
         </div>
         <div class="topbar-right">
+            <div class="current-db-user">
+                <span class="current-db-user-main">{{ db_user.login }}</span>
+                <span class="current-db-user-meta">{{ db_user.email }} · {{ db_user.role }}</span>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-conn" title="Выйти">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </form>
+            </div>
             <!-- Connection Manager -->
             <div class="connection-manager">
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)">
@@ -17,15 +27,19 @@
                     <option value="analytics">Analytics Cluster</option>
                 </select>
                 <span class="conn-divider"></span>
+                {% if user_can_manage_connections %}
                 <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
                     <i class="fas fa-plus"></i>
                 </button>
+                {% endif %}
                 <button class="btn-conn" onclick="testConnection()" title="Проверить">
                     <i class="fas fa-plug"></i>
                 </button>
+                {% if user_can_manage_connections %}
                 <button class="btn-conn" onclick="editConnection()" title="Редактировать подключение">
                     <i class="fas fa-pen"></i>
                 </button>
+                {% endif %}
             </div>
         </div>
     </div>

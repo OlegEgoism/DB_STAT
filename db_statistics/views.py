@@ -3,19 +3,94 @@ import json
 import psycopg2
 from psycopg2 import sql
 from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.models import DBConnection
+from db_statistics.models import DBConnection, DBUser
 
 CONNECTION_TIMEOUT_SECONDS = 5
+ADMIN_ROLE = "Администратор"
+SESSION_USER_ID_KEY = "db_user_id"
+
+
+def _current_db_user(request):
+    user_id = request.session.get(SESSION_USER_ID_KEY)
+    if not user_id:
+        return None
+    try:
+        return DBUser.objects.get(pk=user_id, is_active=True)
+    except DBUser.DoesNotExist:
+        request.session.pop(SESSION_USER_ID_KEY, None)
+        return None
+
+
+def _user_payload(db_user):
+    if not db_user:
+        return None
+    return {
+        "login": db_user.login,
+        "email": db_user.email,
+        "role": db_user.role,
+        "can_manage_connections": db_user.role == ADMIN_ROLE,
+    }
+
+
+def _connection_permission_error():
+    return JsonResponse(
+        {"ok": False, "message": "Создавать и редактировать подключения может только Администратор"},
+        status=403,
+    )
+
+
+def _can_manage_connections(request):
+    db_user = _current_db_user(request)
+    return bool(db_user and db_user.role == ADMIN_ROLE)
 
 
 @ensure_csrf_cookie
 def home(request):
     """Главная страница мониторинга БД."""
-    return render(request, "home.html")
+    db_user = _current_db_user(request)
+    if not db_user:
+        return redirect("login")
+    return render(
+        request,
+        "home.html",
+        {
+            "db_user": db_user,
+            "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
+            "user_can_manage_connections": db_user.role == ADMIN_ROLE,
+        },
+    )
+
+
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def login(request):
+    db_user = _current_db_user(request)
+    if db_user:
+        return redirect("home")
+
+    error = ""
+    login_value = ""
+    email_value = ""
+    if request.method == "POST":
+        login_value = (request.POST.get("login") or "").strip()
+        email_value = (request.POST.get("email") or "").strip()
+        db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
+        if db_user:
+            request.session[SESSION_USER_ID_KEY] = db_user.pk
+            return redirect("home")
+        error = "Пользователь с указанными login и email не найден или отключён"
+
+    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value})
+
+
+@require_http_methods(["POST"])
+def logout(request):
+    request.session.flush()
+    return redirect("login")
 
 
 def _connection_to_dict(connection):
@@ -82,6 +157,7 @@ def _format_bytes(size_bytes):
         value /= 1024
     return f"{value:.2f} ТБ"
 
+
 def _escape_like_pattern(value):
     return value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
 
@@ -110,6 +186,9 @@ def connections(request):
     if request.method == "GET":
         items = DBConnection.objects.filter(is_active=True).order_by("name", "host")
         return JsonResponse({"connections": [_connection_to_dict(item) for item in items]})
+
+    if not _can_manage_connections(request):
+        return _connection_permission_error()
 
     payload = _read_json_body(request)
     required_fields = ["name", "host", "port", "database", "user"]
@@ -149,10 +228,13 @@ def connections(request):
 def test_connection(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
+    has_inline_connection_data = all(payload.get(field) for field in ["name", "host", "port", "database", "user"])
+    if (not connection_id or has_inline_connection_data) and not _can_manage_connections(request):
+        return _connection_permission_error()
 
     if connection_id:
         connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
-        if all(payload.get(field) for field in ["name", "host", "port", "database", "user"]):
+        if has_inline_connection_data:
             params = {
                 "host": payload["host"].strip(),
                 "port": int(payload["port"]),
@@ -195,6 +277,9 @@ def test_connection(request):
 
 @require_http_methods(["POST"])
 def delete_connection(request):
+    if not _can_manage_connections(request):
+        return _connection_permission_error()
+
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     if not connection_id:
