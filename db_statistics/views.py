@@ -697,7 +697,27 @@ def maintenance_stats(request):
     page_size = 100
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
-    maintenance_query = """
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "dead_rows"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schemaname",
+        "table_name": "relname",
+        "live_rows": "live_rows",
+        "dead_rows": "dead_rows",
+        "dead_percent": "dead_percent",
+        "last_vacuum": "last_vacuum_at",
+        "last_analyze": "last_analyze_at",
+    }
+    sort_column = sort_columns.get(sort, "dead_rows")
+    where_sql = ""
+    params = []
+    if search:
+        search_pattern = f"%{_escape_like_pattern(search)}%"
+        where_sql = "WHERE schemaname ILIKE %s ESCAPE '!' OR relname ILIKE %s ESCAPE '!'"
+        params.extend([search_pattern, search_pattern])
+
+    maintenance_query = f"""
         WITH maintenance AS (
             SELECT
                 schemaname,
@@ -730,7 +750,8 @@ def maintenance_stats(request):
             last_analyze_at,
             COUNT(*) OVER() AS total_count
         FROM maintenance
-        ORDER BY dead_rows DESC, schemaname ASC, relname ASC
+        {where_sql}
+        ORDER BY {sort_column} {direction}, schemaname ASC, relname ASC
         LIMIT %s OFFSET %s;
     """
 
@@ -745,7 +766,7 @@ def maintenance_stats(request):
             )
         ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(maintenance_query, [page_size, offset])
+                cursor.execute(maintenance_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить статистику обслуживания: {exc}"}, status=400)

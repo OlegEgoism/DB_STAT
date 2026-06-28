@@ -24,7 +24,7 @@
     let activeQueriesRequestId = 0;
     let blockingLocksRequestId = 0;
     let idleTransactionsRequestId = 0;
-    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0};
+    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: ''};
     let maintenanceStatsRequestId = 0;
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -581,6 +581,17 @@
         if (next) next.disabled = maintenanceStatsState.page >= totalPages;
     }
 
+    function updateMaintenanceSortIndicators() {
+        document.querySelectorAll('[data-maintenance-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.maintenanceSort === maintenanceStatsState.sort;
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${maintenanceStatsState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
     function renderMaintenanceStats(data) {
         const tbody = document.getElementById('maintenanceStatsTableBody');
         const count = document.getElementById('maintenanceStatsCount');
@@ -592,6 +603,7 @@
         const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
         if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
+        updateMaintenanceSortIndicators();
         updateMaintenancePaginationControls();
         if (!tbody) return;
         if (!tables.length) {
@@ -622,7 +634,13 @@
         }
         const requestId = ++maintenanceStatsRequestId;
         renderMaintenanceStatsWarning('Загрузка статистики обслуживания...');
-        connectionRequest(maintenanceStatsApiUrl, {id: conn.id, page: maintenanceStatsState.page})
+        connectionRequest(maintenanceStatsApiUrl, {
+            id: conn.id,
+            page: maintenanceStatsState.page,
+            search: maintenanceStatsState.search,
+            sort: maintenanceStatsState.sort,
+            direction: maintenanceStatsState.direction
+        })
             .then(data => {
                 if (requestId === maintenanceStatsRequestId) renderMaintenanceStats(data);
             })
@@ -632,6 +650,28 @@
     }
 
     function initMaintenanceStatsControls() {
+        let searchTimer = null;
+        document.getElementById('maintenanceSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                maintenanceStatsState.search = this.value.trim();
+                maintenanceStatsState.page = 1;
+                refreshMaintenanceStatsForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-maintenance-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.maintenanceSort;
+                if (maintenanceStatsState.sort === sort) {
+                    maintenanceStatsState.direction = maintenanceStatsState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    maintenanceStatsState.sort = sort;
+                    maintenanceStatsState.direction = ['live_rows', 'dead_rows', 'dead_percent', 'last_vacuum', 'last_analyze'].includes(sort) ? 'desc' : 'asc';
+                }
+                maintenanceStatsState.page = 1;
+                refreshMaintenanceStatsForConnection();
+            });
+        });
         document.getElementById('maintenancePrevPageBtn')?.addEventListener('click', function () {
             if (maintenanceStatsState.page > 1) {
                 maintenanceStatsState.page -= 1;
