@@ -453,25 +453,45 @@
     }
 
     function renderMemoryOverviewWarning(message) {
+        const sizeTbody = document.getElementById('memorySizeMetricsTableBody');
         const settingsTbody = document.getElementById('memorySettingsTableBody');
         const usageTbody = document.getElementById('memoryUsageTableBody');
+        const sizeCount = document.getElementById('memorySizeMetricsCount');
         const settingsCount = document.getElementById('memorySettingsCount');
         const usageCount = document.getElementById('memoryUsageCount');
+        if (sizeCount) sizeCount.textContent = 'Нет данных';
         if (settingsCount) settingsCount.textContent = 'Нет данных';
         if (usageCount) usageCount.textContent = 'Нет данных';
+        if (sizeTbody) sizeTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (settingsTbody) settingsTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (usageTbody) usageTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderMemoryOverview(data) {
+        const sizeTbody = document.getElementById('memorySizeMetricsTableBody');
         const settingsTbody = document.getElementById('memorySettingsTableBody');
         const usageTbody = document.getElementById('memoryUsageTableBody');
+        const sizeCount = document.getElementById('memorySizeMetricsCount');
         const settingsCount = document.getElementById('memorySettingsCount');
         const usageCount = document.getElementById('memoryUsageCount');
+        const sizeMetrics = data.size_metrics || [];
         const settings = data.settings || [];
         const usage = data.usage || [];
+        if (sizeCount) sizeCount.textContent = `${sizeMetrics.length} метрик`;
         if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
         if (usageCount) usageCount.textContent = `${usage.length} показателя`;
+        if (sizeTbody) {
+            if (!sizeMetrics.length) {
+                sizeTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Детализация размеров не найдена</td></tr>';
+            } else {
+                sizeTbody.innerHTML = sizeMetrics.map(item => `
+                    <tr>
+                        <td>${escapeHtml(item.label)}</td>
+                        <td><strong>${escapeHtml(item.value)}</strong></td>
+                    </tr>
+                `).join('');
+            }
+        }
         if (settingsTbody) {
             if (!settings.length) {
                 settingsTbody.innerHTML = '<tr><td colspan="3" class="text-muted">Параметры памяти не найдены</td></tr>';

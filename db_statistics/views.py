@@ -555,13 +555,38 @@ def memory_overview(request):
 
     db_connection = get_object_or_404(DBConnection, pk=connection_id, is_active=True)
     memory_query = """
+        WITH relation_sizes AS (
+            SELECT
+                table_class.oid,
+                table_class.relkind,
+                table_class.relpersistence,
+                namespace.nspname,
+                pg_total_relation_size(table_class.oid)::bigint AS total_size_bytes,
+                CASE
+                    WHEN table_class.relkind IN ('r', 'p', 'm')
+                    THEN pg_indexes_size(table_class.oid)::bigint
+                    ELSE 0::bigint
+                END AS index_size_bytes
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            WHERE table_class.relkind IN ('r', 'p', 'm')
+              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+        )
         SELECT
             current_setting('gp_vmem_protect_limit', true) AS gp_vmem_protect_limit,
             current_setting('shared_buffers', true) AS shared_buffers,
             current_setting('work_mem', true) AS work_mem,
             current_setting('maintenance_work_mem', true) AS maintenance_work_mem,
             current_setting('statement_mem', true) AS statement_mem,
-            current_setting('max_statement_mem', true) AS max_statement_mem;
+            current_setting('max_statement_mem', true) AS max_statement_mem,
+            pg_database_size(%s)::bigint AS total_size_bytes,
+            COALESCE(SUM(index_size_bytes), 0)::bigint AS index_size_bytes,
+            GREATEST(pg_database_size(%s)::bigint - COALESCE(SUM(index_size_bytes), 0)::bigint, 0)::bigint AS data_size_without_indexes_bytes,
+            COALESCE(SUM(total_size_bytes) FILTER (WHERE relpersistence = 't' OR nspname LIKE 'pg_temp_%%'), 0)::bigint AS temp_table_size_bytes,
+            COALESCE(SUM(total_size_bytes) FILTER (WHERE relkind = 'm'), 0)::bigint AS materialized_view_size_bytes
+        FROM relation_sizes;
     """
 
     try:
@@ -573,9 +598,9 @@ def memory_overview(request):
                 db_connection.username,
                 db_connection.password,
             )
-        ) as connection:
+            ) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(memory_query)
+                cursor.execute(memory_query, [db_connection.database, db_connection.database])
                 row = cursor.fetchone()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить параметры памяти: {exc}"}, status=400)
@@ -615,7 +640,14 @@ def memory_overview(request):
         usage_row("work_mem от max_statement_mem", "work_mem", "max_statement_mem"),
         usage_row("shared_buffers от gp_vmem_protect_limit", "shared_buffers", "gp_vmem_protect_limit"),
     ]
-    return JsonResponse({"ok": True, "settings": settings, "usage": usage})
+    size_metrics = [
+        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[6] or 0), "value": _format_bytes(int(row[6] or 0))},
+        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[7] or 0), "value": _format_bytes(int(row[7] or 0))},
+        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[8] or 0), "value": _format_bytes(int(row[8] or 0))},
+        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[9] or 0), "value": _format_bytes(int(row[9] or 0))},
+        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[10] or 0), "value": _format_bytes(int(row[10] or 0))},
+    ]
+    return JsonResponse({"ok": True, "settings": settings, "usage": usage, "size_metrics": size_metrics})
 
 
 @require_http_methods(["POST"])
