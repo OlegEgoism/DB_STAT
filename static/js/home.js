@@ -241,7 +241,7 @@
         if (version) version.textContent = data.database_version || '—';
         if (basicSettingsTbody) {
             if (!basicSettings.length) {
-                basicSettingsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных об основных параметрах БД</td></tr>';
+                basicSettingsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных об основных данных БД</td></tr>';
             } else {
                 basicSettingsTbody.innerHTML = basicSettings.map(item => `
                     <tr>

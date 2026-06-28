@@ -323,6 +323,8 @@ def database_overview(request):
         {"label": "Использование", "value": f"{row[13] or 0}%"},
     ]
     basic_settings = [
+        {"key": "host", "label": "Хост", "value": db_connection.host},
+        {"key": "port", "label": "Порт", "value": db_connection.port},
         {"key": "server_uptime", "label": "Время работы БД", "value": str(row[15]) if row[15] else "—"},
         {"key": "server_started_at", "label": "Запущена", "value": row[14].strftime("%Y-%m-%d %H:%M:%S") if row[14] else "—"},
         {"key": "server_version", "label": "Версия сервера", "value": row[16] or "—"},
