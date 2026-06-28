@@ -1169,6 +1169,7 @@ def distribution_info(request):
     segments = [{"segment_id": int(row[0]), "row_count": int(row[1])} for row in rows]
     counts = [item["row_count"] for item in segments]
     total_rows = sum(counts)
+    used_segments = sum(1 for count in counts if count > 0)
     min_rows = min(counts) if counts else 0
     max_rows = max(counts) if counts else 0
     avg_rows = round(total_rows / len(counts), 2) if counts else 0
@@ -1183,6 +1184,7 @@ def distribution_info(request):
             "segments": segments,
             "metrics": {
                 "total_rows": total_rows,
+                "used_segments": used_segments,
                 "min_rows": min_rows,
                 "max_rows": max_rows,
                 "avg_rows": avg_rows,
