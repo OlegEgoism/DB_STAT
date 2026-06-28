@@ -903,20 +903,26 @@
                 <span><i class="fas fa-users"></i> Группы</span>
                 <span class="text-muted" id="groupsCount" style="font-size: 12px;">Нет данных</span>
             </div>
+            <div class="database-table-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="groupsSearchInput" placeholder="Поиск по группе...">
+                </div>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
                     <table class="table table-sm">
                         <thead>
                         <tr>
-                            <th>Группа</th>
-                            <th>Суперпользователь</th>
-                            <th>Создаёт БД</th>
-                            <th>Создаёт роли</th>
-                            <th>Наследование</th>
-                            <th>Репликация</th>
-                            <th>Лимит подключений</th>
-                            <th>Участников</th>
-                            <th>Действует до</th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="name">Группа <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="inherit">Наследование <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="replication">Репликация <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="member_count">Участников <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-groups-sort="valid_until">Действует до <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="groupsTableBody">
