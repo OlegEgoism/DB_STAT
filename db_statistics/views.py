@@ -266,7 +266,18 @@ def database_overview(request):
                 FROM pg_catalog.pg_stat_activity, pg_catalog.pg_settings
                 WHERE name = 'max_connections'
                 GROUP BY setting
-            ) AS connection_usage_percent
+            ) AS connection_usage_percent,
+            pg_postmaster_start_time() AS server_started_at,
+            date_trunc('second', now() - pg_postmaster_start_time()) AS server_uptime,
+            current_setting('server_version', true) AS server_version,
+            current_setting('server_encoding', true) AS server_encoding,
+            current_setting('TimeZone', true) AS timezone,
+            current_setting('superuser_reserved_connections', true) AS superuser_reserved_connections,
+            current_setting('statement_timeout', true) AS statement_timeout,
+            current_setting('lock_timeout', true) AS lock_timeout,
+            current_setting('idle_in_transaction_session_timeout', true) AS idle_in_transaction_session_timeout,
+            current_setting('default_transaction_isolation', true) AS default_transaction_isolation,
+            current_setting('DateStyle', true) AS date_style
         FROM relation_sizes;
     """
 
@@ -311,7 +322,30 @@ def database_overview(request):
         {"label": "Максимум подключений", "value": int(row[12] or 0)},
         {"label": "Использование", "value": f"{row[13] or 0}%"},
     ]
-    return JsonResponse({"ok": True, "database": db_connection.database, "database_version": row[0] or "—", "connection_info": connection_info, "metrics": metrics, "memory_settings": memory_settings, "role_counts": role_counts, "connection_slots": connection_slots})
+    basic_settings = [
+        {"key": "server_uptime", "label": "Время работы БД", "value": str(row[15]) if row[15] else "—"},
+        {"key": "server_started_at", "label": "Запущена", "value": row[14].strftime("%Y-%m-%d %H:%M:%S") if row[14] else "—"},
+        {"key": "server_version", "label": "Версия сервера", "value": row[16] or "—"},
+        {"key": "server_encoding", "label": "Кодировка сервера", "value": row[17] or "—"},
+        {"key": "timezone", "label": "Часовой пояс", "value": row[18] or "—"},
+        {"key": "superuser_reserved_connections", "label": "Резерв подключений суперпользователя", "value": row[19] or "—"},
+        {"key": "statement_timeout", "label": "Таймаут запроса", "value": row[20] or "—"},
+        {"key": "lock_timeout", "label": "Таймаут ожидания блокировки", "value": row[21] or "—"},
+        {"key": "idle_in_transaction_session_timeout", "label": "Таймаут простоя в транзакции", "value": row[22] or "—"},
+        {"key": "default_transaction_isolation", "label": "Уровень изоляции по умолчанию", "value": row[23] or "—"},
+        {"key": "date_style", "label": "Формат даты", "value": row[24] or "—"},
+    ]
+    return JsonResponse({
+        "ok": True,
+        "database": db_connection.database,
+        "database_version": row[0] or "—",
+        "connection_info": connection_info,
+        "metrics": metrics,
+        "memory_settings": memory_settings,
+        "role_counts": role_counts,
+        "connection_slots": connection_slots,
+        "basic_settings": basic_settings,
+    })
 
 
 @require_http_methods(["POST"])

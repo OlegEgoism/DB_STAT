@@ -189,23 +189,27 @@
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
         const rolesTbody = document.getElementById('databaseOverviewRolesTableBody');
         const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
+        const basicSettingsTbody = document.getElementById('databaseOverviewBasicSettingsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
         const rolesCount = document.getElementById('databaseOverviewRolesCount');
         const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
+        const basicSettingsCount = document.getElementById('databaseOverviewBasicSettingsCount');
         const version = document.getElementById('databaseOverviewVersion');
         if (count) count.textContent = 'Нет данных';
         if (memoryCount) memoryCount.textContent = 'Нет данных';
         if (connectionCount) connectionCount.textContent = 'Нет данных';
         if (rolesCount) rolesCount.textContent = 'Нет данных';
         if (connectionSlotsCount) connectionSlotsCount.textContent = 'Нет данных';
+        if (basicSettingsCount) basicSettingsCount.textContent = 'Нет данных';
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (connectionTbody) connectionTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (rolesTbody) rolesTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        if (basicSettingsTbody) basicSettingsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
     }
 
     function renderDatabaseOverview(data) {
@@ -214,23 +218,39 @@
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
         const rolesTbody = document.getElementById('databaseOverviewRolesTableBody');
         const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
+        const basicSettingsTbody = document.getElementById('databaseOverviewBasicSettingsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
         const rolesCount = document.getElementById('databaseOverviewRolesCount');
         const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
+        const basicSettingsCount = document.getElementById('databaseOverviewBasicSettingsCount');
         const version = document.getElementById('databaseOverviewVersion');
         const metrics = data.metrics || [];
         const memorySettings = data.memory_settings || [];
         const connectionInfo = data.connection_info || [];
         const roleCounts = data.role_counts || [];
         const connectionSlots = data.connection_slots || [];
+        const basicSettings = data.basic_settings || [];
         if (count) count.textContent = `${metrics.length} метрик`;
         if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
         if (connectionCount) connectionCount.textContent = `${connectionInfo.length} параметров`;
         if (rolesCount) rolesCount.textContent = `${roleCounts.length} показателя`;
         if (connectionSlotsCount) connectionSlotsCount.textContent = `${connectionSlots.length} показателя`;
+        if (basicSettingsCount) basicSettingsCount.textContent = `${basicSettings.length} параметров`;
         if (version) version.textContent = data.database_version || '—';
+        if (basicSettingsTbody) {
+            if (!basicSettings.length) {
+                basicSettingsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных об основных параметрах БД</td></tr>';
+            } else {
+                basicSettingsTbody.innerHTML = basicSettings.map(item => `
+                    <tr>
+                        <td>${escapeHtml(item.label)}</td>
+                        <td><strong>${escapeHtml(item.value ?? '—')}</strong></td>
+                    </tr>
+                `).join('');
+            }
+        }
         if (connectionTbody) {
             if (!connectionInfo.length) {
                 connectionTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о подключении</td></tr>';
