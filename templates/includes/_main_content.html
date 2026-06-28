@@ -423,15 +423,17 @@
                 <span class="text-muted" id="viewsCount" style="font-size: 12px;">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="viewSearchInput" placeholder="Поиск по схеме или представлению...">
+                <div class="toolbar-control-group">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="viewSearchInput" placeholder="Поиск по схеме или представлению...">
+                    </div>
+                    <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
+                        <option value="">Все типы</option>
+                        <option value="ordinary">Обычное</option>
+                        <option value="materialized">Материализованное</option>
+                    </select>
                 </div>
-                <select id="viewTypeFilter" class="form-select form-select-sm" style="max-width: 220px;">
-                    <option value="">Все типы</option>
-                    <option value="ordinary">Обычное</option>
-                    <option value="materialized">Материализованное</option>
-                </select>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">

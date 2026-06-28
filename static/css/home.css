@@ -1309,6 +1309,18 @@
             background: rgba(248, 250, 252, 0.65);
         }
 
+        .toolbar-control-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .view-type-filter {
+            width: 220px;
+            max-width: 100%;
+        }
+
         .search-box {
             display: flex;
             align-items: center;
