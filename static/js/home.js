@@ -475,7 +475,7 @@
     function renderMemoryOverviewWarning(message) {
         const sizeTbody = document.getElementById('memorySizeMetricsTableBody');
         const settingsTbody = document.getElementById('memorySettingsTableBody');
-        const usageTbody = document.getElementById('memoryUsageTableBody');
+        const usageList = document.getElementById('memoryUsageList');
         const sizeCount = document.getElementById('memorySizeMetricsCount');
         const settingsCount = document.getElementById('memorySettingsCount');
         const usageCount = document.getElementById('memoryUsageCount');
@@ -484,13 +484,13 @@
         if (usageCount) usageCount.textContent = 'Нет данных';
         if (sizeTbody) sizeTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (settingsTbody) settingsTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        if (usageTbody) usageTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (usageList) usageList.innerHTML = `<div class="text-muted">${escapeHtml(message)}</div>`;
     }
 
     function renderMemoryOverview(data) {
         const sizeTbody = document.getElementById('memorySizeMetricsTableBody');
         const settingsTbody = document.getElementById('memorySettingsTableBody');
-        const usageTbody = document.getElementById('memoryUsageTableBody');
+        const usageList = document.getElementById('memoryUsageList');
         const sizeCount = document.getElementById('memorySizeMetricsCount');
         const settingsCount = document.getElementById('memorySettingsCount');
         const usageCount = document.getElementById('memoryUsageCount');
@@ -525,18 +525,25 @@
                 `).join('');
             }
         }
-        if (usageTbody) {
+        if (usageList) {
             if (!usage.length) {
-                usageTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Использование памяти не найдено</td></tr>';
+                usageList.innerHTML = '<div class="text-muted">Использование памяти не найдено</div>';
             } else {
-                usageTbody.innerHTML = usage.map(item => `
-                    <tr>
-                        <td>${escapeHtml(item.label)}</td>
-                        <td><strong>${escapeHtml(item.used)}</strong></td>
-                        <td>${escapeHtml(item.limit)}</td>
-                        <td>${escapeHtml(item.usage_percent)}%</td>
-                    </tr>
-                `).join('');
+                usageList.innerHTML = usage.map(item => {
+                    const percent = Math.max(0, Math.min(Number(item.usage_percent) || 0, 100));
+                    const barClass = percent >= 85 ? 'danger' : percent >= 70 ? 'warning' : 'success';
+                    return `
+                    <div class="memory-usage-item">
+                        <div class="memory-usage-row">
+                            <span class="memory-usage-label">${escapeHtml(item.label)}</span>
+                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)} (${escapeHtml(item.usage_percent)}%)</span>
+                        </div>
+                        <div class="memory-usage-track">
+                            <div class="memory-usage-bar ${barClass}" style="width: ${percent}%;"></div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
             }
         }
     }
