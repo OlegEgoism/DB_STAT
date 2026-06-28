@@ -671,10 +671,10 @@ def memory_overview(request):
         }
 
     usage = [
-        usage_row("statement_mem от max_statement_mem", "statement_mem", "max_statement_mem"),
-        usage_row("max_statement_mem от gp_vmem_protect_limit", "max_statement_mem", "gp_vmem_protect_limit"),
-        usage_row("work_mem от max_statement_mem", "work_mem", "max_statement_mem"),
-        usage_row("shared_buffers от gp_vmem_protect_limit", "shared_buffers", "gp_vmem_protect_limit"),
+        usage_row("Память запроса", "statement_mem", "max_statement_mem"),
+        usage_row("Максимальная память запроса", "max_statement_mem", "gp_vmem_protect_limit"),
+        usage_row("Память операций", "work_mem", "max_statement_mem"),
+        usage_row("Кэш данных", "shared_buffers", "gp_vmem_protect_limit"),
     ]
     size_metrics = [
         {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[6] or 0), "value": _format_bytes(int(row[6] or 0))},
