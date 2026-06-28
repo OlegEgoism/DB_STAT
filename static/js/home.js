@@ -12,7 +12,7 @@
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesRequestId = 0;
-    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: ''};
+    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: ''};
     let viewsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
@@ -881,6 +881,7 @@
             id: conn.id,
             page: viewsState.page,
             search: viewsState.search,
+            view_type: viewsState.viewType,
             sort: viewsState.sort,
             direction: viewsState.direction
         })
@@ -903,6 +904,11 @@
                 viewsState.page = 1;
                 refreshViewsForConnection();
             }, 300);
+        });
+        document.getElementById('viewTypeFilter')?.addEventListener('change', function () {
+            viewsState.viewType = this.value;
+            viewsState.page = 1;
+            refreshViewsForConnection();
         });
         document.querySelectorAll('[data-view-sort]').forEach(button => {
             button.addEventListener('click', function () {
