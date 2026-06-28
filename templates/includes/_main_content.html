@@ -727,29 +727,15 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-12">
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-chart-bar"></i> Использование памяти</span>
                         <span class="text-muted" id="memoryUsageCount" style="font-size: 12px;">Нет данных</span>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                <tr>
-                                    <th>Показатель</th>
-                                    <th>Использовано</th>
-                                    <th>Лимит</th>
-                                    <th>%</th>
-                                </tr>
-                                </thead>
-                                <tbody id="memoryUsageTableBody">
-                                <tr>
-                                    <td colspan="4" class="text-muted">Выберите сохранённое подключение для загрузки использования памяти</td>
-                                </tr>
-                                </tbody>
-                            </table>
+                    <div class="card-body">
+                        <div id="memoryUsageList" class="memory-usage-list">
+                            <div class="text-muted">Выберите сохранённое подключение для загрузки использования памяти</div>
                         </div>
                     </div>
                 </div>
