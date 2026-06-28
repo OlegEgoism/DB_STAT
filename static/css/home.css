@@ -1317,11 +1317,6 @@
             flex-wrap: wrap;
         }
 
-        .toolbar-control-group.align-right {
-            margin-left: auto;
-            justify-content: flex-end;
-        }
-
         .toolbar-filter {
             display: flex;
             align-items: center;
