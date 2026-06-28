@@ -436,9 +436,8 @@
                     <div class="database-table-toolbar">
                         <div class="search-box" style="max-width: 520px;">
                             <i class="fas fa-table"></i>
-                            <select id="distributionTableSelect" class="form-select form-select-sm">
-                                <option value="">Выберите сохранённое подключение для загрузки таблиц</option>
-                            </select>
+                            <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="Выберите сохранённое подключение для загрузки таблиц" autocomplete="off">
+                            <datalist id="distributionTableOptions"></datalist>
                         </div>
                         <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
                             <i class="fas fa-sync-alt"></i> Обновить
