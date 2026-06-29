@@ -14,7 +14,7 @@
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="btn-conn" title="Выйти">
-                        <i class="fas fa-sign-out-alt"></i>
+                        <i class="fas fa-sign-out-alt" style="color: red"></i>
                     </button>
                 </form>
             </div>
@@ -518,7 +518,7 @@
             <div class="col-lg-2 distribution-analysis-column">
                 <div class="glass-card distribution-analysis-card distribution-metrics-card">
                     <div class="card-header">
-                        <span><i class="fas fa-calculator"></i> Перекос данных</span>
+                        <span><i class="fas fa-calculator"></i>Распределение данных по сегментам</span>
                     </div>
                     <div class="card-body">
                         <div class="kpi-grid kpi-grid-single">

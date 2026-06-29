@@ -133,12 +133,6 @@ class DBAudit(models.Model):
         ('connection_update', 'Изменение подключения'),
         ('connection_delete', 'Удаление подключения'),
         ('connection_test', 'Проверка подключения'),
-        ('create', 'Создание'),
-        ('update', 'Обновление'),
-        ('delete', 'Удаление'),
-        ('register', 'Регистрация'),
-        ('download', 'Скачивание'),
-        ('info', 'Информация'),
     ]
 
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)

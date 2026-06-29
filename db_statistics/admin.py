@@ -41,7 +41,7 @@ class DBConnectionAdmin(BaseAdmin):
 @admin.register(DBAudit)
 class DBAuditAdmin(admin.ModelAdmin):
     list_display = ("username", "action_type", "short_info", "created")
-    list_filter = ("action_type", "created")
+    list_filter = ("action_type",)
     search_fields = ("username", "info")
     search_help_text = "Поиск по: пользователю, информации"
     date_hierarchy = "created"
