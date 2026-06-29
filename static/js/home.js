@@ -54,8 +54,8 @@
     const pageTitles = {
         'database-overview': 'База данных <small>Размеры и структура</small>',
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
-        'databases': 'Схемы <small>Размер и статистика</small>',
-        'tables': 'Таблицы <small>Список и размеры таблиц</small>',
+        'databases': 'Схемы <small>Список схем</small>',
+        'tables': 'Таблицы <small>Список таблиц</small>',
         'views': 'Представления <small>Список представлений</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',

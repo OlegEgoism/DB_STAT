@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBUser, DBConnection, DBPagination, DBAudit
+from db_statistics.models import DBUser, DBConnection, DBAudit
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -48,9 +48,3 @@ class DBAuditAdmin(admin.ModelAdmin):
     list_per_page = 20
     fields = ("username", "action_type", "info", "created")
     readonly_fields = ("username", "action_type", "info", "created")
-
-
-@admin.register(DBPagination)
-class DBPaginationAdmin(BaseAdmin):
-    list_display = ("pagination_size", "created", "updated")
-    fields = ("pagination_size", "created", "updated")
