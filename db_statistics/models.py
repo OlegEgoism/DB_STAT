@@ -1,6 +1,43 @@
+import base64
+import hashlib
+
+from cryptography.fernet import Fernet, InvalidToken
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+
+
+ENCRYPTED_PASSWORD_PREFIX = "enc$"
+
+
+def _connection_password_cipher():
+    secret = getattr(settings, "DB_CONNECTION_ENCRYPTION_KEY", "") or settings.SECRET_KEY
+    key = base64.urlsafe_b64encode(hashlib.sha256(str(secret).encode("utf-8")).digest())
+    return Fernet(key)
+
+
+def encrypt_connection_password(raw_password):
+    if raw_password in (None, ""):
+        return raw_password or ""
+    text = str(raw_password)
+    if text.startswith(ENCRYPTED_PASSWORD_PREFIX):
+        return text
+    token = _connection_password_cipher().encrypt(text.encode("utf-8")).decode("utf-8")
+    return f"{ENCRYPTED_PASSWORD_PREFIX}{token}"
+
+
+def decrypt_connection_password(stored_password):
+    if stored_password in (None, ""):
+        return stored_password or ""
+    text = str(stored_password)
+    if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
+        return text
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
+    try:
+        return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        return ""
 
 
 # ============================================================================
@@ -71,6 +108,21 @@ class DBConnection(DateStamp, Active):
         verbose_name = "Подключение"
         verbose_name_plural = "Подключения"
         unique_together = ("name", "host", "port", "database")
+
+    def set_password(self, raw_password):
+        self.password = encrypt_connection_password(raw_password)
+
+    def get_password(self):
+        decrypted_password = decrypt_connection_password(self.password)
+        if self.password and not str(self.password).startswith(ENCRYPTED_PASSWORD_PREFIX) and self.pk:
+            encrypted_password = encrypt_connection_password(self.password)
+            type(self).objects.filter(pk=self.pk).update(password=encrypted_password)
+            self.password = encrypted_password
+        return decrypted_password
+
+    def save(self, *args, **kwargs):
+        self.password = encrypt_connection_password(self.password)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

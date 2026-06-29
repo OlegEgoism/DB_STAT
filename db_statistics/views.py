@@ -254,7 +254,7 @@ def test_connection(request):
                 "port": int(payload["port"]),
                 "database": payload["database"].strip(),
                 "username": payload["user"].strip(),
-                "password": payload.get("password") or connection.password,
+                "password": payload.get("password") or connection.get_password(),
                 "ssl": payload.get("ssl", True),
             }
             name = payload["name"].strip()
@@ -264,7 +264,7 @@ def test_connection(request):
                 "port": connection.port,
                 "database": connection.database,
                 "username": connection.username,
-                "password": connection.password,
+                "password": connection.get_password(),
                 "ssl": payload.get("ssl", True),
             }
             name = connection.name
@@ -374,7 +374,7 @@ def database_overview(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -482,7 +482,7 @@ def active_queries(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -554,7 +554,7 @@ def blocking_locks(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -612,7 +612,7 @@ def idle_transactions(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -690,7 +690,7 @@ def memory_overview(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
             ) as connection:
             with connection.cursor() as cursor:
@@ -841,7 +841,7 @@ def _database_roles_list(request, *, can_login):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -961,7 +961,7 @@ def maintenance_stats(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1078,7 +1078,7 @@ def database_schema_sizes(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1203,7 +1203,7 @@ def database_table_sizes(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1323,7 +1323,7 @@ def database_views_list(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1383,7 +1383,7 @@ def distribution_tables(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1431,7 +1431,7 @@ def distribution_info(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1550,7 +1550,7 @@ def database_temp_table_sizes(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
@@ -1646,7 +1646,7 @@ def segments_info(request):
                 db_connection.port,
                 db_connection.database,
                 db_connection.username,
-                db_connection.password,
+                db_connection.get_password(),
             )
         ) as connection:
             with connection.cursor() as cursor:
