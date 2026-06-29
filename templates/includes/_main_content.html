@@ -1002,6 +1002,30 @@
                 </div>
             </div>
             <div class="card-body p-0">
+                <div class="maintenance-visuals-grid" id="maintenanceVisuals">
+                    <div class="maintenance-visual-card">
+                        <div class="role-visual-title">Top-10 таблиц по Dead %</div>
+                        <div class="maintenance-bars" id="maintenanceDeadPercentBars">Нет данных</div>
+                    </div>
+                    <div class="maintenance-visual-card">
+                        <div class="role-visual-title">Top-10 таблиц по Dead rows</div>
+                        <div class="maintenance-bars" id="maintenanceDeadRowsBars">Нет данных</div>
+                    </div>
+                    <div class="maintenance-visual-card">
+                        <div class="role-visual-title">Live rows vs dead rows</div>
+                        <div class="maintenance-donut-wrap">
+                            <div class="maintenance-donut" id="maintenanceRowsDonut" role="img" aria-label="Live rows vs dead rows"><span></span></div>
+                            <div class="maintenance-donut-summary">
+                                <strong id="maintenanceRowsDonutSummary">—</strong>
+                                <span id="maintenanceRowsDonutTable">Выберите таблицу</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="maintenance-visual-card">
+                        <div class="role-visual-title">Heatmap статуса обслуживания</div>
+                        <div class="maintenance-heatmap" id="maintenanceStatusHeatmap">Нет данных</div>
+                    </div>
+                </div>
                 <div class="table-responsive maintenance-table-scroll">
                     <table class="table">
                         <thead>
