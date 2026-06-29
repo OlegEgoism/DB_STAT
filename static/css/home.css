@@ -739,6 +739,84 @@ body {
             }
         }
 
+
+        .size-metrics-chart {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            min-height: 182px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+
+        .size-metrics-donut {
+            --size-metrics-gradient: #e8eaee 0 100%;
+            width: 150px;
+            height: 150px;
+            flex: 0 0 150px;
+            border-radius: 50%;
+            background: conic-gradient(var(--size-metrics-gradient));
+            display: grid;
+            place-items: center;
+        }
+
+        .size-metrics-donut span {
+            width: 102px;
+            height: 102px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+        }
+
+        .size-metrics-summary span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .size-metrics-summary strong {
+            color: var(--text-primary);
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .size-metrics-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 12px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .size-metrics-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .size-metrics-dot.data {
+            background: var(--accent-blue);
+        }
+
+        .size-metrics-dot.indexes {
+            background: var(--accent-purple);
+        }
+
+        @media (max-width: 576px) {
+            .size-metrics-chart {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
         /* ========== TABLES ========== */
         .table {
             color: var(--text-primary);
