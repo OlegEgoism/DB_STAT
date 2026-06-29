@@ -1004,17 +1004,17 @@
             <div class="card-body p-0">
                 <div class="maintenance-visuals-grid" id="maintenanceVisuals">
                     <div class="maintenance-visual-card">
-                        <div class="role-visual-title">Top-10 таблиц по Dead %</div>
+                        <div class="role-visual-title">Топ-10 таблиц по доле мёртвых строк</div>
                         <div class="maintenance-bars" id="maintenanceDeadPercentBars">Нет данных</div>
                     </div>
                     <div class="maintenance-visual-card">
-                        <div class="role-visual-title">Top-10 таблиц по Dead rows</div>
+                        <div class="role-visual-title">Топ-10 таблиц по количеству мёртвых строк</div>
                         <div class="maintenance-bars" id="maintenanceDeadRowsBars">Нет данных</div>
                     </div>
                     <div class="maintenance-visual-card">
-                        <div class="role-visual-title">Живые/мертвые строки</div>
+                        <div class="role-visual-title">Живые/мёртвые строки</div>
                         <div class="maintenance-donut-wrap">
-                            <div class="maintenance-donut" id="maintenanceRowsDonut" role="img" aria-label="Живые/мертвые строки"><span></span></div>
+                            <div class="maintenance-donut" id="maintenanceRowsDonut" role="img" aria-label="Живые/мёртвые строки"><span></span></div>
                             <div class="maintenance-donut-summary">
                                 <strong id="maintenanceRowsDonutSummary">—</strong>
                                 <span id="maintenanceRowsDonutTable">Выберите таблицу</span>
@@ -1022,7 +1022,7 @@
                         </div>
                     </div>
                     <div class="maintenance-visual-card">
-                        <div class="role-visual-title">Heatmap статуса обслуживания</div>
+                        <div class="role-visual-title">Тепловая карта статуса обслуживания</div>
                         <div class="maintenance-heatmap" id="maintenanceStatusHeatmap">Нет данных</div>
                     </div>
                 </div>
@@ -1032,11 +1032,11 @@
                         <tr>
                             <th><button class="table-sort-btn" type="button" data-maintenance-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
                             <th><button class="table-sort-btn" type="button" data-maintenance-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="live_rows">Строк <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_rows">Dead rows <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_percent">Dead % <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_vacuum">Последний VACUUM <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний ANALYZE <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="live_rows">Живых строк <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_rows">Мёртвых строк <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_percent">Доля мёртвых строк <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_vacuum">Последняя очистка (VACUUM) <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний анализ (ANALYZE) <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="maintenanceStatsTableBody">
