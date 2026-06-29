@@ -941,6 +941,96 @@ body {
             }
         }
 
+
+.schema-distribution-chart {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 220px;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.schema-distribution-donut {
+    --schema-distribution-gradient: #e8eaee 0 100%;
+    width: 170px;
+    height: 170px;
+    flex: 0 0 170px;
+    border-radius: 50%;
+    background: conic-gradient(var(--schema-distribution-gradient));
+    display: grid;
+    place-items: center;
+}
+
+.schema-distribution-donut span {
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+}
+
+.schema-distribution-summary > span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 4px;
+}
+
+.schema-distribution-summary > strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.schema-distribution-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 7px 14px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.schema-distribution-legend-item {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.schema-distribution-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 7px;
+    flex-shrink: 0;
+}
+
+.schema-distribution-legend-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.schema-distribution-legend-value {
+    color: var(--text-muted);
+    margin-left: 5px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .schema-distribution-chart {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .schema-distribution-legend {
+        grid-template-columns: 1fr;
+    }
+}
+
         /* ========== TABLES ========== */
         .table {
             color: var(--text-primary);

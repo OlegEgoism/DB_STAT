@@ -1047,6 +1047,30 @@ def database_schema_sizes(request):
         LIMIT %s OFFSET %s;
     """
 
+    schema_distribution_query = f"""
+        WITH schema_sizes AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                SUM(pg_total_relation_size(table_class.oid))::bigint AS size_bytes
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = namespace.nspowner
+            WHERE table_class.relkind IN ('r', 'p', 'm')
+              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+            GROUP BY namespace.nspname
+        )
+        SELECT
+            schema_name,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS table_size
+        FROM schema_sizes
+        ORDER BY size_bytes DESC, schema_name ASC;
+    """
+
     try:
         with psycopg2.connect(
             **_connection_kwargs(
@@ -1060,6 +1084,8 @@ def database_schema_sizes(request):
             with connection.cursor() as cursor:
                 cursor.execute(schema_sizes_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
+                cursor.execute(schema_distribution_query, params)
+                distribution_rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
@@ -1073,8 +1099,23 @@ def database_schema_sizes(request):
         }
         for row in rows
     ]
-    total_count = int(rows[0][5]) if rows else 0
-    return JsonResponse({"ok": True, "schemas": schemas, "page": page, "page_size": page_size, "total_count": total_count})
+    schema_distribution = [
+        {
+            "schema_name": row[0],
+            "size_bytes": int(row[1] or 0),
+            "table_size": row[2],
+        }
+        for row in distribution_rows
+    ]
+    total_count = int(rows[0][5]) if rows else len(schema_distribution)
+    return JsonResponse({
+        "ok": True,
+        "schemas": schemas,
+        "schema_distribution": schema_distribution,
+        "page": page,
+        "page_size": page_size,
+        "total_count": total_count,
+    })
 
 
 @require_http_methods(["POST"])

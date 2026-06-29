@@ -1051,12 +1051,67 @@
         });
     }
 
+
+    function updateSchemaDistributionChart(schemas = []) {
+        const donut = document.getElementById('schemaDistributionDonut');
+        const summary = document.getElementById('schemaDistributionSummary');
+        const legend = document.getElementById('schemaDistributionLegend');
+        if (!donut || !summary || !legend) return;
+
+        const colors = ['#4f8cff', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#ef4444', '#8a9bb0'];
+        const normalized = schemas
+            .map(schema => ({
+                name: schema.schema_name || '—',
+                sizeBytes: Number(schema.size_bytes) || 0,
+                tableSize: schema.table_size || `${formatDatabaseSize(schema.size_bytes).value} ${formatDatabaseSize(schema.size_bytes).unit}`
+            }))
+            .filter(schema => schema.sizeBytes > 0);
+        const totalBytes = normalized.reduce((sum, schema) => sum + schema.sizeBytes, 0);
+
+        if (!normalized.length || totalBytes <= 0) {
+            donut.style.setProperty('--schema-distribution-gradient', '#e8eaee 0 100%');
+            donut.setAttribute('aria-label', 'Нет данных о распределении данных по схемам');
+            summary.textContent = '—';
+            legend.textContent = 'Нет данных';
+            return;
+        }
+
+        const topSchemas = normalized.slice(0, 8);
+        const otherBytes = normalized.slice(8).reduce((sum, schema) => sum + schema.sizeBytes, 0);
+        const chartItems = otherBytes > 0
+            ? [...topSchemas, {name: 'Остальные', sizeBytes: otherBytes, tableSize: `${formatDatabaseSize(otherBytes).value} ${formatDatabaseSize(otherBytes).unit}`}]
+            : topSchemas;
+        let cursor = 0;
+        const gradient = chartItems.map((schema, index) => {
+            const start = cursor;
+            const percent = (schema.sizeBytes * 100) / totalBytes;
+            cursor += percent;
+            return `${colors[index % colors.length]} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+        }).join(', ');
+        const totalFormatted = formatDatabaseSize(totalBytes);
+
+        donut.style.setProperty('--schema-distribution-gradient', gradient);
+        donut.setAttribute('aria-label', `Распределение данных по схемам, всего ${totalFormatted.value} ${totalFormatted.unit}`);
+        summary.textContent = `${totalFormatted.value} ${totalFormatted.unit}`;
+        legend.innerHTML = chartItems.map((schema, index) => {
+            const percent = ((schema.sizeBytes * 100) / totalBytes).toFixed(1);
+            return `
+                <div class="schema-distribution-legend-item" title="${escapeHtml(schema.name)}: ${escapeHtml(schema.tableSize)} (${percent}%)">
+                    <span class="schema-distribution-legend-dot" style="background:${colors[index % colors.length]};"></span>
+                    <span class="schema-distribution-legend-name">${escapeHtml(schema.name)}</span>
+                    <span class="schema-distribution-legend-value">${percent}%</span>
+                </div>
+            `;
+        }).join('');
+    }
+
     function renderSchemaSizesWarning(message) {
         const tbody = document.getElementById('schemaSizesTableBody');
         const count = document.getElementById('schemaSizesCount');
         const info = document.getElementById('schemaPaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
+        updateSchemaDistributionChart([]);
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
         }
@@ -1092,6 +1147,7 @@
         schemaSizesState.page = Number(data.page) || 1;
         schemaSizesState.pageSize = Number(data.page_size) || 100;
         updateSchemaSortIndicators();
+        updateSchemaDistributionChart(data.schema_distribution || data.schemas || []);
         const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
         if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
         if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
