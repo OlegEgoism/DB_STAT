@@ -159,6 +159,27 @@
         return {value: value.toFixed(precision), unit: units[unitIndex]};
     }
 
+    function getConnectionSlotValue(connectionSlots, key) {
+        const item = connectionSlots.find(slot => slot.key === key);
+        return item ? item.value : null;
+    }
+
+    function updateConnectionSlotsChart(connectionSlots) {
+        const donut = document.getElementById('databaseOverviewConnectionSlotsDonut');
+        const summary = document.getElementById('databaseOverviewConnectionSlotsSummary');
+        if (!donut || !summary) return;
+
+        const current = Number(getConnectionSlotValue(connectionSlots, 'current_connections')) || 0;
+        const maximum = Number(getConnectionSlotValue(connectionSlots, 'max_connections')) || 0;
+        const rawUsage = Number(getConnectionSlotValue(connectionSlots, 'usage_percent')) || 0;
+        const usage = Math.max(0, Math.min(rawUsage, 100));
+        const usageText = rawUsage.toFixed(2);
+
+        donut.style.setProperty('--connection-slots-usage', `${usage}%`);
+        donut.setAttribute('aria-label', `Использование слотов подключений: ${current} из ${maximum}, ${usageText}%`);
+        summary.textContent = maximum > 0 ? `${current} из ${maximum} (${usageText}%)` : '—';
+    }
+
     function renderDatabaseOverviewWarning(message) {
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
@@ -179,6 +200,7 @@
         if (rolesCount) rolesCount.textContent = 'Нет данных';
         if (connectionSlotsCount) connectionSlotsCount.textContent = 'Нет данных';
         if (basicSettingsCount) basicSettingsCount.textContent = 'Нет данных';
+        updateConnectionSlotsChart([]);
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
@@ -278,16 +300,22 @@
                 `).join('');
             }
         }
+        updateConnectionSlotsChart(connectionSlots);
         if (connectionSlotsTbody) {
             if (!connectionSlots.length) {
                 connectionSlotsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о слотах подключений</td></tr>';
             } else {
-                connectionSlotsTbody.innerHTML = connectionSlots.map(item => `
+                connectionSlotsTbody.innerHTML = connectionSlots.map(item => {
+                    const value = item.key === 'usage_percent' && item.value !== null && item.value !== undefined
+                        ? `${Number(item.value).toFixed(2)}%`
+                        : (item.value ?? '—');
+                    return `
                     <tr>
                         <td>${item.label}</td>
-                        <td><strong>${item.value ?? '—'}</strong></td>
+                        <td><strong>${value}</strong></td>
                     </tr>
-                `).join('');
+                `;
+                }).join('');
             }
         }
     }
