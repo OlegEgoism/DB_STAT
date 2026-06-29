@@ -25,7 +25,7 @@
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null};
     let blockingLocksRequestId = 0;
     let idleTransactionsRequestId = 0;
-    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: ''};
+    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
     let usersRequestId = 0;
@@ -926,11 +926,125 @@
         updateGroupsSortIndicators();
     }
 
+
+    function getMaintenanceStatusClass(deadPercent) {
+        if (deadPercent > 25) return 'danger';
+        if (deadPercent >= 10) return 'warning';
+        return 'success';
+    }
+
+    function getMaintenanceTableKey(table) {
+        return `${table.schema_name}.${table.table_name}`;
+    }
+
+    function resetMaintenanceVisuals() {
+        const deadPercentBars = document.getElementById('maintenanceDeadPercentBars');
+        const deadRowsBars = document.getElementById('maintenanceDeadRowsBars');
+        const heatmap = document.getElementById('maintenanceStatusHeatmap');
+        const donut = document.getElementById('maintenanceRowsDonut');
+        const donutSummary = document.getElementById('maintenanceRowsDonutSummary');
+        const donutTable = document.getElementById('maintenanceRowsDonutTable');
+        if (deadPercentBars) deadPercentBars.textContent = 'Нет данных';
+        if (deadRowsBars) deadRowsBars.textContent = 'Нет данных';
+        if (heatmap) heatmap.textContent = 'Нет данных';
+        if (donut) donut.style.setProperty('--maintenance-live-dead', '#e8eaee 0 100%');
+        if (donutSummary) donutSummary.textContent = '—';
+        if (donutTable) donutTable.textContent = 'Выберите таблицу';
+    }
+
+    function renderMaintenanceBarChart(containerId, tables, valueGetter, valueFormatter, maxValue = null) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const topTables = [...tables]
+            .sort((a, b) => valueGetter(b) - valueGetter(a))
+            .slice(0, 10);
+        const max = maxValue ?? Math.max(...topTables.map(valueGetter), 0);
+        if (!topTables.length || max <= 0) {
+            container.textContent = 'Нет данных';
+            return;
+        }
+        container.innerHTML = topTables.map(table => {
+            const value = valueGetter(table);
+            const percent = Math.max((value * 100) / max, 2);
+            const statusClass = getMaintenanceStatusClass(Number(table.dead_percent) || 0);
+            const tableName = getMaintenanceTableKey(table);
+            return `
+                <div class="maintenance-bar-row" title="${escapeHtml(tableName)}">
+                    <span class="maintenance-bar-name">${escapeHtml(tableName)}</span>
+                    <span class="maintenance-bar-track"><span class="maintenance-bar-fill ${statusClass}" style="width:${percent}%;"></span></span>
+                    <span class="maintenance-bar-value">${escapeHtml(valueFormatter(value))}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateMaintenanceRowsDonut(table) {
+        const donut = document.getElementById('maintenanceRowsDonut');
+        const summary = document.getElementById('maintenanceRowsDonutSummary');
+        const tableLabel = document.getElementById('maintenanceRowsDonutTable');
+        if (!donut || !summary || !tableLabel) return;
+        if (!table) {
+            donut.style.setProperty('--maintenance-live-dead', '#e8eaee 0 100%');
+            summary.textContent = '—';
+            tableLabel.textContent = 'Выберите таблицу';
+            return;
+        }
+        const liveRows = Number(table.live_rows) || 0;
+        const deadRows = Number(table.dead_rows) || 0;
+        const totalRows = liveRows + deadRows;
+        const livePercent = totalRows > 0 ? (liveRows * 100) / totalRows : 0;
+        donut.style.setProperty('--maintenance-live-dead', totalRows > 0
+            ? `var(--accent-green) 0 ${livePercent.toFixed(2)}%, var(--accent-red) ${livePercent.toFixed(2)}% 100%`
+            : '#e8eaee 0 100%');
+        donut.setAttribute('aria-label', `Live rows ${formatRowCount(liveRows)}, dead rows ${formatRowCount(deadRows)}`);
+        summary.textContent = `${formatRowCount(liveRows)} / ${formatRowCount(deadRows)}`;
+        tableLabel.textContent = getMaintenanceTableKey(table);
+    }
+
+    function renderMaintenanceHeatmap(tables) {
+        const container = document.getElementById('maintenanceStatusHeatmap');
+        if (!container) return;
+        const heatmapTables = [...tables]
+            .sort((a, b) => (Number(b.dead_percent) || 0) - (Number(a.dead_percent) || 0))
+            .slice(0, 20);
+        if (!heatmapTables.length) {
+            container.textContent = 'Нет данных';
+            return;
+        }
+        container.innerHTML = heatmapTables.map(table => {
+            const deadPercent = Number(table.dead_percent) || 0;
+            const statusClass = getMaintenanceStatusClass(deadPercent);
+            const tableName = getMaintenanceTableKey(table);
+            return `
+                <div class="maintenance-heatmap-cell ${statusClass}" title="${escapeHtml(tableName)}: ${deadPercent}%">
+                    <span>${escapeHtml(table.table_name)}</span>
+                    <small>${deadPercent}%</small>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function updateMaintenanceVisuals(tables) {
+        if (!tables.length) {
+            resetMaintenanceVisuals();
+            return;
+        }
+        renderMaintenanceBarChart('maintenanceDeadPercentBars', tables, table => Number(table.dead_percent) || 0, value => `${value}%`, 100);
+        renderMaintenanceBarChart('maintenanceDeadRowsBars', tables, table => Number(table.dead_rows) || 0, value => formatRowCount(value));
+        renderMaintenanceHeatmap(tables);
+        if (!maintenanceStatsState.selectedTableKey || !tables.some(table => getMaintenanceTableKey(table) === maintenanceStatsState.selectedTableKey)) {
+            maintenanceStatsState.selectedTableKey = getMaintenanceTableKey(tables[0]);
+        }
+        updateMaintenanceRowsDonut(tables.find(table => getMaintenanceTableKey(table) === maintenanceStatsState.selectedTableKey));
+    }
+
     function renderMaintenanceStatsWarning(message) {
         const tbody = document.getElementById('maintenanceStatsTableBody');
         const count = document.getElementById('maintenanceStatsCount');
         const info = document.getElementById('maintenancePageInfo');
         maintenanceStatsState.totalCount = 0;
+        maintenanceStatsState.selectedTableKey = '';
+        resetMaintenanceVisuals();
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1';
         if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
@@ -969,6 +1083,7 @@
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
         updateMaintenanceSortIndicators();
         updateMaintenancePaginationControls();
+        updateMaintenanceVisuals(tables);
         if (!tbody) return;
         if (!tables.length) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Статистика обслуживания не найдена</td></tr>';
@@ -977,8 +1092,10 @@
         tbody.innerHTML = tables.map(table => {
             const deadPercent = Number(table.dead_percent) || 0;
             const deadClass = deadPercent >= 10 ? 'text-danger' : (deadPercent >= 1 ? 'text-warning' : 'text-success');
+            const tableKey = getMaintenanceTableKey(table);
+            const activeClass = tableKey === maintenanceStatsState.selectedTableKey ? ' active' : '';
             return `
-                <tr>
+                <tr class="maintenance-row-selectable${activeClass}" data-maintenance-table-key="${escapeHtml(tableKey)}">
                     <td>${escapeHtml(table.schema_name)}</td>
                     <td><code>${escapeHtml(table.table_name)}</code></td>
                     <td>${formatRowCount(table.live_rows)}</td>
@@ -989,6 +1106,14 @@
                 </tr>
             `;
         }).join('');
+        tbody.querySelectorAll('[data-maintenance-table-key]').forEach(row => {
+            row.addEventListener('click', function () {
+                maintenanceStatsState.selectedTableKey = this.dataset.maintenanceTableKey;
+                updateMaintenanceRowsDonut(tables.find(table => getMaintenanceTableKey(table) === maintenanceStatsState.selectedTableKey));
+                tbody.querySelectorAll('.maintenance-row-selectable').forEach(item => item.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
     }
 
     function refreshMaintenanceStatsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
