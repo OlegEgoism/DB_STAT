@@ -108,7 +108,7 @@
 
         document.getElementById('menuToggle').addEventListener('click', function () {
             document.body.classList.remove('sidebar-collapsed');
-            updateSidebarCollapseButton(false);
+            updateSidebarLogoToggle(false);
             document.getElementById('sidebar').classList.toggle('open');
         });
 
@@ -127,24 +127,22 @@
     });
 
 
-    function updateSidebarCollapseButton(isCollapsed) {
-        const toggle = document.getElementById('sidebarCollapseToggle');
+    function updateSidebarLogoToggle(isCollapsed) {
+        const toggle = document.getElementById('sidebarLogoToggle');
         if (!toggle) return;
         toggle.setAttribute('aria-expanded', String(!isCollapsed));
         toggle.setAttribute('aria-label', isCollapsed ? 'Развернуть сайдбар' : 'Свернуть сайдбар');
         toggle.setAttribute('title', isCollapsed ? 'Развернуть сайдбар' : 'Свернуть сайдбар');
-        const icon = toggle.querySelector('i');
-        if (icon) icon.className = isCollapsed ? 'fas fa-angle-right' : 'fas fa-angle-left';
     }
 
     function setSidebarCollapsed(isCollapsed, {persist = true} = {}) {
         if (window.innerWidth <= 992) {
             document.body.classList.remove('sidebar-collapsed');
-            updateSidebarCollapseButton(false);
+            updateSidebarLogoToggle(false);
             return;
         }
         document.body.classList.toggle('sidebar-collapsed', isCollapsed);
-        updateSidebarCollapseButton(isCollapsed);
+        updateSidebarLogoToggle(isCollapsed);
         if (persist) {
             localStorage.setItem(sidebarCollapsedStorageKey, isCollapsed ? '1' : '0');
         }
@@ -156,7 +154,7 @@
     }
 
     function initSidebarCollapse() {
-        const toggle = document.getElementById('sidebarCollapseToggle');
+        const toggle = document.getElementById('sidebarLogoToggle');
         const initialCollapsed = localStorage.getItem(sidebarCollapsedStorageKey) === '1';
         setSidebarCollapsed(initialCollapsed, {persist: false});
         if (toggle) {
