@@ -1,0 +1,20 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">DB STAT</title>
+  <desc id="desc">Иконка приложения DB STAT: база данных и линия статистики</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="14" x2="110" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4F8CFF"/>
+      <stop offset="0.52" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#06B6D4"/>
+    </linearGradient>
+    <filter id="shadow" x="8" y="8" width="112" height="112" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1A2332" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect x="18" y="16" width="92" height="92" rx="24" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M37 47C37 39.8 49.1 34 64 34C78.9 34 91 39.8 91 47C91 54.2 78.9 60 64 60C49.1 60 37 54.2 37 47Z" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 47V78C37 85.2 49.1 91 64 91C78.9 91 91 85.2 91 78V47" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 62C37 69.2 49.1 75 64 75C78.9 75 91 69.2 91 62" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+  <path d="M45 79L56 68L67 75L83 56" stroke="#CFFAFE" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="83" cy="56" r="5" fill="#CFFAFE"/>
+</svg>
