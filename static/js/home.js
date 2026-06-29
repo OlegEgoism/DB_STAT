@@ -66,7 +66,7 @@
         'memory': 'Память <small>Параметры памяти</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
-        'maintenance': 'Обслуживание <small>VACUUM / ANALYZE</small>'
+        'maintenance': 'Обслуживание <small>Очистка / анализ</small>'
     };
 
     const currentDbUserElement = document.getElementById('dbUserData');
@@ -1042,7 +1042,7 @@
         donut.style.setProperty('--maintenance-live-dead', totalRows > 0
             ? `var(--accent-green) 0 ${livePercent.toFixed(2)}%, var(--accent-red) ${livePercent.toFixed(2)}% 100%`
             : '#e8eaee 0 100%');
-        donut.setAttribute('aria-label', `Live rows ${formatRowCount(liveRows)}, dead rows ${formatRowCount(deadRows)}`);
+        donut.setAttribute('aria-label', `Живых строк ${formatRowCount(liveRows)}, мёртвых строк ${formatRowCount(deadRows)}`);
         summary.textContent = `${formatRowCount(liveRows)} / ${formatRowCount(deadRows)}`;
         tableLabel.textContent = getMaintenanceTableKey(table);
     }

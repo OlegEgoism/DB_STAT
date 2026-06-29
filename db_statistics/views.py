@@ -773,7 +773,7 @@ def memory_overview(request):
         {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "value": row[0] or "—", "role": "Защита OOM"},
         {"key": "shared_buffers", "label": "Кэш данных", "value": row[1] or "—", "role": "Буферы"},
         {"key": "work_mem", "label": "Память операций", "value": row[2] or "—", "role": "Сортировка/Hash"},
-        {"key": "maintenance_work_mem", "label": "Память обслуживания", "value": row[3] or "—", "role": "VACUUM/CREATE INDEX"},
+        {"key": "maintenance_work_mem", "label": "Память обслуживания", "value": row[3] or "—", "role": "Очистка / создание индекса"},
         {"key": "statement_mem", "label": "Память запроса", "value": row[4] or "—", "role": "Лимит запроса"},
         {"key": "max_statement_mem", "label": "Максимальная память запроса", "value": row[5] or "—", "role": "Макс. лимит"},
     ]
