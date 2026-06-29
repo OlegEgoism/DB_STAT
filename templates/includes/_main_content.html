@@ -845,6 +845,29 @@
                     <input type="text" id="usersSearchInput" placeholder="Поиск по пользователю...">
                 </div>
             </div>
+            <div class="role-visuals-grid" id="usersPrivilegeCharts">
+                <div class="role-visual-card">
+                    <div class="role-donut" id="usersSuperuserDonut" role="img" aria-label="Суперпользователи среди пользователей"><span></span></div>
+                    <div>
+                        <span>Superuser / обычные</span>
+                        <strong id="usersSuperuserSummary">—</strong>
+                    </div>
+                </div>
+                <div class="role-visual-card">
+                    <div class="role-donut" id="usersCreateDbDonut" role="img" aria-label="Пользователи с правом создания БД"><span></span></div>
+                    <div>
+                        <span>Can create DB / cannot</span>
+                        <strong id="usersCreateDbSummary">—</strong>
+                    </div>
+                </div>
+                <div class="role-visual-card">
+                    <div class="role-donut" id="usersReplicationDonut" role="img" aria-label="Пользователи с правом репликации"><span></span></div>
+                    <div>
+                        <span>Replication / no replication</span>
+                        <strong id="usersReplicationSummary">—</strong>
+                    </div>
+                </div>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
@@ -893,6 +916,26 @@
                 <div class="search-box">
                     <i class="fas fa-search"></i>
                     <input type="text" id="groupsSearchInput" placeholder="Поиск по группе...">
+                </div>
+            </div>
+            <div class="groups-visuals-grid" id="groupsPrivilegeCharts">
+                <div class="groups-visual-card groups-members-card">
+                    <div class="role-visual-title">Группы по количеству участников</div>
+                    <div class="groups-members-bars" id="groupsMembersBars">Нет данных</div>
+                </div>
+                <div class="groups-visual-card">
+                    <div class="role-visual-title">Привилегированные группы</div>
+                    <div class="role-visual-card compact">
+                        <div class="role-donut" id="groupsPrivilegedDonut" role="img" aria-label="Привилегированные группы"><span></span></div>
+                        <div>
+                            <span>Privileged / обычные</span>
+                            <strong id="groupsPrivilegedSummary">—</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="groups-visual-card groups-heatmap-card">
+                    <div class="role-visual-title">Heatmap прав групп</div>
+                    <div class="groups-rights-heatmap" id="groupsRightsHeatmap">Нет данных</div>
                 </div>
             </div>
             <div class="card-body p-0">

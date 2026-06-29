@@ -812,7 +812,11 @@ def _database_roles_list(request, *, can_login):
             connection_limit,
             valid_until,
             member_count,
-            COUNT(*) OVER() AS total_count
+            COUNT(*) OVER() AS total_count,
+            SUM(CASE WHEN superuser THEN 1 ELSE 0 END) OVER() AS superuser_count,
+            SUM(CASE WHEN createdb THEN 1 ELSE 0 END) OVER() AS createdb_count,
+            SUM(CASE WHEN replication THEN 1 ELSE 0 END) OVER() AS replication_count,
+            SUM(CASE WHEN superuser OR createdb OR createrole OR replication THEN 1 ELSE 0 END) OVER() AS privileged_count
         FROM roles
         ORDER BY {sort_column} {direction}, name ASC
         LIMIT %s OFFSET %s;
@@ -849,7 +853,14 @@ def _database_roles_list(request, *, can_login):
         for row in rows
     ]
     total_count = int(rows[0][9]) if rows else 0
-    return JsonResponse({"ok": True, "roles": roles, "page": page, "page_size": page_size, "total_count": total_count})
+    summary = {
+        "total_count": total_count,
+        "superuser_count": int(rows[0][10]) if rows else 0,
+        "createdb_count": int(rows[0][11]) if rows else 0,
+        "replication_count": int(rows[0][12]) if rows else 0,
+        "privileged_count": int(rows[0][13]) if rows else 0,
+    }
+    return JsonResponse({"ok": True, "roles": roles, "page": page, "page_size": page_size, "total_count": total_count, "summary": summary})
 
 
 @require_http_methods(["POST"])
