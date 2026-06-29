@@ -15,6 +15,8 @@ cp .env.example .env
 
 3. Для локального запуска можно оставить `DB_ENGINE=sqlite`. Для PostgreSQL задайте `DB_ENGINE=postgresql` и заполните `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
 
+4. Если при входе появляется ошибка CSRF 403, проверьте `CSRF_TRUSTED_ORIGINS`: значения должны быть с протоколом (`http://` или `https://`) и портом, если приложение открывается не на стандартном порту. Например: `http://localhost:8000,http://127.0.0.1:8000`.
+
 ## Команды
 
 - Установка библиотек из файла requirements.txt

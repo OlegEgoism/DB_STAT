@@ -19,10 +19,25 @@ def _env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def _default_csrf_trusted_origins(hosts):
+    origins = []
+    for host in hosts:
+        if host in {"*", "testserver"}:
+            continue
+        normalized_host = host[1:] if host.startswith(".") else host
+        if not normalized_host:
+            continue
+        wildcard_host = f"*.{normalized_host}" if host.startswith(".") else normalized_host
+        origins.extend([f"http://{wildcard_host}", f"https://{wildcard_host}"])
+    return origins
+
+
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-change-me")
 DEBUG = _env_bool("DEBUG", True)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
-CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS") or _default_csrf_trusted_origins(ALLOWED_HOSTS)
+CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", False)
+SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", False)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
