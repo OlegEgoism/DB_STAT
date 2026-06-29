@@ -22,6 +22,7 @@
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
+    let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null};
     let blockingLocksRequestId = 0;
     let idleTransactionsRequestId = 0;
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: ''};
@@ -97,6 +98,7 @@
         initViewsControls();
         initTempTablesControls();
         initDistributionControls();
+        initActiveQueriesControls();
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
@@ -331,6 +333,72 @@
             .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
     }
 
+
+    function sortActiveQueries(queries) {
+        const sort = activeQueriesState.sort;
+        const direction = activeQueriesState.direction === 'asc' ? 1 : -1;
+        return [...queries].sort((a, b) => {
+            const aValue = sort === 'pid' || sort === 'duration_seconds'
+                ? Number(a[sort]) || 0
+                : String(a[sort] ?? '').toLowerCase();
+            const bValue = sort === 'pid' || sort === 'duration_seconds'
+                ? Number(b[sort]) || 0
+                : String(b[sort] ?? '').toLowerCase();
+            if (aValue < bValue) return -1 * direction;
+            if (aValue > bValue) return 1 * direction;
+            return 0;
+        });
+    }
+
+    function updateActiveQueriesSortIndicators() {
+        document.querySelectorAll('[data-active-query-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.activeQuerySort === activeQueriesState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${activeQueriesState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
+    function scheduleActiveQueriesRefresh() {
+        if (activeQueriesState.timer) {
+            clearInterval(activeQueriesState.timer);
+            activeQueriesState.timer = null;
+        }
+        if (!activeQueriesState.refreshInterval) return;
+        activeQueriesState.timer = setInterval(() => {
+            if (document.getElementById('page-queries')?.classList.contains('active')) {
+                refreshActiveQueriesForConnection(undefined, {silent: true});
+            }
+        }, activeQueriesState.refreshInterval * 1000);
+    }
+
+    function initActiveQueriesControls() {
+        document.querySelectorAll('[data-active-query-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.activeQuerySort;
+                if (activeQueriesState.sort === sort) {
+                    activeQueriesState.direction = activeQueriesState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    activeQueriesState.sort = sort;
+                    activeQueriesState.direction = ['pid', 'duration_seconds'].includes(sort) ? 'desc' : 'asc';
+                }
+                refreshActiveQueriesForConnection(undefined, {silent: true});
+            });
+        });
+        document.getElementById('activeQueriesRefreshInterval')?.addEventListener('change', function () {
+            activeQueriesState.refreshInterval = Number(this.value) || 0;
+            scheduleActiveQueriesRefresh();
+            refreshActiveQueriesForConnection(undefined, {silent: true});
+        });
+        document.getElementById('activeQueriesRefreshBtn')?.addEventListener('click', function () {
+            refreshActiveQueriesForConnection(undefined, {silent: false});
+        });
+        updateActiveQueriesSortIndicators();
+    }
+
     function renderActiveQueriesWarning(message) {
         const tbody = document.getElementById('activeQueriesTableBody');
         const count = document.getElementById('activeQueriesCount');
@@ -341,7 +409,8 @@
     function renderActiveQueries(data) {
         const tbody = document.getElementById('activeQueriesTableBody');
         const count = document.getElementById('activeQueriesCount');
-        const queries = data.queries || [];
+        const queries = sortActiveQueries(data.queries || []);
+        updateActiveQueriesSortIndicators();
         if (count) count.textContent = `${queries.length} активных запросов`;
         if (!tbody) return;
         if (!queries.length) {
@@ -360,13 +429,13 @@
         `).join('');
     }
 
-    function refreshActiveQueriesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshActiveQueriesForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderActiveQueriesWarning('Выберите сохранённое подключение для загрузки активных запросов');
             return;
         }
         const requestId = ++activeQueriesRequestId;
-        renderActiveQueriesWarning('Загрузка активных запросов...');
+        if (!options.silent) renderActiveQueriesWarning('Загрузка активных запросов...');
         connectionRequest(activeQueriesApiUrl, {id: conn.id})
             .then(data => {
                 if (requestId !== activeQueriesRequestId) return;
