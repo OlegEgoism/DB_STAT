@@ -445,22 +445,33 @@ def active_queries(request):
 
     db_connection = _get_connection_for_request(request, connection_id)
     active_queries_query = """
-        SELECT DISTINCT
+        WITH locked_relations AS (
+            SELECT
+                locks.pid,
+                string_agg(
+                    DISTINCT namespace.nspname || '.' || relation.relname,
+                    ', ' ORDER BY namespace.nspname || '.' || relation.relname
+                ) AS relation_name
+            FROM pg_catalog.pg_locks AS locks
+            JOIN pg_catalog.pg_class AS relation
+                ON relation.oid = locks.relation
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = relation.relnamespace
+            WHERE locks.relation IS NOT NULL
+            GROUP BY locks.pid
+        )
+        SELECT
             activity.pid,
             activity.usename,
-            namespace.nspname || '.' || relation.relname AS relation_name,
+            COALESCE(locked_relations.relation_name, '—') AS relation_name,
             activity.state,
-            now() - activity.query_start AS duration,
+            GREATEST(now() - activity.query_start, INTERVAL '0 seconds') AS duration,
             activity.query
         FROM pg_catalog.pg_stat_activity AS activity
-        JOIN pg_catalog.pg_locks AS locks
-            ON locks.pid = activity.pid
-           AND locks.relation IS NOT NULL
-        JOIN pg_catalog.pg_class AS relation
-            ON relation.oid = locks.relation
-        JOIN pg_catalog.pg_namespace AS namespace
-            ON namespace.oid = relation.relnamespace
+        LEFT JOIN locked_relations
+            ON locked_relations.pid = activity.pid
         WHERE activity.state = 'active'
+          AND activity.pid <> pg_backend_pid()
         ORDER BY duration DESC;
     """
 
@@ -490,7 +501,7 @@ def active_queries(request):
                 "relation_name": row[2] or "—",
                 "state": row[3] or "—",
                 "duration": str(duration).split(".")[0] if duration else "—",
-                "duration_seconds": int(duration.total_seconds()) if duration else 0,
+                "duration_seconds": max(int(duration.total_seconds()), 0) if duration else 0,
                 "sql": row[5] or "—",
             }
         )
