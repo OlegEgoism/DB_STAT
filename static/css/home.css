@@ -2092,9 +2092,10 @@ body.sidebar-collapsed .nav-item .badge {
 }
 
 body.sidebar-collapsed .sidebar-collapse-toggle {
-    position: absolute;
-    top: 58px;
-    right: 8px;
+    position: fixed;
+    top: 72px;
+    left: calc(var(--sidebar-collapsed-width) - 14px);
+    right: auto;
     width: 28px;
     height: 28px;
     z-index: 1010;
