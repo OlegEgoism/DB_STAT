@@ -1,4 +1,4 @@
-asgiref==3.11.1te6
+asgiref==3.11.1
 cryptography==43.0.3
 Django==6.0.4
 dotenv==0.9.9
