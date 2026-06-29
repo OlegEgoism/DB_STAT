@@ -80,6 +80,12 @@
                         <span class="card-meta" id="databaseOverviewConnectionSlotsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
+                        <div class="connection-slots-chart-wrap">
+                            <div class="chart-container chart-container-xs">
+                                <canvas id="connectionSlotsChart"></canvas>
+                            </div>
+                            <div class="connection-slots-summary" id="connectionSlotsChartSummary">Выберите подключение</div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>
@@ -133,8 +139,13 @@
         <div class="row g-3">
             <div class="col-12">
                 <div class="glass-card">
-                    <div class="card-header">
+                    <div class="card-header segment-card-header">
                         <span><i class="fas fa-server"></i> Состояние сегментов</span>
+                        <div class="segment-role-filter" role="group" aria-label="Фильтр сегментов по роли">
+                            <button class="segment-role-filter-btn active" type="button" data-segment-role-filter="all">Все</button>
+                            <button class="segment-role-filter-btn" type="button" data-segment-role-filter="p">Primary</button>
+                            <button class="segment-role-filter-btn" type="button" data-segment-role-filter="m">Mirror</button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">

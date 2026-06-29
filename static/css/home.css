@@ -1386,3 +1386,73 @@ body {
 .text-accent-blue {
     color: var(--accent-blue) !important;
 }
+
+/* ========== SEGMENT CHART FILTERS & CONNECTION SLOTS ========== */
+.segment-card-header {
+    gap: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.segment-role-filter {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 999px;
+    background: var(--bg-primary);
+}
+
+.segment-role-filter-btn {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.segment-role-filter-btn:hover,
+.segment-role-filter-btn.active {
+    background: var(--bg-secondary);
+    color: var(--accent-blue);
+    box-shadow: var(--shadow-card);
+}
+
+.chart-container-xs {
+    height: 150px;
+}
+
+.connection-slots-chart-wrap {
+    display: grid;
+    grid-template-columns: minmax(120px, 150px) 1fr;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.connection-slots-summary {
+    color: var(--text-primary);
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.connection-slots-summary::before {
+    content: 'Использование';
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@media (max-width: 576px) {
+    .connection-slots-chart-wrap {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+}

@@ -9,6 +9,7 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
+    let segmentRoleFilter = 'all';
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesRequestId = 0;
@@ -92,6 +93,7 @@
         initNavigation();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
+        initSegmentRoleFilter();
         initSchemaSizesControls();
         initTableSizesControls();
         initViewsControls();
@@ -159,6 +161,45 @@
         return {value: value.toFixed(precision), unit: units[unitIndex]};
     }
 
+    function parsePercentValue(value) {
+        const number = Number(String(value ?? '').replace('%', '').replace(',', '.'));
+        return Number.isFinite(number) ? number : 0;
+    }
+
+    function getConnectionSlotValue(slots, labelPart) {
+        const item = slots.find(slot => String(slot.label || '').toLowerCase().includes(labelPart));
+        return item ? Number(item.value) || parsePercentValue(item.value) : 0;
+    }
+
+    function updateConnectionSlotsChart(slots) {
+        const summary = document.getElementById('connectionSlotsChartSummary');
+        const current = getConnectionSlotValue(slots, 'текущ');
+        const max = getConnectionSlotValue(slots, 'максим');
+        const percent = slots.find(slot => String(slot.label || '').toLowerCase().includes('использ'));
+        const usagePercent = percent ? parsePercentValue(percent.value) : (max ? Math.round((current * 100 / max) * 100) / 100 : 0);
+        const free = Math.max(max - current, 0);
+
+        if (summary) {
+            summary.textContent = max
+                ? `${current} из ${max} (${usagePercent}%)`
+                : 'Нет данных о лимите подключений';
+        }
+
+        if (!charts.connectionSlots) return;
+        charts.connectionSlots.data.datasets[0].data = max ? [current, free] : [1];
+        charts.connectionSlots.data.labels = max ? ['Использовано', 'Свободно'] : ['Нет данных'];
+        charts.connectionSlots.data.datasets[0].backgroundColor = max
+            ? [usagePercent >= 90 ? '#ef4444' : usagePercent >= 75 ? '#f59e0b' : '#4f8cff', 'rgba(15, 23, 42, 0.08)']
+            : ['rgba(15, 23, 42, 0.08)'];
+        charts.connectionSlots.options.plugins.tooltip.callbacks.label = context => {
+            if (!max) return 'Нет данных';
+            const value = Number(context.raw) || 0;
+            const percentValue = max ? Math.round((value * 100 / max) * 100) / 100 : 0;
+            return `${context.label}: ${value} (${percentValue}%)`;
+        };
+        charts.connectionSlots.update();
+    }
+
     function renderDatabaseOverviewWarning(message) {
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
@@ -186,6 +227,7 @@
         if (rolesTbody) rolesTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (basicSettingsTbody) basicSettingsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        updateConnectionSlotsChart([]);
     }
 
     function renderDatabaseOverview(data) {
@@ -278,6 +320,7 @@
                 `).join('');
             }
         }
+        updateConnectionSlotsChart(connectionSlots);
         if (connectionSlotsTbody) {
             if (!connectionSlots.length) {
                 connectionSlotsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных о слотах подключений</td></tr>';
@@ -1601,6 +1644,22 @@
         return role === 'p' ? 'primary' : role === 'm' ? 'mirror' : role;
     }
 
+    function roleTitle(role) {
+        return role === 'p' ? 'Primary' : role === 'm' ? 'Mirror' : role || 'Unknown';
+    }
+
+    function preferredRoleLabel(role) {
+        return role ? roleLabel(role) : '—';
+    }
+
+    function statusLabel(status) {
+        return status === 'u' ? 'up' : 'down';
+    }
+
+    function modeLabel(mode) {
+        return mode === 's' ? 'sync' : 'not sync';
+    }
+
     function statusBadge(status) {
         return status === 'u' ? '<span class="status-badge up">up</span>' : '<span class="status-badge down">down</span>';
     }
@@ -1609,14 +1668,34 @@
         return mode === 's' ? '<span class="status-badge sync">sync</span>' : '<span class="status-badge unsync">not sync</span>';
     }
 
+    function getVisibleSegments() {
+        return segmentRoleFilter === 'all'
+            ? currentSegments
+            : currentSegments.filter(segment => segment.role === segmentRoleFilter);
+    }
+
+    function initSegmentRoleFilter() {
+        document.querySelectorAll('[data-segment-role-filter]').forEach(button => {
+            button.addEventListener('click', function () {
+                segmentRoleFilter = this.dataset.segmentRoleFilter || 'all';
+                document.querySelectorAll('[data-segment-role-filter]').forEach(item => {
+                    item.classList.toggle('active', item.dataset.segmentRoleFilter === segmentRoleFilter);
+                });
+                if (currentSegmentsWarningHtml) return;
+                renderSegmentsTable(getVisibleSegments());
+                updateSegmentsChart(getVisibleSegments());
+            });
+        });
+    }
+
     function segmentSortValue(segment, column) {
         if (column === 'segment') {
             const numericSegment = Number(segment.segment);
             return Number.isNaN(numericSegment) ? String(segment.segment || '') : numericSegment;
         }
         if (column === 'role') return roleLabel(segment.role || '');
-        if (column === 'status') return segment.status === 'u' ? 'up' : 'down';
-        if (column === 'mode') return segment.mode === 's' ? 'sync' : 'not sync';
+        if (column === 'status') return statusLabel(segment.status);
+        if (column === 'mode') return modeLabel(segment.mode);
         if (column === 'host') return segment.hostname || segment.address || '';
         return '';
     }
@@ -1661,7 +1740,7 @@
                     updateSegmentsSortIndicators();
                     return;
                 }
-                renderSegmentsTable(currentSegments);
+                renderSegmentsTable(getVisibleSegments());
             });
         });
         updateSegmentsSortIndicators();
@@ -1687,6 +1766,10 @@
             return;
         }
         currentSegmentsWarningHtml = '';
+        if (!segments.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Нет сегментов для выбранного фильтра</td></tr>';
+            return;
+        }
         tbody.innerHTML = sortSegments(segments).map(segment => `
             <tr>
                 <td><strong>${segment.segment}</strong></td>
@@ -1698,12 +1781,74 @@
         `).join('');
     }
 
+    function getSegmentDatasetKey(segment) {
+        return `${segment.role || 'unknown'}-${statusLabel(segment.status)}-${modeLabel(segment.mode)}`;
+    }
+
+    function getSegmentDatasetLabel(segment) {
+        return `${roleTitle(segment.role)} · ${statusLabel(segment.status)} · ${modeLabel(segment.mode)}`;
+    }
+
+    function getSegmentBarColor(segment) {
+        if (segment.status !== 'u') return segment.mode === 's' ? '#ef4444' : '#f97316';
+        if (segment.role === 'p') return segment.mode === 's' ? '#22c55e' : '#f59e0b';
+        return segment.mode === 's' ? '#06b6d4' : '#8b5cf6';
+    }
+
+    function getSegmentPattern(segment) {
+        const color = getSegmentBarColor(segment);
+        if (segment.mode === 's') return color;
+        const canvas = document.createElement('canvas');
+        canvas.width = 8;
+        canvas.height = 8;
+        const context = canvas.getContext('2d');
+        context.fillStyle = color;
+        context.fillRect(0, 0, 8, 8);
+        context.strokeStyle = 'rgba(255,255,255,0.75)';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(-2, 8);
+        context.lineTo(8, -2);
+        context.moveTo(2, 10);
+        context.lineTo(10, 2);
+        context.stroke();
+        return context.createPattern(canvas, 'repeat') || color;
+    }
+
     function updateSegmentsChart(segments) {
         if (!charts.segments) return;
-        const contents = [...new Set(segments.filter(segment => Number(segment.segment) >= 0).map(segment => String(segment.segment)))].sort((a, b) => Number(a) - Number(b));
+        const visibleSegments = segments.filter(segment => Number(segment.segment) >= 0);
+        const contents = [...new Set(visibleSegments.map(segment => String(segment.segment)))].sort((a, b) => Number(a) - Number(b));
+        const grouped = new Map();
+
+        visibleSegments.forEach(segment => {
+            const key = getSegmentDatasetKey(segment);
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    label: getSegmentDatasetLabel(segment),
+                    segments: new Map(),
+                    sample: segment,
+                });
+            }
+            grouped.get(key).segments.set(String(segment.segment), segment);
+        });
+
         charts.segments.data.labels = contents.map(content => `Сегмент ${content}`);
-        charts.segments.data.datasets[0].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'p').length);
-        charts.segments.data.datasets[1].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'm').length);
+        charts.segments.data.datasets = Array.from(grouped.values()).map(group => ({
+            label: group.label,
+            data: contents.map(content => {
+                const segment = group.segments.get(content);
+                return segment ? {x: `Сегмент ${content}`, y: 1, meta: segment} : null;
+            }),
+            backgroundColor: contents.map(content => {
+                const segment = group.segments.get(content);
+                return segment ? getSegmentPattern(segment) : 'rgba(0,0,0,0)';
+            }),
+            borderColor: getSegmentBarColor(group.sample),
+            borderWidth: group.sample.mode === 's' ? 0 : 1,
+            borderRadius: 4,
+            stack: 'segments',
+        }));
         charts.segments.update();
     }
 
@@ -1760,8 +1905,7 @@
 
         if (charts.segments) {
             charts.segments.data.labels = [];
-            charts.segments.data.datasets[0].data = [];
-            charts.segments.data.datasets[1].data = [];
+            charts.segments.data.datasets = [];
             charts.segments.update();
         }
         setSegmentsChartEmpty(true, warning.title);
@@ -1778,8 +1922,8 @@
         currentSegmentsWarningHtml = '';
         currentSegments = data.segments || [];
         renderSegmentMetrics(data.metrics || []);
-        renderSegmentsTable(currentSegments);
-        updateSegmentsChart(currentSegments);
+        renderSegmentsTable(getVisibleSegments());
+        updateSegmentsChart(getVisibleSegments());
     }
 
     function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
@@ -1941,7 +2085,7 @@
             return;
         }
         connectionModalMode = 'create';
-        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-plug me-2" style="color: var(--accent-blue);"></i>Новое подключение';
+        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-plug me-2 text-accent-blue"></i>Новое подключение';
         document.getElementById('connectionSaveText').textContent = 'Подключиться';
         document.getElementById('connectionDeleteBtn').classList.add('d-none');
         document.getElementById('connId').value = '';
@@ -1967,7 +2111,7 @@
         }
 
         connectionModalMode = 'edit';
-        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-pen me-2" style="color: var(--accent-blue);"></i>Редактировать подключение';
+        document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-pen me-2 text-accent-blue"></i>Редактировать подключение';
         document.getElementById('connectionSaveText').textContent = 'Сохранить';
         document.getElementById('connectionDeleteBtn').classList.remove('d-none');
         document.getElementById('connId').value = /^\d+$/.test(String(conn.id)) ? conn.id : '';
@@ -2205,25 +2349,64 @@
             }
         };
 
+        // ---- Connection Slots ----
+        const connectionSlotsCanvas = document.getElementById('connectionSlotsChart');
+        if (connectionSlotsCanvas) {
+            charts.connectionSlots = new Chart(connectionSlotsCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Нет данных'],
+                    datasets: [{
+                        data: [1],
+                        backgroundColor: [colors.gray],
+                        borderWidth: 0,
+                        cutout: '68%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {display: false},
+                        tooltip: {callbacks: {label: () => 'Нет данных'}}
+                    }
+                }
+            });
+        }
+
         // ---- 3. Segments ----
         const ctx3 = document.getElementById('segmentsChart').getContext('2d');
         charts.segments = new Chart(ctx3, {
             type: 'bar',
-            data: {
-                labels: ['Сегмент 0', 'Сегмент 1', 'Сегмент 2', 'Сегмент 3', 'Сегмент 4', 'Сегмент 5'],
-                datasets: [
-                    {label: 'Primary', data: [1, 1, 1, 1, 1, 1], backgroundColor: colors.blue},
-                    {label: 'Mirror', data: [1, 1, 1, 1, 1, 1], backgroundColor: colors.teal}
-                ]
-            },
+            data: {labels: [], datasets: []},
             options: {
                 ...chartOptions,
+                parsing: {yAxisKey: 'y'},
                 scales: {
                     x: {stacked: true, ticks: {color: '#8a9bb0', font: {size: 10, family: 'Inter'}}, grid: {color: 'rgba(0,0,0,0.04)'}},
                     y: {stacked: true, ticks: {stepSize: 1, color: '#8a9bb0', font: {size: 9, family: 'Inter'}}, grid: {color: 'rgba(0,0,0,0.04)'}}
                 },
                 plugins: {
-                    legend: {labels: {color: '#4a5568', boxWidth: 12, font: {size: 11, family: 'Inter'}}}
+                    legend: {labels: {color: '#4a5568', boxWidth: 12, font: {size: 11, family: 'Inter'}}},
+                    tooltip: {
+                        callbacks: {
+                            title: items => items[0]?.raw?.meta ? `Сегмент ${items[0].raw.meta.segment}` : '',
+                            label: context => {
+                                const segment = context.raw?.meta;
+                                if (!segment) return context.dataset.label;
+                                return [
+                                    `Роль: ${roleLabel(segment.role)}`,
+                                    `Preferred: ${preferredRoleLabel(segment.preferred_role)}`,
+                                    `Статус: ${statusLabel(segment.status)}`,
+                                    `Режим: ${modeLabel(segment.mode)}`,
+                                    `Хост: ${segment.hostname || '—'}`,
+                                    `Адрес: ${segment.address || '—'}`,
+                                    `Порт: ${segment.port || '—'}`,
+                                ];
+                            }
+                        }
+                    }
                 }
             }
         });
