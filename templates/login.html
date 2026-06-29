@@ -1,17 +1,11 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Авторизация | GP Monitor</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="{% static 'css/home.css' %}" rel="stylesheet">
-</head>
-<body>
+
+{% block title %}Авторизация | GP Monitor{% endblock %}
+
+{% block content %}
 {% include 'includes/_background.html' %}
-<div class="login-page">
+<div class="login-page app-page-shell">
     <div class="login-card glass-card">
         <div class="login-brand">
             <div class="logo-icon"><i class="fas fa-database"></i></div>
@@ -25,11 +19,11 @@
         {% endif %}
         <form method="post" novalidate>
             {% csrf_token %}
-            <div class="mb-3">
+            <div class="form-field">
                 <label class="form-label" for="loginInput">Login</label>
                 <input class="form-control" id="loginInput" name="login" value="{{ login_value }}" autocomplete="username" required>
             </div>
-            <div class="mb-4">
+            <div class="form-field">
                 <label class="form-label" for="emailInput">Email</label>
                 <input class="form-control" id="emailInput" name="email" type="email" value="{{ email_value }}" autocomplete="email" required>
             </div>
@@ -39,5 +33,4 @@
         </form>
     </div>
 </div>
-</body>
-</html>
+{% endblock %}

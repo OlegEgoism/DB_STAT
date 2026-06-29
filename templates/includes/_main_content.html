@@ -52,7 +52,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-sliders-h"></i> Основные данные БД</span>
-                        <span class="text-muted" id="databaseOverviewBasicSettingsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="databaseOverviewBasicSettingsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -77,7 +77,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-network-wired"></i> Слоты подключений</span>
-                        <span class="text-muted" id="databaseOverviewConnectionSlotsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="databaseOverviewConnectionSlotsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -102,7 +102,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-users"></i> Пользователи и группы</span>
-                        <span class="text-muted" id="databaseOverviewRolesCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="databaseOverviewRolesCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -154,7 +154,7 @@
                         <span><i class="fas fa-list"></i> Детальная информация</span>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                        <div class="table-responsive table-scroll-sm">
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
@@ -278,7 +278,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-layer-group"></i> Размер схем</span>
-                        <span class="text-muted" id="schemaSizesCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="schemaSizesCount">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">
                         <div class="search-box">
@@ -287,7 +287,7 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                        <div class="table-responsive table-scroll-md">
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
@@ -334,7 +334,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-table"></i> Размер таблиц</span>
-                <span class="text-muted" id="tableSizesCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="tableSizesCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -343,7 +343,7 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
                         <thead>
                         <tr>
@@ -397,7 +397,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-eye"></i> Представления</span>
-                <span class="text-muted" id="viewsCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="viewsCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -413,7 +413,7 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
                         <thead>
                         <tr>
@@ -469,10 +469,10 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-arrows-alt-h"></i> Выбор таблицы для анализа распределения</span>
-                        <span class="text-muted" id="distributionTableCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="distributionTableCount">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">
-                        <div class="search-box" style="max-width: 520px;">
+                        <div class="search-box search-box-wide">
                             <i class="fas fa-table"></i>
                             <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="Выберите сохранённое подключение для загрузки таблиц" autocomplete="off">
                             <datalist id="distributionTableOptions"></datalist>
@@ -489,7 +489,7 @@
                         <span><i class="fas fa-calculator"></i> Перекос данных</span>
                     </div>
                     <div class="card-body">
-                        <div class="kpi-grid" style="grid-template-columns: 1fr;">
+                        <div class="kpi-grid kpi-grid-single">
                             <div class="kpi-card">
                                 <div class="kpi-label">Сегментов</div>
                                 <div class="kpi-value" id="distributionUsedSegments">—</div>
@@ -514,7 +514,7 @@
                 <div class="glass-card distribution-analysis-card distribution-chart-card">
                     <div class="card-header">
                         <span><i class="fas fa-chart-bar"></i> Распределение строк по сегментам</span>
-                        <span style="font-size:11px; color: var(--text-muted);" id="distributionSelectedTableName">Выберите таблицу</span>
+                        <span class="card-meta" id="distributionSelectedTableName">Выберите таблицу</span>
                     </div>
                     <div class="card-body">
                         <div class="chart-container">
@@ -527,7 +527,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-list"></i> Распределение строк по сегментам</span>
-                        <span class="text-muted" id="distributionRowsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="distributionRowsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -567,7 +567,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-clock"></i> Временные таблицы</span>
-                        <span class="text-muted" id="tempTablesCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="tempTablesCount">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">
                         <div class="search-box">
@@ -576,7 +576,7 @@
                         </div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                        <div class="table-responsive table-scroll-lg">
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
@@ -623,7 +623,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-bolt"></i> Активные запросы</span>
-                <span class="text-muted" id="activeQueriesCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="activeQueriesCount">Нет данных</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -656,7 +656,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-lock"></i> Кто кого блокирует</span>
-                <span class="text-muted" id="blockingLocksCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="blockingLocksCount">Нет данных</span>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -693,7 +693,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-list"></i> Простаивающие в транзакции</span>
-                        <span class="text-muted" id="idleTransactionsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="idleTransactionsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -732,7 +732,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-list"></i> Детализация размеров</span>
-                        <span class="text-muted" id="memorySizeMetricsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="memorySizeMetricsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -757,7 +757,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-memory"></i> Параметры памяти</span>
-                        <span class="text-muted" id="memorySettingsCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="memorySettingsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -783,7 +783,7 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-chart-bar"></i> Использование памяти</span>
-                        <span class="text-muted" id="memoryUsageCount" style="font-size: 12px;">Нет данных</span>
+                        <span class="card-meta" id="memoryUsageCount">Нет данных</span>
                     </div>
                     <div class="card-body">
                         <div id="memoryUsageList" class="memory-usage-list">
@@ -802,7 +802,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-user"></i> Пользователи</span>
-                <span class="text-muted" id="usersCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="usersCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -811,7 +811,7 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
                         <thead>
                         <tr>
@@ -852,7 +852,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-users"></i> Группы</span>
-                <span class="text-muted" id="groupsCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="groupsCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -861,7 +861,7 @@
                 </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 560px; overflow-y: auto;">
+                <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
                         <thead>
                         <tr>
@@ -894,7 +894,7 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-tools"></i> Статистика обслуживания</span>
-                <span class="text-muted" id="maintenanceStatsCount" style="font-size: 12px;">Нет данных</span>
+                <span class="card-meta" id="maintenanceStatsCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
