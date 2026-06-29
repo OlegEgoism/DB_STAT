@@ -632,9 +632,100 @@
         if (next) next.disabled = usersState.page >= totalPages;
     }
 
+
+    function isRoleEnabled(value) {
+        return value === true || String(value).toLowerCase() === 'true' || value === 'Да';
+    }
+
+    function updateRoleDonut(donutId, summaryId, enabledCount, totalCount, enabledLabel, disabledLabel) {
+        const donut = document.getElementById(donutId);
+        const summary = document.getElementById(summaryId);
+        const percent = totalCount > 0 ? Math.max(0, Math.min((enabledCount * 100) / totalCount, 100)) : 0;
+        if (donut) {
+            donut.style.setProperty('--role-yes', `${percent}%`);
+            donut.setAttribute('aria-label', `${enabledLabel}: ${enabledCount}, ${disabledLabel}: ${Math.max(totalCount - enabledCount, 0)}`);
+        }
+        if (summary) summary.textContent = totalCount > 0 ? `${enabledCount} / ${totalCount}` : '—';
+    }
+
+    function updateUsersPrivilegeCharts(roles = [], summary = null) {
+        const total = Number(summary?.total_count) || roles.length;
+        const superuserCount = summary ? Number(summary.superuser_count) || 0 : roles.filter(role => isRoleEnabled(role.superuser)).length;
+        const createDbCount = summary ? Number(summary.createdb_count) || 0 : roles.filter(role => isRoleEnabled(role.createdb)).length;
+        const replicationCount = summary ? Number(summary.replication_count) || 0 : roles.filter(role => isRoleEnabled(role.replication)).length;
+        updateRoleDonut('usersSuperuserDonut', 'usersSuperuserSummary', superuserCount, total, 'Суперпользователи', 'Обычные пользователи');
+        updateRoleDonut('usersCreateDbDonut', 'usersCreateDbSummary', createDbCount, total, 'Могут создавать БД', 'Не могут создавать БД');
+        updateRoleDonut('usersReplicationDonut', 'usersReplicationSummary', replicationCount, total, 'Могут выполнять репликацию', 'Без права репликации');
+    }
+
+    function isPrivilegedRole(role) {
+        return ['superuser', 'createdb', 'createrole', 'replication'].some(key => isRoleEnabled(role[key]));
+    }
+
+    function updateGroupsPrivilegeCharts(roles = [], summary = null) {
+        const total = Number(summary?.total_count) || roles.length;
+        const privilegedCount = summary ? Number(summary.privileged_count) || 0 : roles.filter(isPrivilegedRole).length;
+        updateRoleDonut('groupsPrivilegedDonut', 'groupsPrivilegedSummary', privilegedCount, total, 'Привилегированные группы', 'Обычные группы');
+        renderGroupsMembersBars(roles);
+        renderGroupsRightsHeatmap(roles);
+    }
+
+    function renderGroupsMembersBars(roles = []) {
+        const container = document.getElementById('groupsMembersBars');
+        if (!container) return;
+        const topGroups = [...roles]
+            .sort((a, b) => (Number(b.member_count) || 0) - (Number(a.member_count) || 0))
+            .slice(0, 8);
+        const maxMembers = Math.max(...topGroups.map(role => Number(role.member_count) || 0), 0);
+        if (!topGroups.length) {
+            container.innerHTML = 'Нет данных';
+            return;
+        }
+        container.innerHTML = topGroups.map(role => {
+            const memberCount = Number(role.member_count) || 0;
+            const width = maxMembers > 0 ? Math.max((memberCount * 100) / maxMembers, 4) : 0;
+            return `
+                <div class="groups-members-row">
+                    <span class="groups-members-name" title="${escapeHtml(role.name)}">${escapeHtml(role.name)}</span>
+                    <span class="groups-members-track"><span class="groups-members-bar" style="width: ${width}%;"></span></span>
+                    <span class="groups-members-value">${memberCount}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderGroupsRightsHeatmap(roles = []) {
+        const container = document.getElementById('groupsRightsHeatmap');
+        if (!container) return;
+        const rights = [
+            {key: 'superuser', label: 'SU'},
+            {key: 'createdb', label: 'DB'},
+            {key: 'createrole', label: 'Role'},
+            {key: 'inherit', label: 'Inh'},
+            {key: 'replication', label: 'Repl'}
+        ];
+        const heatmapRoles = roles.slice(0, 10);
+        if (!heatmapRoles.length) {
+            container.innerHTML = 'Нет данных';
+            return;
+        }
+        container.innerHTML = `
+            <span class="groups-rights-head groups-rights-name">Группа</span>
+            ${rights.map(right => `<span class="groups-rights-head">${right.label}</span>`).join('')}
+            ${heatmapRoles.map(role => `
+                <span class="groups-rights-cell groups-rights-name" title="${escapeHtml(role.name)}">${escapeHtml(role.name)}</span>
+                ${rights.map(right => {
+                    const enabled = isRoleEnabled(role[right.key]);
+                    return `<span class="groups-rights-cell ${enabled ? 'enabled' : 'disabled'}" title="${escapeHtml(right.label)}: ${enabled ? 'Да' : 'Нет'}">${enabled ? '✓' : '–'}</span>`;
+                }).join('')}
+            `).join('')}
+        `;
+    }
+
     function renderUsersWarning(message) {
         const info = document.getElementById('usersPaginationInfo');
         usersState.totalCount = 0;
+        updateUsersPrivilegeCharts([]);
         if (info) info.textContent = 'Страница 1 из 1';
         renderRolesListWarning('usersTableBody', 'usersCount', 8, message);
         updateUsersPaginationButtons();
@@ -673,6 +764,7 @@
         usersState.page = Number(data.page) || 1;
         usersState.pageSize = Number(data.page_size) || 100;
         updateUsersSortIndicators();
+        updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
         const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
         renderRolesList(data, 'usersTableBody', null, 'Пользователи не найдены');
         if (count) count.textContent = `${data.roles?.length || 0} из ${usersState.totalCount} пользователей`;
@@ -745,9 +837,11 @@
     function refreshGroupsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
         const requestId = ++groupsRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
+            updateGroupsPrivilegeCharts([]);
             renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Выберите сохранённое подключение для загрузки групп');
             return;
         }
+        updateGroupsPrivilegeCharts([]);
         renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Загрузка групп...');
         connectionRequest(groupsListApiUrl, {
             id: conn.id,
@@ -758,10 +852,12 @@
             .then(data => {
                 if (requestId !== groupsRequestId) return;
                 updateGroupsSortIndicators();
+                updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
                 renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
             })
             .catch(error => {
                 if (requestId !== groupsRequestId) return;
+                updateGroupsPrivilegeCharts([]);
                 renderRolesListWarning('groupsTableBody', 'groupsCount', 9, error.message || 'Не удалось получить список групп');
             });
     }
