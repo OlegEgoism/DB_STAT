@@ -20,9 +20,24 @@
             </div>
             <!-- Connection Manager -->
             <div class="connection-manager">
-                <select id="connectionSelect" onchange="onConnectionChange(this.value)">
+                <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
                     <option value="">Загрузка подключений...</option>
                 </select>
+                <div class="connection-info-tooltip" id="connectionSelectInfo" role="tooltip">
+                    <div class="connection-info-tooltip-title">Информация о подключении</div>
+                    <div class="connection-info-tooltip-row">
+                        <span>База данных</span>
+                        <strong id="connectionTooltipDatabase">—</strong>
+                    </div>
+                    <div class="connection-info-tooltip-row">
+                        <span>Хост</span>
+                        <strong id="connectionTooltipHost">—</strong>
+                    </div>
+                    <div class="connection-info-tooltip-row">
+                        <span>Порт</span>
+                        <strong id="connectionTooltipPort">—</strong>
+                    </div>
+                </div>
                 <span class="conn-divider"></span>
                 {% if user_can_manage_connections %}
                 <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">

@@ -1827,6 +1827,28 @@
             .catch(error => renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.'));
     }
 
+
+    function updateConnectionTooltip(conn = connections.find(c => c.id === activeConnectionId)) {
+        const database = document.getElementById('connectionTooltipDatabase');
+        const host = document.getElementById('connectionTooltipHost');
+        const port = document.getElementById('connectionTooltipPort');
+        const select = document.getElementById('connectionSelect');
+        const databaseValue = conn?.database || '—';
+        const hostValue = conn?.host || '—';
+        const portValue = conn?.port || '—';
+
+        if (database) database.textContent = databaseValue;
+        if (host) host.textContent = hostValue;
+        if (port) port.textContent = portValue;
+        if (select) {
+            select.title = conn
+                ? `База данных: ${databaseValue}
+Хост: ${hostValue}
+Порт: ${portValue}`
+                : 'Информация о подключении недоступна';
+        }
+    }
+
     function populateConnectionSelect() {
         const select = document.getElementById('connectionSelect');
         select.innerHTML = '';
@@ -1836,6 +1858,7 @@
             option.textContent = 'Нет доступных подключений';
             select.appendChild(option);
             select.value = '';
+            updateConnectionTooltip(null);
             return;
         }
         connections.forEach(conn => {
@@ -1847,6 +1870,7 @@
         if (activeConnectionId) {
             select.value = activeConnectionId;
         }
+        updateConnectionTooltip();
     }
 
     function isKnownPage(pageId) {
@@ -1955,6 +1979,7 @@
     function onConnectionChange(connId) {
         activeConnectionId = connId;
         const conn = connections.find(c => c.id === connId);
+        updateConnectionTooltip(conn);
         if (conn) {
             activatePage('segments');
             refreshSegmentsForConnection(conn);
