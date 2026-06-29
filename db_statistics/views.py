@@ -1,13 +1,14 @@
 import json
 
 import psycopg2
-from psycopg2 import sql
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
+from psycopg2 import sql
 
-from db_statistics.models import DBConnection, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBUser
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
@@ -41,6 +42,38 @@ def _connection_permission_error():
         {"ok": False, "message": "Создавать и редактировать подключения может только Администратор"},
         status=403,
     )
+
+
+def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
+    if db_user:
+        return db_user.login
+    return fallback
+
+
+def _write_audit(action_type, info, db_user=None, username=None):
+    DBAudit.objects.create(
+        username=username or _audit_username(db_user),
+        action_type=action_type,
+        info=info,
+        created=timezone.now(),
+    )
+
+
+def _connection_audit_info(action, connection, *, result=None, error=None):
+    details = [
+        f"Действие: {action}",
+        f"Подключение: {connection.name}",
+        f"Тип БД: {connection.db_type}",
+        f"Хост: {connection.host}",
+        f"Порт: {connection.port}",
+        f"База данных: {connection.database}",
+        f"Пользователь БД: {connection.username}",
+    ]
+    if result:
+        details.append(f"Результат: {result}")
+    if error:
+        details.append(f"Ошибка: {error}")
+    return "; ".join(details)
 
 
 def _can_manage_connections(request):
@@ -92,6 +125,11 @@ def login(request):
         db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
         if db_user:
             request.session[SESSION_USER_ID_KEY] = db_user.pk
+            _write_audit(
+                "login",
+                f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}",
+                db_user=db_user,
+            )
             return redirect("home")
         error = "Пользователь с указанными login и email не найден или отключён"
 
@@ -223,6 +261,11 @@ def connections(request):
         for field, value in defaults.items():
             setattr(connection, field, value)
         connection.save()
+        _write_audit(
+            "connection_update",
+            _connection_audit_info("Изменение подключения", connection),
+            db_user=_current_db_user(request),
+        )
         return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
 
     connection, created = DBConnection.objects.update_or_create(
@@ -235,6 +278,11 @@ def connections(request):
     db_user = _current_db_user(request)
     if db_user:
         db_user.connections.add(connection)
+    _write_audit(
+        "connection_create" if created else "connection_update",
+        _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection),
+        db_user=db_user,
+    )
     return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
 
 
@@ -282,11 +330,31 @@ def test_connection(request):
         }
         name = payload["name"].strip()
 
+    audit_user = _current_db_user(request)
+    audit_connection = connection if connection_id else None
     try:
         _test_connection_params(**params)
     except Exception as exc:
+        if audit_connection:
+            info = _connection_audit_info("Проверка подключения", audit_connection, result="Ошибка", error=exc)
+        else:
+            info = (
+                f"Действие: Проверка нового подключения; Подключение: {name}; "
+                f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
+                f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {exc}"
+            )
+        _write_audit("connection_test", info, db_user=audit_user)
         return JsonResponse({"ok": False, "message": f"Не удалось подключиться к {name}: {exc}"}, status=400)
 
+    if audit_connection:
+        info = _connection_audit_info("Проверка подключения", audit_connection, result="Успешно")
+    else:
+        info = (
+            f"Действие: Проверка нового подключения; Подключение: {name}; "
+            f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
+            f"Пользователь БД: {params['username']}; Результат: Успешно"
+        )
+    _write_audit("connection_test", info, db_user=audit_user)
     return JsonResponse({"ok": True, "message": f"Подключение к {name} успешно"})
 
 @require_http_methods(["POST"])
@@ -300,8 +368,10 @@ def delete_connection(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     connection = _get_connection_for_request(request, connection_id)
+    audit_info = _connection_audit_info("Удаление подключения", connection)
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
+    _write_audit("connection_delete", audit_info, db_user=_current_db_user(request))
     return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})
 
 
