@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBUser, DBConnection, DBAudit
+from db_statistics.models import DBAudit, DBConnection, DBUser
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -40,11 +40,16 @@ class DBConnectionAdmin(BaseAdmin):
 
 @admin.register(DBAudit)
 class DBAuditAdmin(admin.ModelAdmin):
-    list_display = ("username", "action_type", "created")
-    list_filter = ("action_type",)
-    search_fields = ("username", "info", "username")
+    list_display = ("username", "action_type", "short_info", "created")
+    list_filter = ("action_type", "created")
+    search_fields = ("username", "info")
     search_help_text = "Поиск по: пользователю, информации"
     date_hierarchy = "created"
     list_per_page = 20
     fields = ("username", "action_type", "info", "created")
     readonly_fields = ("username", "action_type", "info", "created")
+    ordering = ("-created",)
+
+    @admin.display(description="Информация")
+    def short_info(self, obj):
+        return obj.info[:120] + ("…" if len(obj.info) > 120 else "")

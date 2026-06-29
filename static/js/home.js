@@ -32,6 +32,7 @@
     let groupsState = {sort: 'name', direction: 'asc', search: ''};
     let groupsRequestId = 0;
     const activePageStorageKey = 'gp_active_page';
+    const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -91,6 +92,7 @@
         loadConnections();
         initCharts();
         initNavigation();
+        initSidebarCollapse();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
         initSchemaSizesControls();
@@ -105,6 +107,8 @@
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
+            document.body.classList.remove('sidebar-collapsed');
+            updateSidebarCollapseButton(false);
             document.getElementById('sidebar').classList.toggle('open');
         });
 
@@ -121,6 +125,50 @@
             }
         });
     });
+
+
+    function updateSidebarCollapseButton(isCollapsed) {
+        const toggle = document.getElementById('sidebarCollapseToggle');
+        if (!toggle) return;
+        toggle.setAttribute('aria-expanded', String(!isCollapsed));
+        toggle.setAttribute('aria-label', isCollapsed ? 'Развернуть сайдбар' : 'Свернуть сайдбар');
+        toggle.setAttribute('title', isCollapsed ? 'Развернуть сайдбар' : 'Свернуть сайдбар');
+        const icon = toggle.querySelector('i');
+        if (icon) icon.className = isCollapsed ? 'fas fa-angle-right' : 'fas fa-angle-left';
+    }
+
+    function setSidebarCollapsed(isCollapsed, {persist = true} = {}) {
+        if (window.innerWidth <= 992) {
+            document.body.classList.remove('sidebar-collapsed');
+            updateSidebarCollapseButton(false);
+            return;
+        }
+        document.body.classList.toggle('sidebar-collapsed', isCollapsed);
+        updateSidebarCollapseButton(isCollapsed);
+        if (persist) {
+            localStorage.setItem(sidebarCollapsedStorageKey, isCollapsed ? '1' : '0');
+        }
+        setTimeout(() => {
+            Object.values(charts).forEach(chart => {
+                if (chart && chart.resize) chart.resize();
+            });
+        }, 250);
+    }
+
+    function initSidebarCollapse() {
+        const toggle = document.getElementById('sidebarCollapseToggle');
+        const initialCollapsed = localStorage.getItem(sidebarCollapsedStorageKey) === '1';
+        setSidebarCollapsed(initialCollapsed, {persist: false});
+        if (toggle) {
+            toggle.addEventListener('click', function () {
+                setSidebarCollapsed(!document.body.classList.contains('sidebar-collapsed'));
+            });
+        }
+        window.addEventListener('resize', function () {
+            const shouldCollapse = localStorage.getItem(sidebarCollapsedStorageKey) === '1';
+            setSidebarCollapsed(shouldCollapse, {persist: false});
+        });
+    }
 
     // ============================
     // CONNECTION MANAGER

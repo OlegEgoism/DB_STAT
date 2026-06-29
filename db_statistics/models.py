@@ -5,7 +5,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.db import models
 
-
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
 
 
@@ -129,6 +128,11 @@ class DBConnection(DateStamp, Active):
 class DBAudit(models.Model):
     """Аудит"""
     ACTION_TYPES = [
+        ('login', 'Вход'),
+        ('connection_create', 'Создание подключения'),
+        ('connection_update', 'Изменение подключения'),
+        ('connection_delete', 'Удаление подключения'),
+        ('connection_test', 'Проверка подключения'),
         ('create', 'Создание'),
         ('update', 'Обновление'),
         ('delete', 'Удаление'),
@@ -138,7 +142,7 @@ class DBAudit(models.Model):
     ]
 
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
-    action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=10, choices=ACTION_TYPES)
+    action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=32, choices=ACTION_TYPES)
     info = models.TextField(verbose_name="Информация", db_comment="Информация")
     created = models.DateTimeField(verbose_name="Дата действия", db_comment="Дата действия")
 
