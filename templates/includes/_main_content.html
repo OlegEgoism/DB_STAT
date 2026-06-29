@@ -78,6 +78,15 @@
                         <span class="card-meta" id="databaseOverviewConnectionSlotsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
+                        <div class="connection-slots-chart" id="databaseOverviewConnectionSlotsChart" aria-live="polite">
+                            <div class="connection-slots-donut" id="databaseOverviewConnectionSlotsDonut" role="img" aria-label="Использование слотов подключений">
+                                <span></span>
+                            </div>
+                            <div class="connection-slots-summary">
+                                <span>Использование</span>
+                                <strong id="databaseOverviewConnectionSlotsSummary">—</strong>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>

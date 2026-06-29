@@ -404,9 +404,9 @@ def database_overview(request):
         {"label": "Группы", "count": int(row[10] or 0)},
     ]
     connection_slots = [
-        {"label": "Текущие подключения", "value": int(row[11] or 0)},
-        {"label": "Максимум подключений", "value": int(row[12] or 0)},
-        {"label": "Использование", "value": f"{row[13] or 0}%"},
+        {"key": "current_connections", "label": "Текущие подключения", "value": int(row[11] or 0)},
+        {"key": "max_connections", "label": "Максимум подключений", "value": int(row[12] or 0)},
+        {"key": "usage_percent", "label": "Использование", "value": float(row[13] or 0)},
     ]
     basic_settings = [
         {"key": "host", "label": "Хост", "value": db_connection.host},
