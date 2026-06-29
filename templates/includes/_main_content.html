@@ -757,6 +757,19 @@
                         <span class="card-meta" id="memorySizeMetricsCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
+                        <div class="size-metrics-chart" id="memorySizeMetricsChart" aria-live="polite">
+                            <div class="size-metrics-donut" id="memorySizeMetricsDonut" role="img" aria-label="Детализация размеров базы данных">
+                                <span></span>
+                            </div>
+                            <div class="size-metrics-summary">
+                                <span>Общий размер БД</span>
+                                <strong id="memorySizeMetricsSummary">—</strong>
+                                <div class="size-metrics-legend" aria-hidden="true">
+                                    <div><i class="size-metrics-dot data"></i> Данные</div>
+                                    <div><i class="size-metrics-dot indexes"></i> Индексы</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>

@@ -476,6 +476,34 @@
             });
     }
 
+
+    function getSizeMetricValue(sizeMetrics, key, field = 'size_bytes') {
+        const item = sizeMetrics.find(metric => metric.key === key);
+        return item ? item[field] : null;
+    }
+
+    function updateMemorySizeMetricsChart(sizeMetrics) {
+        const donut = document.getElementById('memorySizeMetricsDonut');
+        const summary = document.getElementById('memorySizeMetricsSummary');
+        if (!donut || !summary) return;
+
+        const total = Number(getSizeMetricValue(sizeMetrics, 'total')) || 0;
+        const dataWithoutIndexes = Math.max(Number(getSizeMetricValue(sizeMetrics, 'data_without_indexes')) || 0, 0);
+        const indexes = Math.max(Number(getSizeMetricValue(sizeMetrics, 'indexes')) || 0, 0);
+        const totalLabel = getSizeMetricValue(sizeMetrics, 'total', 'value') || '—';
+        const dataPercent = total > 0 ? Math.min((dataWithoutIndexes * 100) / total, 100) : 0;
+        const indexPercent = total > 0 ? Math.min((indexes * 100) / total, 100 - dataPercent) : 0;
+        const dataEnd = dataPercent.toFixed(2);
+        const indexEnd = (dataPercent + indexPercent).toFixed(2);
+        const gradient = total > 0
+            ? `var(--accent-blue) 0 ${dataEnd}%, var(--accent-purple) ${dataEnd}% ${indexEnd}%, #e8eaee ${indexEnd}% 100%`
+            : '#e8eaee 0 100%';
+
+        donut.style.setProperty('--size-metrics-gradient', gradient);
+        donut.setAttribute('aria-label', `Детализация размеров: данные ${dataPercent.toFixed(2)}%, индексы ${indexPercent.toFixed(2)}%`);
+        summary.textContent = totalLabel;
+    }
+
     function renderMemoryOverviewWarning(message) {
         const sizeTbody = document.getElementById('memorySizeMetricsTableBody');
         const settingsTbody = document.getElementById('memorySettingsTableBody');
@@ -486,6 +514,7 @@
         if (sizeCount) sizeCount.textContent = 'Нет данных';
         if (settingsCount) settingsCount.textContent = 'Нет данных';
         if (usageCount) usageCount.textContent = 'Нет данных';
+        updateMemorySizeMetricsChart([]);
         if (sizeTbody) sizeTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (settingsTbody) settingsTbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (usageList) usageList.innerHTML = `<div class="text-muted">${escapeHtml(message)}</div>`;
@@ -504,6 +533,7 @@
         if (sizeCount) sizeCount.textContent = `${sizeMetrics.length} метрик`;
         if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
         if (usageCount) usageCount.textContent = `${usage.length} показателя`;
+        updateMemorySizeMetricsChart(sizeMetrics);
         if (sizeTbody) {
             if (!sizeMetrics.length) {
                 sizeTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Детализация размеров не найдена</td></tr>';
