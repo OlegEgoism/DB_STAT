@@ -667,7 +667,6 @@
         const privilegedCount = summary ? Number(summary.privileged_count) || 0 : roles.filter(isPrivilegedRole).length;
         updateRoleDonut('groupsPrivilegedDonut', 'groupsPrivilegedSummary', privilegedCount, total, 'Привилегированные группы', 'Обычные группы');
         renderGroupsMembersBars(roles);
-        renderGroupsRightsHeatmap(roles);
     }
 
     function renderGroupsMembersBars(roles = []) {
@@ -692,34 +691,6 @@
                 </div>
             `;
         }).join('');
-    }
-
-    function renderGroupsRightsHeatmap(roles = []) {
-        const container = document.getElementById('groupsRightsHeatmap');
-        if (!container) return;
-        const rights = [
-            {key: 'superuser', label: 'SU'},
-            {key: 'createdb', label: 'DB'},
-            {key: 'createrole', label: 'Role'},
-            {key: 'inherit', label: 'Inh'},
-            {key: 'replication', label: 'Repl'}
-        ];
-        const heatmapRoles = roles.slice(0, 10);
-        if (!heatmapRoles.length) {
-            container.innerHTML = 'Нет данных';
-            return;
-        }
-        container.innerHTML = `
-            <span class="groups-rights-head groups-rights-name">Группа</span>
-            ${rights.map(right => `<span class="groups-rights-head">${right.label}</span>`).join('')}
-            ${heatmapRoles.map(role => `
-                <span class="groups-rights-cell groups-rights-name" title="${escapeHtml(role.name)}">${escapeHtml(role.name)}</span>
-                ${rights.map(right => {
-                    const enabled = isRoleEnabled(role[right.key]);
-                    return `<span class="groups-rights-cell ${enabled ? 'enabled' : 'disabled'}" title="${escapeHtml(right.label)}: ${enabled ? 'Да' : 'Нет'}">${enabled ? '✓' : '–'}</span>`;
-                }).join('')}
-            `).join('')}
-        `;
     }
 
     function renderUsersWarning(message) {
