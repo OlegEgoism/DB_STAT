@@ -2,6 +2,7 @@ asgiref==3.11.1
 cryptography==43.0.3
 Django==6.0.4
 dotenv==0.9.9
+gunicorn==23.0.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
 ruff==0.6.9
