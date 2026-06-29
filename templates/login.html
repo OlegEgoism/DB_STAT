@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Авторизация | GP Monitor{% endblock %}
+{% block title %}Авторизация | GP STAT{% endblock %}
 
 {% block content %}
 {% include 'includes/_background.html' %}
@@ -20,11 +20,11 @@
         <form method="post" novalidate>
             {% csrf_token %}
             <div class="form-field">
-                <label class="form-label" for="loginInput">Login</label>
+                <label class="form-label" for="loginInput">Логин/Login</label>
                 <input class="form-control" id="loginInput" name="login" value="{{ login_value }}" autocomplete="username" required>
             </div>
             <div class="form-field">
-                <label class="form-label" for="emailInput">Email</label>
+                <label class="form-label" for="emailInput">Почта/Email</label>
                 <input class="form-control" id="emailInput" name="email" type="email" value="{{ email_value }}" autocomplete="email" required>
             </div>
             <button class="btn btn-primary w-100" type="submit">

@@ -3,8 +3,6 @@ import hashlib
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
-from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 
@@ -155,25 +153,3 @@ class DBAudit(models.Model):
         ordering = ("-created",)
 
 
-class DBPagination(DateStamp):
-    """Пагинация"""
-    pagination_size = models.IntegerField(verbose_name="Размер пагинации", db_comment="Размер пагинации", default=10, validators=[MinValueValidator(10), MaxValueValidator(200)], unique=True)
-
-    class Meta:
-        db_table = "db_pagination"
-        db_table_comment = "Пагинация"
-        verbose_name = "Пагинация"
-        verbose_name_plural = "Пагинация"
-        ordering = ("pagination_size",)
-
-    def clean(self):
-        super().clean()
-        if not self.pk and DBPagination.objects.count() >= 5:
-            raise ValidationError("Нельзя создать больше 5 записей.")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return str(self.pagination_size)
