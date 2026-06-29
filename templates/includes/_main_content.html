@@ -647,17 +647,32 @@
                 <span><i class="fas fa-bolt"></i> Активные запросы</span>
                 <span class="card-meta" id="activeQueriesCount">Нет данных</span>
             </div>
+            <div class="database-table-toolbar active-queries-toolbar">
+                <label class="refresh-interval-control" for="activeQueriesRefreshInterval">
+                    <span>Обновление</span>
+                    <select id="activeQueriesRefreshInterval" class="form-control form-control-sm">
+                        <option value="0">Вручную</option>
+                        <option value="5">5 сек</option>
+                        <option value="10">10 сек</option>
+                        <option value="30">30 сек</option>
+                        <option value="60">60 сек</option>
+                    </select>
+                </label>
+                <button class="btn-conn primary" type="button" id="activeQueriesRefreshBtn">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+            </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm">
+                <div class="table-responsive table-scroll-lg active-queries-table-scroll">
+                    <table class="table table-sm active-queries-table">
                         <thead>
                         <tr>
-                            <th>PID</th>
-                            <th>Пользователь</th>
-                            <th>Таблица</th>
-                            <th>Состояние</th>
-                            <th>Длительность</th>
-                            <th>SQL</th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="pid">PID <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="username">Пользователь <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="relation_name">Таблица <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="state">Состояние <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="duration_seconds">Длительность <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-active-query-sort="sql">SQL <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="activeQueriesTableBody">

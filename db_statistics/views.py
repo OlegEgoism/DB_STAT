@@ -490,6 +490,7 @@ def active_queries(request):
                 "relation_name": row[2] or "—",
                 "state": row[3] or "—",
                 "duration": str(duration).split(".")[0] if duration else "—",
+                "duration_seconds": int(duration.total_seconds()) if duration else 0,
                 "sql": row[5] or "—",
             }
         )
