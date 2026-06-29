@@ -338,6 +338,7 @@ body {
         }
 
         .connection-manager {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -370,6 +371,79 @@ body {
         .connection-manager select option {
             background: var(--bg-secondary);
             color: var(--text-primary);
+        }
+
+
+        .connection-info-tooltip {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            min-width: 260px;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--sidebar-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-card-hover);
+            color: var(--text-primary);
+            opacity: 0;
+            transform: translateY(-4px);
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 1100;
+        }
+
+        .connection-manager:hover .connection-info-tooltip,
+        .connection-manager:focus-within .connection-info-tooltip {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .connection-info-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 24px;
+            width: 12px;
+            height: 12px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--sidebar-border);
+            border-top: 1px solid var(--sidebar-border);
+            transform: rotate(45deg);
+        }
+
+        .connection-info-tooltip-title {
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .connection-info-tooltip-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .connection-info-tooltip-row + .connection-info-tooltip-row {
+            margin-top: 5px;
+        }
+
+        .connection-info-tooltip-row span {
+            color: var(--text-muted);
+        }
+
+        .connection-info-tooltip-row strong {
+            color: var(--text-primary);
+            font-weight: 700;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .btn-conn {
