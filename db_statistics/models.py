@@ -133,6 +133,7 @@ class DBAudit(models.Model):
         ('connection_update', 'Изменение подключения'),
         ('connection_delete', 'Удаление подключения'),
         ('connection_test', 'Проверка подключения'),
+        ('segment_health_check', 'Фоновая проверка сегментов'),
     ]
 
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
@@ -150,4 +151,42 @@ class DBAudit(models.Model):
         verbose_name_plural = "Аудит"
         ordering = ("-created",)
 
+
+class DBSegmentHealthCheckSetting(DateStamp, Active):
+    """Настройки фоновой проверки работоспособности сегментов"""
+
+    connection = models.OneToOneField(
+        to="db_statistics.DBConnection",
+        verbose_name="Подключение",
+        db_comment="Подключение",
+        on_delete=models.CASCADE,
+        related_name="segment_health_check_setting",
+    )
+    interval_minutes = models.PositiveIntegerField(
+        verbose_name="Период выполнения, минут",
+        db_comment="Период выполнения фонового запроса Состояние сегментов в минутах",
+        default=60,
+    )
+    last_run_at = models.DateTimeField(
+        verbose_name="Дата последнего запуска",
+        db_comment="Дата последнего запуска",
+        null=True,
+        blank=True,
+    )
+    next_run_at = models.DateTimeField(
+        verbose_name="Дата следующего запуска",
+        db_comment="Дата следующего запуска",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        db_table = "db_segment_health_check_setting"
+        db_table_comment = "Настройки фоновой проверки сегментов"
+        verbose_name = "Настройка проверки сегментов"
+        verbose_name_plural = "Настройки проверки сегментов"
+        ordering = ("connection__name",)
+
+    def __str__(self):
+        return f"{self.connection.name}: каждые {self.interval_minutes} мин."
 

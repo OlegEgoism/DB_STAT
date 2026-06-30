@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
 from db_statistics.models import DBAudit, DBConnection, DBUser
+from db_statistics.services.segments import load_segments_health
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
@@ -1651,94 +1652,9 @@ def segments_info(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     db_connection = _get_connection_for_request(request, connection_id)
-    config_query = """
-        SELECT
-            content AS segment,
-            role,
-            preferred_role,
-            mode,
-            status,
-            port,
-            hostname,
-            address
-        FROM pg_catalog.gp_segment_configuration
-        ORDER BY dbid ASC;
-    """
-    health_query = """
-        SELECT
-            'Здоровье кластера' as check_name,
-            CASE
-                WHEN COUNT(*) = SUM(CASE WHEN status = 'u' THEN 1 ELSE 0 END)
-                     AND COUNT(*) = SUM(CASE WHEN mode = 's' THEN 1 ELSE 0 END)
-                THEN 'Все сегменты подняты и синхронизированы'
-                WHEN COUNT(*) > SUM(CASE WHEN status = 'u' THEN 1 ELSE 0 END)
-                THEN 'Есть проблемы: ' ||
-                     (COUNT(*) - SUM(CASE WHEN status = 'u' THEN 1 ELSE 0 END)) ||
-                     ' сегментов не подняты'
-                ELSE 'Критические проблемы'
-            END as status
-        FROM gp_segment_configuration
-        WHERE content != -1;
-    """
-    metrics_query = """
-        SELECT 'Общее количество сегментов', COUNT(*)::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Cегменты работают', COUNT(*) FILTER (WHERE status = 'u')::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Cегменты не работают', COUNT(*) FILTER (WHERE status = 'd')::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Cинхронизированные сегменты', COUNT(*) FILTER (WHERE mode = 's')::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Основные сегменты', COUNT(*) FILTER (WHERE role = 'p')::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Зеркальные сегменты', COUNT(*) FILTER (WHERE role = 'm')::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0
-        UNION ALL
-        SELECT 'Процент здоровья', ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'u') / COUNT(*))::numeric
-        FROM gp_segment_configuration
-        WHERE content >= 0;
-    """
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(config_query)
-                segments = [
-                    {
-                        "segment": row[0],
-                        "role": row[1],
-                        "preferred_role": row[2],
-                        "mode": row[3],
-                        "status": row[4],
-                        "port": row[5],
-                        "hostname": row[6],
-                        "address": row[7],
-                    }
-                    for row in cursor.fetchall()
-                ]
-                cursor.execute(health_query)
-                health_row = cursor.fetchone()
-                cursor.execute(metrics_query)
-                metrics = [{"name": row[0], "value": float(row[1])} for row in cursor.fetchall()]
+        result = load_segments_health(db_connection, _connection_kwargs)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить информацию о сегментах: {exc}"}, status=400)
 
-    return JsonResponse({"ok": True, "segments": segments, "health": health_row[1] if health_row else "Нет данных", "metrics": metrics})
+    return JsonResponse({"ok": True, **result})

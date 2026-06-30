@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBSegmentHealthCheckSetting, DBUser
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -53,3 +53,14 @@ class DBAuditAdmin(admin.ModelAdmin):
     @admin.display(description="Информация")
     def short_info(self, obj):
         return obj.info[:120] + ("…" if len(obj.info) > 120 else "")
+
+
+@admin.register(DBSegmentHealthCheckSetting)
+class DBSegmentHealthCheckSettingAdmin(BaseAdmin):
+    list_display = ("connection", "interval_minutes", "is_active", "last_run_at", "next_run_at", "created", "updated")
+    list_filter = ("is_active", "connection__db_type")
+    list_editable = ("interval_minutes", "is_active")
+    search_fields = ("connection__name", "connection__host", "connection__database")
+    search_help_text = "Поиск по: подключению, хосту, базе данных"
+    fields = ("connection", "interval_minutes", "is_active", "last_run_at", "next_run_at", "created", "updated")
+    readonly_fields = ("last_run_at", "next_run_at", "created", "updated")
