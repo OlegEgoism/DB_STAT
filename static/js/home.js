@@ -2273,6 +2273,8 @@
             });
         }
         if (input) {
+            segmentMonitorState.intervalSeconds = Math.max(10, Number(input.value) || segmentMonitorState.intervalSeconds);
+            input.value = segmentMonitorState.intervalSeconds;
             input.addEventListener('change', function () {
                 segmentMonitorState.intervalSeconds = Math.max(10, Number(this.value) || 60);
                 this.value = segmentMonitorState.intervalSeconds;

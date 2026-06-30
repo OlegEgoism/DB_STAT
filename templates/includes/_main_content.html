@@ -163,7 +163,7 @@
                         <div class="segment-monitor-status" id="segmentMonitorStatus">Автопроверка выключена</div>
                         <label class="segment-monitor-control">
                             <span>Интервал</span>
-                            <input type="number" id="segmentMonitorInterval" min="10" step="10" value="60" aria-label="Интервал проверки сегментов в секундах">
+                            <input type="number" id="segmentMonitorInterval" min="10" step="10" value="{{ segment_health_check_interval_seconds }}" aria-label="Интервал проверки сегментов в секундах">
                             <span>сек.</span>
                         </label>
                         <button class="btn-conn" type="button" id="segmentMonitorToggle">Включить автопроверку</button>

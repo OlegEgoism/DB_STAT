@@ -1,6 +1,7 @@
 import json
 
 import psycopg2
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -121,6 +122,7 @@ def home(request):
             "db_user": db_user,
             "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
             "user_can_manage_connections": db_user.role == ADMIN_ROLE,
+            "segment_health_check_interval_seconds": settings.SEGMENT_HEALTH_CHECK_INTERVAL_SECONDS,
         },
     )
 

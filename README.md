@@ -13,6 +13,7 @@ TIME_ZONE=Europe/Minsk
 LANGUAGE_CODE=ru
 
 DB_CONNECTION_ENCRYPTION_KEY=
+SEGMENT_HEALTH_CHECK_INTERVAL_SECONDS=60
 
 DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
@@ -30,6 +31,7 @@ STATIC_URL=static/
 
 - `SECRET_KEY` — секрет Django;
 - `DB_CONNECTION_ENCRYPTION_KEY` — отдельный стабильный ключ для шифрования паролей сохранённых подключений к внешним БД. Не меняйте его после создания подключений, иначе ранее зашифрованные пароли нельзя будет расшифровать.
+- `SEGMENT_HEALTH_CHECK_INTERVAL_SECONDS` — интервал автопроверки работоспособности сегментов во вкладке «Сегменты» в секундах. Минимальное значение — 10 секунд.
 
 3. Для локального запуска можно оставить `DB_ENGINE=sqlite`.
 4. Для PostgreSQL задайте `DB_ENGINE=postgresql` и заполните `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.

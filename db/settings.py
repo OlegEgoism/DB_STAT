@@ -19,6 +19,18 @@ def _env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def _env_int(name, default, *, minimum=None, maximum=None):
+    try:
+        value = int(os.getenv(name, default))
+    except (TypeError, ValueError):
+        value = default
+    if minimum is not None:
+        value = max(minimum, value)
+    if maximum is not None:
+        value = min(maximum, value)
+    return value
+
+
 def _default_csrf_trusted_origins(hosts):
     origins = []
     for host in hosts:
@@ -106,6 +118,7 @@ USE_I18N = True
 USE_TZ = True
 
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
+SEGMENT_HEALTH_CHECK_INTERVAL_SECONDS = _env_int("SEGMENT_HEALTH_CHECK_INTERVAL_SECONDS", 60, minimum=10)
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
