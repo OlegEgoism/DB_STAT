@@ -9,6 +9,7 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
+    let segmentMonitorState = {enabled: false, intervalSeconds: 60, timer: null, lastProblemSignature: ''};
     let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tableSizesRequestId = 0;
@@ -95,6 +96,7 @@
         initSidebarCollapse();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
+        initSegmentMonitorControls();
         initSchemaSizesControls();
         initTableSizesControls();
         initViewsControls();
@@ -2172,6 +2174,7 @@
         if (metrics) metrics.innerHTML = warningHtml;
         currentSegments = [];
         currentSegmentsWarningHtml = warningHtml;
+        updateSegmentHealthAlert({has_problems: false, problem_segments: []});
         updateSegmentsSortIndicators();
 
         const tbody = document.getElementById('segmentsTableBody');
@@ -2188,6 +2191,98 @@
         setSegmentsChartEmpty(true, warning.title);
     }
 
+
+    function problemSegmentText(segment) {
+        const status = segment.status === 'u' ? 'up' : 'down';
+        const mode = segment.mode === 's' ? 'sync' : 'not sync';
+        return `sg${segment.segment} (${roleLabel(segment.role)}, ${status}, ${mode}, ${segment.hostname || segment.address || '-'})`;
+    }
+
+    function updateSegmentHealthAlert(data) {
+        const alert = document.getElementById('segmentHealthAlert');
+        if (!alert) return;
+        const problems = data.problem_segments || [];
+        if (!data.has_problems || !problems.length) {
+            alert.classList.add('d-none');
+            alert.innerHTML = '';
+            segmentMonitorState.lastProblemSignature = '';
+            return;
+        }
+        const checkedAt = data.checked_at ? new Date(data.checked_at).toLocaleString('ru-RU') : new Date().toLocaleString('ru-RU');
+        const signature = problems.map(problemSegmentText).join('|');
+        alert.classList.remove('d-none');
+        alert.innerHTML = `
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>
+                <strong>Обнаружены проблемы сегментов</strong>
+                <span>${problems.map(problemSegmentText).join('; ')}. Проверено: ${checkedAt}. Событие записано в аудит при периодической проверке.</span>
+            </div>
+        `;
+        if (segmentMonitorState.enabled && signature !== segmentMonitorState.lastProblemSignature) {
+            showToast(`❌ Проблемы сегментов: ${problems.map(problemSegmentText).join('; ')}`);
+        }
+        segmentMonitorState.lastProblemSignature = signature;
+    }
+
+    function updateSegmentMonitorStatus() {
+        const status = document.getElementById('segmentMonitorStatus');
+        const toggle = document.getElementById('segmentMonitorToggle');
+        if (status) {
+            status.textContent = segmentMonitorState.enabled
+                ? `Автопроверка включена: каждые ${segmentMonitorState.intervalSeconds} сек.`
+                : 'Автопроверка выключена';
+        }
+        if (toggle) {
+            toggle.textContent = segmentMonitorState.enabled ? 'Выключить автопроверку' : 'Включить автопроверку';
+            toggle.classList.toggle('primary', !segmentMonitorState.enabled);
+        }
+    }
+
+    function stopSegmentMonitor() {
+        if (segmentMonitorState.timer) {
+            clearInterval(segmentMonitorState.timer);
+            segmentMonitorState.timer = null;
+        }
+        segmentMonitorState.enabled = false;
+        updateSegmentMonitorStatus();
+    }
+
+    function startSegmentMonitor() {
+        const input = document.getElementById('segmentMonitorInterval');
+        const intervalSeconds = Math.max(10, Number(input?.value) || 60);
+        if (input) input.value = intervalSeconds;
+        segmentMonitorState.intervalSeconds = intervalSeconds;
+        segmentMonitorState.enabled = true;
+        if (segmentMonitorState.timer) clearInterval(segmentMonitorState.timer);
+        refreshSegmentsForConnection(undefined, {periodicCheck: true});
+        segmentMonitorState.timer = setInterval(() => {
+            if (getCurrentActivePageId() === 'segments') {
+                refreshSegmentsForConnection(undefined, {periodicCheck: true});
+            }
+        }, intervalSeconds * 1000);
+        updateSegmentMonitorStatus();
+    }
+
+    function initSegmentMonitorControls() {
+        const toggle = document.getElementById('segmentMonitorToggle');
+        const input = document.getElementById('segmentMonitorInterval');
+        if (toggle) {
+            toggle.addEventListener('click', function () {
+                if (segmentMonitorState.enabled) stopSegmentMonitor();
+                else startSegmentMonitor();
+            });
+        }
+        if (input) {
+            input.addEventListener('change', function () {
+                segmentMonitorState.intervalSeconds = Math.max(10, Number(this.value) || 60);
+                this.value = segmentMonitorState.intervalSeconds;
+                if (segmentMonitorState.enabled) startSegmentMonitor();
+                else updateSegmentMonitorStatus();
+            });
+        }
+        updateSegmentMonitorStatus();
+    }
+
     function renderSegmentsInfo(data) {
         const badge = document.getElementById('segmentHealthBadge');
         if (badge) {
@@ -2201,9 +2296,10 @@
         renderSegmentMetrics(data.metrics || []);
         renderSegmentsTable(currentSegments);
         updateSegmentsChart(currentSegments);
+        updateSegmentHealthAlert(data);
     }
 
-    function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum.');
             return;
@@ -2215,7 +2311,7 @@
             badge.textContent = 'Обновление...';
         }
 
-        connectionRequest(segmentsInfoApiUrl, {id: conn.id})
+        connectionRequest(segmentsInfoApiUrl, {id: conn.id, periodic_check: options.periodicCheck === true})
             .then(data => renderSegmentsInfo(data))
             .catch(error => renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.'));
     }
@@ -2297,6 +2393,9 @@
         if (pageId === 'database-overview') {
             refreshDatabaseOverviewForConnection(conn);
         }
+        if (pageId === 'segments') {
+            refreshSegmentsForConnection(conn);
+        }
         if (pageId === 'databases') {
             refreshSchemaSizesForConnection(conn);
         }
@@ -2374,6 +2473,7 @@
         const conn = connections.find(c => c.id === connId);
         updateConnectionTooltip(conn);
         if (conn) {
+            stopSegmentMonitor();
             activatePage('segments');
             refreshSegmentsForConnection(conn);
             showToast(`🔌 Подключено к ${conn.name}`);
@@ -2568,6 +2668,9 @@
     function refreshAll() {
         if (document.getElementById('page-database-overview')?.classList.contains('active')) {
             refreshDatabaseOverviewForConnection();
+        }
+        if (document.getElementById('page-segments')?.classList.contains('active')) {
+            refreshSegmentsForConnection();
         }
         if (document.getElementById('page-databases')?.classList.contains('active')) {
             refreshSchemaSizesForConnection();

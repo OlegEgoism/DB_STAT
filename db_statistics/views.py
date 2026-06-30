@@ -59,6 +59,22 @@ def _write_audit(action_type, info, db_user=None, username=None):
     )
 
 
+
+def _segment_health_problem_rows(segments):
+    return [
+        segment for segment in segments
+        if int(segment.get("segment") or -1) >= 0
+        and (segment.get("status") != "u" or segment.get("mode") != "s")
+    ]
+
+
+def _segment_problem_label(segment):
+    role = "primary" if segment.get("role") == "p" else "mirror" if segment.get("role") == "m" else segment.get("role")
+    status = "up" if segment.get("status") == "u" else "down"
+    mode = "sync" if segment.get("mode") == "s" else "not sync"
+    host = segment.get("hostname") or segment.get("address") or "-"
+    return f"segment={segment.get('segment')}; role={role}; status={status}; mode={mode}; host={host}; port={segment.get('port')}"
+
 def _connection_audit_info(action, connection, *, result=None, error=None):
     details = [
         f"Действие: {action}",
@@ -1741,4 +1757,28 @@ def segments_info(request):
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить информацию о сегментах: {exc}"}, status=400)
 
-    return JsonResponse({"ok": True, "segments": segments, "health": health_row[1] if health_row else "Нет данных", "metrics": metrics})
+    problem_segments = _segment_health_problem_rows(segments)
+    checked_at = timezone.now()
+    is_periodic_check = bool(payload.get("periodic_check"))
+    if is_periodic_check and problem_segments:
+        problems = "; ".join(_segment_problem_label(segment) for segment in problem_segments)
+        _write_audit(
+            "segment_health_check",
+            (
+                "Периодическая проверка сегментов: обнаружены неработающие "
+                f"или несинхронизированные сегменты; Подключение: {db_connection.name}; "
+                f"Хост: {db_connection.host}; Порт: {db_connection.port}; "
+                f"База данных: {db_connection.database}; Проблемные сегменты: {problems}"
+            ),
+            db_user=_current_db_user(request),
+        )
+
+    return JsonResponse({
+        "ok": True,
+        "segments": segments,
+        "health": health_row[1] if health_row else "Нет данных",
+        "metrics": metrics,
+        "has_problems": bool(problem_segments),
+        "problem_segments": problem_segments,
+        "checked_at": checked_at.isoformat(),
+    })

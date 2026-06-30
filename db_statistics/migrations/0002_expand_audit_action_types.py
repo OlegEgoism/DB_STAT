@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
                     ("connection_update", "Изменение подключения"),
                     ("connection_delete", "Удаление подключения"),
                     ("connection_test", "Проверка подключения"),
+                    ("segment_health_check", "Проверка работоспособности сегментов"),
                     ("create", "Создание"),
                     ("update", "Обновление"),
                     ("delete", "Удаление"),
