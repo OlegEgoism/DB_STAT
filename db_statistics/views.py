@@ -85,7 +85,7 @@ def _available_connections(request):
     db_user = _current_db_user(request)
     if not db_user:
         return DBConnection.objects.none()
-    return db_user.connections.filter(is_active=True).select_related("created_by")
+    return db_user.connections.filter(is_active=True).select_related("created_user")
 
 
 def _get_connection_for_request(request, connection_id):
@@ -158,8 +158,8 @@ def _connection_to_dict(connection):
         "database": connection.database,
         "user": connection.username,
         "db_type": connection.db_type,
-        "created_by": connection.created_by.login if connection.created_by else None,
-        "created_by_id": connection.created_by_id,
+        "created_by": connection.created_user.login if connection.created_user else None,
+        "created_by_id": connection.created_user_id,
         "status": "offline",
     }
 
@@ -287,9 +287,9 @@ def connections(request):
         defaults={**defaults, "password": payload.get("password", "")},
     )
     if db_user:
-        if created or connection.created_by_id is None:
-            connection.created_by = db_user
-            connection.save(update_fields=["created_by", "updated"])
+        if created or connection.created_user_id is None:
+            connection.created_user = db_user
+            connection.save(update_fields=["created_user", "updated"])
         db_user.connections.add(connection)
     _write_audit(
         "connection_create" if created else "connection_update",

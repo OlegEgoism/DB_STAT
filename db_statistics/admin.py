@@ -29,12 +29,12 @@ class DBUserAdmin(BaseAdmin):
 @admin.register(DBConnection)
 class DBConnectionAdmin(BaseAdmin):
     """Подключение"""
-    list_display = ("name", "host", "port", "username", "database", "created_by", "users_count", "is_active", "created", "updated")
+    list_display = ("name", "host", "port", "username", "database", "created_user", "users_count", "is_active", "created", "updated")
     list_filter = ("db_type", "is_active")
     list_editable = ("is_active",)
     search_fields = ("name", "database", "username")
     search_help_text = "Поиск по: названию, базе данных, пользователю"
-    fields = ("name", "host", "port", "database", "username", "db_type", "created_by", "is_active", "created", "updated")
+    fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "is_active", "created", "updated")
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
