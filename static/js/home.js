@@ -24,6 +24,7 @@
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null};
     let blockingLocksRequestId = 0;
+    let blockingLocksState = {refreshInterval: 0, timer: null};
     let idleTransactionsRequestId = 0;
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
@@ -134,6 +135,7 @@
         initTempTablesControls();
         initDistributionControls();
         initActiveQueriesControls();
+        initBlockingLocksControls();
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
@@ -604,13 +606,37 @@
         `).join('');
     }
 
-    function refreshBlockingLocksForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function scheduleBlockingLocksRefresh() {
+        if (blockingLocksState.timer) {
+            clearInterval(blockingLocksState.timer);
+            blockingLocksState.timer = null;
+        }
+        if (!blockingLocksState.refreshInterval) return;
+        blockingLocksState.timer = setInterval(() => {
+            if (document.getElementById('page-locks')?.classList.contains('active')) {
+                refreshBlockingLocksForConnection(undefined, {silent: true});
+            }
+        }, blockingLocksState.refreshInterval * 1000);
+    }
+
+    function initBlockingLocksControls() {
+        document.getElementById('blockingLocksRefreshInterval')?.addEventListener('change', function () {
+            blockingLocksState.refreshInterval = Number(this.value) || 0;
+            scheduleBlockingLocksRefresh();
+            refreshBlockingLocksForConnection(undefined, {silent: true});
+        });
+        document.getElementById('blockingLocksRefreshBtn')?.addEventListener('click', function () {
+            refreshBlockingLocksForConnection(undefined, {silent: false});
+        });
+    }
+
+    function refreshBlockingLocksForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderBlockingLocksWarning('Выберите сохранённое подключение для загрузки блокировок');
             return;
         }
         const requestId = ++blockingLocksRequestId;
-        renderBlockingLocksWarning('Загрузка блокировок...');
+        if (!options.silent) renderBlockingLocksWarning('Загрузка блокировок...');
         connectionRequest(blockingLocksApiUrl, {id: conn.id})
             .then(data => {
                 if (requestId !== blockingLocksRequestId) return;
