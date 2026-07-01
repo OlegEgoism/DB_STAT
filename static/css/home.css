@@ -2192,7 +2192,6 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .home-hero p {
     margin: 0;
     color: var(--text-secondary);
-    max-width: 760px;
     font-size: 14px;
     line-height: 1.6;
 }
