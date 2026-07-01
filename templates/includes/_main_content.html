@@ -90,7 +90,12 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-network-wired"></i> Слоты подключений</span>
-                        <span class="card-meta" id="databaseOverviewConnectionSlotsCount">Нет данных</span>
+                        <div class="card-header-actions">
+                            <button class="chart-toggle-btn" type="button" data-chart-toggle="databaseOverviewConnectionSlotsChart" aria-expanded="true" aria-controls="databaseOverviewConnectionSlotsChart">
+                                <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                            </button>
+                            <span class="card-meta" id="databaseOverviewConnectionSlotsCount">Нет данных</span>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="connection-slots-chart" id="databaseOverviewConnectionSlotsChart" aria-live="polite">
@@ -300,7 +305,12 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-layer-group"></i>Схемы</span>
-                        <span class="card-meta" id="schemaSizesCount">Нет данных</span>
+                        <div class="card-header-actions">
+                            <button class="chart-toggle-btn" type="button" data-chart-toggle="schemaDistributionChart" aria-expanded="true" aria-controls="schemaDistributionChart">
+                                <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                            </button>
+                            <span class="card-meta" id="schemaSizesCount">Нет данных</span>
+                        </div>
                     </div>
                     <div class="database-table-toolbar">
                         <div class="search-box">
@@ -862,7 +872,12 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-user"></i> Пользователи</span>
-                <span class="card-meta" id="usersCount">Нет данных</span>
+                <div class="card-header-actions">
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="usersPrivilegeCharts" aria-expanded="true" aria-controls="usersPrivilegeCharts">
+                        <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                    </button>
+                    <span class="card-meta" id="usersCount">Нет данных</span>
+                </div>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -935,7 +950,12 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-users"></i> Группы</span>
-                <span class="card-meta" id="groupsCount">Нет данных</span>
+                <div class="card-header-actions">
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="groupsPrivilegeCharts" aria-expanded="true" aria-controls="groupsPrivilegeCharts">
+                        <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                    </button>
+                    <span class="card-meta" id="groupsCount">Нет данных</span>
+                </div>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -993,7 +1013,12 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-tools"></i> Статистика обслуживания</span>
-                <span class="card-meta" id="maintenanceStatsCount">Нет данных</span>
+                <div class="card-header-actions">
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="maintenanceVisuals" aria-expanded="true" aria-controls="maintenanceVisuals">
+                        <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                    </button>
+                    <span class="card-meta" id="maintenanceStatsCount">Нет данных</span>
+                </div>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
