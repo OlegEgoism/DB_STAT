@@ -44,8 +44,24 @@
                 {% endif %}
             </div>
             <div class="current-db-user">
-                <span class="current-db-user-main">{{ db_user.login }}</span>
-                <span class="current-db-user-meta">{{ db_user.email }} · {{ db_user.role }}</span>
+                <div class="current-db-user-summary" tabindex="0" aria-describedby="currentDbUserTooltip">
+                    <span class="current-db-user-main">{{ db_user.login }}</span>
+                    <div class="current-db-user-tooltip" id="currentDbUserTooltip" role="tooltip">
+                        <div class="current-db-user-tooltip-title">Информация о пользователе</div>
+                        <div class="current-db-user-tooltip-row">
+                            <span>Логин</span>
+                            <strong>{{ db_user.login }}</strong>
+                        </div>
+                        <div class="current-db-user-tooltip-row">
+                            <span>Почта</span>
+                            <strong>{{ db_user.email }}</strong>
+                        </div>
+                        <div class="current-db-user-tooltip-row">
+                            <span>Роль</span>
+                            <strong>{{ db_user.role }}</strong>
+                        </div>
+                    </div>
+                </div>
                 <form method="post" action="{% url 'logout' %}">
                     {% csrf_token %}
                     <button type="submit" class="btn-conn" title="Выйти">
