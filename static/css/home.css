@@ -1491,6 +1491,11 @@ body {
         }
 
         /* ========== MODAL ========== */
+        .connection-modal-dialog {
+            max-width: 560px;
+            width: calc(100% - 24px);
+        }
+
         .modal-content {
             background: var(--bg-secondary);
             border: 1px solid var(--sidebar-border);
