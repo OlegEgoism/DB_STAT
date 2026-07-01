@@ -2491,6 +2491,9 @@
     }
 
     function refreshPageData(pageId, conn) {
+        if (pageId === 'segments') {
+            refreshSegmentsForConnection(conn);
+        }
         if (pageId === 'database-overview') {
             refreshDatabaseOverviewForConnection(conn);
         }
@@ -2774,6 +2777,9 @@
     // REFRESH
     // ============================
     function refreshAll() {
+        if (document.getElementById('page-segments')?.classList.contains('active')) {
+            refreshSegmentsForConnection();
+        }
         if (document.getElementById('page-database-overview')?.classList.contains('active')) {
             refreshDatabaseOverviewForConnection();
         }
@@ -2864,10 +2870,10 @@
         charts.segments = new Chart(ctx3, {
             type: 'bar',
             data: {
-                labels: ['Сегмент 0', 'Сегмент 1', 'Сегмент 2', 'Сегмент 3', 'Сегмент 4', 'Сегмент 5'],
+                labels: [],
                 datasets: [
-                    {label: 'Primary', data: [1, 1, 1, 1, 1, 1], backgroundColor: colors.blue},
-                    {label: 'Mirror', data: [1, 1, 1, 1, 1, 1], backgroundColor: colors.teal}
+                    {label: 'Primary', data: [], backgroundColor: colors.blue},
+                    {label: 'Mirror', data: [], backgroundColor: colors.teal}
                 ]
             },
             options: {
