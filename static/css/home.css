@@ -1861,6 +1861,7 @@ body {
         }
 
         .current-db-user {
+            position: relative;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -1874,7 +1875,6 @@ body {
         }
 
         .current-db-user-summary {
-            position: relative;
             min-width: 0;
             cursor: default;
             outline: none;
@@ -1907,7 +1907,7 @@ body {
             max-width: 230px;
         }
 
-        .current-db-user-summary:hover .current-db-user-tooltip,
+        .current-db-user:hover .current-db-user-tooltip,
         .current-db-user-summary:focus .current-db-user-tooltip,
         .current-db-user-summary:focus-within .current-db-user-tooltip {
             opacity: 1;
