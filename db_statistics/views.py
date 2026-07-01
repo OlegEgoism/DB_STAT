@@ -1111,7 +1111,10 @@ def database_views_list(request):
             index_size_bytes,
             pg_size_pretty(index_size_bytes) AS index_size,
             row_count,
-            COUNT(*) OVER() AS total_count
+            COUNT(*) OVER() AS total_count,
+            COUNT(*) FILTER (WHERE view_type = 'Материализованное') OVER() AS materialized_count,
+            COUNT(*) FILTER (WHERE view_type = 'Обычное') OVER() AS ordinary_count,
+            COALESCE(SUM(size_bytes) FILTER (WHERE view_type = 'Материализованное') OVER(), 0)::bigint AS materialized_size_bytes
         FROM database_views
         ORDER BY {sort_column} {direction}, schema_name ASC, view_name ASC
         LIMIT %s OFFSET %s;
@@ -1127,7 +1130,16 @@ def database_views_list(request):
 
     items = [{"schema_name": row[0], "view_name": row[1], "view_owner": row[2], "view_type": row[3], "size_bytes": int(row[4]), "view_size": row[5], "index_size_bytes": int(row[6]), "index_size": row[7], "row_count": int(row[8])} for row in rows]
     total_count = int(rows[0][9]) if rows else 0
-    return JsonResponse({"ok": True, "views": items, "page": page, "page_size": page_size, "total_count": total_count})
+    materialized_count = int(rows[0][10]) if rows else 0
+    ordinary_count = int(rows[0][11]) if rows else 0
+    materialized_size_bytes = int(rows[0][12]) if rows else 0
+    summary = {
+        "materialized_count": materialized_count,
+        "ordinary_count": ordinary_count,
+        "materialized_size_bytes": materialized_size_bytes,
+        "materialized_size": _format_bytes(materialized_size_bytes),
+    }
+    return JsonResponse({"ok": True, "views": items, "summary": summary, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])

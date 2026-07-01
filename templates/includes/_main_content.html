@@ -439,7 +439,12 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-eye"></i> Представления</span>
-                <span class="card-meta" id="viewsCount">Нет данных</span>
+                <div class="card-header-actions">
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="viewsSummaryChart" aria-expanded="true" aria-controls="viewsSummaryChart">
+                        <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                    </button>
+                    <span class="card-meta" id="viewsCount">Нет данных</span>
+                </div>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -452,6 +457,22 @@
                         <option value="ordinary">Обычное</option>
                         <option value="materialized">Материализованное</option>
                     </select>
+                </div>
+            </div>
+            <div class="role-visuals-grid" id="viewsSummaryChart" aria-live="polite">
+                <div class="role-visual-card">
+                    <div class="role-donut" id="viewsTypeDonut" role="img" aria-label="Обычные и материализованные представления"><span></span></div>
+                    <div>
+                        <span>Материализованные / обычные</span>
+                        <strong id="viewsTypeSummary">—</strong>
+                    </div>
+                </div>
+                <div class="role-visual-card">
+                    <i class="fas fa-database" aria-hidden="true"></i>
+                    <div>
+                        <span>Общий размер материализованных</span>
+                        <strong id="viewsMaterializedSizeSummary">—</strong>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-0">
