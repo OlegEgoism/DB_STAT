@@ -332,7 +332,12 @@
         <div class="glass-card">
             <div class="card-header">
                 <span><i class="fas fa-table"></i>Таблицы</span>
-                <span class="card-meta" id="tableSizesCount">Нет данных</span>
+                <div class="card-header-actions">
+                    <button class="chart-toggle-btn" type="button" data-chart-toggle="tableDistributionChart" aria-expanded="true" aria-controls="tableDistributionChart">
+                        <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                    </button>
+                    <span class="card-meta" id="tableSizesCount">Нет данных</span>
+                </div>
             </div>
             <div class="database-table-toolbar">
                 <div class="search-box">
@@ -341,6 +346,16 @@
                 </div>
             </div>
             <div class="card-body p-0">
+                <div class="schema-distribution-chart" id="tableDistributionChart" aria-live="polite">
+                    <div class="schema-distribution-donut" id="tableDistributionDonut" role="img" aria-label="Распределение данных по таблицам">
+                        <span></span>
+                    </div>
+                    <div class="schema-distribution-summary">
+                        <span>Распределение данных по таблицам</span>
+                        <strong id="tableDistributionSummary">—</strong>
+                        <div class="schema-distribution-legend" id="tableDistributionLegend">Нет данных</div>
+                    </div>
+                </div>
                 <div class="table-responsive table-scroll-lg tables-table-scroll">
                     <table class="table table-sm tables-table">
                         <thead>
