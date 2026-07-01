@@ -69,6 +69,37 @@
         'maintenance': 'Обслуживание <small>Очистка / анализ</small>'
     };
 
+
+    const greenplumOnlyPages = new Set(['segments', 'distribution']);
+
+    function isPostgreSQLConnection(conn) {
+        return String(conn?.db_type || '').toLowerCase() === 'postgresql';
+    }
+
+    function isPageAvailableForConnection(pageId, conn = connections.find(c => c.id === activeConnectionId)) {
+        if (!pageId) return false;
+        if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
+        return true;
+    }
+
+    function getDefaultPageForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        return isPostgreSQLConnection(conn) ? 'database-overview' : 'segments';
+    }
+
+    function updateSidebarForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+        document.querySelectorAll('.nav-item').forEach(item => {
+            const isAvailable = isPageAvailableForConnection(item.dataset.page, conn);
+            item.classList.toggle('d-none', !isAvailable);
+            item.setAttribute('aria-hidden', String(!isAvailable));
+            item.tabIndex = isAvailable ? 0 : -1;
+        });
+
+        document.querySelectorAll('.nav-section').forEach(section => {
+            const visibleItems = Array.from(section.querySelectorAll('.nav-item')).filter(item => !item.classList.contains('d-none'));
+            section.classList.toggle('d-none', visibleItems.length === 0);
+        });
+    }
+
     const currentDbUserElement = document.getElementById('dbUserData');
     const currentDbUser = currentDbUserElement ? JSON.parse(currentDbUserElement.textContent || 'null') : null;
 
@@ -2252,6 +2283,7 @@
             select.appendChild(option);
             select.value = '';
             updateConnectionTooltip(null);
+            updateSidebarForConnection(null);
             return;
         }
         connections.forEach(conn => {
@@ -2264,6 +2296,7 @@
             select.value = activeConnectionId;
         }
         updateConnectionTooltip();
+        updateSidebarForConnection();
     }
 
     function isKnownPage(pageId) {
@@ -2271,7 +2304,8 @@
             pageId &&
             pageTitles[pageId] &&
             document.getElementById('page-' + pageId) &&
-            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId)
+            isPageAvailableForConnection(pageId) &&
+            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
         );
     }
 
@@ -2341,7 +2375,8 @@
     }
 
     function activatePage(pageId, {persist = true, refresh = true} = {}) {
-        const nextPageId = isKnownPage(pageId) ? pageId : 'database-overview';
+        updateSidebarForConnection();
+        const nextPageId = isKnownPage(pageId) ? pageId : getDefaultPageForConnection();
 
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.toggle('active', item.dataset.page === nextPageId);
@@ -2374,8 +2409,11 @@
         const conn = connections.find(c => c.id === connId);
         updateConnectionTooltip(conn);
         if (conn) {
-            activatePage('segments');
-            refreshSegmentsForConnection(conn);
+            updateSidebarForConnection(conn);
+            activatePage(getDefaultPageForConnection(conn));
+            if (!isPostgreSQLConnection(conn)) {
+                refreshSegmentsForConnection(conn);
+            }
             showToast(`🔌 Подключено к ${conn.name}`);
             refreshAll();
         }
@@ -2489,7 +2527,11 @@
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
-                refreshSegmentsForConnection(savedConnection);
+                updateSidebarForConnection(savedConnection);
+                activatePage(getDefaultPageForConnection(savedConnection));
+                if (!isPostgreSQLConnection(savedConnection)) {
+                    refreshSegmentsForConnection(savedConnection);
+                }
                 modalInstance.hide();
                 showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
                 refreshAll();
