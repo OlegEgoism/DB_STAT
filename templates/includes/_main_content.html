@@ -767,6 +767,21 @@
                         <span><i class="fas fa-list"></i> Простаивающие в транзакции</span>
                         <span class="card-meta" id="idleTransactionsCount">Нет данных</span>
                     </div>
+                    <div class="database-table-toolbar refresh-toolbar">
+                        <label class="refresh-interval-control" for="idleTransactionsRefreshInterval">
+                            <span>Обновление</span>
+                            <select id="idleTransactionsRefreshInterval" class="form-control form-control-sm">
+                                <option value="0">Вручную</option>
+                                <option value="5">5 сек</option>
+                                <option value="10">10 сек</option>
+                                <option value="30">30 сек</option>
+                                <option value="60">60 сек</option>
+                            </select>
+                        </label>
+                        <button class="btn-conn primary" type="button" id="idleTransactionsRefreshBtn">
+                            <i class="fas fa-sync-alt"></i> Обновить
+                        </button>
+                    </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-sm">
