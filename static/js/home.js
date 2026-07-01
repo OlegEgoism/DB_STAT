@@ -1548,12 +1548,70 @@
         return new Intl.NumberFormat('ru-RU').format(number);
     }
 
+
+    function updateTableDistributionChart(tables = []) {
+        const donut = document.getElementById('tableDistributionDonut');
+        const summary = document.getElementById('tableDistributionSummary');
+        const legend = document.getElementById('tableDistributionLegend');
+        if (!donut || !summary || !legend) return;
+
+        const colors = ['#4f8cff', '#8b5cf6', '#22c55e', '#f59e0b', '#06b6d4', '#ec4899', '#f97316', '#ef4444', '#8a9bb0'];
+        const normalized = tables
+            .map(table => {
+                const tableName = table.table_name || '—';
+                const schemaName = table.schema_name || '—';
+                return {
+                    name: `${schemaName}.${tableName}`,
+                    sizeBytes: Number(table.size_bytes) || 0,
+                    tableSize: table.table_size || `${formatDatabaseSize(table.size_bytes).value} ${formatDatabaseSize(table.size_bytes).unit}`
+                };
+            })
+            .filter(table => table.sizeBytes > 0);
+        const totalBytes = normalized.reduce((sum, table) => sum + table.sizeBytes, 0);
+
+        if (!normalized.length || totalBytes <= 0) {
+            donut.style.setProperty('--schema-distribution-gradient', '#e8eaee 0 100%');
+            donut.setAttribute('aria-label', 'Нет данных о распределении данных по таблицам');
+            summary.textContent = '—';
+            legend.textContent = 'Нет данных';
+            return;
+        }
+
+        const topTables = normalized.slice(0, 8);
+        const otherBytes = normalized.slice(8).reduce((sum, table) => sum + table.sizeBytes, 0);
+        const chartItems = otherBytes > 0
+            ? [...topTables, {name: 'Остальные', sizeBytes: otherBytes, tableSize: `${formatDatabaseSize(otherBytes).value} ${formatDatabaseSize(otherBytes).unit}`}]
+            : topTables;
+        let cursor = 0;
+        const gradient = chartItems.map((table, index) => {
+            const start = cursor;
+            const percent = (table.sizeBytes * 100) / totalBytes;
+            cursor += percent;
+            return `${colors[index % colors.length]} ${start.toFixed(2)}% ${cursor.toFixed(2)}%`;
+        }).join(', ');
+        const totalFormatted = formatDatabaseSize(totalBytes);
+
+        donut.style.setProperty('--schema-distribution-gradient', gradient);
+        donut.setAttribute('aria-label', `Распределение данных по таблицам, всего ${totalFormatted.value} ${totalFormatted.unit}`);
+        summary.textContent = `${totalFormatted.value} ${totalFormatted.unit}`;
+        legend.innerHTML = chartItems.map((table, index) => {
+            const percent = ((table.sizeBytes * 100) / totalBytes).toFixed(1);
+            return `
+                <div class="schema-distribution-legend-item" title="${escapeHtml(table.name)}: ${escapeHtml(table.tableSize)} (${percent}%)">
+                    <span class="schema-distribution-legend-dot" style="background:${colors[index % colors.length]};"></span>
+                    <span class="schema-distribution-legend-name">${escapeHtml(table.name)}</span>
+                    <span class="schema-distribution-legend-value">${percent}%</span>
+                </div>
+            `;
+        }).join('');
+    }
     function renderTableSizesWarning(message) {
         const tbody = document.getElementById('tableSizesTableBody');
         const count = document.getElementById('tableSizesCount');
         const info = document.getElementById('tablePaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
+        updateTableDistributionChart([]);
         if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
         updateTablePaginationButtons();
     }
@@ -1587,6 +1645,7 @@
         tableSizesState.page = Number(data.page) || 1;
         tableSizesState.pageSize = Number(data.page_size) || 100;
         updateTableSortIndicators();
+        updateTableDistributionChart(data.table_distribution || data.tables || []);
         const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
         if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
