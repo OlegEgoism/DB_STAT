@@ -667,7 +667,7 @@
                 <span><i class="fas fa-bolt"></i> Активные запросы</span>
                 <span class="card-meta" id="activeQueriesCount">Нет данных</span>
             </div>
-            <div class="database-table-toolbar active-queries-toolbar">
+            <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="activeQueriesRefreshInterval">
                     <span>Обновление</span>
                     <select id="activeQueriesRefreshInterval" class="form-control form-control-sm">
@@ -714,6 +714,21 @@
             <div class="card-header">
                 <span><i class="fas fa-lock"></i> Кто кого блокирует</span>
                 <span class="card-meta" id="blockingLocksCount">Нет данных</span>
+            </div>
+            <div class="database-table-toolbar refresh-toolbar">
+                <label class="refresh-interval-control" for="blockingLocksRefreshInterval">
+                    <span>Обновление</span>
+                    <select id="blockingLocksRefreshInterval" class="form-control form-control-sm">
+                        <option value="0">Вручную</option>
+                        <option value="5">5 сек</option>
+                        <option value="10">10 сек</option>
+                        <option value="30">30 сек</option>
+                        <option value="60">60 сек</option>
+                    </select>
+                </label>
+                <button class="btn-conn primary" type="button" id="blockingLocksRefreshBtn">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
