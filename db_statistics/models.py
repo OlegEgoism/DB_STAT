@@ -30,7 +30,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :]
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
     try:
         return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
     except InvalidToken:
@@ -103,9 +103,6 @@ class DBConnection(DateStamp, Active):
         verbose_name = "Подключение"
         verbose_name_plural = "Подключения"
         unique_together = ("name", "host", "port", "database", "username")
-
-    # def set_password(self, raw_password):
-    #     self.password = encrypt_connection_password(raw_password)
 
     def get_password(self):
         decrypted_password = decrypt_connection_password(self.password)
