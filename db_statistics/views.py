@@ -1133,12 +1133,7 @@ def database_views_list(request):
     materialized_count = int(rows[0][10]) if rows else 0
     ordinary_count = int(rows[0][11]) if rows else 0
     materialized_size_bytes = int(rows[0][12]) if rows else 0
-    summary = {
-        "materialized_count": materialized_count,
-        "ordinary_count": ordinary_count,
-        "materialized_size_bytes": materialized_size_bytes,
-        "materialized_size": _format_bytes(materialized_size_bytes),
-    }
+    summary = {"materialized_count": materialized_count, "ordinary_count": ordinary_count, "materialized_size_bytes": materialized_size_bytes, "materialized_size": _format_bytes(materialized_size_bytes)}
     return JsonResponse({"ok": True, "views": items, "summary": summary, "page": page, "page_size": page_size, "total_count": total_count})
 
 
