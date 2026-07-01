@@ -4,6 +4,7 @@ from db_statistics.models import DBAudit, DBConnection, DBUser
 
 
 class BaseAdmin(admin.ModelAdmin):
+    """Базовые настройки"""
     readonly_fields = ("created", "updated")
     date_hierarchy = "created"
     list_per_page = 20
@@ -11,6 +12,7 @@ class BaseAdmin(admin.ModelAdmin):
 
 @admin.register(DBUser)
 class DBUserAdmin(BaseAdmin):
+    """Пользователь"""
     list_display = ("login", "email", "role", "count_column", "is_active", "created", "updated")
     list_filter = ("role", "is_active")
     list_editable = ("is_active",)
@@ -26,13 +28,13 @@ class DBUserAdmin(BaseAdmin):
 
 @admin.register(DBConnection)
 class DBConnectionAdmin(BaseAdmin):
+    """Подключение"""
     list_display = ("name", "host", "port", "username", "database", "created_by", "users_count", "is_active", "created", "updated")
     list_filter = ("db_type", "is_active")
     list_editable = ("is_active",)
     search_fields = ("name", "database", "username")
     search_help_text = "Поиск по: названию, базе данных, пользователю"
     fields = ("name", "host", "port", "database", "username", "db_type", "created_by", "is_active", "created", "updated")
-    # readonly_fields = ("created_by",)
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
@@ -41,6 +43,7 @@ class DBConnectionAdmin(BaseAdmin):
 
 @admin.register(DBAudit)
 class DBAuditAdmin(admin.ModelAdmin):
+    """Аудит"""
     list_display = ("username", "action_type", "short_info", "created")
     list_filter = ("action_type",)
     search_fields = ("username", "info")
