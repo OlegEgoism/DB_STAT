@@ -1661,12 +1661,33 @@
         updateTablePaginationButtons();
     }
 
+
+    function updateViewsSummaryChart(summary = null, views = []) {
+        const donut = document.getElementById('viewsTypeDonut');
+        const typeSummary = document.getElementById('viewsTypeSummary');
+        const sizeSummary = document.getElementById('viewsMaterializedSizeSummary');
+        if (!donut || !typeSummary || !sizeSummary) return;
+
+        const materializedCount = Number(summary?.materialized_count ?? views.filter(view => view.view_type === 'Материализованное').length) || 0;
+        const ordinaryCount = Number(summary?.ordinary_count ?? views.filter(view => view.view_type === 'Обычное').length) || 0;
+        const total = materializedCount + ordinaryCount;
+        const materializedPercent = total > 0 ? Math.round((materializedCount / total) * 100) : 0;
+        const materializedSizeBytes = Number(summary?.materialized_size_bytes ?? views.reduce((acc, view) => acc + (Number(view.size_bytes) || 0), 0)) || 0;
+        const formattedSize = summary?.materialized_size || `${formatDatabaseSize(materializedSizeBytes).value} ${formatDatabaseSize(materializedSizeBytes).unit}`;
+
+        donut.style.setProperty('--role-yes', `${materializedPercent}%`);
+        donut.setAttribute('aria-label', `Материализованные представления: ${materializedCount}, обычные представления: ${ordinaryCount}`);
+        typeSummary.textContent = total > 0 ? `${materializedCount} / ${ordinaryCount}` : 'Нет данных';
+        sizeSummary.textContent = total > 0 || materializedSizeBytes > 0 ? formattedSize : '—';
+    }
+
     function renderViewsWarning(message) {
         const tbody = document.getElementById('viewsTableBody');
         const count = document.getElementById('viewsCount');
         const info = document.getElementById('viewPaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
+        updateViewsSummaryChart(null, []);
         if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
         updateViewPaginationButtons();
     }
@@ -1700,6 +1721,7 @@
         viewsState.page = Number(data.page) || 1;
         viewsState.pageSize = Number(data.page_size) || 100;
         updateViewSortIndicators();
+        updateViewsSummaryChart(data.summary || null, data.views || []);
         const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
         if (count) count.textContent = `${data.views?.length || 0} из ${viewsState.totalCount} представлений`;
         if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
