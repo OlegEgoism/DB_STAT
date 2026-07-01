@@ -26,6 +26,7 @@
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null};
     let idleTransactionsRequestId = 0;
+    let idleTransactionsState = {refreshInterval: 0, timer: null};
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
@@ -136,6 +137,7 @@
         initDistributionControls();
         initActiveQueriesControls();
         initBlockingLocksControls();
+        initIdleTransactionsControls();
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
@@ -679,13 +681,37 @@
         `).join('');
     }
 
-    function refreshIdleTransactionsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function scheduleIdleTransactionsRefresh() {
+        if (idleTransactionsState.timer) {
+            clearInterval(idleTransactionsState.timer);
+            idleTransactionsState.timer = null;
+        }
+        if (!idleTransactionsState.refreshInterval) return;
+        idleTransactionsState.timer = setInterval(() => {
+            if (document.getElementById('page-transactions')?.classList.contains('active')) {
+                refreshIdleTransactionsForConnection(undefined, {silent: true});
+            }
+        }, idleTransactionsState.refreshInterval * 1000);
+    }
+
+    function initIdleTransactionsControls() {
+        document.getElementById('idleTransactionsRefreshInterval')?.addEventListener('change', function () {
+            idleTransactionsState.refreshInterval = Number(this.value) || 0;
+            scheduleIdleTransactionsRefresh();
+            refreshIdleTransactionsForConnection(undefined, {silent: true});
+        });
+        document.getElementById('idleTransactionsRefreshBtn')?.addEventListener('click', function () {
+            refreshIdleTransactionsForConnection(undefined, {silent: false});
+        });
+    }
+
+    function refreshIdleTransactionsForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderIdleTransactionsWarning('Выберите сохранённое подключение для загрузки транзакций');
             return;
         }
         const requestId = ++idleTransactionsRequestId;
-        renderIdleTransactionsWarning('Загрузка транзакций...');
+        if (!options.silent) renderIdleTransactionsWarning('Загрузка транзакций...');
         connectionRequest(idleTransactionsApiUrl, {id: conn.id})
             .then(data => {
                 if (requestId !== idleTransactionsRequestId) return;
