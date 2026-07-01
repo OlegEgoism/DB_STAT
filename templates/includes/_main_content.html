@@ -30,17 +30,17 @@
                 </div>
                 <span class="conn-divider"></span>
                 {% if user_can_manage_connections %}
-                <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
-                    <i class="fas fa-plus"></i>
-                </button>
+                    <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
+                        <i class="fas fa-plus"></i>
+                    </button>
                 {% endif %}
                 <button class="btn-conn" onclick="testConnection()" title="Проверить">
                     <i class="fas fa-plug"></i>
                 </button>
                 {% if user_can_manage_connections %}
-                <button class="btn-conn" onclick="editConnection()" title="Редактировать подключение">
-                    <i class="fas fa-pen"></i>
-                </button>
+                    <button class="btn-conn" onclick="editConnection()" title="Редактировать подключение">
+                        <i class="fas fa-pen"></i>
+                    </button>
                 {% endif %}
             </div>
             <div class="current-db-user">
@@ -86,16 +86,14 @@
                     <div>
                         <h3>DB STAT</h3>
                         <p>Панель мониторинга базы данных: размеры, структура, активность, блокировки и административная информация по выбранному подключению.</p>
+                        <p>DB STAT помогает быстро оценить состояние PostgreSQL/Greenplum: увидеть размеры объектов, активность пользователей, проблемные запросы, блокировки, транзакции, распределение данных и статистику обслуживания.</p>
+                        <p>Используйте панель как единую точку контроля для ежедневного мониторинга, диагностики производительности и административной проверки выбранного подключения.</p>
                     </div>
                     <i class="fas fa-database" aria-hidden="true"></i>
                 </div>
-                <div class="home-description">
-                    <p>DB STAT помогает быстро оценить состояние PostgreSQL/Greenplum: увидеть размеры объектов, активность пользователей, проблемные запросы, блокировки, транзакции, распределение данных и статистику обслуживания.</p>
-                    <p>Используйте панель как единую точку контроля для ежедневного мониторинга, диагностики производительности и административной проверки выбранного подключения.</p>
-                </div>
                 <a class="home-repo-link" href="https://github.com/OlegEgoism/DB-STAT" target="_blank" rel="noopener noreferrer">
                     <i class="fab fa-github" aria-hidden="true"></i>
-                    <span>Перейти в репозиторий DB STAT</span>
+                    <span>DB STAT</span>
                     <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
                 </a>
                 <div class="home-tabs-grid">
@@ -719,12 +717,24 @@
                     <table class="table table-sm active-queries-table">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="pid">PID <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="username">Пользователь <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="relation_name">Таблица <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="state">Состояние <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="duration_seconds">Длительность <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-active-query-sort="sql">SQL <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="pid">PID <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="username">Пользователь <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="relation_name">Таблица <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="state">Состояние <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="duration_seconds">Длительность <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-active-query-sort="sql">SQL <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="activeQueriesTableBody">
@@ -980,14 +990,30 @@
                     <table class="table table-sm users-table">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="name">Пользователь <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="inherit">Наследование <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="replication">Репликация <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-users-sort="valid_until">Действует до <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="name">Пользователь <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="inherit">Наследование <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="replication">Репликация <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-users-sort="valid_until">Действует до <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="usersTableBody">
@@ -1051,15 +1077,33 @@
                     <table class="table table-sm groups-table">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="name">Группа <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="inherit">Наследование <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="replication">Репликация <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="member_count">Участников <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-groups-sort="valid_until">Действует до <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="name">Группа <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="superuser">Суперпользователь <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="createdb">Создаёт БД <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="createrole">Создаёт роли <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="inherit">Наследование <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="replication">Репликация <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="connection_limit">Лимит подключений <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="member_count">Участников <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-groups-sort="valid_until">Действует до <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="groupsTableBody">
@@ -1122,13 +1166,27 @@
                     <table class="table">
                         <thead>
                         <tr>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="schema_name">Схема <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="table_name">Таблица <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="live_rows">Живых строк <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_rows">Мёртвых строк <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="dead_percent">Доля мёртвых строк <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_vacuum">Последняя очистка (VACUUM) <i class="fas fa-sort"></i></button></th>
-                            <th><button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний анализ (ANALYZE) <i class="fas fa-sort"></i></button></th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="table_name">Таблица <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="live_rows">Живых строк <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="dead_rows">Мёртвых строк <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="dead_percent">Доля мёртвых строк <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="last_vacuum">Последняя очистка (VACUUM) <i class="fas fa-sort"></i></button>
+                            </th>
+                            <th>
+                                <button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний анализ (ANALYZE) <i class="fas fa-sort"></i></button>
+                            </th>
                         </tr>
                         </thead>
                         <tbody id="maintenanceStatsTableBody">
