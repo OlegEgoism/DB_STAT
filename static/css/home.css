@@ -2295,23 +2295,36 @@ body.sidebar-collapsed .nav-item .nav-icon {
     letter-spacing: -0.8px;
 }
 
-.home-hero-title-link {
-    color: inherit;
-    text-decoration: none;
-    transition: color 0.2s ease;
-}
-
-.home-hero-title-link:hover,
-.home-hero-title-link:focus {
-    color: var(--accent-blue);
-}
-
 .home-hero p {
     margin: 0;
     color: var(--text-secondary);
     max-width: 760px;
     font-size: 14px;
     line-height: 1.6;
+}
+
+.home-repo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+    padding: 10px 14px;
+    border: 1px solid rgba(79, 140, 255, 0.22);
+    border-radius: var(--radius-md);
+    background: rgba(79, 140, 255, 0.08);
+    color: var(--accent-blue);
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.home-repo-link:hover,
+.home-repo-link:focus {
+    border-color: rgba(79, 140, 255, 0.38);
+    background: rgba(79, 140, 255, 0.14);
+    color: var(--accent-blue);
+    transform: translateY(-1px);
 }
 
 .home-hero > i {
