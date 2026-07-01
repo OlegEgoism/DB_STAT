@@ -342,6 +342,7 @@ body {
             display: flex;
             align-items: center;
             gap: 8px;
+            height: 40px;
             background: var(--bg-secondary);
             border: 1px solid var(--sidebar-border);
             border-radius: var(--radius-md);
@@ -1864,7 +1865,8 @@ body {
             align-items: center;
             gap: 10px;
             max-width: 360px;
-            padding: 5px 8px 5px 12px;
+            height: 40px;
+            padding: 4px 8px 4px 16px;
             border: 1px solid var(--sidebar-border);
             border-radius: var(--radius-md);
             background: var(--bg-secondary);
