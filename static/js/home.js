@@ -57,6 +57,7 @@
     const groupsListApiUrl = '/groups/list/';
 
     const pageTitles = {
+        'home': 'Главная <small>Описание разделов</small>',
         'database-overview': 'База данных <small>Размеры и структура</small>',
         'segments': 'Сегменты <small>Состояние и конфигурация</small>',
         'databases': 'Схемы <small>Список схем</small>',
@@ -128,6 +129,7 @@
         initCharts();
         initNavigation();
         initSidebarCollapse();
+        initBrandHomeNavigation();
         initTableChartToggles();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
@@ -209,6 +211,15 @@
                 const chart = document.getElementById(this.dataset.chartToggle);
                 setTableChartCollapsed(this, !chart?.classList.contains('table-chart-collapsed'));
             });
+        });
+    }
+
+
+    function initBrandHomeNavigation() {
+        const brandHomeButton = document.getElementById('brandHomeButton');
+        if (!brandHomeButton) return;
+        brandHomeButton.addEventListener('click', function () {
+            activatePage('home');
         });
     }
 
@@ -2454,7 +2465,10 @@
             pageTitles[pageId] &&
             document.getElementById('page-' + pageId) &&
             isPageAvailableForConnection(pageId) &&
-            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
+            (
+                pageId === 'home'
+                || Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
+            )
         );
     }
 
