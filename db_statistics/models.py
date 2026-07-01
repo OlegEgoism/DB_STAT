@@ -30,7 +30,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :]
     try:
         return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
     except InvalidToken:
@@ -42,6 +42,7 @@ def decrypt_connection_password(stored_password):
 # ============================================================================
 class DateStamp(models.Model):
     """Временные отметки"""
+
     created = models.DateTimeField(verbose_name="Дата создания", db_comment="Дата создания", auto_now_add=True)
     updated = models.DateTimeField(verbose_name="Дата изменения", db_comment="Дата изменения", auto_now=True)
 
@@ -63,10 +64,8 @@ class Active(models.Model):
 # ============================================================================
 class DBUser(DateStamp, Active):
     """Пользователь"""
-    USER_ROLE = [
-        ("Администратор", "Администратор"),
-        ("Аналитик", "Аналитик")
-    ]
+
+    USER_ROLE = [("Администратор", "Администратор"), ("Аналитик", "Аналитик")]
 
     login = models.CharField(verbose_name="Логин", db_comment="Логин", max_length=100, db_index=True, unique=True)
     email = models.EmailField(verbose_name="Почта", db_comment="Почта", unique=True)
@@ -78,7 +77,7 @@ class DBUser(DateStamp, Active):
         db_table_comment = "Пользователь"
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
-        ordering = ['login', ]
+        ordering = ["login"]
 
     def __str__(self):
         return self.login
@@ -86,10 +85,8 @@ class DBUser(DateStamp, Active):
 
 class DBConnection(DateStamp, Active):
     """Подключение"""
-    DATABASE_TYPES = [
-        ("PostgreSQL", "PostgreSQL"),
-        ("Greenplum", "Greenplum")
-    ]
+
+    DATABASE_TYPES = [("PostgreSQL", "PostgreSQL"), ("Greenplum", "Greenplum")]
 
     name = models.CharField(verbose_name="Название", db_comment="Название", max_length=120)
     host = models.CharField(verbose_name="Хост", db_comment="Хост", max_length=255)
@@ -128,14 +125,8 @@ class DBConnection(DateStamp, Active):
 
 class DBAudit(models.Model):
     """Аудит"""
-    ACTION_TYPES = [
-        ('login', 'Вход'),
-        ('logout', 'Выход'),
-        ('connection_create', 'Создание подключения'),
-        ('connection_update', 'Изменение подключения'),
-        ('connection_delete', 'Удаление подключения'),
-        ('connection_test', 'Проверка подключения'),
-    ]
+
+    ACTION_TYPES = [("login", "Вход"), ("logout", "Выход"), ("connection_create", "Создание подключения"), ("connection_update", "Изменение подключения"), ("connection_delete", "Удаление подключения"), ("connection_test", "Проверка подключения")]
 
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
     action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=32, choices=ACTION_TYPES)

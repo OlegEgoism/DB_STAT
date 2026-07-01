@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class DbStatisticsConfig(AppConfig):
-    name = 'db_statistics'
-    verbose_name = 'Информация о базе данных'
+    name = "db_statistics"
+    verbose_name = "Информация о базе данных"

@@ -68,3 +68,12 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 ```bash
 python manage.py runserver
 ```
+
+
+- Проверка и автоисправление кода
+
+```bash
+python -m ruff check .
+python -m ruff check . --fix
+python -m ruff format .
+```

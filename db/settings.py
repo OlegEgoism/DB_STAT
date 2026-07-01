@@ -39,15 +39,7 @@ CSRF_TRUSTED_ORIGINS = _env_list("CSRF_TRUSTED_ORIGINS") or _default_csrf_truste
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", False)
 
-INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
-    "django.contrib.staticfiles",
-    "db_statistics.apps.DbStatisticsConfig",
-]
+INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "db_statistics.apps.DbStatisticsConfig"]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -66,13 +58,7 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
-            ]
-        },
+        "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages"]},
     }
 ]
 
@@ -81,14 +67,7 @@ WSGI_APPLICATION = "db.wsgi.application"
 DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
 if DB_ENGINE == "postgresql":
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "db_statistics"),
-            "USER": os.getenv("DB_USER", "postgres"),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": int(os.getenv("DB_PORT", "5432")),
-        }
+        "default": {"ENGINE": "django.db.backends.postgresql", "NAME": os.getenv("DB_NAME", "db_statistics"), "USER": os.getenv("DB_USER", "postgres"), "PASSWORD": os.getenv("DB_PASSWORD", ""), "HOST": os.getenv("DB_HOST", "localhost"), "PORT": int(os.getenv("DB_PORT", "5432"))}
     }
 else:
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3")}}

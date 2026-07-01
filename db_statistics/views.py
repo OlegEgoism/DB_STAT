@@ -29,19 +29,11 @@ def _current_db_user(request):
 def _user_payload(db_user):
     if not db_user:
         return None
-    return {
-        "login": db_user.login,
-        "email": db_user.email,
-        "role": db_user.role,
-        "can_manage_connections": db_user.role == ADMIN_ROLE,
-    }
+    return {"login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE}
 
 
 def _connection_permission_error():
-    return JsonResponse(
-        {"ok": False, "message": "Создавать и редактировать подключения может только Администратор"},
-        status=403,
-    )
+    return JsonResponse({"ok": False, "message": "Создавать и редактировать подключения может только Администратор"}, status=403)
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
@@ -51,24 +43,11 @@ def _audit_username(db_user=None, fallback="Неизвестный пользо�
 
 
 def _write_audit(action_type, info, db_user=None, username=None):
-    DBAudit.objects.create(
-        username=username or _audit_username(db_user),
-        action_type=action_type,
-        info=info,
-        created=timezone.now(),
-    )
+    DBAudit.objects.create(username=username or _audit_username(db_user), action_type=action_type, info=info, created=timezone.now())
 
 
 def _connection_audit_info(action, connection, *, result=None, error=None):
-    details = [
-        f"Действие: {action}",
-        f"Подключение: {connection.name}",
-        f"Тип БД: {connection.db_type}",
-        f"Хост: {connection.host}",
-        f"Порт: {connection.port}",
-        f"База данных: {connection.database}",
-        f"Пользователь БД: {connection.username}",
-    ]
+    details = [f"Действие: {action}", f"Подключение: {connection.name}", f"Тип БД: {connection.db_type}", f"Хост: {connection.host}", f"Порт: {connection.port}", f"База данных: {connection.database}", f"Пользователь БД: {connection.username}"]
     if result:
         details.append(f"Результат: {result}")
     if error:
@@ -98,15 +77,7 @@ def home(request):
     db_user = _current_db_user(request)
     if not db_user:
         return redirect("login")
-    return render(
-        request,
-        "home.html",
-        {
-            "db_user": db_user,
-            "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
-            "user_can_manage_connections": db_user.role == ADMIN_ROLE,
-        },
-    )
+    return render(request, "home.html", {"db_user": db_user, "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False), "user_can_manage_connections": db_user.role == ADMIN_ROLE})
 
 
 @ensure_csrf_cookie
@@ -125,11 +96,7 @@ def login(request):
         db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
         if db_user:
             request.session[SESSION_USER_ID_KEY] = db_user.pk
-            _write_audit(
-                "login",
-                f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}",
-                db_user=db_user,
-            )
+            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}", db_user=db_user)
             return redirect("home")
         error = "Пользователь с указанными login и email не найден или отключён"
 
@@ -171,7 +138,6 @@ def _read_json_body(request):
         return {}
 
 
-
 def _parse_pg_size_to_bytes(value):
     if value in (None, ""):
         return None
@@ -180,28 +146,16 @@ def _parse_pg_size_to_bytes(value):
         return None
     parts = text.split()
     if len(parts) == 1:
-        number_part = ''.join(ch for ch in text if ch.isdigit() or ch in '.,-')
-        unit_part = text[len(number_part):].strip() or 'B'
+        number_part = "".join(ch for ch in text if ch.isdigit() or ch in ".,-")
+        unit_part = text[len(number_part) :].strip() or "B"
     else:
         number_part, unit_part = parts[0], parts[1]
     try:
-        number = float(number_part.replace(',', '.'))
+        number = float(number_part.replace(",", "."))
     except ValueError:
         return None
     unit = unit_part.lower()
-    multipliers = {
-        'b': 1,
-        'byte': 1,
-        'bytes': 1,
-        'kb': 1024,
-        'kib': 1024,
-        'mb': 1024 ** 2,
-        'mib': 1024 ** 2,
-        'gb': 1024 ** 3,
-        'gib': 1024 ** 3,
-        'tb': 1024 ** 4,
-        'tib': 1024 ** 4,
-    }
+    multipliers = {"b": 1, "byte": 1, "bytes": 1, "kb": 1024, "kib": 1024, "mb": 1024**2, "mib": 1024**2, "gb": 1024**3, "gib": 1024**3, "tb": 1024**4, "tib": 1024**4}
     return int(number * multipliers.get(unit, 1))
 
 
@@ -217,19 +171,11 @@ def _format_bytes(size_bytes):
 
 
 def _escape_like_pattern(value):
-    return value.replace('!', '!!').replace('%', '!%').replace('_', '!_')
+    return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
-    return {
-        "host": host,
-        "port": port,
-        "dbname": database,
-        "user": username,
-        "password": password,
-        "connect_timeout": CONNECTION_TIMEOUT_SECONDS,
-        "sslmode": "prefer" if ssl else "disable",
-    }
+    return {"host": host, "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
@@ -253,11 +199,7 @@ def connections(request):
     if any(not payload.get(field) for field in required_fields):
         return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
 
-    defaults = {
-        "username": payload["user"].strip(),
-        "db_type": payload.get("db_type") or "PostgreSQL",
-        "is_active": True,
-    }
+    defaults = {"username": payload["user"].strip(), "db_type": payload.get("db_type") or "PostgreSQL", "is_active": True}
     if payload.get("password"):
         defaults["password"] = payload["password"]
 
@@ -272,30 +214,16 @@ def connections(request):
         for field, value in defaults.items():
             setattr(connection, field, value)
         connection.save()
-        _write_audit(
-            "connection_update",
-            _connection_audit_info("Изменение подключения", connection),
-            db_user=_current_db_user(request),
-        )
+        _write_audit("connection_update", _connection_audit_info("Изменение подключения", connection), db_user=_current_db_user(request))
         return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
 
-    connection, created = DBConnection.objects.update_or_create(
-        name=payload["name"].strip(),
-        host=payload["host"].strip(),
-        port=int(payload["port"]),
-        database=payload["database"].strip(),
-        defaults={**defaults, "password": payload.get("password", "")},
-    )
+    connection, created = DBConnection.objects.update_or_create(name=payload["name"].strip(), host=payload["host"].strip(), port=int(payload["port"]), database=payload["database"].strip(), defaults={**defaults, "password": payload.get("password", "")})
     if db_user:
         if created or connection.created_user_id is None:
             connection.created_user = db_user
             connection.save(update_fields=["created_user", "updated"])
         db_user.connections.add(connection)
-    _write_audit(
-        "connection_create" if created else "connection_update",
-        _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection),
-        db_user=db_user,
-    )
+    _write_audit("connection_create" if created else "connection_update", _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection), db_user=db_user)
     return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
 
 
@@ -310,37 +238,16 @@ def test_connection(request):
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
-            params = {
-                "host": payload["host"].strip(),
-                "port": int(payload["port"]),
-                "database": payload["database"].strip(),
-                "username": payload["user"].strip(),
-                "password": payload.get("password") or connection.get_password(),
-                "ssl": payload.get("ssl", True),
-            }
+            params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
             name = payload["name"].strip()
         else:
-            params = {
-                "host": connection.host,
-                "port": connection.port,
-                "database": connection.database,
-                "username": connection.username,
-                "password": connection.get_password(),
-                "ssl": payload.get("ssl", True),
-            }
+            params = {"host": connection.host, "port": connection.port, "database": connection.database, "username": connection.username, "password": connection.get_password(), "ssl": payload.get("ssl", True)}
             name = connection.name
     else:
         required_fields = ["name", "host", "port", "database", "user"]
         if any(not payload.get(field) for field in required_fields):
             return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
-        params = {
-            "host": payload["host"].strip(),
-            "port": int(payload["port"]),
-            "database": payload["database"].strip(),
-            "username": payload["user"].strip(),
-            "password": payload.get("password", ""),
-            "ssl": payload.get("ssl", True),
-        }
+        params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
         name = payload["name"].strip()
 
     audit_user = _current_db_user(request)
@@ -351,24 +258,17 @@ def test_connection(request):
         if audit_connection:
             info = _connection_audit_info("Проверка подключения", audit_connection, result="Ошибка", error=exc)
         else:
-            info = (
-                f"Действие: Проверка нового подключения; Подключение: {name}; "
-                f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
-                f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {exc}"
-            )
+            info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {exc}"
         _write_audit("connection_test", info, db_user=audit_user)
         return JsonResponse({"ok": False, "message": f"Не удалось подключиться к {name}: {exc}"}, status=400)
 
     if audit_connection:
         info = _connection_audit_info("Проверка подключения", audit_connection, result="Успешно")
     else:
-        info = (
-            f"Действие: Проверка нового подключения; Подключение: {name}; "
-            f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
-            f"Пользователь БД: {params['username']}; Результат: Успешно"
-        )
+        info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Успешно"
     _write_audit("connection_test", info, db_user=audit_user)
     return JsonResponse({"ok": True, "message": f"Подключение к {name} успешно"})
+
 
 @require_http_methods(["POST"])
 def delete_connection(request):
@@ -451,15 +351,7 @@ def database_overview(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(overview_query, [db_connection.database, db_connection.database])
                 row = cursor.fetchone()
@@ -478,14 +370,8 @@ def database_overview(request):
         {"key": "max_statement_mem", "label": "Максимальная память на запрос", "setting": "max_statement_mem", "value": row[2] or "—"},
         {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "setting": "gp_vmem_protect_limit", "value": row[3] or "—"},
     ]
-    connection_info = [
-        {"label": "Хост", "value": db_connection.host},
-        {"label": "Порт", "value": db_connection.port},
-    ]
-    role_counts = [
-        {"label": "Пользователи", "count": int(row[9] or 0)},
-        {"label": "Группы", "count": int(row[10] or 0)},
-    ]
+    connection_info = [{"label": "Хост", "value": db_connection.host}, {"label": "Порт", "value": db_connection.port}]
+    role_counts = [{"label": "Пользователи", "count": int(row[9] or 0)}, {"label": "Группы", "count": int(row[10] or 0)}]
     connection_slots = [
         {"key": "current_connections", "label": "Текущие подключения", "value": int(row[11] or 0)},
         {"key": "max_connections", "label": "Максимум подключений", "value": int(row[12] or 0)},
@@ -506,17 +392,19 @@ def database_overview(request):
         {"key": "default_transaction_isolation", "label": "Уровень изоляции по умолчанию", "value": row[23] or "—"},
         {"key": "date_style", "label": "Формат даты", "value": row[24] or "—"},
     ]
-    return JsonResponse({
-        "ok": True,
-        "database": db_connection.database,
-        "database_version": row[0] or "—",
-        "connection_info": connection_info,
-        "metrics": metrics,
-        "memory_settings": memory_settings,
-        "role_counts": role_counts,
-        "connection_slots": connection_slots,
-        "basic_settings": basic_settings,
-    })
+    return JsonResponse(
+        {
+            "ok": True,
+            "database": db_connection.database,
+            "database_version": row[0] or "—",
+            "connection_info": connection_info,
+            "metrics": metrics,
+            "memory_settings": memory_settings,
+            "role_counts": role_counts,
+            "connection_slots": connection_slots,
+            "basic_settings": basic_settings,
+        }
+    )
 
 
 @require_http_methods(["POST"])
@@ -559,15 +447,7 @@ def active_queries(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(active_queries_query)
                 rows = cursor.fetchall()
@@ -578,15 +458,7 @@ def active_queries(request):
     for row in rows:
         duration = row[4]
         queries.append(
-            {
-                "pid": row[0],
-                "username": row[1] or "—",
-                "relation_name": row[2] or "—",
-                "state": row[3] or "—",
-                "duration": str(duration).split(".")[0] if duration else "—",
-                "duration_seconds": max(int(duration.total_seconds()), 0) if duration else 0,
-                "sql": row[5] or "—",
-            }
+            {"pid": row[0], "username": row[1] or "—", "relation_name": row[2] or "—", "state": row[3] or "—", "duration": str(duration).split(".")[0] if duration else "—", "duration_seconds": max(int(duration.total_seconds()), 0) if duration else 0, "sql": row[5] or "—"}
         )
     return JsonResponse({"ok": True, "queries": queries, "total_count": len(queries)})
 
@@ -631,15 +503,7 @@ def blocking_locks(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(blocking_locks_query)
                 rows = cursor.fetchall()
@@ -689,15 +553,7 @@ def idle_transactions(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(idle_transactions_query)
                 rows = cursor.fetchall()
@@ -767,15 +623,7 @@ def memory_overview(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-            ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(memory_query, [db_connection.database, db_connection.database])
                 row = cursor.fetchone()
@@ -804,12 +652,7 @@ def memory_overview(request):
         used = sizes.get(used_key)
         limit = sizes.get(limit_key)
         percent = round((used * 100 / limit), 2) if used is not None and limit else 0
-        return {
-            "label": label,
-            "used": _format_bytes(used),
-            "limit": _format_bytes(limit),
-            "usage_percent": percent,
-        }
+        return {"label": label, "used": _format_bytes(used), "limit": _format_bytes(limit), "usage_percent": percent}
 
     usage = [
         usage_row("Память запроса", "statement_mem", "max_statement_mem"),
@@ -850,17 +693,7 @@ def _database_roles_list(request, *, can_login):
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "name"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "name": "name",
-        "superuser": "superuser",
-        "createdb": "createdb",
-        "createrole": "createrole",
-        "inherit": "inherit",
-        "replication": "replication",
-        "connection_limit": "connection_limit",
-        "valid_until": "valid_until",
-        "member_count": "member_count",
-    }
+    sort_columns = {"name": "name", "superuser": "superuser", "createdb": "createdb", "createrole": "createrole", "inherit": "inherit", "replication": "replication", "connection_limit": "connection_limit", "valid_until": "valid_until", "member_count": "member_count"}
     sort_column = sort_columns.get(sort, "name")
     role_type_message = "пользователей" if can_login else "групп"
 
@@ -918,15 +751,7 @@ def _database_roles_list(request, *, can_login):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(roles_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
@@ -948,13 +773,7 @@ def _database_roles_list(request, *, can_login):
         for row in rows
     ]
     total_count = int(rows[0][9]) if rows else 0
-    summary = {
-        "total_count": total_count,
-        "superuser_count": int(rows[0][10]) if rows else 0,
-        "createdb_count": int(rows[0][11]) if rows else 0,
-        "replication_count": int(rows[0][12]) if rows else 0,
-        "privileged_count": int(rows[0][13]) if rows else 0,
-    }
+    summary = {"total_count": total_count, "superuser_count": int(rows[0][10]) if rows else 0, "createdb_count": int(rows[0][11]) if rows else 0, "replication_count": int(rows[0][12]) if rows else 0, "privileged_count": int(rows[0][13]) if rows else 0}
     return JsonResponse({"ok": True, "roles": roles, "page": page, "page_size": page_size, "total_count": total_count, "summary": summary})
 
 
@@ -982,15 +801,7 @@ def maintenance_stats(request):
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "dead_rows"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schemaname",
-        "table_name": "relname",
-        "live_rows": "live_rows",
-        "dead_rows": "dead_rows",
-        "dead_percent": "dead_percent",
-        "last_vacuum": "last_vacuum_at",
-        "last_analyze": "last_analyze_at",
-    }
+    sort_columns = {"schema_name": "schemaname", "table_name": "relname", "live_rows": "live_rows", "dead_rows": "dead_rows", "dead_percent": "dead_percent", "last_vacuum": "last_vacuum_at", "last_analyze": "last_analyze_at"}
     sort_column = sort_columns.get(sort, "dead_rows")
     where_sql = ""
     params = []
@@ -1038,15 +849,7 @@ def maintenance_stats(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(maintenance_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
@@ -1056,18 +859,7 @@ def maintenance_stats(request):
     def format_datetime(value):
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else "Никогда"
 
-    tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "live_rows": int(row[2] or 0),
-            "dead_rows": int(row[3] or 0),
-            "dead_percent": float(row[4] or 0),
-            "last_vacuum": format_datetime(row[5]),
-            "last_analyze": format_datetime(row[6]),
-        }
-        for row in rows
-    ]
+    tables = [{"schema_name": row[0], "table_name": row[1], "live_rows": int(row[2] or 0), "dead_rows": int(row[3] or 0), "dead_percent": float(row[4] or 0), "last_vacuum": format_datetime(row[5]), "last_analyze": format_datetime(row[6])} for row in rows]
     total_count = int(rows[0][7]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
@@ -1086,12 +878,7 @@ def database_schema_sizes(request):
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "schema_owner": "schema_owner",
-        "table_count": "table_count",
-        "size_bytes": "size_bytes",
-    }
+    sort_columns = {"schema_name": "schema_name", "schema_owner": "schema_owner", "table_count": "table_count", "size_bytes": "size_bytes"}
     sort_column = sort_columns.get(sort, "size_bytes")
 
     where_sql = ""
@@ -1155,15 +942,7 @@ def database_schema_sizes(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(schema_sizes_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
@@ -1172,33 +951,10 @@ def database_schema_sizes(request):
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
-    schemas = [
-        {
-            "schema_name": row[0],
-            "schema_owner": row[1],
-            "table_count": int(row[2]),
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-        }
-        for row in rows
-    ]
-    schema_distribution = [
-        {
-            "schema_name": row[0],
-            "size_bytes": int(row[1] or 0),
-            "table_size": row[2],
-        }
-        for row in distribution_rows
-    ]
+    schemas = [{"schema_name": row[0], "schema_owner": row[1], "table_count": int(row[2]), "size_bytes": int(row[3]), "table_size": row[4]} for row in rows]
+    schema_distribution = [{"schema_name": row[0], "size_bytes": int(row[1] or 0), "table_size": row[2]} for row in distribution_rows]
     total_count = int(rows[0][5]) if rows else len(schema_distribution)
-    return JsonResponse({
-        "ok": True,
-        "schemas": schemas,
-        "schema_distribution": schema_distribution,
-        "page": page,
-        "page_size": page_size,
-        "total_count": total_count,
-    })
+    return JsonResponse({"ok": True, "schemas": schemas, "schema_distribution": schema_distribution, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -1215,15 +971,7 @@ def database_table_sizes(request):
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "table_name": "table_name",
-        "table_owner": "table_owner",
-        "size_bytes": "size_bytes",
-        "index_size_bytes": "index_size_bytes",
-        "index_count": "index_count",
-        "row_count": "row_count",
-    }
+    sort_columns = {"schema_name": "schema_name", "table_name": "table_name", "table_owner": "table_owner", "size_bytes": "size_bytes", "index_size_bytes": "index_size_bytes", "index_count": "index_count", "row_count": "row_count"}
     sort_column = sort_columns.get(sort, "size_bytes")
 
     where_sql = ""
@@ -1280,38 +1028,16 @@ def database_table_sizes(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(table_sizes_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"}, status=400)
 
-    tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "table_owner": row[2],
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-            "index_size_bytes": int(row[5]),
-            "index_size": row[6],
-            "index_count": int(row[7]),
-            "row_count": int(row[8]),
-        }
-        for row in rows
-    ]
+    tables = [{"schema_name": row[0], "table_name": row[1], "table_owner": row[2], "size_bytes": int(row[3]), "table_size": row[4], "index_size_bytes": int(row[5]), "index_size": row[6], "index_count": int(row[7]), "row_count": int(row[8])} for row in rows]
     total_count = int(rows[0][9]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
-
 
 
 @require_http_methods(["POST"])
@@ -1329,15 +1055,7 @@ def database_views_list(request):
     view_type = payload.get("view_type") or ""
     sort = payload.get("sort") or "schema_name"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "view_name": "view_name",
-        "view_owner": "view_owner",
-        "view_type": "view_type",
-        "size_bytes": "size_bytes",
-        "index_size_bytes": "index_size_bytes",
-        "row_count": "row_count",
-    }
+    sort_columns = {"schema_name": "schema_name", "view_name": "view_name", "view_owner": "view_owner", "view_type": "view_type", "size_bytes": "size_bytes", "index_size_bytes": "index_size_bytes", "row_count": "row_count"}
     sort_column = sort_columns.get(sort, "schema_name")
 
     where_sql = ""
@@ -1400,35 +1118,14 @@ def database_views_list(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(views_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить представления: {exc}"}, status=400)
 
-    items = [
-        {
-            "schema_name": row[0],
-            "view_name": row[1],
-            "view_owner": row[2],
-            "view_type": row[3],
-            "size_bytes": int(row[4]),
-            "view_size": row[5],
-            "index_size_bytes": int(row[6]),
-            "index_size": row[7],
-            "row_count": int(row[8]),
-        }
-        for row in rows
-    ]
+    items = [{"schema_name": row[0], "view_name": row[1], "view_owner": row[2], "view_type": row[3], "size_bytes": int(row[4]), "view_size": row[5], "index_size_bytes": int(row[6]), "index_size": row[7], "row_count": int(row[8])} for row in rows]
     total_count = int(rows[0][9]) if rows else 0
     return JsonResponse({"ok": True, "views": items, "page": page, "page_size": page_size, "total_count": total_count})
 
@@ -1460,15 +1157,7 @@ def distribution_tables(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(tables_query)
                 tables = [{"schema_name": row[0], "table_name": row[1], "object_type": row[2]} for row in cursor.fetchall()]
@@ -1508,15 +1197,7 @@ def distribution_info(request):
     """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(validate_query, [schema_name, table_name])
                 if not cursor.fetchone():
@@ -1537,22 +1218,9 @@ def distribution_info(request):
     status = "высокий" if skew_ratio >= 1.5 else "средний" if skew_ratio >= 1.2 else "норм."
 
     return JsonResponse(
-        {
-            "ok": True,
-            "schema_name": schema_name,
-            "table_name": table_name,
-            "segments": segments,
-            "metrics": {
-                "total_rows": total_rows,
-                "used_segments": used_segments,
-                "min_rows": min_rows,
-                "max_rows": max_rows,
-                "avg_rows": avg_rows,
-                "skew_ratio": skew_ratio,
-                "status": status,
-            },
-        }
+        {"ok": True, "schema_name": schema_name, "table_name": table_name, "segments": segments, "metrics": {"total_rows": total_rows, "used_segments": used_segments, "min_rows": min_rows, "max_rows": max_rows, "avg_rows": avg_rows, "skew_ratio": skew_ratio, "status": status}}
     )
+
 
 @require_http_methods(["POST"])
 def database_temp_table_sizes(request):
@@ -1568,13 +1236,7 @@ def database_temp_table_sizes(request):
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "table_name": "table_name",
-        "table_owner": "table_owner",
-        "size_bytes": "size_bytes",
-        "session_label": "session_label",
-    }
+    sort_columns = {"schema_name": "schema_name", "table_name": "table_name", "table_owner": "table_owner", "size_bytes": "size_bytes", "session_label": "session_label"}
     sort_column = sort_columns.get(sort, "size_bytes")
 
     where_sql = ""
@@ -1627,34 +1289,17 @@ def database_temp_table_sizes(request):
     """
 
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(temp_table_sizes_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
 
-    temp_tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "table_owner": row[2],
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-            "session_label": row[5],
-        }
-        for row in rows
-    ]
+    temp_tables = [{"schema_name": row[0], "table_name": row[1], "table_owner": row[2], "size_bytes": int(row[3]), "table_size": row[4], "session_label": row[5]} for row in rows]
     total_count = int(rows[0][6]) if rows else 0
     return JsonResponse({"ok": True, "temp_tables": temp_tables, "page": page, "page_size": page_size, "total_count": total_count})
+
 
 @require_http_methods(["POST"])
 def segments_info(request):
@@ -1723,30 +1368,10 @@ def segments_info(request):
         WHERE content >= 0;
     """
     try:
-        with psycopg2.connect(
-            **_connection_kwargs(
-                db_connection.host,
-                db_connection.port,
-                db_connection.database,
-                db_connection.username,
-                db_connection.get_password(),
-            )
-        ) as connection:
+        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(config_query)
-                segments = [
-                    {
-                        "segment": row[0],
-                        "role": row[1],
-                        "preferred_role": row[2],
-                        "mode": row[3],
-                        "status": row[4],
-                        "port": row[5],
-                        "hostname": row[6],
-                        "address": row[7],
-                    }
-                    for row in cursor.fetchall()
-                ]
+                segments = [{"segment": row[0], "role": row[1], "preferred_role": row[2], "mode": row[3], "status": row[4], "port": row[5], "hostname": row[6], "address": row[7]} for row in cursor.fetchall()]
                 cursor.execute(health_query)
                 health_row = cursor.fetchone()
                 cursor.execute(metrics_query)
