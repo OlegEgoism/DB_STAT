@@ -2216,3 +2216,113 @@ body.sidebar-collapsed .nav-item .nav-icon {
         padding: 7px 8px;
     }
 }
+
+.brand-home-button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.brand-home-button:hover span,
+.brand-home-button:focus-visible span {
+    color: var(--accent-blue);
+}
+
+.brand-home-button:focus-visible {
+    outline: 2px solid rgba(79, 140, 255, 0.35);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.home-intro-card .card-body {
+    padding: 24px;
+}
+
+.home-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, rgba(79, 140, 255, 0.10), rgba(139, 92, 246, 0.08));
+    margin-bottom: 18px;
+}
+
+.home-hero h3 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.8px;
+}
+
+.home-hero p {
+    margin: 0;
+    color: var(--text-secondary);
+    max-width: 760px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.home-hero > i {
+    color: var(--accent-blue);
+    font-size: 46px;
+    opacity: 0.75;
+}
+
+.home-tabs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.home-tab-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+        "icon title"
+        "icon text";
+    gap: 4px 12px;
+    align-items: flex-start;
+    padding: 14px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-card);
+}
+
+.home-tab-card i {
+    grid-area: icon;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--accent-blue);
+    background: rgba(79, 140, 255, 0.08);
+}
+
+.home-tab-card strong {
+    grid-area: title;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.home-tab-card span {
+    grid-area: text;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+@media (max-width: 576px) {
+    .home-hero {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
