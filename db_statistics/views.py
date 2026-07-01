@@ -1321,17 +1321,45 @@ def database_temp_table_sizes(request):
         LIMIT %s OFFSET %s;
     """
 
+    temp_table_distribution_query = f"""
+        WITH temp_table_sizes AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                table_class.relname AS table_name,
+                pg_total_relation_size(table_class.oid)::bigint AS size_bytes
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = table_class.relnamespace
+            LEFT JOIN pg_catalog.pg_roles AS owner
+                ON owner.oid = table_class.relowner
+            WHERE table_class.relkind IN ('r', 'p')
+              AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%%')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+        )
+        SELECT
+            schema_name,
+            table_name,
+            size_bytes,
+            pg_size_pretty(size_bytes) AS table_size
+        FROM temp_table_sizes
+        ORDER BY size_bytes DESC, schema_name ASC, table_name ASC;
+    """
+
     try:
         with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(temp_table_sizes_query, [*params, page_size, offset])
                 rows = cursor.fetchall()
+                cursor.execute(temp_table_distribution_query, params)
+                distribution_rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
 
     temp_tables = [{"schema_name": row[0], "table_name": row[1], "table_owner": row[2], "size_bytes": int(row[3]), "table_size": row[4], "session_label": row[5]} for row in rows]
-    total_count = int(rows[0][6]) if rows else 0
-    return JsonResponse({"ok": True, "temp_tables": temp_tables, "page": page, "page_size": page_size, "total_count": total_count})
+    temp_table_distribution = [{"schema_name": row[0], "table_name": row[1], "size_bytes": int(row[2] or 0), "table_size": row[3]} for row in distribution_rows]
+    total_count = int(rows[0][6]) if rows else len(temp_table_distribution)
+    return JsonResponse({"ok": True, "temp_tables": temp_tables, "temp_table_distribution": temp_table_distribution, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
