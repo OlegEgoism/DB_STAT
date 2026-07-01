@@ -81,19 +81,27 @@
         return String(conn?.db_type || '').toLowerCase() === 'postgresql';
     }
 
+    function hasAvailableConnections() {
+        return connections.length > 0;
+    }
+
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!pageId) return false;
+        if (pageId === 'home') return true;
+        if (!hasAvailableConnections() || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
     }
 
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (!hasAvailableConnections() || !conn) return 'home';
         return isPostgreSQLConnection(conn) ? 'database-overview' : 'segments';
     }
 
     function updateSidebarForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const hasConnections = hasAvailableConnections();
         document.querySelectorAll('.nav-item').forEach(item => {
-            const isAvailable = isPageAvailableForConnection(item.dataset.page, conn);
+            const isAvailable = hasConnections && isPageAvailableForConnection(item.dataset.page, conn);
             item.classList.toggle('d-none', !isAvailable);
             item.setAttribute('aria-hidden', String(!isAvailable));
             item.tabIndex = isAvailable ? 0 : -1;
@@ -101,7 +109,7 @@
 
         document.querySelectorAll('.nav-section').forEach(section => {
             const visibleItems = Array.from(section.querySelectorAll('.nav-item')).filter(item => !item.classList.contains('d-none'));
-            section.classList.toggle('d-none', visibleItems.length === 0);
+            section.classList.toggle('d-none', !hasConnections || visibleItems.length === 0);
         });
     }
 
@@ -2561,6 +2569,7 @@
             updateConnectionTooltip(null);
             updateSidebarForConnection(null);
             persistActiveConnectionId(null);
+            activatePage('home');
             return;
         }
         connections.forEach(conn => {
@@ -2605,10 +2614,11 @@
             if (isKnownPage(pageId)) return pageId;
         }
 
-        return 'database-overview';
+        return getDefaultPageForConnection();
     }
 
     function refreshPageData(pageId, conn) {
+        if (pageId === 'home' || !conn) return;
         if (pageId === 'segments') {
             refreshSegmentsForConnection(conn);
         }
@@ -2655,6 +2665,10 @@
     }
 
     function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (!hasAvailableConnections() || !conn) {
+            activatePage('home');
+            return;
+        }
         refreshPageData(getCurrentActivePageId(), conn);
     }
 
