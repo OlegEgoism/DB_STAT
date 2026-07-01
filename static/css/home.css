@@ -1891,6 +1891,18 @@ body {
             white-space: nowrap;
         }
 
+        .current-db-user-tooltip {
+            left: auto;
+            right: 0;
+            width: min(260px, calc(100vw - 32px));
+            min-width: 0;
+        }
+
+        .current-db-user-tooltip::before {
+            left: auto;
+            right: 24px;
+        }
+
         .current-db-user-summary:hover .current-db-user-tooltip,
         .current-db-user-summary:focus .current-db-user-tooltip,
         .current-db-user-summary:focus-within .current-db-user-tooltip {
