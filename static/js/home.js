@@ -34,6 +34,7 @@
     let groupsState = {sort: 'name', direction: 'asc', search: ''};
     let groupsRequestId = 0;
     const activePageStorageKey = 'gp_active_page';
+    const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
     const tableChartCollapsedStorageKey = 'gp_table_chart_collapsed';
     const connectionApiUrl = '/connections/';
@@ -79,17 +80,17 @@
         return String(conn?.db_type || '').toLowerCase() === 'postgresql';
     }
 
-    function isPageAvailableForConnection(pageId, conn = connections.find(c => c.id === activeConnectionId)) {
+    function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!pageId) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
     }
 
-    function getDefaultPageForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         return isPostgreSQLConnection(conn) ? 'database-overview' : 'segments';
     }
 
-    function updateSidebarForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function updateSidebarForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         document.querySelectorAll('.nav-item').forEach(item => {
             const isAvailable = isPageAvailableForConnection(item.dataset.page, conn);
             item.classList.toggle('d-none', !isAvailable);
@@ -452,7 +453,7 @@
         }
     }
 
-    function refreshDatabaseOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshDatabaseOverviewForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderDatabaseOverviewWarning('Выберите сохранённое подключение для загрузки размеров БД');
             return;
@@ -559,7 +560,7 @@
         `).join('');
     }
 
-    function refreshActiveQueriesForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
+    function refreshActiveQueriesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderActiveQueriesWarning('Выберите сохранённое подключение для загрузки активных запросов');
             return;
@@ -632,7 +633,7 @@
         });
     }
 
-    function refreshBlockingLocksForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
+    function refreshBlockingLocksForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderBlockingLocksWarning('Выберите сохранённое подключение для загрузки блокировок');
             return;
@@ -705,7 +706,7 @@
         });
     }
 
-    function refreshIdleTransactionsForConnection(conn = connections.find(c => c.id === activeConnectionId), options = {}) {
+    function refreshIdleTransactionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderIdleTransactionsWarning('Выберите сохранённое подключение для загрузки транзакций');
             return;
@@ -829,7 +830,7 @@
         }
     }
 
-    function refreshMemoryOverviewForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshMemoryOverviewForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderMemoryOverviewWarning('Выберите сохранённое подключение для загрузки памяти');
             return;
@@ -990,7 +991,7 @@
         updateUsersPaginationButtons();
     }
 
-    function refreshUsersForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshUsersForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const requestId = ++usersRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderUsersWarning('Выберите сохранённое подключение для загрузки пользователей');
@@ -1052,7 +1053,7 @@
         updateUsersPaginationButtons();
     }
 
-    function refreshGroupsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshGroupsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const requestId = ++groupsRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             updateGroupsPrivilegeCharts([]);
@@ -1294,7 +1295,7 @@
         });
     }
 
-    function refreshMaintenanceStatsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshMaintenanceStatsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderMaintenanceStatsWarning('Выберите сохранённое подключение для загрузки статистики обслуживания');
             return;
@@ -1510,7 +1511,7 @@
         updateSchemaPaginationButtons();
     }
 
-    function refreshSchemaSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshSchemaSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             schemaSizesState.totalCount = 0;
             renderSchemaSizesWarning('Выберите сохранённое подключение для загрузки размеров схем');
@@ -1597,7 +1598,7 @@
         updateTablePaginationButtons();
     }
 
-    function refreshTableSizesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshTableSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const requestId = ++tableSizesRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderTableSizesWarning('Выберите сохранённое подключение для загрузки размеров таблиц');
@@ -1744,7 +1745,7 @@
         updateViewPaginationButtons();
     }
 
-    function refreshViewsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshViewsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const requestId = ++viewsRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderViewsWarning('Выберите сохранённое подключение для загрузки представлений');
@@ -1920,7 +1921,7 @@
             return;
         }
         const {schema_name: schemaName, table_name: tableName} = selectedTable;
-        const conn = connections.find(c => c.id === activeConnectionId);
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderDistributionWarning('Выберите сохранённое подключение для расчёта распределения');
             return;
@@ -1959,7 +1960,7 @@
         refreshDistributionForSelectedTable();
     }
 
-    function refreshDistributionTablesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshDistributionTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const select = document.getElementById('distributionTableSelect');
         const options = document.getElementById('distributionTableOptions');
         if (!conn || !/^\d+$/.test(String(conn.id))) {
@@ -2073,7 +2074,7 @@
         updateTempTablePaginationButtons();
     }
 
-    function refreshTempTablesForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshTempTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const requestId = ++tempTablesRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderTempTablesWarning('Выберите сохранённое подключение для загрузки временных таблиц');
@@ -2154,18 +2155,41 @@
         });
     }
 
+
+
+    function getStoredActiveConnectionId() {
+        return localStorage.getItem(activeConnectionStorageKey);
+    }
+
+    function persistActiveConnectionId(connId) {
+        if (connId) {
+            localStorage.setItem(activeConnectionStorageKey, String(connId));
+        } else {
+            localStorage.removeItem(activeConnectionStorageKey);
+        }
+    }
+
+    function getInitialActiveConnectionId() {
+        const storedConnectionId = getStoredActiveConnectionId();
+        const storedConnection = connections.find(conn => String(conn.id) === String(storedConnectionId));
+        return storedConnection?.id || connections[0]?.id || null;
+    }
+
     function loadConnections() {
         fetch(connectionApiUrl)
             .then(response => response.json())
             .then(data => {
                 connections = data.connections || [];
-                activeConnectionId = connections[0]?.id || null;
+                activeConnectionId = getInitialActiveConnectionId();
+                persistActiveConnectionId(activeConnectionId);
                 populateConnectionSelect();
+                activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false, refresh: false});
                 refreshActivePageForConnection();
             })
             .catch(() => {
                 connections = [];
                 activeConnectionId = null;
+                persistActiveConnectionId(null);
                 populateConnectionSelect();
                 refreshActivePageForConnection();
                 showToast('⚠️ Не удалось загрузить список доступных подключений');
@@ -2357,7 +2381,7 @@
         updateSegmentsChart(currentSegments);
     }
 
-    function refreshSegmentsForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshSegmentsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum.');
             return;
@@ -2375,7 +2399,7 @@
     }
 
 
-    function updateConnectionTooltip(conn = connections.find(c => c.id === activeConnectionId)) {
+    function updateConnectionTooltip(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const database = document.getElementById('connectionTooltipDatabase');
         const host = document.getElementById('connectionTooltipHost');
         const port = document.getElementById('connectionTooltipPort');
@@ -2407,6 +2431,7 @@
             select.value = '';
             updateConnectionTooltip(null);
             updateSidebarForConnection(null);
+            persistActiveConnectionId(null);
             return;
         }
         connections.forEach(conn => {
@@ -2417,6 +2442,7 @@
         });
         if (activeConnectionId) {
             select.value = activeConnectionId;
+            persistActiveConnectionId(activeConnectionId);
         }
         updateConnectionTooltip();
         updateSidebarForConnection();
@@ -2493,7 +2519,7 @@
         }
     }
 
-    function refreshActivePageForConnection(conn = connections.find(c => c.id === activeConnectionId)) {
+    function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         refreshPageData(getCurrentActivePageId(), conn);
     }
 
@@ -2529,7 +2555,8 @@
 
     function onConnectionChange(connId) {
         activeConnectionId = connId;
-        const conn = connections.find(c => c.id === connId);
+        persistActiveConnectionId(activeConnectionId);
+        const conn = connections.find(c => String(c.id) === String(connId));
         updateConnectionTooltip(conn);
         if (conn) {
             updateSidebarForConnection(conn);
@@ -2567,7 +2594,7 @@
             showToast('⛔ Редактировать подключения может только Администратор');
             return;
         }
-        const conn = connections.find(c => c.id === activeConnectionId);
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
             return;
@@ -2594,7 +2621,7 @@
             return;
         }
         const payload = getConnectionFormData();
-        const conn = connections.find(c => c.id === activeConnectionId);
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
             return;
@@ -2605,8 +2632,9 @@
         }
 
         const finishDelete = message => {
-            connections = connections.filter(item => item.id !== activeConnectionId);
+            connections = connections.filter(item => String(item.id) !== String(activeConnectionId));
             activeConnectionId = connections[0]?.id || null;
+            persistActiveConnectionId(activeConnectionId);
             populateConnectionSelect();
             refreshSegmentsForConnection();
             modalInstance.hide();
@@ -2640,7 +2668,7 @@
             .then(() => connectionRequest(connectionApiUrl, payload))
             .then(data => {
                 const savedConnection = {...data.connection, status: 'online'};
-                const existingIndex = connections.findIndex(conn => conn.id === savedConnection.id || (connectionModalMode === 'edit' && conn.id === activeConnectionId));
+                const existingIndex = connections.findIndex(conn => String(conn.id) === String(savedConnection.id) || (connectionModalMode === 'edit' && String(conn.id) === String(activeConnectionId)));
                 if (existingIndex >= 0) {
                     connections[existingIndex] = savedConnection;
                 } else {
@@ -2650,6 +2678,7 @@
 
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
+                persistActiveConnectionId(activeConnectionId);
                 updateSidebarForConnection(savedConnection);
                 activatePage(getDefaultPageForConnection(savedConnection));
                 if (!isPostgreSQLConnection(savedConnection)) {
@@ -2680,7 +2709,7 @@
     }
 
     function testConnection() {
-        const conn = connections.find(c => c.id === activeConnectionId);
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
             return;
