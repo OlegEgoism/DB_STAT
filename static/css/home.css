@@ -2303,6 +2303,24 @@ body.sidebar-collapsed .nav-item .nav-icon {
     line-height: 1.6;
 }
 
+.home-description {
+    display: grid;
+    gap: 8px;
+    margin: -2px 0 18px;
+    padding: 16px 18px;
+    border-left: 4px solid var(--accent-blue);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.62);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-card);
+}
+
+.home-description p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
 .home-repo-link {
     display: inline-flex;
     align-items: center;
