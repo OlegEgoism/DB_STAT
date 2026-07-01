@@ -138,6 +138,13 @@ def login(request):
 
 @require_http_methods(["POST"])
 def logout(request):
+    db_user = _current_db_user(request)
+    username = _audit_username(db_user)
+    if db_user:
+        audit_info = f"Пользователь вышел из приложения: login={db_user.login}; email={db_user.email}; role={db_user.role}"
+    else:
+        audit_info = "Выход из приложения: активный пользователь не найден"
+    _write_audit("logout", audit_info, db_user=db_user, username=username)
     request.session.flush()
     return redirect("login")
 

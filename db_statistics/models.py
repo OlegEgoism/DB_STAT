@@ -130,6 +130,7 @@ class DBAudit(models.Model):
     """Аудит"""
     ACTION_TYPES = [
         ('login', 'Вход'),
+        ('logout', 'Выход'),
         ('connection_create', 'Создание подключения'),
         ('connection_update', 'Изменение подключения'),
         ('connection_delete', 'Удаление подключения'),
