@@ -31,7 +31,8 @@ class DBConnectionAdmin(BaseAdmin):
     list_editable = ("is_active",)
     search_fields = ("name", "database", "username")
     search_help_text = "Поиск по: названию, базе данных, пользователю"
-    fields = ("name", "host", "port", "database", "username", "password", "db_type", "created_by", "is_active", "created", "updated")
+    fields = ("name", "host", "port", "database", "username", "db_type", "created_by", "is_active", "created", "updated")
+    # readonly_fields = ("created_by",)
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
