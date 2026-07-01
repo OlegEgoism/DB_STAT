@@ -33,6 +33,7 @@
     let groupsRequestId = 0;
     const activePageStorageKey = 'gp_active_page';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
+    const tableChartCollapsedStorageKey = 'gp_table_chart_collapsed';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
     const connectionDeleteApiUrl = '/connections/delete/';
@@ -124,6 +125,7 @@
         initCharts();
         initNavigation();
         initSidebarCollapse();
+        initTableChartToggles();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
         initSegmentsTableSorting();
         initSchemaSizesControls();
@@ -157,6 +159,53 @@
         });
     });
 
+
+
+
+    function getCollapsedTableCharts() {
+        try {
+            return JSON.parse(localStorage.getItem(tableChartCollapsedStorageKey) || '{}') || {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function setTableChartCollapsed(toggle, isCollapsed, {persist = true} = {}) {
+        const targetId = toggle?.dataset?.chartToggle;
+        const chart = targetId ? document.getElementById(targetId) : null;
+        if (!toggle || !chart) return;
+
+        chart.classList.toggle('table-chart-collapsed', isCollapsed);
+        toggle.setAttribute('aria-expanded', String(!isCollapsed));
+        toggle.setAttribute('title', isCollapsed ? 'Развернуть график' : 'Свернуть график');
+        toggle.setAttribute('aria-label', isCollapsed ? 'Развернуть график' : 'Свернуть график');
+
+        const icon = toggle.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-up', !isCollapsed);
+            icon.classList.toggle('fa-chevron-down', isCollapsed);
+        }
+        const label = toggle.querySelector('span');
+        if (label) label.textContent = isCollapsed ? 'Развернуть график' : 'Свернуть график';
+
+        if (persist) {
+            const collapsedCharts = getCollapsedTableCharts();
+            collapsedCharts[targetId] = isCollapsed;
+            localStorage.setItem(tableChartCollapsedStorageKey, JSON.stringify(collapsedCharts));
+        }
+    }
+
+    function initTableChartToggles() {
+        const collapsedCharts = getCollapsedTableCharts();
+        document.querySelectorAll('[data-chart-toggle]').forEach(toggle => {
+            const targetId = toggle.dataset.chartToggle;
+            setTableChartCollapsed(toggle, collapsedCharts[targetId] === true, {persist: false});
+            toggle.addEventListener('click', function () {
+                const chart = document.getElementById(this.dataset.chartToggle);
+                setTableChartCollapsed(this, !chart?.classList.contains('table-chart-collapsed'));
+            });
+        });
+    }
 
     function updateSidebarLogoToggle(isCollapsed) {
         const toggle = document.getElementById('sidebarLogoToggle');

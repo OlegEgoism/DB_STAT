@@ -2166,3 +2166,53 @@ body.sidebar-collapsed .nav-item .nav-icon {
         margin-left: 0;
     }
 }
+
+.card-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.chart-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--sidebar-border);
+    background: rgba(79, 140, 255, 0.06);
+    color: var(--accent-blue);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.chart-toggle-btn:hover {
+    background: rgba(79, 140, 255, 0.12);
+    border-color: rgba(79, 140, 255, 0.3);
+}
+
+.chart-toggle-btn i {
+    margin-right: 0 !important;
+    font-size: 10px;
+}
+
+.table-chart-collapsed {
+    display: none !important;
+}
+
+@media (max-width: 576px) {
+    .card-header-actions {
+        gap: 6px;
+    }
+
+    .chart-toggle-btn span {
+        display: none;
+    }
+
+    .chart-toggle-btn {
+        padding: 7px 8px;
+    }
+}
