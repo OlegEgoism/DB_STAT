@@ -104,8 +104,8 @@ class DBConnection(DateStamp, Active):
         verbose_name_plural = "Подключения"
         unique_together = ("name", "host", "port", "database", "username")
 
-    def set_password(self, raw_password):
-        self.password = encrypt_connection_password(raw_password)
+    # def set_password(self, raw_password):
+    #     self.password = encrypt_connection_password(raw_password)
 
     def get_password(self):
         decrypted_password = decrypt_connection_password(self.password)
@@ -120,7 +120,7 @@ class DBConnection(DateStamp, Active):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} - ({self.username})"
+        return f"{self.name} - (Владелец: {self.created_user.login})"
 
 
 class DBAudit(models.Model):
