@@ -374,7 +374,6 @@ body {
             color: var(--text-primary);
         }
 
-
         .connection-info-tooltip {
             position: absolute;
             top: calc(100% + 10px);
@@ -571,22 +570,10 @@ body {
             box-shadow: var(--shadow-card-hover);
         }
 
-        .kpi-card .kpi-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 8px;
-        }
-
         .kpi-card .kpi-label {
             font-size: 13px;
             color: var(--text-muted);
             font-weight: 500;
-        }
-
-        .kpi-card .kpi-icon {
-            font-size: 20px;
-            opacity: 0.6;
         }
 
         .kpi-card .kpi-value {
@@ -595,26 +582,6 @@ body {
             letter-spacing: -1px;
             line-height: 1.2;
             color: var(--text-primary);
-        }
-
-        .kpi-card .kpi-sub {
-            font-size: 13px;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        .kpi-card .kpi-trend {
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 6px;
-        }
-
-        .kpi-card .kpi-trend.up {
-            color: var(--accent-green);
-        }
-
-        .kpi-card .kpi-trend.down {
-            color: var(--accent-red);
         }
 
         .chart-empty {
@@ -688,7 +655,6 @@ body {
             line-height: 1.1;
         }
 
-
         .connection-slots-chart {
             display: flex;
             align-items: center;
@@ -739,7 +705,6 @@ body {
                 flex-direction: column;
             }
         }
-
 
         .size-metrics-chart {
             display: flex;
@@ -817,7 +782,6 @@ body {
                 flex-direction: column;
             }
         }
-
 
         .role-visuals-grid,
         .groups-visuals-grid {
@@ -942,7 +906,6 @@ body {
             }
         }
 
-
 .schema-distribution-chart {
     display: flex;
     align-items: center;
@@ -1031,7 +994,6 @@ body {
         grid-template-columns: 1fr;
     }
 }
-
 
 .maintenance-visuals-grid {
     display: grid;
@@ -1302,10 +1264,6 @@ body {
             height: 240px;
         }
 
-        .chart-container-sm {
-            height: 180px;
-        }
-
         .distribution-analysis-column {
             display: flex;
         }
@@ -1397,54 +1355,6 @@ body {
             top: 0;
             z-index: 2;
             background: rgba(255, 255, 255, 0.96);
-        }
-
-        /* ========== PROGRESS ========== */
-        .progress {
-            background: rgba(0, 0, 0, 0.06);
-            border-radius: 4px;
-            height: 6px;
-        }
-
-        .progress-bar {
-            border-radius: 4px;
-            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
-        }
-
-        /* ========== FILTER BAR ========== */
-        .filter-bar {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            background: var(--bg-secondary);
-            border: 1px solid var(--sidebar-border);
-            border-radius: var(--radius-md);
-            padding: 10px 16px;
-            margin-bottom: 16px;
-            box-shadow: var(--shadow-card);
-        }
-
-        .filter-bar select, .filter-bar input {
-            background: var(--bg-primary);
-            border: 1px solid var(--sidebar-border);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            padding: 5px 12px;
-            font-size: 13px;
-            outline: none;
-            transition: all 0.2s ease;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .filter-bar select:focus, .filter-bar input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px var(--glow-blue);
-        }
-
-        .filter-bar select option {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
         }
 
         /* ========== PAGE VISIBILITY ========== */
@@ -1598,21 +1508,6 @@ body {
             font-size: 13px;
             color: var(--text-secondary);
             margin-bottom: 4px;
-        }
-
-        .form-check-input {
-            background: var(--bg-primary);
-            border: 1px solid var(--sidebar-border);
-        }
-
-        .form-check-input:checked {
-            background-color: var(--accent-blue);
-            border-color: var(--accent-blue);
-        }
-
-        .form-check-label {
-            font-size: 14px;
-            color: var(--text-secondary);
         }
 
         /* ========== BUTTONS ========== */
@@ -1785,13 +1680,6 @@ body {
             background: rgba(248, 250, 252, 0.65);
         }
 
-        .toolbar-control-group {
-            display: flex;
-            align-items: center;
-            gap: var(--space-3);
-            flex-wrap: wrap;
-        }
-
         .toolbar-filter {
             display: flex;
             align-items: center;
@@ -1954,7 +1842,6 @@ body {
             font-weight: 600;
         }
 
-
 /* ========== UNIFIED LAYOUT SYSTEM ========== */
 .app-page-shell,
 .main-content {
@@ -2004,7 +1891,6 @@ body {
     max-height: 560px;
 }
 
-
 .users-table-scroll thead th {
     position: sticky;
     top: 0;
@@ -2013,8 +1899,6 @@ body {
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
 
-
-
 .groups-table-scroll thead th {
     position: sticky;
     top: 0;
@@ -2022,7 +1906,6 @@ body {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
-
 
 .refresh-toolbar {
     justify-content: flex-end;
@@ -2054,7 +1937,6 @@ body {
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
 
-
 .views-table-scroll thead th {
     position: sticky;
     top: 0;
@@ -2062,7 +1944,6 @@ body {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
-
 
 .tables-table-scroll thead th {
     position: sticky;
@@ -2072,7 +1953,6 @@ body {
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
 
-
 .temp-tables-table-scroll thead th {
     position: sticky;
     top: 0;
@@ -2080,7 +1960,6 @@ body {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
-
 
 .schema-table-scroll {
     max-height: 560px;
@@ -2093,7 +1972,6 @@ body {
     background: rgba(255, 255, 255, 0.96);
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
-
 
 .segments-detail-table-scroll thead th {
     position: sticky;
@@ -2301,24 +2179,6 @@ body.sidebar-collapsed .nav-item .nav-icon {
     max-width: 760px;
     font-size: 14px;
     line-height: 1.6;
-}
-
-.home-description {
-    display: grid;
-    gap: 8px;
-    margin: -2px 0 18px;
-    padding: 16px 18px;
-    border-left: 4px solid var(--accent-blue);
-    border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.62);
-    color: var(--text-secondary);
-    box-shadow: var(--shadow-card);
-}
-
-.home-description p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.65;
 }
 
 .home-repo-link {
