@@ -2295,6 +2295,17 @@ body.sidebar-collapsed .nav-item .nav-icon {
     letter-spacing: -0.8px;
 }
 
+.home-hero-title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.home-hero-title-link:hover,
+.home-hero-title-link:focus {
+    color: var(--accent-blue);
+}
+
 .home-hero p {
     margin: 0;
     color: var(--text-secondary);
