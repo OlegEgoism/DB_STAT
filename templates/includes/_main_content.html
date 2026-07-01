@@ -8,16 +8,6 @@
             <h4 id="pageTitle">База данных <small>Размеры и структура</small></h4>
         </div>
         <div class="topbar-right">
-            <div class="current-db-user">
-                <span class="current-db-user-main">{{ db_user.login }}</span>
-                <span class="current-db-user-meta">{{ db_user.email }} · {{ db_user.role }}</span>
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn-conn" title="Выйти">
-                        <i class="fas fa-sign-out-alt" style="color: red"></i>
-                    </button>
-                </form>
-            </div>
             <!-- Connection Manager -->
             <div class="connection-manager">
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
@@ -52,6 +42,16 @@
                     <i class="fas fa-pen"></i>
                 </button>
                 {% endif %}
+            </div>
+            <div class="current-db-user">
+                <span class="current-db-user-main">{{ db_user.login }}</span>
+                <span class="current-db-user-meta">{{ db_user.email }} · {{ db_user.role }}</span>
+                <form method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-conn" title="Выйти">
+                        <i class="fas fa-sign-out-alt" style="color: red"></i>
+                    </button>
+                </form>
             </div>
         </div>
     </div>
