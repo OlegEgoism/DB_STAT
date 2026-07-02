@@ -2013,8 +2013,7 @@
     }
 
     function showDistributionTableDropdown() {
-        const select = document.getElementById('distributionTableSelect');
-        renderDistributionTableDropdown(getFilteredDistributionTables(select?.value || ''));
+        renderDistributionTableDropdown(distributionTables);
         setDistributionTableDropdownVisible(true);
     }
 
