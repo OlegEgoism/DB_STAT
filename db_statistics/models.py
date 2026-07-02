@@ -95,7 +95,7 @@ class DBConnection(DateStamp, Active):
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=120)
     password = models.CharField(verbose_name="Пароль", db_comment="Пароль", max_length=255)
     db_type = models.CharField(verbose_name="Тип базы данных", db_comment="Тип базы данных", max_length=20, choices=DATABASE_TYPES, default="PostgreSQL")
-    created_user = models.ForeignKey(to="db_statistics.DBUser", verbose_name="Создатель, подключения", db_comment="Создатель, подключения", related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
+    created_user = models.ForeignKey(to="db_statistics.DBUser", verbose_name="Владелец, подключения", db_comment="Владелец, подключения", related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         db_table = "db_connection"
