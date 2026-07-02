@@ -3,6 +3,7 @@ import hashlib
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -128,7 +129,7 @@ class DBAudit(models.Model):
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
     action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=32, choices=ACTION_TYPES)
     info = models.TextField(verbose_name="Информация", db_comment="Информация")
-    created = models.DateTimeField(verbose_name="Дата действия", db_comment="Дата действия")
+    created = models.DateTimeField(verbose_name="Дата создания", db_comment="Дата создания")
 
     def __str__(self):
         return f"{self.username} - {self.action_type}"
@@ -139,3 +140,33 @@ class DBAudit(models.Model):
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
         ordering = ("-created",)
+
+
+class DBNotificationSetting(DateStamp, Active):
+    """Настройки уведомлений"""
+    user = models.ManyToManyField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", blank=True)
+    connection = models.ForeignKey(to="db_statistics.DBConnection", verbose_name="Подключение", db_comment="Подключение", related_name="connection_db_notification_setting", on_delete=models.CASCADE)
+    interval_update = models.PositiveIntegerField(verbose_name="Интервал обновления информации (сек.)", db_comment="Интервал обновления информации (мин.)", default=10, validators=[MinValueValidator(5), MaxValueValidator(1440)])
+
+    segment_monitor = models.BooleanField(verbose_name="Мониторинг сегмента", db_comment="Мониторинг сегмента", default=False)
+    temp_tables_monitor = models.BooleanField(verbose_name="Мониторинг временных таблиц", db_comment="Мониторинг временных таблиц", default=False)
+
+    query_monitor = models.BooleanField(verbose_name="Мониторинг запроса", db_comment="Мониторинг запроса", default=False)
+    query_threshold = models.PositiveIntegerField(verbose_name="Порог запроса (сек.)", db_comment="Порог запроса (сек.)", validators=[MinValueValidator(10), MaxValueValidator(86400)], null=True, blank=True)
+
+    lock_monitor = models.BooleanField(verbose_name="Мониторинг блокировки", db_comment="Мониторинг блокировки", default=False)
+    lock_threshold = models.PositiveIntegerField(verbose_name="Порог блокировки (сек.)", db_comment="Порог запроса (сек.)", validators=[MinValueValidator(10), MaxValueValidator(86400)], null=True, blank=True)
+
+    transaction_monitor = models.BooleanField(verbose_name="Мониторинг транзакции ", db_comment="Мониторинг транзакции", default=False)
+    transactions_threshold = models.PositiveIntegerField(verbose_name="Порог транзакции (сек.)", db_comment="Порог запроса (сек.)", validators=[MinValueValidator(10), MaxValueValidator(86400)], null=True, blank=True)
+
+    def __str__(self):
+        return self.connection.database
+
+    class Meta:
+        db_table = "db_notification_setting"
+        db_table_comment = "Настройки уведомлений"
+        verbose_name = "Настройки уведомлений"
+        verbose_name_plural = "Настройки уведомлений"
+        ordering = ("-created",)
+        unique_together = ("connection",)

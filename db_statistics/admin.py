@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBUser, DBNotificationSetting
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -61,3 +61,20 @@ class DBAuditAdmin(admin.ModelAdmin):
     @admin.display(description="Информация")
     def short_info(self, obj):
         return obj.info[:120] + ("…" if len(obj.info) > 120 else "")
+
+
+@admin.register(DBNotificationSetting)
+class DBNotificationSettingAdmin(BaseAdmin):
+    """Настройки уведомлений"""
+
+    list_display = ("connection", "segment_monitor", "temp_tables_monitor", "query_monitor", "lock_monitor", "transaction_monitor", "users_count", "is_active", "created", "updated")
+    list_filter = ("is_active", )
+    list_editable = ("is_active", "segment_monitor", "temp_tables_monitor", "query_monitor", "lock_monitor", "transaction_monitor",)
+    search_fields = ("connection",)
+    search_help_text = "Поиск по: базе данных"
+    fields = ("connection", "interval_update", "segment_monitor", "temp_tables_monitor", "query_monitor", "query_threshold", "lock_monitor", "lock_threshold", "transaction_monitor", "transactions_threshold", "is_active", "created", "updated")
+    filter_horizontal = ("user",)
+
+    @admin.display(description="Количество пользователей")
+    def users_count(self, obj):
+        return obj.dbuser_set.count()
