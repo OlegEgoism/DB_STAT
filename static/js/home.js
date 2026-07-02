@@ -2532,19 +2532,23 @@
         const database = document.getElementById('connectionTooltipDatabase');
         const host = document.getElementById('connectionTooltipHost');
         const port = document.getElementById('connectionTooltipPort');
+        const owner = document.getElementById('connectionTooltipOwner');
         const select = document.getElementById('connectionSelect');
         const databaseValue = conn?.database || '—';
         const hostValue = conn?.host || '—';
         const portValue = conn?.port || '—';
+        const ownerValue = conn?.created_by || '—';
 
         if (database) database.textContent = databaseValue;
         if (host) host.textContent = hostValue;
         if (port) port.textContent = portValue;
+        if (owner) owner.textContent = ownerValue;
         if (select) {
             select.title = conn
                 ? `База данных: ${databaseValue}
 Хост: ${hostValue}
-Порт: ${portValue}`
+Порт: ${portValue}
+Владелец подключения: ${ownerValue}`
                 : 'Информация о подключении недоступна';
         }
     }
