@@ -142,11 +142,11 @@ class DBAudit(models.Model):
         ordering = ("-created",)
 
 
-class DBNotificationSetting(DateStamp, Active):
-    """Настройки уведомлений"""
+class DBNotification(DateStamp, Active):
+    """Уведомления"""
     user = models.ManyToManyField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", blank=True)
-    connection = models.ForeignKey(to="db_statistics.DBConnection", verbose_name="Подключение", db_comment="Подключение", related_name="connection_db_notification_setting", on_delete=models.CASCADE)
-    interval_update = models.PositiveIntegerField(verbose_name="Интервал обновления информации (сек.)", db_comment="Интервал обновления информации (мин.)", default=10, validators=[MinValueValidator(5), MaxValueValidator(1440)])
+    connection = models.ForeignKey(to="db_statistics.DBConnection", verbose_name="Подключение", db_comment="Подключение", related_name="connection_db_notification", on_delete=models.CASCADE)
+    interval_update = models.PositiveIntegerField(verbose_name="Интервал обновления информации (мин.)", db_comment="Интервал обновления информации (мин.)", default=10, validators=[MinValueValidator(5), MaxValueValidator(1440)])
 
     segment_monitor = models.BooleanField(verbose_name="Мониторинг сегмента", db_comment="Мониторинг сегмента", default=False)
     temp_tables_monitor = models.BooleanField(verbose_name="Мониторинг временных таблиц", db_comment="Мониторинг временных таблиц", default=False)
@@ -164,9 +164,9 @@ class DBNotificationSetting(DateStamp, Active):
         return self.connection.database
 
     class Meta:
-        db_table = "db_notification_setting"
-        db_table_comment = "Настройки уведомлений"
-        verbose_name = "Настройки уведомлений"
-        verbose_name_plural = "Настройки уведомлений"
+        db_table = "db_notification"
+        db_table_comment = "Уведомления"
+        verbose_name = "Уведомления"
+        verbose_name_plural = "Уведомления"
         ordering = ("-created",)
         unique_together = ("connection",)
