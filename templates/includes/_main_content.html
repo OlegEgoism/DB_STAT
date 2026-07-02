@@ -533,9 +533,12 @@
                     </div>
                     <div class="database-table-toolbar">
                         <div class="search-box search-box-wide">
-                            <i class="fas fa-table"></i>
+                            <button class="search-box-icon-btn" id="distributionTableListToggle" type="button" aria-label="Показать список таблиц" aria-expanded="false" aria-controls="distributionTableDropdown">
+                                <i class="fas fa-table"></i>
+                            </button>
                             <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="Выберите сохранённое подключение для загрузки таблиц" autocomplete="off">
                             <datalist id="distributionTableOptions"></datalist>
+                            <div class="distribution-table-dropdown d-none" id="distributionTableDropdown" role="listbox" aria-label="Список таблиц для анализа распределения"></div>
                         </div>
                         <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
                             <i class="fas fa-sync-alt"></i> Обновить

@@ -1981,6 +1981,47 @@
         return `${table.schema_name}.${table.table_name}`;
     }
 
+    function getFilteredDistributionTables(query = '') {
+        const normalizedQuery = String(query || '').trim().toLowerCase();
+        if (!normalizedQuery) return distributionTables;
+        return distributionTables.filter(table => distributionTableOptionLabel(table).toLowerCase().includes(normalizedQuery));
+    }
+
+    function setDistributionTableDropdownVisible(isVisible) {
+        const dropdown = document.getElementById('distributionTableDropdown');
+        const toggle = document.getElementById('distributionTableListToggle');
+        if (dropdown) dropdown.classList.toggle('d-none', !isVisible);
+        if (toggle) toggle.setAttribute('aria-expanded', String(isVisible));
+    }
+
+    function renderDistributionTableDropdown(tables = distributionTables) {
+        const dropdown = document.getElementById('distributionTableDropdown');
+        if (!dropdown) return;
+        if (!tables.length) {
+            dropdown.innerHTML = '<div class="distribution-table-dropdown-empty">Таблицы не найдены</div>';
+            return;
+        }
+        dropdown.innerHTML = tables.map(table => {
+            const label = distributionTableOptionLabel(table);
+            return `
+                <button class="distribution-table-dropdown-item" type="button" role="option" data-distribution-table="${escapeHtml(label)}">
+                    <span>${escapeHtml(label)}</span>
+                    <small>${escapeHtml(table.object_type || 'Таблица')}</small>
+                </button>
+            `;
+        }).join('');
+    }
+
+    function showDistributionTableDropdown() {
+        const select = document.getElementById('distributionTableSelect');
+        renderDistributionTableDropdown(getFilteredDistributionTables(select?.value || ''));
+        setDistributionTableDropdownVisible(true);
+    }
+
+    function hideDistributionTableDropdown() {
+        setDistributionTableDropdownVisible(false);
+    }
+
     function refreshDistributionForSelectedTable() {
         const select = document.getElementById('distributionTableSelect');
         const selectedValue = (select?.value || '').trim();
@@ -2016,6 +2057,8 @@
             select.value = '';
             select.placeholder = 'Таблицы не найдены';
             options.innerHTML = '';
+            renderDistributionTableDropdown([]);
+            hideDistributionTableDropdown();
             renderDistributionWarning('Таблицы не найдены');
             return;
         }
@@ -2023,6 +2066,7 @@
             const label = distributionTableOptionLabel(table);
             return `<option value="${escapeHtml(label)}" label="${escapeHtml(table.object_type || 'Таблица')}"></option>`;
         }).join('');
+        renderDistributionTableDropdown(tables);
         select.placeholder = 'Начните вводить схему или название таблицы';
         if (!tables.some(table => distributionTableOptionLabel(table) === select.value)) {
             select.value = distributionTableOptionLabel(tables[0]);
@@ -2040,6 +2084,8 @@
                 select.placeholder = 'Выберите сохранённое подключение для загрузки таблиц';
             }
             if (options) options.innerHTML = '';
+            renderDistributionTableDropdown([]);
+            hideDistributionTableDropdown();
             renderDistributionWarning('Выберите сохранённое подключение для загрузки списка таблиц');
             return;
         }
@@ -2048,6 +2094,8 @@
             select.placeholder = 'Загрузка таблиц...';
         }
         if (options) options.innerHTML = '';
+        renderDistributionTableDropdown([]);
+        hideDistributionTableDropdown();
         connectionRequest(distributionTablesApiUrl, {id: conn.id})
             .then(data => {
                 distributionTables = data.tables || [];
@@ -2060,16 +2108,54 @@
                     select.placeholder = 'Не удалось загрузить таблицы';
                 }
                 if (options) options.innerHTML = '';
+                renderDistributionTableDropdown([]);
+                hideDistributionTableDropdown();
                 renderDistributionWarning(error.message || 'Не удалось загрузить список таблиц');
             });
     }
 
     function initDistributionControls() {
-        document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
-        document.getElementById('distributionTableSelect')?.addEventListener('keydown', function(event) {
+        const select = document.getElementById('distributionTableSelect');
+        const toggle = document.getElementById('distributionTableListToggle');
+        const dropdown = document.getElementById('distributionTableDropdown');
+
+        select?.addEventListener('change', refreshDistributionForSelectedTable);
+        select?.addEventListener('input', function () {
+            if (dropdown && !dropdown.classList.contains('d-none')) {
+                renderDistributionTableDropdown(getFilteredDistributionTables(this.value));
+            }
+        });
+        select?.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 refreshDistributionForSelectedTable();
+                hideDistributionTableDropdown();
+            }
+            if (event.key === 'Escape') {
+                hideDistributionTableDropdown();
+            }
+        });
+        toggle?.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const isOpen = dropdown && !dropdown.classList.contains('d-none');
+            if (isOpen) {
+                hideDistributionTableDropdown();
+            } else {
+                showDistributionTableDropdown();
+                select?.focus();
+            }
+        });
+        dropdown?.addEventListener('click', function (event) {
+            const item = event.target.closest('[data-distribution-table]');
+            if (!item || !select) return;
+            select.value = item.dataset.distributionTable || '';
+            hideDistributionTableDropdown();
+            refreshDistributionForSelectedTable();
+        });
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest('.search-box-wide')) {
+                hideDistributionTableDropdown();
             }
         });
         document.querySelectorAll('[data-distribution-sort]').forEach(button => {
