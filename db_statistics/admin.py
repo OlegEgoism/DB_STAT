@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser, DBNotification
+from db_statistics.models import DBAudit, DBConnection, DBNotification, DBUser
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -67,13 +67,32 @@ class DBAuditAdmin(admin.ModelAdmin):
 class DBNotificationAdmin(BaseAdmin):
     """Настройки уведомлений"""
 
-    list_display = ("connection", "users_count", "is_active", "created", "updated")
+    list_display = ("connection", "users_count", "interval_update", "last_checked", "last_sent", "is_active", "created", "updated")
     list_filter = ("is_active",)
     list_editable = ("is_active",)
-    search_fields = ("connection",)
+    search_fields = ("connection__name", "connection__database", "connection__host")
     search_help_text = "Поиск по: базе данных"
-    fields = ("connection", "interval_update", "segment_monitor", "temp_tables_monitor", "query_monitor", "query_threshold", "lock_monitor", "lock_threshold", "transaction_monitor", "transactions_threshold", "is_active", "user", "created", "updated")
+    fields = (
+        "connection",
+        "interval_update",
+        "segment_monitor",
+        "temp_tables_monitor",
+        "query_monitor",
+        "query_threshold",
+        "lock_monitor",
+        "lock_threshold",
+        "transaction_monitor",
+        "transactions_threshold",
+        "is_active",
+        "user",
+        "last_checked",
+        "last_sent",
+        "last_error",
+        "created",
+        "updated",
+    )
     filter_horizontal = ("user",)
+    readonly_fields = ("created", "updated", "last_checked", "last_sent", "last_error")
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):

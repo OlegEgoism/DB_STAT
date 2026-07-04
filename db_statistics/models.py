@@ -3,7 +3,7 @@ import hashlib
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -31,7 +31,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :]
     try:
         return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
     except InvalidToken:
@@ -144,9 +144,13 @@ class DBAudit(models.Model):
 
 class DBNotification(DateStamp, Active):
     """Уведомления"""
+
     user = models.ManyToManyField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", blank=True)
     connection = models.ForeignKey(to="db_statistics.DBConnection", verbose_name="Подключение", db_comment="Подключение", related_name="connection_db_notification", on_delete=models.CASCADE)
     interval_update = models.PositiveIntegerField(verbose_name="Интервал обновления информации (мин.)", db_comment="Интервал обновления информации (мин.)", default=10, validators=[MinValueValidator(5), MaxValueValidator(1440)])
+    last_checked = models.DateTimeField(verbose_name="Дата последней проверки", db_comment="Дата последней проверки", null=True, blank=True)
+    last_sent = models.DateTimeField(verbose_name="Дата последней отправки", db_comment="Дата последней отправки", null=True, blank=True)
+    last_error = models.TextField(verbose_name="Последняя ошибка отправки", db_comment="Последняя ошибка отправки", blank=True, default="")
 
     segment_monitor = models.BooleanField(verbose_name="Мониторинг сегмента", db_comment="Мониторинг сегмента", default=False)
     temp_tables_monitor = models.BooleanField(verbose_name="Мониторинг временных таблиц", db_comment="Мониторинг временных таблиц", default=False)
@@ -170,6 +174,3 @@ class DBNotification(DateStamp, Active):
         verbose_name_plural = "Уведомления"
         ordering = ("-created",)
         unique_together = ("connection",)
-
-
-

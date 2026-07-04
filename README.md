@@ -77,3 +77,53 @@ python -m ruff check .
 python -m ruff check . --fix
 python -m ruff format .
 ```
+## Email-уведомления DBNotification
+
+Модель `DBNotification` задаёт, какие проверки нужно выполнять для подключения и кому отправлять письмо:
+
+- `user` — получатели уведомления;
+- `interval_update` — минимальный интервал между проверками в минутах;
+- `segment_monitor` — проверка сегментов Greenplum не в `up` или не в preferred role;
+- `temp_tables_monitor` — наличие временных таблиц;
+- `query_monitor` + `query_threshold` — активные запросы дольше порога в секундах;
+- `lock_monitor` + `lock_threshold` — блокировки дольше порога в секундах;
+- `transaction_monitor` + `transactions_threshold` — `idle in transaction` дольше порога в секундах.
+
+Для отправки почты заполните SMTP-параметры в `.env`:
+
+```.env
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=monitor@example.com
+EMAIL_HOST_PASSWORD=secret
+EMAIL_USE_TLS=True
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+DEFAULT_FROM_EMAIL=monitor@example.com
+```
+
+Локально можно проверять письма через консольный backend:
+
+```.env
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+DEFAULT_FROM_EMAIL=db-stat@localhost
+```
+
+Запуск проверки уведомлений:
+
+```bash
+python manage.py send_db_notifications
+```
+
+Принудительная проверка без ожидания `interval_update`:
+
+```bash
+python manage.py send_db_notifications --force
+```
+
+Для регулярной отправки добавьте команду в cron/systemd timer/Celery Beat. Например, cron каждую минуту:
+
+```cron
+* * * * * cd /path/to/DB-STAT && /path/to/venv/bin/python manage.py send_db_notifications >> /var/log/db-stat-notifications.log 2>&1
+```
+
+Команда сама пропускает настройки, у которых ещё не прошёл `interval_update`, и сохраняет в админке `last_checked`, `last_sent`, `last_error`.
