@@ -35,6 +35,7 @@
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
+    let auditState = {page: 1, pageSize: 100, totalCount: 0};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -2278,11 +2279,24 @@
         updateTempTablePaginationButtons();
     }
 
+    function updateAuditPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(auditState.totalCount / auditState.pageSize), 1);
+        const page = Math.min(auditState.page, totalPages);
+        const info = document.getElementById('auditPaginationInfo');
+        const prev = document.getElementById('auditPrevPageBtn');
+        const next = document.getElementById('auditNextPageBtn');
+        if (info) info.textContent = `Страница ${page} из ${totalPages}`;
+        if (prev) prev.disabled = page <= 1;
+        if (next) next.disabled = page >= totalPages;
+    }
+
     function renderAuditWarning(message) {
         const tbody = document.getElementById('auditEventsTableBody');
         const count = document.getElementById('auditEventsCount');
         if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (count) count.textContent = 'Нет данных';
+        auditState.totalCount = 0;
+        updateAuditPaginationButtons();
     }
 
     function populateAuditActionFilter(actions) {
@@ -2303,12 +2317,15 @@
     function renderAuditEvents(data) {
         populateAuditActionFilter(data.actions || []);
         const events = data.events || [];
+        auditState.page = data.page || auditState.page;
+        auditState.pageSize = data.page_size || auditState.pageSize;
+        auditState.totalCount = data.total_count || 0;
         const tbody = document.getElementById('auditEventsTableBody');
         const count = document.getElementById('auditEventsCount');
         if (count) {
-            const limitText = data.total_count > data.limit ? `, показано ${data.limit}` : '';
-            count.textContent = `${data.total_count || events.length} событий${limitText}`;
+            count.textContent = `${auditState.totalCount} событий`;
         }
+        updateAuditPaginationButtons();
         if (!tbody) return;
         if (!events.length) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-muted">События аудита не найдены</td></tr>';
@@ -2327,7 +2344,9 @@
     function refreshAuditEvents() {
         const requestId = ++auditRequestId;
         const actionType = document.getElementById('auditActionFilter')?.value || '';
-        const url = `${auditEventsApiUrl}${actionType ? `?action_type=${encodeURIComponent(actionType)}` : ''}`;
+        const params = new URLSearchParams({page: String(auditState.page)});
+        if (actionType) params.set('action_type', actionType);
+        const url = `${auditEventsApiUrl}?${params.toString()}`;
         renderAuditWarning('Загрузка аудита...');
         fetch(url)
             .then(async response => {
@@ -2346,8 +2365,25 @@
     }
 
     function initAuditControls() {
-        document.getElementById('auditActionFilter')?.addEventListener('change', refreshAuditEvents);
+        document.getElementById('auditActionFilter')?.addEventListener('change', function () {
+            auditState.page = 1;
+            refreshAuditEvents();
+        });
         document.getElementById('auditRefreshBtn')?.addEventListener('click', refreshAuditEvents);
+        document.getElementById('auditPrevPageBtn')?.addEventListener('click', function () {
+            if (auditState.page > 1) {
+                auditState.page -= 1;
+                refreshAuditEvents();
+            }
+        });
+        document.getElementById('auditNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(auditState.totalCount / auditState.pageSize), 1);
+            if (auditState.page < totalPages) {
+                auditState.page += 1;
+                refreshAuditEvents();
+            }
+        });
+        updateAuditPaginationButtons();
     }
 
     function connectionRequest(url, payload) {
