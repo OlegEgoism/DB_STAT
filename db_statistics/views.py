@@ -40,6 +40,10 @@ def _connection_delete_permission_error():
     return JsonResponse({"ok": False, "message": "Удалять подключение может только его создатель"}, status=403)
 
 
+def _connection_edit_permission_error():
+    return JsonResponse({"ok": False, "message": "Редактировать подключение может только его создатель"}, status=403)
+
+
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
     if db_user:
         return db_user.login
@@ -48,6 +52,10 @@ def _audit_username(db_user=None, fallback="Неизвестный пользо�
 
 def _write_audit(action_type, info, db_user=None, username=None):
     DBAudit.objects.create(username=username or _audit_username(db_user), action_type=action_type, info=info, created=timezone.now())
+
+
+def _audit_action_label(action_type):
+    return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
 
 
 def _connection_audit_info(action, connection, *, result=None, error=None):
@@ -120,6 +128,38 @@ def logout(request):
     return redirect("login")
 
 
+@require_http_methods(["GET"])
+def audit_events(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+
+    action_type = (request.GET.get("action_type") or "").strip()
+    available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
+
+    audit_queryset = DBAudit.objects.filter(username=db_user.login)
+    if action_type:
+        valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
+        if action_type not in valid_action_types:
+            return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
+        audit_queryset = audit_queryset.filter(action_type=action_type)
+
+    page, page_size, offset = _pagination_params(request.GET, default_page_size=100, max_page_size=100)
+    total_count = audit_queryset.count()
+    events = [
+        {
+            "id": audit.pk,
+            "username": audit.username,
+            "action_type": audit.action_type,
+            "action_label": _audit_action_label(audit.action_type),
+            "info": audit.info,
+            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        for audit in audit_queryset[offset : offset + page_size]
+    ]
+    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "page": page, "page_size": page_size, "total_count": total_count})
+
+
 def _connection_to_dict(connection):
     return {
         "id": str(connection.pk),
@@ -140,6 +180,30 @@ def _read_json_body(request):
         return json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
         return {}
+
+
+def _positive_int(value, default, *, min_value=1, max_value=None):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    parsed = max(parsed, min_value)
+    if max_value is not None:
+        parsed = min(parsed, max_value)
+    return parsed
+
+
+def _pagination_params(source, *, default_page_size=100, max_page_size=10000):
+    page_size = _positive_int(source.get("page_size"), default_page_size, max_value=max_page_size)
+    page = _positive_int(source.get("page"), 1)
+    return page, page_size, (page - 1) * page_size
+
+
+def _parse_port(value):
+    port = _positive_int(value, 0, min_value=0, max_value=65535)
+    if not port:
+        raise ValueError("Порт должен быть числом от 1 до 65535")
+    return port
 
 
 def _parse_pg_size_to_bytes(value):
@@ -189,6 +253,50 @@ def _test_connection_params(host, port, database, username, password, ssl):
             cursor.fetchone()
 
 
+def _open_database_connection(db_connection, ssl=True):
+    return psycopg2.connect(
+        **_connection_kwargs(
+            db_connection.host,
+            db_connection.port,
+            db_connection.database,
+            db_connection.username,
+            db_connection.get_password(),
+            ssl,
+        )
+    )
+
+
+def _fetch_db_rows(db_connection, query, params=None):
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or [])
+            return cursor.fetchall()
+
+
+def _fetch_db_row(db_connection, query, params=None):
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or [])
+            return cursor.fetchone()
+
+
+def _fetch_db_resultsets(db_connection, *queries):
+    resultsets = []
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            for query, params in queries:
+                cursor.execute(query, params or [])
+                resultsets.append(cursor.fetchall())
+    return resultsets
+
+
+def _require_payload_connection(request, payload):
+    connection_id = payload.get("id")
+    if not connection_id:
+        return None, JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+    return _get_connection_for_request(request, connection_id), None
+
+
 @require_http_methods(["GET", "POST"])
 def connections(request):
     if request.method == "GET":
@@ -211,17 +319,27 @@ def connections(request):
 
     if payload.get("id"):
         connection = _get_connection_for_request(request, payload["id"])
+        if not db_user or connection.created_user_id != db_user.pk:
+            return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
-        connection.port = int(payload["port"])
+        try:
+            connection.port = _parse_port(payload["port"])
+        except ValueError as exc:
+            return JsonResponse({"ok": False, "message": str(exc)}, status=400)
         connection.database = payload["database"].strip()
         for field, value in defaults.items():
             setattr(connection, field, value)
         connection.save()
-        _write_audit("connection_update", _connection_audit_info("Изменение подключения", connection), db_user=_current_db_user(request))
+        _write_audit("connection_update", _connection_audit_info("Изменение подключения", connection), db_user=db_user)
         return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
 
-    connection, created = DBConnection.objects.update_or_create(name=payload["name"].strip(), host=payload["host"].strip(), port=int(payload["port"]), database=payload["database"].strip(), defaults={**defaults, "password": payload.get("password", "")})
+    try:
+        port = _parse_port(payload["port"])
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+
+    connection, created = DBConnection.objects.update_or_create(name=payload["name"].strip(), host=payload["host"].strip(), port=port, database=payload["database"].strip(), username=defaults["username"], defaults={**defaults, "password": payload.get("password", "")})
     if db_user:
         if created or connection.created_user_id is None:
             connection.created_user = db_user
@@ -242,7 +360,11 @@ def test_connection(request):
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
-            params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
+            try:
+                port = _parse_port(payload["port"])
+            except ValueError as exc:
+                return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+            params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
             name = payload["name"].strip()
         else:
             params = {"host": connection.host, "port": connection.port, "database": connection.database, "username": connection.username, "password": connection.get_password(), "ssl": payload.get("ssl", True)}
@@ -251,7 +373,11 @@ def test_connection(request):
         required_fields = ["name", "host", "port", "database", "user"]
         if any(not payload.get(field) for field in required_fields):
             return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
-        params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
+        try:
+            port = _parse_port(payload["port"])
+        except ValueError as exc:
+            return JsonResponse({"ok": False, "message": str(exc)}, status=400)
+        params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
         name = payload["name"].strip()
 
     audit_user = _current_db_user(request)
@@ -299,11 +425,9 @@ def delete_connection(request):
 @require_http_methods(["POST"])
 def database_overview(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     overview_query = """
         WITH relation_sizes AS (
             SELECT
@@ -359,10 +483,7 @@ def database_overview(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(overview_query, [db_connection.database, db_connection.database])
-                row = cursor.fetchone()
+        row = _fetch_db_row(db_connection, overview_query, [db_connection.database, db_connection.database])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
 
@@ -418,11 +539,9 @@ def database_overview(request):
 @require_http_methods(["POST"])
 def active_queries(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     active_queries_query = """
         WITH locked_relations AS (
             SELECT
@@ -455,10 +574,7 @@ def active_queries(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(active_queries_query)
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, active_queries_query)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить активные запросы: {exc}"}, status=400)
 
@@ -474,11 +590,9 @@ def active_queries(request):
 @require_http_methods(["POST"])
 def blocking_locks(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     blocking_locks_query = """
         SELECT
             blocked.pid AS blocked_pid,
@@ -511,10 +625,7 @@ def blocking_locks(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(blocking_locks_query)
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, blocking_locks_query)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить блокировки: {exc}"}, status=400)
 
@@ -540,11 +651,9 @@ def blocking_locks(request):
 @require_http_methods(["POST"])
 def idle_transactions(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     idle_transactions_query = """
         SELECT
             pid,
@@ -561,10 +670,7 @@ def idle_transactions(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(idle_transactions_query)
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, idle_transactions_query)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить транзакции: {exc}"}, status=400)
 
@@ -590,11 +696,9 @@ def idle_transactions(request):
 @require_http_methods(["POST"])
 def memory_overview(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     memory_query = """
         WITH relation_sizes AS (
             SELECT
@@ -631,10 +735,7 @@ def memory_overview(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(memory_query, [db_connection.database, db_connection.database])
-                row = cursor.fetchone()
+        row = _fetch_db_row(db_connection, memory_query, [db_connection.database, db_connection.database])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить параметры памяти: {exc}"}, status=400)
 
@@ -690,14 +791,10 @@ def _role_flag(value):
 
 def _database_roles_list(request, *, can_login):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = int(payload.get("page_size") or (100 if can_login else 10000))
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload, default_page_size=100 if can_login else 10000)
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "name"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
@@ -759,10 +856,7 @@ def _database_roles_list(request, *, can_login):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(roles_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, roles_query, [*params, page_size, offset])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить список {role_type_message}: {exc}"}, status=400)
 
@@ -798,14 +892,10 @@ def database_groups_list(request):
 @require_http_methods(["POST"])
 def maintenance_stats(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload)
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "dead_rows"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
@@ -857,10 +947,7 @@ def maintenance_stats(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(maintenance_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, maintenance_query, [*params, page_size, offset])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить статистику обслуживания: {exc}"}, status=400)
 
@@ -875,14 +962,10 @@ def maintenance_stats(request):
 @require_http_methods(["POST"])
 def database_schema_sizes(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload)
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
@@ -892,8 +975,9 @@ def database_schema_sizes(request):
     where_sql = ""
     params = []
     if search:
-        where_sql = "AND (namespace.nspname ILIKE %s OR owner.rolname ILIKE %s)"
-        params.extend([f"%{search}%", f"%{search}%"])
+        search_pattern = f"%{_escape_like_pattern(search)}%"
+        where_sql = "AND (namespace.nspname ILIKE %s ESCAPE '!' OR owner.rolname ILIKE %s ESCAPE '!')"
+        params.extend([search_pattern, search_pattern])
 
     schema_sizes_query = f"""
         WITH schema_sizes AS (
@@ -950,12 +1034,11 @@ def database_schema_sizes(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(schema_sizes_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
-                cursor.execute(schema_distribution_query, params)
-                distribution_rows = cursor.fetchall()
+        rows, distribution_rows = _fetch_db_resultsets(
+            db_connection,
+            (schema_sizes_query, [*params, page_size, offset]),
+            (schema_distribution_query, params),
+        )
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
@@ -968,14 +1051,10 @@ def database_schema_sizes(request):
 @require_http_methods(["POST"])
 def database_table_sizes(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload)
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
@@ -1059,12 +1138,11 @@ def database_table_sizes(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(table_sizes_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
-                cursor.execute(table_distribution_query, params)
-                distribution_rows = cursor.fetchall()
+        rows, distribution_rows = _fetch_db_resultsets(
+            db_connection,
+            (table_sizes_query, [*params, page_size, offset]),
+            (table_distribution_query, params),
+        )
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"}, status=400)
 
@@ -1077,14 +1155,10 @@ def database_table_sizes(request):
 @require_http_methods(["POST"])
 def database_views_list(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload)
     search = (payload.get("search") or "").strip()
     view_type = payload.get("view_type") or ""
     sort = payload.get("sort") or "schema_name"
@@ -1155,10 +1229,7 @@ def database_views_list(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(views_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
+        rows = _fetch_db_rows(db_connection, views_query, [*params, page_size, offset])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить представления: {exc}"}, status=400)
 
@@ -1174,11 +1245,9 @@ def database_views_list(request):
 @require_http_methods(["POST"])
 def distribution_tables(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     tables_query = """
         SELECT
             namespace.nspname AS schema_name,
@@ -1198,10 +1267,8 @@ def distribution_tables(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(tables_query)
-                tables = [{"schema_name": row[0], "table_name": row[1], "object_type": row[2]} for row in cursor.fetchall()]
+        rows = _fetch_db_rows(db_connection, tables_query)
+        tables = [{"schema_name": row[0], "table_name": row[1], "object_type": row[2]} for row in rows]
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить список таблиц: {exc}"}, status=400)
 
@@ -1238,7 +1305,7 @@ def distribution_info(request):
     """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
+        with _open_database_connection(db_connection) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(validate_query, [schema_name, table_name])
                 if not cursor.fetchone():
@@ -1266,14 +1333,10 @@ def distribution_info(request):
 @require_http_methods(["POST"])
 def database_temp_table_sizes(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset = _pagination_params(payload)
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
@@ -1355,12 +1418,11 @@ def database_temp_table_sizes(request):
     """
 
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
-            with connection.cursor() as cursor:
-                cursor.execute(temp_table_sizes_query, [*params, page_size, offset])
-                rows = cursor.fetchall()
-                cursor.execute(temp_table_distribution_query, params)
-                distribution_rows = cursor.fetchall()
+        rows, distribution_rows = _fetch_db_resultsets(
+            db_connection,
+            (temp_table_sizes_query, [*params, page_size, offset]),
+            (temp_table_distribution_query, params),
+        )
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
 
@@ -1373,11 +1435,9 @@ def database_temp_table_sizes(request):
 @require_http_methods(["POST"])
 def segments_info(request):
     payload = _read_json_body(request)
-    connection_id = payload.get("id")
-    if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
-
-    db_connection = _get_connection_for_request(request, connection_id)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
     config_query = """
         SELECT
             content AS segment,
@@ -1437,7 +1497,7 @@ def segments_info(request):
         WHERE content >= 0;
     """
     try:
-        with psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password())) as connection:
+        with _open_database_connection(db_connection) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(config_query)
                 segments = [{"segment": row[0], "role": row[1], "preferred_role": row[2], "mode": row[3], "status": row[4], "port": row[5], "hostname": row[6], "address": row[7]} for row in cursor.fetchall()]

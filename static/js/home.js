@@ -33,6 +33,9 @@
     let usersRequestId = 0;
     let groupsState = {sort: 'name', direction: 'asc', search: ''};
     let groupsRequestId = 0;
+    let auditRequestId = 0;
+    let auditActionsLoaded = false;
+    let auditState = {page: 1, pageSize: 100, totalCount: 0};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -55,6 +58,7 @@
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
+    const auditEventsApiUrl = '/audit/events/';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -71,7 +75,8 @@
         'memory': 'Память <small>Параметры памяти</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
-        'maintenance': 'Обслуживание <small>Очистка / анализ</small>'
+        'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
+        'audit': 'Аудит <small>Действия пользователя</small>'
     };
 
 
@@ -82,6 +87,7 @@
     }
 
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (pageId === 'home' || pageId === 'audit') return true;
         if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
@@ -113,8 +119,19 @@
         return currentDbUser?.can_manage_connections === true;
     }
 
-    function canDeleteConnection(conn) {
+    function canEditConnection(conn) {
         return canManageConnections() && conn?.created_by_id != null && String(conn.created_by_id) === String(currentDbUser?.id);
+    }
+
+    function canDeleteConnection(conn) {
+        return canEditConnection(conn);
+    }
+
+    function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const editButton = document.getElementById('connectionEditBtn');
+        if (editButton) {
+            editButton.classList.toggle('d-none', !canEditConnection(conn));
+        }
     }
 
     function escapeHtml(value) {
@@ -149,6 +166,7 @@
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
+        initAuditControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -2272,6 +2290,113 @@
         updateTempTablePaginationButtons();
     }
 
+    function updateAuditPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(auditState.totalCount / auditState.pageSize), 1);
+        const page = Math.min(auditState.page, totalPages);
+        const info = document.getElementById('auditPaginationInfo');
+        const prev = document.getElementById('auditPrevPageBtn');
+        const next = document.getElementById('auditNextPageBtn');
+        if (info) info.textContent = `Страница ${page} из ${totalPages}`;
+        if (prev) prev.disabled = page <= 1;
+        if (next) next.disabled = page >= totalPages;
+    }
+
+    function renderAuditWarning(message) {
+        const tbody = document.getElementById('auditEventsTableBody');
+        const count = document.getElementById('auditEventsCount');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (count) count.textContent = 'Нет данных';
+        auditState.totalCount = 0;
+        updateAuditPaginationButtons();
+    }
+
+    function populateAuditActionFilter(actions) {
+        const select = document.getElementById('auditActionFilter');
+        if (!select || auditActionsLoaded) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Все действия</option>';
+        (actions || []).forEach(action => {
+            const option = document.createElement('option');
+            option.value = action.value;
+            option.textContent = action.label;
+            select.appendChild(option);
+        });
+        select.value = currentValue;
+        auditActionsLoaded = true;
+    }
+
+    function renderAuditEvents(data) {
+        populateAuditActionFilter(data.actions || []);
+        const events = data.events || [];
+        auditState.page = data.page || auditState.page;
+        auditState.pageSize = data.page_size || auditState.pageSize;
+        auditState.totalCount = data.total_count || 0;
+        const tbody = document.getElementById('auditEventsTableBody');
+        const count = document.getElementById('auditEventsCount');
+        if (count) {
+            count.textContent = `${events.length} из ${auditState.totalCount} записей`;
+        }
+        updateAuditPaginationButtons();
+        if (!tbody) return;
+        if (!events.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">События аудита не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = events.map(event => `
+            <tr>
+                <td class="audit-created">${escapeHtml(event.created)}</td>
+                <td><strong>${escapeHtml(event.username)}</strong></td>
+                <td><span class="audit-action-badge">${escapeHtml(event.action_label || event.action_type)}</span></td>
+                <td class="audit-info-cell">${escapeHtml(event.info)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshAuditEvents() {
+        const requestId = ++auditRequestId;
+        const actionType = document.getElementById('auditActionFilter')?.value || '';
+        const params = new URLSearchParams({page: String(auditState.page)});
+        if (actionType) params.set('action_type', actionType);
+        const url = `${auditEventsApiUrl}?${params.toString()}`;
+        renderAuditWarning('Загрузка аудита...');
+        fetch(url)
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) {
+                    throw new Error(data.message || 'Не удалось получить аудит');
+                }
+                return data;
+            })
+            .then(data => {
+                if (requestId === auditRequestId) renderAuditEvents(data);
+            })
+            .catch(error => {
+                if (requestId === auditRequestId) renderAuditWarning(error.message || 'Не удалось получить аудит');
+            });
+    }
+
+    function initAuditControls() {
+        document.getElementById('auditActionFilter')?.addEventListener('change', function () {
+            auditState.page = 1;
+            refreshAuditEvents();
+        });
+        document.getElementById('auditRefreshBtn')?.addEventListener('click', refreshAuditEvents);
+        document.getElementById('auditPrevPageBtn')?.addEventListener('click', function () {
+            if (auditState.page > 1) {
+                auditState.page -= 1;
+                refreshAuditEvents();
+            }
+        });
+        document.getElementById('auditNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(auditState.totalCount / auditState.pageSize), 1);
+            if (auditState.page < totalPages) {
+                auditState.page += 1;
+                refreshAuditEvents();
+            }
+        });
+        updateAuditPaginationButtons();
+    }
+
     function connectionRequest(url, payload) {
         return fetch(url, {
             method: 'POST',
@@ -2537,19 +2662,23 @@
         const database = document.getElementById('connectionTooltipDatabase');
         const host = document.getElementById('connectionTooltipHost');
         const port = document.getElementById('connectionTooltipPort');
+        const owner = document.getElementById('connectionTooltipOwner');
         const select = document.getElementById('connectionSelect');
         const databaseValue = conn?.database || '—';
         const hostValue = conn?.host || '—';
         const portValue = conn?.port || '—';
+        const ownerValue = conn?.created_by || '—';
 
         if (database) database.textContent = databaseValue;
         if (host) host.textContent = hostValue;
         if (port) port.textContent = portValue;
+        if (owner) owner.textContent = ownerValue;
         if (select) {
             select.title = conn
                 ? `База данных: ${databaseValue}
 Хост: ${hostValue}
-Порт: ${portValue}`
+Порт: ${portValue}
+Владелец: ${ownerValue}`
                 : 'Информация о подключении недоступна';
         }
     }
@@ -2564,6 +2693,7 @@
             select.appendChild(option);
             select.value = '';
             updateConnectionTooltip(null);
+            updateConnectionActionButtons(null);
             updateSidebarForConnection(null);
             persistActiveConnectionId(null);
             return;
@@ -2579,6 +2709,7 @@
             persistActiveConnectionId(activeConnectionId);
         }
         updateConnectionTooltip();
+        updateConnectionActionButtons();
         updateSidebarForConnection();
     }
 
@@ -2653,6 +2784,9 @@
             maintenanceStatsState.page = 1;
             refreshMaintenanceStatsForConnection(conn);
         }
+        if (pageId === 'audit') {
+            refreshAuditEvents();
+        }
     }
 
     function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -2694,6 +2828,7 @@
         persistActiveConnectionId(activeConnectionId);
         const conn = connections.find(c => String(c.id) === String(connId));
         updateConnectionTooltip(conn);
+        updateConnectionActionButtons(conn);
         if (conn) {
             updateSidebarForConnection(conn);
             activatePage(getDefaultPageForConnection(conn));
@@ -2726,13 +2861,14 @@
     }
 
     function editConnection() {
-        if (!canManageConnections()) {
-            showToast('⛔ Редактировать подключения может только Администратор');
-            return;
-        }
         const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
+            return;
+        }
+        if (!canEditConnection(conn)) {
+            showToast('⛔ Редактировать подключение может только его создатель');
+            updateConnectionActionButtons(conn);
             return;
         }
 

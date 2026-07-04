@@ -117,7 +117,8 @@ class DBConnection(DateStamp, Active):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.name} - (Владелец: {self.created_user.login})"
+        owner = self.created_user.login if self.created_user else "не назначен"
+        return f"{self.name} - (Владелец: {owner})"
 
 
 class DBAudit(models.Model):

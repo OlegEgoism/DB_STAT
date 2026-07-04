@@ -27,6 +27,10 @@
                         <span>Порт</span>
                         <strong id="connectionTooltipPort">—</strong>
                     </div>
+                    <div class="connection-info-tooltip-row">
+                        <span>Владелец</span>
+                        <strong id="connectionTooltipOwner">—</strong>
+                    </div>
                 </div>
                 <span class="conn-divider"></span>
                 {% if user_can_manage_connections %}
@@ -38,7 +42,7 @@
                     <i class="fas fa-plug"></i>
                 </button>
                 {% if user_can_manage_connections %}
-                    <button class="btn-conn" onclick="editConnection()" title="Редактировать подключение">
+                    <button class="btn-conn d-none" id="connectionEditBtn" onclick="editConnection()" title="Редактировать подключение">
                         <i class="fas fa-pen"></i>
                     </button>
                 {% endif %}
@@ -110,6 +114,7 @@
                     <div class="home-tab-card"><i class="fas fa-user"></i><strong>Пользователи</strong><span>Пользователи, права, лимиты подключений и срок действия ролей.</span></div>
                     <div class="home-tab-card"><i class="fas fa-users"></i><strong>Группы</strong><span>Группы ролей, привилегии и количество участников.</span></div>
                     <div class="home-tab-card"><i class="fas fa-tools"></i><strong>Обслуживание</strong><span>Статистика VACUUM/ANALYZE, живые и мёртвые строки.</span></div>
+                    <div class="home-tab-card"><i class="fas fa-clipboard-list"></i><strong>Аудит</strong><span>История действий пользователя с фильтром по типу события.</span></div>
                 </div>
             </div>
         </div>
@@ -1202,6 +1207,59 @@
                     <span id="maintenancePageInfo">Страница 1</span>
                     <button class="btn-conn secondary" type="button" id="maintenanceNextPageBtn">
                         Вперёд <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: AUDIT -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-audit">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-clipboard-list"></i> Аудит действий</span>
+                <div class="card-header-actions">
+                    <button class="btn-conn secondary" type="button" id="auditRefreshBtn" title="Обновить аудит">
+                        <i class="fas fa-sync-alt"></i> Обновить
+                    </button>
+                    <span class="card-meta" id="auditEventsCount">Нет данных</span>
+                </div>
+            </div>
+            <div class="database-table-toolbar">
+                <div class="search-box audit-filter-box">
+                    <i class="fas fa-filter"></i>
+                    <select id="auditActionFilter" aria-label="Фильтр действий аудита">
+                        <option value="">Все действия</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive audit-table-scroll">
+                    <table class="table table-sm audit-table">
+                        <thead>
+                        <tr>
+                            <th>Дата и время</th>
+                            <th>Пользователь</th>
+                            <th>Действие</th>
+                            <th>Информация</th>
+                        </tr>
+                        </thead>
+                        <tbody id="auditEventsTableBody">
+                        <tr>
+                            <td colspan="4" class="text-muted">Загрузка аудита...</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-pagination">
+                    <button class="btn-conn secondary" type="button" id="auditPrevPageBtn">
+                        <i class="fas fa-chevron-left"></i> Назад
+                    </button>
+                    <span id="auditPaginationInfo">Страница 1 из 1</span>
+                    <button class="btn-conn secondary" type="button" id="auditNextPageBtn">
+                        Далее <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
             </div>
