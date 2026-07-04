@@ -40,6 +40,10 @@ def _connection_delete_permission_error():
     return JsonResponse({"ok": False, "message": "Удалять подключение может только его создатель"}, status=403)
 
 
+def _connection_edit_permission_error():
+    return JsonResponse({"ok": False, "message": "Редактировать подключение может только его создатель"}, status=403)
+
+
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
     if db_user:
         return db_user.login
@@ -293,6 +297,8 @@ def connections(request):
 
     if payload.get("id"):
         connection = _get_connection_for_request(request, payload["id"])
+        if not db_user or connection.created_user_id != db_user.pk:
+            return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
         connection.port = int(payload["port"])
