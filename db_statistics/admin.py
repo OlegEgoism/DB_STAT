@@ -67,12 +67,14 @@ class DBAuditAdmin(admin.ModelAdmin):
 class DBNotificationAdmin(BaseAdmin):
     """Настройки уведомлений"""
 
-    list_display = ("connection", "segment_monitor", "temp_tables_monitor", "query_monitor", "lock_monitor", "transaction_monitor", "is_active", "created", "updated")
-    list_filter = ("is_active", )
-    list_editable = ("is_active", "segment_monitor", "temp_tables_monitor", "query_monitor", "lock_monitor", "transaction_monitor",)
+    list_display = ("connection", "users_count", "is_active", "created", "updated")
+    list_filter = ("is_active",)
+    list_editable = ("is_active",)
     search_fields = ("connection",)
     search_help_text = "Поиск по: базе данных"
     fields = ("connection", "interval_update", "segment_monitor", "temp_tables_monitor", "query_monitor", "query_threshold", "lock_monitor", "lock_threshold", "transaction_monitor", "transactions_threshold", "is_active", "user", "created", "updated")
     filter_horizontal = ("user",)
 
-
+    @admin.display(description="Количество пользователей")
+    def users_count(self, obj):
+        return obj.user.count()

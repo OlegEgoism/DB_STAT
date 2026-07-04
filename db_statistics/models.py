@@ -170,3 +170,34 @@ class DBNotification(DateStamp, Active):
         verbose_name_plural = "Уведомления"
         ordering = ("-created",)
         unique_together = ("connection",)
+
+
+class DBNotificationEvent(DateStamp):
+    """История уведомлений"""
+    EVENT_TYPES = [
+        ("segment", "Состояние сегментов"),
+        ("temp_table", "Временные таблицы"),
+        ("query", "Запросы"),
+        ("lock", "Блокировки"),
+        ("transaction", "Транзакции"),
+    ]
+
+    STATUSES = [
+        ("open", "Открыто"),
+        ("resolved", "Решено"),
+    ]
+
+    notification = models.ForeignKey(to="db_statistics.DBNotification", verbose_name="Уведомление", db_comment="Уведомление", on_delete=models.CASCADE)
+    connection = models.ForeignKey(to="db_statistics.DBConnection", verbose_name="Подключение", db_comment="Подключение", on_delete=models.CASCADE)
+    event_type = models.CharField(verbose_name="Тип события", db_comment="Тип события", max_length=32, choices=EVENT_TYPES)
+    status = models.CharField(verbose_name="Статус", db_comment="Статус", max_length=16, choices=STATUSES, default="open")
+    fingerprint = models.CharField(verbose_name="Уникальный технический ключ", db_comment="Уникальный технический ключ", max_length=255, db_index=True)
+    title = models.CharField(verbose_name="Заголовок события", db_comment="Заголовок события", max_length=255)
+    message = models.TextField(verbose_name="Сообщение", db_comment="Сообщение")
+    payload = models.JSONField(verbose_name="Данные события", db_comment="Данные события", default=dict, blank=True)
+
+    first_seen_at = models.DateTimeField(verbose_name="Дата и время, обнаружения события", db_comment="Дата и время, обнаружения события")
+    last_seen_at = models.DateTimeField(verbose_name="Последнее обнаружение", db_comment="Дата и время, когда событие было обнаружено последний раз")
+    last_sent_at = models.DateTimeField(verbose_name="Дата и время последней отправки уведомления", db_comment="Дата и время последней отправки уведомления по событию", null=True, blank=True)
+    sent_count = models.PositiveIntegerField(verbose_name="Количество отправок", db_comment="Количество отправленных уведомлений по событию", default=0)
+    resolved_at = models.DateTimeField(verbose_name="Дата решения", db_comment="Дата и время, когда событие было решено или перестало обнаруживаться", null=True, blank=True)
