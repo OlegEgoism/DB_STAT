@@ -97,11 +97,15 @@ EMAIL_PORT=587
 EMAIL_HOST_USER=monitor@example.com
 EMAIL_HOST_PASSWORD=secret
 EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_TIMEOUT=10
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 DEFAULT_FROM_EMAIL=monitor@example.com
 ```
 
-Локально можно проверять письма через консольный backend:
+Если `EMAIL_BACKEND` не задан и `EMAIL_HOST` пустой, проект автоматически использует консольный backend, чтобы локальная тестовая отправка не падала из-за пустого SMTP-хоста.
+
+Локально можно проверять письма через консольный backend явно:
 
 ```.env
 EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
