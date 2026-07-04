@@ -29,11 +29,15 @@ def _current_db_user(request):
 def _user_payload(db_user):
     if not db_user:
         return None
-    return {"login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE}
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE}
 
 
 def _connection_permission_error():
     return JsonResponse({"ok": False, "message": "Создавать и редактировать подключения может только Администратор"}, status=403)
+
+
+def _connection_delete_permission_error():
+    return JsonResponse({"ok": False, "message": "Удалять подключение может только его создатель"}, status=403)
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
@@ -281,10 +285,14 @@ def delete_connection(request):
         return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     connection = _get_connection_for_request(request, connection_id)
+    db_user = _current_db_user(request)
+    if not db_user or connection.created_user_id != db_user.pk:
+        return _connection_delete_permission_error()
+
     audit_info = _connection_audit_info("Удаление подключения", connection)
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
-    _write_audit("connection_delete", audit_info, db_user=_current_db_user(request))
+    _write_audit("connection_delete", audit_info, db_user=db_user)
     return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})
 
 
