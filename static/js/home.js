@@ -82,12 +82,13 @@
     }
 
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        if (!pageId) return false;
+        if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
     }
 
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (!conn) return 'home';
         return isPostgreSQLConnection(conn) ? 'database-overview' : 'segments';
     }
 
@@ -2578,15 +2579,11 @@
     }
 
     function isKnownPage(pageId) {
+        if (!pageId || !pageTitles[pageId] || !document.getElementById('page-' + pageId)) return false;
+        if (pageId === 'home') return true;
         return Boolean(
-            pageId &&
-            pageTitles[pageId] &&
-            document.getElementById('page-' + pageId) &&
             isPageAvailableForConnection(pageId) &&
-            (
-                pageId === 'home'
-                || Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
-            )
+            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
         );
     }
 
