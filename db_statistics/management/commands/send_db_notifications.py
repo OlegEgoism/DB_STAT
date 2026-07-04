@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import get_connection, send_mail
 from django.core.management.base import BaseCommand, CommandError
 
 from db_statistics.services.notifications import process_due_notifications
@@ -16,10 +16,20 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options["test_email"]:
-            sent_count = send_mail(options["test_subject"], options["test_message"], settings.DEFAULT_FROM_EMAIL, [options["test_email"]], fail_silently=False)
+            backend = settings.EMAIL_BACKEND
+            connection = None
+            if not settings.EMAIL_HOST and backend == "django.core.mail.backends.smtp.EmailBackend":
+                backend = "django.core.mail.backends.console.EmailBackend"
+                connection = get_connection(backend)
+
+            try:
+                sent_count = send_mail(options["test_subject"], options["test_message"], settings.DEFAULT_FROM_EMAIL, [options["test_email"]], fail_silently=False, connection=connection)
+            except Exception as exc:
+                raise CommandError(f"Не удалось отправить тестовое письмо: {exc}") from exc
+
             if sent_count != 1:
                 raise CommandError("Тестовое письмо не было отправлено")
-            self.stdout.write(self.style.SUCCESS(f"test_email_sent=1 recipient={options['test_email']} backend={settings.EMAIL_BACKEND}"))
+            self.stdout.write(self.style.SUCCESS(f"test_email_sent=1 recipient={options['test_email']} backend={backend}"))
             return
 
         stats = process_due_notifications(force=options["force"])

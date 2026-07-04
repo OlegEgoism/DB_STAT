@@ -103,7 +103,7 @@ EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
 DEFAULT_FROM_EMAIL=monitor@example.com
 ```
 
-Если `EMAIL_BACKEND` не задан и `EMAIL_HOST` пустой, проект автоматически использует консольный backend, чтобы локальная тестовая отправка не падала из-за пустого SMTP-хоста.
+Если `EMAIL_HOST` пустой, проект автоматически использует консольный backend вместо SMTP, чтобы локальная тестовая отправка не падала из-за пустого SMTP-хоста.
 
 Локально можно проверять письма через консольный backend явно:
 

@@ -106,4 +106,7 @@ EMAIL_TIMEOUT = _env_int("EMAIL_TIMEOUT", 10)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "db-stat@localhost")
 
 _default_email_backend = "django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST else "django.core.mail.backends.console.EmailBackend"
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", _default_email_backend)
+_configured_email_backend = os.getenv("EMAIL_BACKEND")
+if not EMAIL_HOST and _configured_email_backend == "django.core.mail.backends.smtp.EmailBackend":
+    _configured_email_backend = None
+EMAIL_BACKEND = _configured_email_backend or _default_email_backend
