@@ -1230,9 +1230,6 @@ body {
     color: var(--accent-yellow) !important;
 }
 
-.table .text-primary {
-    color: var(--accent-blue) !important;
-}
 
 .status-badge {
     padding: 2px 12px;
@@ -1567,33 +1564,6 @@ body {
     color: white;
 }
 
-.btn-sm {
-    padding: 2px 10px;
-    font-size: 12px;
-    border-radius: var(--radius-sm);
-}
-
-.btn-outline-danger {
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    color: var(--accent-red);
-    background: transparent;
-}
-
-.btn-outline-danger:hover {
-    background: rgba(239, 68, 68, 0.08);
-    color: var(--accent-red);
-}
-
-.btn-outline-warning {
-    border: 1px solid rgba(245, 158, 11, 0.2);
-    color: var(--accent-yellow);
-    background: transparent;
-}
-
-.btn-outline-warning:hover {
-    background: rgba(245, 158, 11, 0.08);
-    color: var(--accent-yellow);
-}
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 992px) {
@@ -1888,7 +1858,6 @@ body {
 }
 
 .table-scroll-sm,
-.table-scroll-md,
 .table-scroll-lg,
 .maintenance-table-scroll {
     overflow: auto;
@@ -1898,9 +1867,6 @@ body {
     max-height: 320px;
 }
 
-.table-scroll-md {
-    max-height: 360px;
-}
 
 .table-scroll-lg,
 .maintenance-table-scroll {

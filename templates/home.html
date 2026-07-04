@@ -1,10 +1,20 @@
 {% extends 'base.html' %}
 {% load static %}
 
+
+{% block extra_head %}
+<!-- Chart.js is required only by the monitoring dashboard. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
 {% block content %}
 {% include 'includes/_background.html' %}
 {% include 'includes/_sidebar.html' %}
 {% include 'includes/_main_content.html' %}
 {% include 'includes/_modals.html' %}
 <script id="dbUserData" type="application/json">{{ db_user_json|safe }}</script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/home.js' %}"></script>
 {% endblock %}
