@@ -33,6 +33,8 @@
     let usersRequestId = 0;
     let groupsState = {sort: 'name', direction: 'asc', search: ''};
     let groupsRequestId = 0;
+    let auditRequestId = 0;
+    let auditActionsLoaded = false;
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -55,6 +57,7 @@
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
+    const auditEventsApiUrl = '/audit/events/';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -71,7 +74,8 @@
         'memory': 'Память <small>Параметры памяти</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
-        'maintenance': 'Обслуживание <small>Очистка / анализ</small>'
+        'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
+        'audit': 'Аудит <small>Действия пользователя</small>'
     };
 
 
@@ -82,6 +86,7 @@
     }
 
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (pageId === 'home' || pageId === 'audit') return true;
         if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
@@ -149,6 +154,7 @@
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
+        initAuditControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -2272,6 +2278,78 @@
         updateTempTablePaginationButtons();
     }
 
+    function renderAuditWarning(message) {
+        const tbody = document.getElementById('auditEventsTableBody');
+        const count = document.getElementById('auditEventsCount');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (count) count.textContent = 'Нет данных';
+    }
+
+    function populateAuditActionFilter(actions) {
+        const select = document.getElementById('auditActionFilter');
+        if (!select || auditActionsLoaded) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Все действия</option>';
+        (actions || []).forEach(action => {
+            const option = document.createElement('option');
+            option.value = action.value;
+            option.textContent = action.label;
+            select.appendChild(option);
+        });
+        select.value = currentValue;
+        auditActionsLoaded = true;
+    }
+
+    function renderAuditEvents(data) {
+        populateAuditActionFilter(data.actions || []);
+        const events = data.events || [];
+        const tbody = document.getElementById('auditEventsTableBody');
+        const count = document.getElementById('auditEventsCount');
+        if (count) {
+            const limitText = data.total_count > data.limit ? `, показано ${data.limit}` : '';
+            count.textContent = `${data.total_count || events.length} событий${limitText}`;
+        }
+        if (!tbody) return;
+        if (!events.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">События аудита не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = events.map(event => `
+            <tr>
+                <td class="audit-created">${escapeHtml(event.created)}</td>
+                <td><strong>${escapeHtml(event.username)}</strong></td>
+                <td><span class="audit-action-badge">${escapeHtml(event.action_label || event.action_type)}</span></td>
+                <td class="audit-info-cell">${escapeHtml(event.info)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function refreshAuditEvents() {
+        const requestId = ++auditRequestId;
+        const actionType = document.getElementById('auditActionFilter')?.value || '';
+        const url = `${auditEventsApiUrl}${actionType ? `?action_type=${encodeURIComponent(actionType)}` : ''}`;
+        renderAuditWarning('Загрузка аудита...');
+        fetch(url)
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) {
+                    throw new Error(data.message || 'Не удалось получить аудит');
+                }
+                return data;
+            })
+            .then(data => {
+                if (requestId === auditRequestId) renderAuditEvents(data);
+            })
+            .catch(error => {
+                if (requestId === auditRequestId) renderAuditWarning(error.message || 'Не удалось получить аудит');
+            });
+    }
+
+    function initAuditControls() {
+        document.getElementById('auditActionFilter')?.addEventListener('change', refreshAuditEvents);
+        document.getElementById('auditRefreshBtn')?.addEventListener('click', refreshAuditEvents);
+    }
+
     function connectionRequest(url, payload) {
         return fetch(url, {
             method: 'POST',
@@ -2652,6 +2730,9 @@
         if (pageId === 'maintenance') {
             maintenanceStatsState.page = 1;
             refreshMaintenanceStatsForConnection(conn);
+        }
+        if (pageId === 'audit') {
+            refreshAuditEvents();
         }
     }
 
