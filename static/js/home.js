@@ -113,6 +113,10 @@
         return currentDbUser?.can_manage_connections === true;
     }
 
+    function canDeleteConnection(conn) {
+        return canManageConnections() && conn?.created_by_id != null && String(conn.created_by_id) === String(currentDbUser?.id);
+    }
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -2735,7 +2739,7 @@
         connectionModalMode = 'edit';
         document.getElementById('connectionModalTitle').innerHTML = '<i class="fas fa-pen me-2" style="color: var(--accent-blue);"></i>Редактировать подключение';
         document.getElementById('connectionSaveText').textContent = 'Сохранить';
-        document.getElementById('connectionDeleteBtn').classList.remove('d-none');
+        document.getElementById('connectionDeleteBtn').classList.toggle('d-none', !canDeleteConnection(conn));
         document.getElementById('connId').value = /^\d+$/.test(String(conn.id)) ? conn.id : '';
         document.getElementById('connName').value = conn.name || '';
         document.getElementById('connHost').value = conn.host || 'localhost';
@@ -2756,6 +2760,10 @@
         const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
+            return;
+        }
+        if (!canDeleteConnection(conn)) {
+            showToast('⛔ Удалить подключение может только его создатель');
             return;
         }
 
