@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 
 from db_statistics.models import DBAudit, DBConnection, DBUser
 
@@ -23,9 +24,12 @@ class DBUserAdmin(BaseAdmin):
     fields = ("login", "email", "role", "is_active", "connections", "created", "updated")
     filter_horizontal = ("connections",)
 
-    @admin.display(description="Количество подключений")
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(connections_total=Count("connections"))
+
+    @admin.display(description="Количество подключений", ordering="connections_total")
     def count_column(self, obj):
-        return str(obj.connections.count())
+        return str(obj.connections_total)
 
 
 @admin.register(DBConnection)
@@ -39,9 +43,12 @@ class DBConnectionAdmin(BaseAdmin):
     search_help_text = "Поиск по: названию, базе данных, пользователю"
     fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "is_active", "created", "updated")
 
-    @admin.display(description="Количество пользователей")
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("created_user").annotate(users_total=Count("dbuser"))
+
+    @admin.display(description="Количество пользователей", ordering="users_total")
     def users_count(self, obj):
-        return obj.dbuser_set.count()
+        return obj.users_total
 
 
 @admin.register(DBAudit)

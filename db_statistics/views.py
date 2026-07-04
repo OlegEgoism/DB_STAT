@@ -13,17 +13,25 @@ from db_statistics.models import DBAudit, DBConnection, DBUser
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
+_REQUEST_USER_CACHE_ATTR = "_db_statistics_current_user"
+DEFAULT_PAGE_SIZE = 100
 
 
 def _current_db_user(request):
+    if hasattr(request, _REQUEST_USER_CACHE_ATTR):
+        return getattr(request, _REQUEST_USER_CACHE_ATTR)
+
     user_id = request.session.get(SESSION_USER_ID_KEY)
     if not user_id:
+        setattr(request, _REQUEST_USER_CACHE_ATTR, None)
         return None
     try:
-        return DBUser.objects.get(pk=user_id, is_active=True)
+        db_user = DBUser.objects.get(pk=user_id, is_active=True)
     except DBUser.DoesNotExist:
         request.session.pop(SESSION_USER_ID_KEY, None)
-        return None
+        db_user = None
+    setattr(request, _REQUEST_USER_CACHE_ATTR, db_user)
+    return db_user
 
 
 def _user_payload(db_user):
@@ -32,16 +40,20 @@ def _user_payload(db_user):
     return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE}
 
 
+def _json_error(message, status=400):
+    return JsonResponse({"ok": False, "message": message}, status=status)
+
+
 def _connection_permission_error():
-    return JsonResponse({"ok": False, "message": "Создавать и редактировать подключения может только Администратор"}, status=403)
+    return _json_error("Создавать и редактировать подключения может только Администратор", status=403)
 
 
 def _connection_delete_permission_error():
-    return JsonResponse({"ok": False, "message": "Удалять подключение может только его создатель"}, status=403)
+    return _json_error("Удалять подключение может только его создатель", status=403)
 
 
 def _connection_edit_permission_error():
-    return JsonResponse({"ok": False, "message": "Редактировать подключение может только его создатель"}, status=403)
+    return _json_error("Редактировать подключение может только его создатель", status=403)
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
@@ -132,7 +144,7 @@ def logout(request):
 def audit_events(request):
     db_user = _current_db_user(request)
     if not db_user:
-        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+        return _json_error("Требуется вход в приложение", status=401)
 
     action_type = (request.GET.get("action_type") or "").strip()
     available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
@@ -141,22 +153,15 @@ def audit_events(request):
     if action_type:
         valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
         if action_type not in valid_action_types:
-            return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
+            return _json_error("Неизвестный тип действия")
         audit_queryset = audit_queryset.filter(action_type=action_type)
 
-    page_size = 100
-    page = max(int(request.GET.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(request.GET.get("page"), default=1)
     offset = (page - 1) * page_size
     total_count = audit_queryset.count()
     events = [
-        {
-            "id": audit.pk,
-            "username": audit.username,
-            "action_type": audit.action_type,
-            "action_label": _audit_action_label(audit.action_type),
-            "info": audit.info,
-            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
-        }
+        {"id": audit.pk, "username": audit.username, "action_type": audit.action_type, "action_label": _audit_action_label(audit.action_type), "info": audit.info, "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S")}
         for audit in audit_queryset[offset : offset + page_size]
     ]
     return JsonResponse({"ok": True, "events": events, "actions": available_actions, "page": page, "page_size": page_size, "total_count": total_count})
@@ -180,8 +185,26 @@ def _connection_to_dict(connection):
 def _read_json_body(request):
     try:
         return json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
+    except (UnicodeDecodeError, json.JSONDecodeError):
         return {}
+
+
+def _parse_positive_int(value, default=1):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(parsed, 1)
+
+
+def _parse_port(value):
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    if 1 <= port <= 65535:
+        return port
+    return None
 
 
 def _parse_pg_size_to_bytes(value):
@@ -232,16 +255,7 @@ def _test_connection_params(host, port, database, username, password, ssl):
 
 
 def _open_database_connection(db_connection, ssl=True):
-    return psycopg2.connect(
-        **_connection_kwargs(
-            db_connection.host,
-            db_connection.port,
-            db_connection.database,
-            db_connection.username,
-            db_connection.get_password(),
-            ssl,
-        )
-    )
+    return psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl))
 
 
 def _fetch_db_rows(db_connection, query, params=None):
@@ -271,7 +285,7 @@ def _fetch_db_resultsets(db_connection, *queries):
 def _require_payload_connection(request, payload):
     connection_id = payload.get("id")
     if not connection_id:
-        return None, JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+        return None, _json_error("Подключение не выбрано")
     return _get_connection_for_request(request, connection_id), None
 
 
@@ -287,7 +301,7 @@ def connections(request):
     payload = _read_json_body(request)
     required_fields = ["name", "host", "port", "database", "user"]
     if any(not payload.get(field) for field in required_fields):
-        return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
+        return _json_error("Заполните все обязательные поля")
 
     defaults = {"username": payload["user"].strip(), "db_type": payload.get("db_type") or "PostgreSQL", "is_active": True}
     if payload.get("password"):
@@ -301,7 +315,10 @@ def connections(request):
             return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
-        connection.port = int(payload["port"])
+        port = _parse_port(payload.get("port"))
+        if port is None:
+            return _json_error("Порт должен быть числом от 1 до 65535")
+        connection.port = port
         connection.database = payload["database"].strip()
         for field, value in defaults.items():
             setattr(connection, field, value)
@@ -309,7 +326,11 @@ def connections(request):
         _write_audit("connection_update", _connection_audit_info("Изменение подключения", connection), db_user=_current_db_user(request))
         return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
 
-    connection, created = DBConnection.objects.update_or_create(name=payload["name"].strip(), host=payload["host"].strip(), port=int(payload["port"]), database=payload["database"].strip(), defaults={**defaults, "password": payload.get("password", "")})
+    port = _parse_port(payload.get("port"))
+    if port is None:
+        return _json_error("Порт должен быть числом от 1 до 65535")
+
+    connection, created = DBConnection.objects.update_or_create(name=payload["name"].strip(), host=payload["host"].strip(), port=port, database=payload["database"].strip(), defaults={**defaults, "password": payload.get("password", "")})
     if db_user:
         if created or connection.created_user_id is None:
             connection.created_user = db_user
@@ -330,7 +351,10 @@ def test_connection(request):
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
-            params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
+            port = _parse_port(payload.get("port"))
+            if port is None:
+                return _json_error("Порт должен быть числом от 1 до 65535")
+            params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
             name = payload["name"].strip()
         else:
             params = {"host": connection.host, "port": connection.port, "database": connection.database, "username": connection.username, "password": connection.get_password(), "ssl": payload.get("ssl", True)}
@@ -338,8 +362,11 @@ def test_connection(request):
     else:
         required_fields = ["name", "host", "port", "database", "user"]
         if any(not payload.get(field) for field in required_fields):
-            return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
-        params = {"host": payload["host"].strip(), "port": int(payload["port"]), "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
+            return _json_error("Заполните все обязательные поля")
+        port = _parse_port(payload.get("port"))
+        if port is None:
+            return _json_error("Порт должен быть числом от 1 до 65535")
+        params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
         name = payload["name"].strip()
 
     audit_user = _current_db_user(request)
@@ -370,7 +397,7 @@ def delete_connection(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+        return _json_error("Подключение не выбрано")
 
     connection = _get_connection_for_request(request, connection_id)
     db_user = _current_db_user(request)
@@ -756,8 +783,8 @@ def _database_roles_list(request, *, can_login):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = int(payload.get("page_size") or (100 if can_login else 10000))
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = _parse_positive_int(payload.get("page_size"), default=100 if can_login else 10000)
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "name"
@@ -859,8 +886,8 @@ def maintenance_stats(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "dead_rows"
@@ -931,8 +958,8 @@ def database_schema_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
@@ -944,7 +971,8 @@ def database_schema_sizes(request):
     params = []
     if search:
         where_sql = "AND (namespace.nspname ILIKE %s OR owner.rolname ILIKE %s)"
-        params.extend([f"%{search}%", f"%{search}%"])
+        search_pattern = f"%{_escape_like_pattern(search)}%"
+        params.extend([search_pattern, search_pattern])
 
     schema_sizes_query = f"""
         WITH schema_sizes AS (
@@ -1001,11 +1029,7 @@ def database_schema_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (schema_sizes_query, [*params, page_size, offset]),
-            (schema_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (schema_sizes_query, [*params, page_size, offset]), (schema_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
@@ -1021,8 +1045,8 @@ def database_table_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
@@ -1107,11 +1131,7 @@ def database_table_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (table_sizes_query, [*params, page_size, offset]),
-            (table_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (table_sizes_query, [*params, page_size, offset]), (table_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"}, status=400)
 
@@ -1127,8 +1147,8 @@ def database_views_list(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     view_type = payload.get("view_type") or ""
@@ -1253,7 +1273,7 @@ def distribution_info(request):
     schema_name = (payload.get("schema_name") or "").strip()
     table_name = (payload.get("table_name") or "").strip()
     if not connection_id:
-        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
+        return _json_error("Подключение не выбрано")
     if not schema_name or not table_name:
         return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
 
@@ -1307,8 +1327,8 @@ def database_temp_table_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
+    page_size = DEFAULT_PAGE_SIZE
+    page = _parse_positive_int(payload.get("page"), default=1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or "size_bytes"
@@ -1391,11 +1411,7 @@ def database_temp_table_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (temp_table_sizes_query, [*params, page_size, offset]),
-            (temp_table_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (temp_table_sizes_query, [*params, page_size, offset]), (temp_table_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
 
