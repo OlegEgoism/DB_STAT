@@ -2334,9 +2334,7 @@
         const tbody = document.getElementById('auditEventsTableBody');
         const count = document.getElementById('auditEventsCount');
         if (count) {
-            const firstVisibleRecord = auditState.totalCount ? ((auditState.page - 1) * auditState.pageSize) + 1 : 0;
-            const lastVisibleRecord = Math.min(auditState.page * auditState.pageSize, auditState.totalCount);
-            count.textContent = `Показано ${firstVisibleRecord}–${lastVisibleRecord} из ${auditState.totalCount}`;
+            count.textContent = `${events.length} из ${auditState.totalCount} записей`;
         }
         updateAuditPaginationButtons();
         if (!tbody) return;
