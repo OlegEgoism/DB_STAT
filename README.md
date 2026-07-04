@@ -118,6 +118,18 @@ DEFAULT_FROM_EMAIL=db-stat@localhost
 python manage.py send_db_notifications
 ```
 
+Отправка тестового письма без проверки `DBNotification`:
+
+```bash
+python manage.py send_db_notifications --test-email user@example.com
+```
+
+Тестовое письмо можно отправить с собственными темой и текстом:
+
+```bash
+python manage.py send_db_notifications --test-email user@example.com --test-subject "DB-STAT test" --test-message "Проверка SMTP"
+```
+
 Принудительная проверка без ожидания `interval_update`:
 
 ```bash
