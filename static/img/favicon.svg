@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DB STAT database icon">
+  <defs>
+    <linearGradient id="dbGradient" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#dbGradient)"/>
+  <ellipse cx="32" cy="18" rx="19" ry="8" fill="none" stroke="#fff" stroke-width="5"/>
+  <path d="M13 18v14c0 4.4 8.5 8 19 8s19-3.6 19-8V18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M13 32v14c0 4.4 8.5 8 19 8s19-3.6 19-8V32" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</svg>
