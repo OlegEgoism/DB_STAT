@@ -38,7 +38,7 @@
                     <i class="fas fa-plug"></i>
                 </button>
                 {% if user_can_manage_connections %}
-                    <button class="btn-conn" onclick="editConnection()" title="Редактировать подключение">
+                    <button class="btn-conn d-none" id="connectionEditBtn" onclick="editConnection()" title="Редактировать подключение">
                         <i class="fas fa-pen"></i>
                     </button>
                 {% endif %}

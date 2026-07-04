@@ -119,8 +119,19 @@
         return currentDbUser?.can_manage_connections === true;
     }
 
-    function canDeleteConnection(conn) {
+    function canEditConnection(conn) {
         return canManageConnections() && conn?.created_by_id != null && String(conn.created_by_id) === String(currentDbUser?.id);
+    }
+
+    function canDeleteConnection(conn) {
+        return canEditConnection(conn);
+    }
+
+    function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const editButton = document.getElementById('connectionEditBtn');
+        if (editButton) {
+            editButton.classList.toggle('d-none', !canEditConnection(conn));
+        }
     }
 
     function escapeHtml(value) {
@@ -2678,6 +2689,7 @@
             select.appendChild(option);
             select.value = '';
             updateConnectionTooltip(null);
+            updateConnectionActionButtons(null);
             updateSidebarForConnection(null);
             persistActiveConnectionId(null);
             return;
@@ -2693,6 +2705,7 @@
             persistActiveConnectionId(activeConnectionId);
         }
         updateConnectionTooltip();
+        updateConnectionActionButtons();
         updateSidebarForConnection();
     }
 
@@ -2811,6 +2824,7 @@
         persistActiveConnectionId(activeConnectionId);
         const conn = connections.find(c => String(c.id) === String(connId));
         updateConnectionTooltip(conn);
+        updateConnectionActionButtons(conn);
         if (conn) {
             updateSidebarForConnection(conn);
             activatePage(getDefaultPageForConnection(conn));
@@ -2843,13 +2857,14 @@
     }
 
     function editConnection() {
-        if (!canManageConnections()) {
-            showToast('⛔ Редактировать подключения может только Администратор');
-            return;
-        }
         const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Подключение не выбрано');
+            return;
+        }
+        if (!canEditConnection(conn)) {
+            showToast('⛔ Редактировать подключение может только его создатель');
+            updateConnectionActionButtons(conn);
             return;
         }
 
