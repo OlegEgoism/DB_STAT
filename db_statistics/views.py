@@ -140,7 +140,10 @@ def audit_events(request):
             return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
         audit_queryset = audit_queryset.filter(action_type=action_type)
 
-    limit = 200
+    page_size = 100
+    page = max(int(request.GET.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    total_count = audit_queryset.count()
     events = [
         {
             "id": audit.pk,
@@ -150,9 +153,9 @@ def audit_events(request):
             "info": audit.info,
             "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
         }
-        for audit in audit_queryset[:limit]
+        for audit in audit_queryset[offset : offset + page_size]
     ]
-    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "total_count": audit_queryset.count(), "limit": limit})
+    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 def _connection_to_dict(connection):
