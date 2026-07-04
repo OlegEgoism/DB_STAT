@@ -50,6 +50,10 @@ def _write_audit(action_type, info, db_user=None, username=None):
     DBAudit.objects.create(username=username or _audit_username(db_user), action_type=action_type, info=info, created=timezone.now())
 
 
+def _audit_action_label(action_type):
+    return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
+
+
 def _connection_audit_info(action, connection, *, result=None, error=None):
     details = [f"Действие: {action}", f"Подключение: {connection.name}", f"Тип БД: {connection.db_type}", f"Хост: {connection.host}", f"Порт: {connection.port}", f"База данных: {connection.database}", f"Пользователь БД: {connection.username}"]
     if result:
@@ -118,6 +122,37 @@ def logout(request):
     _write_audit("logout", audit_info, db_user=db_user, username=username)
     request.session.flush()
     return redirect("login")
+
+
+@require_http_methods(["GET"])
+def audit_events(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+
+    action_type = (request.GET.get("action_type") or "").strip()
+    available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
+
+    audit_queryset = DBAudit.objects.filter(username=db_user.login)
+    if action_type:
+        valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
+        if action_type not in valid_action_types:
+            return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
+        audit_queryset = audit_queryset.filter(action_type=action_type)
+
+    limit = 200
+    events = [
+        {
+            "id": audit.pk,
+            "username": audit.username,
+            "action_type": audit.action_type,
+            "action_label": _audit_action_label(audit.action_type),
+            "info": audit.info,
+            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        for audit in audit_queryset[:limit]
+    ]
+    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "total_count": audit_queryset.count(), "limit": limit})
 
 
 def _connection_to_dict(connection):
