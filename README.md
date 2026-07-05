@@ -76,6 +76,21 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 python manage.py runserver
 ```
 
+
+- Сборка Docker-образа
+
+```bash
+docker build -t db-stat .
+```
+
+- Запуск Docker-контейнера
+
+```bash
+docker run --rm -p 8000:8000 db-stat
+```
+
+После запуска приложение будет доступно по адресу `http://localhost:8000`. При сборке образа создаётся SQLite-база `db.sqlite3`, выполняются миграции и создаётся суперпользователь с логином `admin` и паролем `admin`.
+
 - Проверка и автоисправление кода
 
 ```bash
