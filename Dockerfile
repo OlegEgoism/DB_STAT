@@ -33,7 +33,7 @@ RUN rm -f /app/db.sqlite3 \
     && python manage.py makemigrations \
     && python manage.py migrate \
     && python manage.py createsuperuser --noinput \
-    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.update_or_create(login='tets', defaults={'email': 'test@gmail.com', 'role': 'Администратор', 'is_active': True})"
+    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.update_or_create(login='test', defaults={'email': 'test@gmail.com', 'role': 'Администратор', 'is_active': True})"
 
 EXPOSE 8000
 

@@ -76,6 +76,15 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 python manage.py runserver
 ```
 
+- Проверка и автоисправление кода
+
+```bash
+python -m ruff check .
+python -m ruff check . --fix
+python -m ruff format .
+```
+
+## Docker образ
 
 - Сборка Docker-образа
 
@@ -83,20 +92,16 @@ python manage.py runserver
 docker build -t db-stat .
 ```
 
-- Запуск Docker-контейнера
+Запуск Docker-контейнера
 
 ```bash
 docker run --rm -p 8000:8000 db-stat
 ```
 
-После запуска приложение будет доступно по адресу `http://localhost:8000`. При сборке образа создаётся SQLite-база `db.sqlite3`, выполняются миграции, создаётся суперпользователь с логином `admin` и паролем `admin`, а также пользователь приложения `DBUser` с логином `tets`, почтой `test@gmail.com`, ролью `Администратор` и активным статусом.
-
-- Проверка и автоисправление кода
-
-```bash
-python -m ruff check .
-python -m ruff check . --fix
-python -m ruff format .
+```
+После запуска приложение будет доступно по адресу `http://localhost:8000`. 
+При сборке образа создаётся SQLite-база `db.sqlite3`, выполняются миграции, создаётся суперпользователь с логином `admin` и паролем `admin`. 
+Пользователь приложения `DBUser` с логином `test`, почтой `test@gmail.com`, ролью `Администратор` и активным статусом.
 ```
 
 ## Video on YouTube
