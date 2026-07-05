@@ -86,16 +86,18 @@ python -m ruff format .
 
 ## Docker образ
 
-- Сборка Docker-образа
+- Сборка Docker-образа так, чтобы после сборки оставался только прикладной образ `db-stat:latest` без отдельной строки `python:3.13-slim`:
 
 ```bash
-docker build -t db-stat .
+./scripts/build-image.sh
 ```
+
+Скрипт собирает `db-stat:latest`, удаляет отдельный тег базового образа `python:3.13-slim` и очищает dangling intermediate images. Слои Python, которые нужны приложению, остаются внутри `db-stat:latest`.
 
 Запуск Docker-контейнера
 
 ```bash
-docker run --rm -p 8000:8000 db-stat
+docker run --rm --name db-stat -p 8000:8000 db-stat:latest
 ```
 
 ```
