@@ -5,3 +5,5 @@ __pycache__
 *.py[cod]
 *.sqlite3
 .env
+.pytest_cache
+.ruff_cache

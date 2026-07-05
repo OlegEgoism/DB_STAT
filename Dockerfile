@@ -1,3 +1,15 @@
+FROM python:3.13-slim AS builder
+
+WORKDIR /wheels
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y gcc libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt ./
+RUN sed '/^ruff==/d' requirements.txt > requirements-runtime.txt \
+    && pip wheel --no-cache-dir --wheel-dir /wheels -r requirements-runtime.txt
+
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -11,12 +23,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install --no-install-recommends -y gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements-runtime.txt \
+    && rm -rf /wheels
 
 COPY . .
 
