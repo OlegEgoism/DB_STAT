@@ -149,14 +149,7 @@ def audit_events(request):
     offset = (page - 1) * page_size
     total_count = audit_queryset.count()
     events = [
-        {
-            "id": audit.pk,
-            "username": audit.username,
-            "action_type": audit.action_type,
-            "action_label": _audit_action_label(audit.action_type),
-            "info": audit.info,
-            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
-        }
+        {"id": audit.pk, "username": audit.username, "action_type": audit.action_type, "action_label": _audit_action_label(audit.action_type), "info": audit.info, "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S")}
         for audit in audit_queryset[offset : offset + page_size]
     ]
     return JsonResponse({"ok": True, "events": events, "actions": available_actions, "page": page, "page_size": page_size, "total_count": total_count})
@@ -232,16 +225,7 @@ def _test_connection_params(host, port, database, username, password, ssl):
 
 
 def _open_database_connection(db_connection, ssl=True):
-    return psycopg2.connect(
-        **_connection_kwargs(
-            db_connection.host,
-            db_connection.port,
-            db_connection.database,
-            db_connection.username,
-            db_connection.get_password(),
-            ssl,
-        )
-    )
+    return psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl))
 
 
 def _fetch_db_rows(db_connection, query, params=None):
@@ -1001,11 +985,7 @@ def database_schema_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (schema_sizes_query, [*params, page_size, offset]),
-            (schema_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (schema_sizes_query, [*params, page_size, offset]), (schema_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры схем: {exc}"}, status=400)
 
@@ -1107,11 +1087,7 @@ def database_table_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (table_sizes_query, [*params, page_size, offset]),
-            (table_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (table_sizes_query, [*params, page_size, offset]), (table_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"}, status=400)
 
@@ -1391,11 +1367,7 @@ def database_temp_table_sizes(request):
     """
 
     try:
-        rows, distribution_rows = _fetch_db_resultsets(
-            db_connection,
-            (temp_table_sizes_query, [*params, page_size, offset]),
-            (temp_table_distribution_query, params),
-        )
+        rows, distribution_rows = _fetch_db_resultsets(db_connection, (temp_table_sizes_query, [*params, page_size, offset]), (temp_table_distribution_query, params))
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"}, status=400)
 
