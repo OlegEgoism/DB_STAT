@@ -766,6 +766,14 @@
                 <span class="card-meta" id="blockingLocksCount">Нет данных</span>
             </div>
             <div class="database-table-toolbar refresh-toolbar">
+                <label class="refresh-interval-control" for="blockingLocksBlockedUserFilter">
+                    <span>Заблок. пользователь</span>
+                    <input id="blockingLocksBlockedUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="Все пользователи" autocomplete="off">
+                </label>
+                <label class="refresh-interval-control" for="blockingLocksBlockerUserFilter">
+                    <span>Блок. пользователь</span>
+                    <input id="blockingLocksBlockerUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="Все пользователи" autocomplete="off">
+                </label>
                 <label class="refresh-interval-control" for="blockingLocksRefreshInterval">
                     <span>Обновление</span>
                     <select id="blockingLocksRefreshInterval" class="form-control form-control-sm">
