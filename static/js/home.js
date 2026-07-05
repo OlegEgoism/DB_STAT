@@ -22,7 +22,7 @@
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
-    let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null};
+    let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null};
     let idleTransactionsRequestId = 0;
@@ -499,6 +499,12 @@
     }
 
 
+
+    function syncActiveQueriesUserFilter() {
+        const input = document.getElementById('activeQueriesUserFilter');
+        activeQueriesState.username = input ? input.value.trim() : '';
+    }
+
     function sortActiveQueries(queries) {
         const sort = activeQueriesState.sort;
         const direction = activeQueriesState.direction === 'asc' ? 1 : -1;
@@ -558,6 +564,14 @@
             scheduleActiveQueriesRefresh();
             refreshActiveQueriesForConnection(undefined, {silent: true});
         });
+        let userFilterTimer;
+        document.getElementById('activeQueriesUserFilter')?.addEventListener('input', function () {
+            clearTimeout(userFilterTimer);
+            userFilterTimer = setTimeout(() => {
+                activeQueriesState.username = this.value.trim();
+                refreshActiveQueriesForConnection(undefined, {silent: true});
+            }, 350);
+        });
         document.getElementById('activeQueriesRefreshBtn')?.addEventListener('click', function () {
             refreshActiveQueriesForConnection(undefined, {silent: false});
         });
@@ -576,7 +590,9 @@
         const count = document.getElementById('activeQueriesCount');
         const queries = sortActiveQueries(data.queries || []);
         updateActiveQueriesSortIndicators();
-        if (count) count.textContent = `${queries.length} активных запросов`;
+        if (count) count.textContent = activeQueriesState.username
+            ? `${queries.length} активных запросов для ${activeQueriesState.username}`
+            : `${queries.length} активных запросов`;
         if (!tbody) return;
         if (!queries.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Активные запросы не найдены</td></tr>';
@@ -599,9 +615,10 @@
             renderActiveQueriesWarning('Выберите сохранённое подключение для загрузки активных запросов');
             return;
         }
+        syncActiveQueriesUserFilter();
         const requestId = ++activeQueriesRequestId;
         if (!options.silent) renderActiveQueriesWarning('Загрузка активных запросов...');
-        connectionRequest(activeQueriesApiUrl, {id: conn.id})
+        connectionRequest(activeQueriesApiUrl, {id: conn.id, username: activeQueriesState.username})
             .then(data => {
                 if (requestId !== activeQueriesRequestId) return;
                 renderActiveQueries(data);

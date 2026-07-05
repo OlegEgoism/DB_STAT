@@ -1968,13 +1968,18 @@ body {
     font-weight: 700;
 }
 
-.refresh-interval-control select {
+.refresh-interval-control select,
+.refresh-interval-control input {
     width: auto;
     min-width: 110px;
     border: 1px solid var(--sidebar-border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
     font-size: 12px;
+}
+
+.refresh-interval-control input {
+    min-width: 190px;
 }
 
 .active-queries-table-scroll thead th {
