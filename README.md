@@ -84,6 +84,27 @@ python -m ruff check . --fix
 python -m ruff format .
 ```
 
+
+## Запуск в Docker
+
+Соберите образ приложения:
+
+```bash
+docker build -t db-stat .
+```
+
+Запустите контейнер с переменными окружения из `.env`:
+
+```bash
+docker run --env-file .env -p 8000:8000 db-stat
+```
+
+При старте контейнер автоматически применяет миграции и запускает Django на `0.0.0.0:8000`. Для сохранения SQLite-базы между перезапусками подключите volume, например:
+
+```bash
+docker run --env-file .env -e SQLITE_NAME=/data/db.sqlite3 -p 8000:8000 -v db-stat-data:/data db-stat
+```
+
 ## Video on YouTube
 
 [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA)
