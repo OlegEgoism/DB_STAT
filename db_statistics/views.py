@@ -488,6 +488,7 @@ def active_queries(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
+    username = (payload.get("username") or "").strip()
     active_queries_query = """
         WITH locked_relations AS (
             SELECT
@@ -516,11 +517,12 @@ def active_queries(request):
             ON locked_relations.pid = activity.pid
         WHERE activity.state = 'active'
           AND activity.pid <> pg_backend_pid()
+          AND (%s = '' OR activity.usename = %s)
         ORDER BY duration DESC;
     """
 
     try:
-        rows = _fetch_db_rows(db_connection, active_queries_query)
+        rows = _fetch_db_rows(db_connection, active_queries_query, [username, username])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить активные запросы: {exc}"}, status=400)
 
@@ -530,7 +532,7 @@ def active_queries(request):
         queries.append(
             {"pid": row[0], "username": row[1] or "—", "relation_name": row[2] or "—", "state": row[3] or "—", "duration": str(duration).split(".")[0] if duration else "—", "duration_seconds": max(int(duration.total_seconds()), 0) if duration else 0, "sql": row[5] or "—"}
         )
-    return JsonResponse({"ok": True, "queries": queries, "total_count": len(queries)})
+    return JsonResponse({"ok": True, "queries": queries, "total_count": len(queries), "username": username})
 
 
 @require_http_methods(["POST"])
