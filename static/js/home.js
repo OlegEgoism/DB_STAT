@@ -26,7 +26,7 @@
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
-    let idleTransactionsState = {refreshInterval: 0, timer: null};
+    let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
@@ -734,6 +734,11 @@
             });
     }
 
+    function syncIdleTransactionsUserFilter() {
+        const input = document.getElementById('idleTransactionsUserFilter');
+        idleTransactionsState.username = input ? input.value.trim() : '';
+    }
+
     function renderIdleTransactionsWarning(message) {
         const tbody = document.getElementById('idleTransactionsTableBody');
         const count = document.getElementById('idleTransactionsCount');
@@ -745,7 +750,9 @@
         const tbody = document.getElementById('idleTransactionsTableBody');
         const count = document.getElementById('idleTransactionsCount');
         const transactions = data.transactions || [];
-        if (count) count.textContent = `${transactions.length} транзакций`;
+        if (count) count.textContent = idleTransactionsState.username
+            ? `${transactions.length} транзакций для ${idleTransactionsState.username}`
+            : `${transactions.length} транзакций`;
         if (!tbody) return;
         if (!transactions.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Транзакции не найдены</td></tr>';
@@ -784,6 +791,14 @@
             scheduleIdleTransactionsRefresh();
             refreshIdleTransactionsForConnection(undefined, {silent: true});
         });
+        let userFilterTimer;
+        document.getElementById('idleTransactionsUserFilter')?.addEventListener('input', function () {
+            clearTimeout(userFilterTimer);
+            userFilterTimer = setTimeout(() => {
+                idleTransactionsState.username = this.value.trim();
+                refreshIdleTransactionsForConnection(undefined, {silent: true});
+            }, 350);
+        });
         document.getElementById('idleTransactionsRefreshBtn')?.addEventListener('click', function () {
             refreshIdleTransactionsForConnection(undefined, {silent: false});
         });
@@ -794,9 +809,10 @@
             renderIdleTransactionsWarning('Выберите сохранённое подключение для загрузки транзакций');
             return;
         }
+        syncIdleTransactionsUserFilter();
         const requestId = ++idleTransactionsRequestId;
         if (!options.silent) renderIdleTransactionsWarning('Загрузка транзакций...');
-        connectionRequest(idleTransactionsApiUrl, {id: conn.id})
+        connectionRequest(idleTransactionsApiUrl, {id: conn.id, username: idleTransactionsState.username})
             .then(data => {
                 if (requestId !== idleTransactionsRequestId) return;
                 renderIdleTransactions(data);
