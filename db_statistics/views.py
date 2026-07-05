@@ -541,6 +541,8 @@ def blocking_locks(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
+    blocked_username = (payload.get("blocked_username") or "").strip()
+    blocker_username = (payload.get("blocker_username") or "").strip()
     blocking_locks_query = """
         SELECT
             blocked.pid AS blocked_pid,
@@ -569,11 +571,13 @@ def blocking_locks(request):
         JOIN pg_catalog.pg_stat_activity AS blocker
             ON blocker.pid = blocker_locks.pid
         WHERE NOT blocked_locks.granted
-          AND blocker_locks.granted;
+          AND blocker_locks.granted
+          AND (%s = '' OR blocked.usename = %s)
+          AND (%s = '' OR blocker.usename = %s);
     """
 
     try:
-        rows = _fetch_db_rows(db_connection, blocking_locks_query)
+        rows = _fetch_db_rows(db_connection, blocking_locks_query, [blocked_username, blocked_username, blocker_username, blocker_username])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить блокировки: {exc}"}, status=400)
 
@@ -593,7 +597,7 @@ def blocking_locks(request):
                 "blocker_query": row[7] or "—",
             }
         )
-    return JsonResponse({"ok": True, "locks": locks, "total_count": len(locks)})
+    return JsonResponse({"ok": True, "locks": locks, "total_count": len(locks), "blocked_username": blocked_username, "blocker_username": blocker_username})
 
 
 @require_http_methods(["POST"])

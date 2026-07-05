@@ -24,7 +24,7 @@
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
     let blockingLocksRequestId = 0;
-    let blockingLocksState = {refreshInterval: 0, timer: null};
+    let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
     let idleTransactionsState = {refreshInterval: 0, timer: null};
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
@@ -629,6 +629,20 @@
             });
     }
 
+    function syncBlockingLocksUserFilters() {
+        const blockedInput = document.getElementById('blockingLocksBlockedUserFilter');
+        const blockerInput = document.getElementById('blockingLocksBlockerUserFilter');
+        blockingLocksState.blockedUsername = blockedInput ? blockedInput.value.trim() : '';
+        blockingLocksState.blockerUsername = blockerInput ? blockerInput.value.trim() : '';
+    }
+
+    function getBlockingLocksFilterLabel() {
+        const filters = [];
+        if (blockingLocksState.blockedUsername) filters.push(`заблок.: ${blockingLocksState.blockedUsername}`);
+        if (blockingLocksState.blockerUsername) filters.push(`блок.: ${blockingLocksState.blockerUsername}`);
+        return filters.join(', ');
+    }
+
     function renderBlockingLocksWarning(message) {
         const tbody = document.getElementById('blockingLocksTableBody');
         const count = document.getElementById('blockingLocksCount');
@@ -640,7 +654,10 @@
         const tbody = document.getElementById('blockingLocksTableBody');
         const count = document.getElementById('blockingLocksCount');
         const locks = data.locks || [];
-        if (count) count.textContent = `${locks.length} блокировок`;
+        const filterLabel = getBlockingLocksFilterLabel();
+        if (count) count.textContent = filterLabel
+            ? `${locks.length} блокировок (${filterLabel})`
+            : `${locks.length} блокировок`;
         if (!tbody) return;
         if (!locks.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Блокировки не найдены</td></tr>';
@@ -679,6 +696,16 @@
             scheduleBlockingLocksRefresh();
             refreshBlockingLocksForConnection(undefined, {silent: true});
         });
+        let userFilterTimer;
+        document.querySelectorAll('[data-blocking-locks-user-filter]').forEach(input => {
+            input.addEventListener('input', function () {
+                clearTimeout(userFilterTimer);
+                userFilterTimer = setTimeout(() => {
+                    syncBlockingLocksUserFilters();
+                    refreshBlockingLocksForConnection(undefined, {silent: true});
+                }, 350);
+            });
+        });
         document.getElementById('blockingLocksRefreshBtn')?.addEventListener('click', function () {
             refreshBlockingLocksForConnection(undefined, {silent: false});
         });
@@ -689,9 +716,14 @@
             renderBlockingLocksWarning('Выберите сохранённое подключение для загрузки блокировок');
             return;
         }
+        syncBlockingLocksUserFilters();
         const requestId = ++blockingLocksRequestId;
         if (!options.silent) renderBlockingLocksWarning('Загрузка блокировок...');
-        connectionRequest(blockingLocksApiUrl, {id: conn.id})
+        connectionRequest(blockingLocksApiUrl, {
+            id: conn.id,
+            blocked_username: blockingLocksState.blockedUsername,
+            blocker_username: blockingLocksState.blockerUsername
+        })
             .then(data => {
                 if (requestId !== blockingLocksRequestId) return;
                 renderBlockingLocks(data);
