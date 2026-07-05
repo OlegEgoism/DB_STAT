@@ -606,6 +606,7 @@ def idle_transactions(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
+    username = (payload.get("username") or "").strip()
     idle_transactions_query = """
         SELECT
             pid,
@@ -618,11 +619,12 @@ def idle_transactions(request):
             query
         FROM pg_catalog.pg_stat_activity
         WHERE state = 'idle in transaction'
+          AND (%s = '' OR usename = %s)
         ORDER BY xact_start;
     """
 
     try:
-        rows = _fetch_db_rows(db_connection, idle_transactions_query)
+        rows = _fetch_db_rows(db_connection, idle_transactions_query, [username, username])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить транзакции: {exc}"}, status=400)
 
@@ -642,7 +644,7 @@ def idle_transactions(request):
                 "sql": row[7] or "—",
             }
         )
-    return JsonResponse({"ok": True, "transactions": transactions, "total_count": len(transactions)})
+    return JsonResponse({"ok": True, "transactions": transactions, "total_count": len(transactions), "username": username})
 
 
 @require_http_methods(["POST"])
