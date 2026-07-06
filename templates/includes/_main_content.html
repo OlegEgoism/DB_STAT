@@ -198,7 +198,12 @@
                 <div class="glass-card">
                     <div class="card-header">
                         <span><i class="fas fa-heartbeat"></i> Активность БД</span>
-                        <span class="card-meta" id="databaseOverviewActivityCount">Нет данных</span>
+                        <div class="card-header-actions">
+                            <button class="chart-toggle-btn" type="button" data-chart-toggle="databaseOverviewActivityChart" aria-expanded="true" aria-controls="databaseOverviewActivityChart">
+                                <i class="fas fa-chevron-up"></i><span>Свернуть график</span>
+                            </button>
+                            <span class="card-meta" id="databaseOverviewActivityCount">Нет данных</span>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="db-activity-chart" id="databaseOverviewActivityChart" aria-live="polite">
