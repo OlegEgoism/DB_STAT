@@ -34,18 +34,38 @@
                         <div class="col-md-6">
                             <label class="form-label">Тип БД <span class="text-danger">*</span></label>
                             <div class="db-type-select">
-                                <img
-                                    id="connDbTypeIcon"
-                                    class="db-type-select__icon"
-                                    src="{% static 'img/postgresql-icon.svg' %}"
-                                    alt="PostgreSQL"
-                                    data-postgresql-icon="{% static 'img/postgresql-icon.svg' %}"
-                                    data-greenplum-icon="{% static 'img/greenplum-icon.svg' %}"
-                                >
-                                <select class="form-select db-type-select__control" id="connDbType">
-                                    <option value="PostgreSQL">PostgreSQL</option>
-                                    <option value="Greenplum">Greenplum</option>
+                                <select class="visually-hidden" id="connDbType" aria-hidden="true" tabindex="-1">
+                                    <option value="PostgreSQL" data-icon="{% static 'img/postgresql-icon.svg' %}">PostgreSQL</option>
+                                    <option value="Greenplum" data-icon="{% static 'img/greenplum-icon.svg' %}">Greenplum</option>
                                 </select>
+                                <button
+                                    class="db-type-select__toggle"
+                                    id="connDbTypeToggle"
+                                    type="button"
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                >
+                                    <span class="db-type-select__value">
+                                        <img
+                                            id="connDbTypeIcon"
+                                            class="db-type-select__icon"
+                                            src="{% static 'img/postgresql-icon.svg' %}"
+                                            alt=""
+                                        >
+                                        <span id="connDbTypeLabel">PostgreSQL</span>
+                                    </span>
+                                    <i class="fas fa-chevron-down db-type-select__chevron" aria-hidden="true"></i>
+                                </button>
+                                <div class="db-type-select__menu" id="connDbTypeMenu" role="listbox" aria-label="Тип БД">
+                                    <button class="db-type-select__option is-selected" type="button" role="option" aria-selected="true" data-value="PostgreSQL" data-icon="{% static 'img/postgresql-icon.svg' %}">
+                                        <img class="db-type-select__option-icon" src="{% static 'img/postgresql-icon.svg' %}" alt="">
+                                        <span>PostgreSQL</span>
+                                    </button>
+                                    <button class="db-type-select__option" type="button" role="option" aria-selected="false" data-value="Greenplum" data-icon="{% static 'img/greenplum-icon.svg' %}">
+                                        <img class="db-type-select__option-icon" src="{% static 'img/greenplum-icon.svg' %}" alt="">
+                                        <span>Greenplum</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6">
