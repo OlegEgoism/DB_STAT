@@ -352,6 +352,33 @@
         summary.textContent = maximum > 0 ? `${current} из ${maximum} (${usageText}%)` : '—';
     }
 
+
+    function getActivityStatValue(activityStats, key) {
+        const item = activityStats.find(stat => stat.key === key);
+        return item ? item.value : null;
+    }
+
+    function updateDatabaseActivityChart(activityStats) {
+        const donut = document.getElementById('databaseOverviewActivityDonut');
+        const summary = document.getElementById('databaseOverviewActivitySummary');
+        if (!donut || !summary) return;
+
+        const commits = Number(getActivityStatValue(activityStats, 'xact_commit')) || 0;
+        const rollbacks = Number(getActivityStatValue(activityStats, 'xact_rollback')) || 0;
+        const total = commits + rollbacks;
+        const commitPercent = total > 0 ? Math.max(0, Math.min((commits / total) * 100, 100)) : 0;
+        const rollbackPercent = total > 0 ? Math.max(0, Math.min((rollbacks / total) * 100, 100)) : 0;
+        const commitText = commitPercent.toFixed(2);
+        const rollbackText = rollbackPercent.toFixed(2);
+
+        donut.style.setProperty('--db-activity-commit', `${commitPercent}%`);
+        donut.style.setProperty('--db-activity-rollback', `${commitPercent + rollbackPercent}%`);
+        donut.setAttribute('aria-label', `Активность БД: коммиты ${commitText}%, роллбеки ${rollbackText}%`);
+        summary.textContent = total > 0
+            ? `${commits} / ${rollbacks} (${commitText}% / ${rollbackText}%)`
+            : '—';
+    }
+
     function renderDatabaseOverviewWarning(message) {
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
@@ -376,6 +403,7 @@
         if (basicSettingsCount) basicSettingsCount.textContent = 'Нет данных';
         if (activityStatsCount) activityStatsCount.textContent = 'Нет данных';
         updateConnectionSlotsChart([]);
+        updateDatabaseActivityChart([]);
         if (version) version.textContent = message;
         if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
@@ -430,6 +458,7 @@
             }
         }
 
+        updateDatabaseActivityChart(activityStats);
         if (activityStatsTbody) {
             if (!activityStats.length) {
                 activityStatsTbody.innerHTML = '<tr><td colspan="2" class="text-muted">Нет данных об активности БД</td></tr>';
