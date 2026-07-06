@@ -1216,44 +1216,14 @@
     }
 
     function resetMaintenanceVisuals() {
-        const deadPercentBars = document.getElementById('maintenanceDeadPercentBars');
-        const deadRowsBars = document.getElementById('maintenanceDeadRowsBars');
         const heatmap = document.getElementById('maintenanceStatusHeatmap');
         const donut = document.getElementById('maintenanceRowsDonut');
         const donutSummary = document.getElementById('maintenanceRowsDonutSummary');
         const donutTable = document.getElementById('maintenanceRowsDonutTable');
-        if (deadPercentBars) deadPercentBars.textContent = 'Нет данных';
-        if (deadRowsBars) deadRowsBars.textContent = 'Нет данных';
         if (heatmap) heatmap.textContent = 'Нет данных';
         if (donut) donut.style.setProperty('--maintenance-live-dead', '#e8eaee 0 100%');
         if (donutSummary) donutSummary.textContent = '—';
         if (donutTable) donutTable.textContent = 'Выберите таблицу';
-    }
-
-    function renderMaintenanceBarChart(containerId, tables, valueGetter, valueFormatter, maxValue = null) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        const topTables = [...tables]
-            .sort((a, b) => valueGetter(b) - valueGetter(a))
-            .slice(0, 10);
-        const max = maxValue ?? Math.max(...topTables.map(valueGetter), 0);
-        if (!topTables.length || max <= 0) {
-            container.textContent = 'Нет данных';
-            return;
-        }
-        container.innerHTML = topTables.map(table => {
-            const value = valueGetter(table);
-            const percent = Math.max((value * 100) / max, 2);
-            const statusClass = getMaintenanceStatusClass(Number(table.dead_percent) || 0);
-            const tableName = getMaintenanceTableKey(table);
-            return `
-                <div class="maintenance-bar-row" title="${escapeHtml(tableName)}">
-                    <span class="maintenance-bar-name">${escapeHtml(tableName)}</span>
-                    <span class="maintenance-bar-track"><span class="maintenance-bar-fill ${statusClass}" style="width:${percent}%;"></span></span>
-                    <span class="maintenance-bar-value">${escapeHtml(valueFormatter(value))}</span>
-                </div>
-            `;
-        }).join('');
     }
 
     function updateMaintenanceRowsDonut(table) {
@@ -1307,8 +1277,6 @@
             resetMaintenanceVisuals();
             return;
         }
-        renderMaintenanceBarChart('maintenanceDeadPercentBars', tables, table => Number(table.dead_percent) || 0, value => `${value}%`, 100);
-        renderMaintenanceBarChart('maintenanceDeadRowsBars', tables, table => Number(table.dead_rows) || 0, value => formatRowCount(value));
         renderMaintenanceHeatmap(tables);
         if (!maintenanceStatsState.selectedTableKey || !tables.some(table => getMaintenanceTableKey(table) === maintenanceStatsState.selectedTableKey)) {
             maintenanceStatsState.selectedTableKey = getMaintenanceTableKey(tables[0]);
