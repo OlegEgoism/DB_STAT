@@ -41,6 +41,7 @@
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
+    const sidebarSectionsCollapsedStorageKey = 'gp_sidebar_sections_collapsed';
     const tableChartCollapsedStorageKey = 'gp_table_chart_collapsed';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -155,6 +156,7 @@
         initCharts();
         initNavigation();
         initSidebarCollapse();
+        initSidebarSectionToggles();
         initBrandHomeNavigation();
         initTableChartToggles();
         activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false});
@@ -289,6 +291,49 @@
         window.addEventListener('resize', function () {
             const shouldCollapse = localStorage.getItem(sidebarCollapsedStorageKey) === '1';
             setSidebarCollapsed(shouldCollapse, {persist: false});
+        });
+    }
+
+    function getCollapsedSidebarSections() {
+        try {
+            return JSON.parse(localStorage.getItem(sidebarSectionsCollapsedStorageKey) || '{}') || {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function setSidebarSectionCollapsed(toggle, isCollapsed, {persist = true} = {}) {
+        const section = toggle?.closest('.nav-section');
+        const sectionKey = toggle?.dataset?.navSectionToggle;
+        if (!toggle || !section || !sectionKey) return;
+
+        section.classList.toggle('collapsed', isCollapsed);
+        toggle.setAttribute('aria-expanded', String(!isCollapsed));
+        toggle.setAttribute('title', isCollapsed ? 'Развернуть раздел' : 'Свернуть раздел');
+        toggle.setAttribute('aria-label', isCollapsed ? 'Развернуть раздел' : 'Свернуть раздел');
+
+        const icon = toggle.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-up', !isCollapsed);
+            icon.classList.toggle('fa-chevron-down', isCollapsed);
+        }
+
+        if (persist) {
+            const collapsedSections = getCollapsedSidebarSections();
+            collapsedSections[sectionKey] = isCollapsed;
+            localStorage.setItem(sidebarSectionsCollapsedStorageKey, JSON.stringify(collapsedSections));
+        }
+    }
+
+    function initSidebarSectionToggles() {
+        const collapsedSections = getCollapsedSidebarSections();
+        document.querySelectorAll('[data-nav-section-toggle]').forEach(toggle => {
+            const sectionKey = toggle.dataset.navSectionToggle;
+            setSidebarSectionCollapsed(toggle, collapsedSections[sectionKey] === true, {persist: false});
+            toggle.addEventListener('click', function () {
+                const section = this.closest('.nav-section');
+                setSidebarSectionCollapsed(this, !section?.classList.contains('collapsed'));
+            });
         });
     }
 
