@@ -1759,11 +1759,54 @@ body {
     align-items: center;
     border-radius: 999px;
     padding: 4px 10px;
+    border: 1px solid transparent;
     background: rgba(139, 92, 246, 0.10);
     color: var(--accent-purple);
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
+}
+
+.audit-action-badge--login {
+    background: rgba(34, 197, 94, 0.13);
+    border-color: rgba(34, 197, 94, 0.25);
+    color: #15803d;
+}
+
+.audit-action-badge--logout {
+    background: rgba(100, 116, 139, 0.13);
+    border-color: rgba(100, 116, 139, 0.25);
+    color: #475569;
+}
+
+.audit-action-badge--connection-create {
+    background: rgba(59, 130, 246, 0.13);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #1d4ed8;
+}
+
+.audit-action-badge--connection-update {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.28);
+    color: #b45309;
+}
+
+.audit-action-badge--connection-delete {
+    background: rgba(239, 68, 68, 0.13);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #b91c1c;
+}
+
+.audit-action-badge--connection-test {
+    background: rgba(14, 165, 233, 0.13);
+    border-color: rgba(14, 165, 233, 0.25);
+    color: #0369a1;
+}
+
+.audit-action-badge--default {
+    background: rgba(139, 92, 246, 0.10);
+    border-color: rgba(139, 92, 246, 0.22);
+    color: var(--accent-purple);
 }
 
 .audit-info-cell {
