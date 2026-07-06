@@ -1,19 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DB STAT icon">
   <defs>
-    <linearGradient id="bgGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#e8eeff"/>
-      <stop offset="1" stop-color="#d6e0ff"/>
-    </linearGradient>
-
     <linearGradient id="g9" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4f8cff"/>
       <stop offset="0.5" stop-color="#4f8cff"/>
       <stop offset="1" stop-color="#4f8cff"/>
     </linearGradient>
   </defs>
-
-  <!-- Бледный задний фон -->
-  <rect width="64" height="64" rx="12" fill="url(#bgGrad)"/>
 
   <circle cx="32" cy="32" r="22" fill="none" stroke="url(#g9)" stroke-width="6">
     <animate attributeName="stroke-dasharray" values="138;0;138" dur="13s" repeatCount="indefinite"/>

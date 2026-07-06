@@ -1,4 +1,5 @@
-# <img src="static/img/favicon.svg" width="22"> DB STAT
+# <img src="static/img/favicon.svg" width="64"> 
+# DB STAT
 
 ## Описание проекта
 
