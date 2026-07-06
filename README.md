@@ -13,6 +13,13 @@
 
 [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA)
 
+## Скриншоты проекта
+
+<img src="screenshots/db.png" width="600"> 
+<img src="screenshots/memory.png" width=600"> 
+<img src="screenshots/service.png" width=600"> 
+<img src="screenshots/session.png" width=600"> 
+
 ## Настройка окружения
 
 - Версия Python 3.12
