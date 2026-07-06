@@ -46,6 +46,7 @@ STATIC_URL=static/
 
 3. Для локального запуска можно оставить `DB_ENGINE=sqlite`.
 4. Для PostgreSQL задайте `DB_ENGINE=postgresql` и заполните `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
+5. Версия Python 3.12
 
 ## Команды
 
@@ -96,7 +97,7 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
-Запуск Docker-контейнера
+- Запуск Docker-контейнера
 
 ```bash
 docker run --rm -p 8000:8000 db-stat
