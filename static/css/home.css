@@ -1034,59 +1034,6 @@ body {
     min-width: 0;
 }
 
-.maintenance-bars {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    color: var(--text-muted);
-    font-size: 12px;
-}
-
-.maintenance-bar-row {
-    display: grid;
-    grid-template-columns: minmax(120px, 1fr) 2fr auto;
-    align-items: center;
-    gap: 8px;
-}
-
-.maintenance-bar-name {
-    color: var(--text-secondary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.maintenance-bar-track {
-    height: 8px;
-    background: #e8eaee;
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.maintenance-bar-fill {
-    height: 100%;
-    border-radius: inherit;
-}
-
-.maintenance-bar-fill.success {
-    background: var(--accent-green);
-}
-
-.maintenance-bar-fill.warning {
-    background: var(--accent-yellow);
-}
-
-.maintenance-bar-fill.danger {
-    background: var(--accent-red);
-}
-
-.maintenance-bar-value {
-    color: var(--text-primary);
-    font-weight: 800;
-    min-width: 44px;
-    text-align: right;
-}
-
 .maintenance-donut-wrap {
     display: flex;
     align-items: center;
