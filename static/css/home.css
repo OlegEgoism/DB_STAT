@@ -216,6 +216,10 @@ body {
 }
 
 .nav-section-title {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
     font-size: 9px;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -223,6 +227,34 @@ body {
     padding: 0 6px;
     margin-bottom: 8px;
     font-weight: 600;
+}
+
+.nav-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.nav-section-toggle:hover {
+    color: var(--text-secondary);
+}
+
+.nav-section-toggle:focus-visible {
+    outline: 2px solid rgba(79, 140, 255, 0.35);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+}
+
+.nav-section-toggle i {
+    font-size: 8px;
+    transition: transform 0.2s ease;
+}
+
+.nav-section.collapsed .nav-item {
+    display: none;
 }
 
 .nav-item {
