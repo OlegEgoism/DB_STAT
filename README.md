@@ -15,10 +15,16 @@
 
 ## Скриншоты проекта
 
-<img src="screenshots/db.png" width="400"> 
-<img src="screenshots/memory.png" width=400"> 
-<img src="screenshots/service.png" width=400"> 
-<img src="screenshots/session.png" width=400"> 
+<table>
+  <tr>
+    <td><img src="screenshots/db.png" width="700" alt="Database dashboard"></td>
+    <td><img src="screenshots/memory.png" width="700" alt="Memory dashboard"></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/service.png" width="700" alt="Service dashboard"></td>
+    <td><img src="screenshots/session.png" width="700" alt="Session dashboard"></td>
+  </tr>
+</table>
 
 ## Настройка окружения
 
@@ -71,7 +77,7 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 
 - Создание пользователя DBUser для авторизации в приложении
 
-```
+```bash
 python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
 ```
 
