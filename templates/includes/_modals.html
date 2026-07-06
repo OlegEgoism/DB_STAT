@@ -1,3 +1,4 @@
+{% load static %}
 <!-- ========== CONNECTION MODAL ========== -->
 <div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered connection-modal-dialog">
@@ -31,11 +32,30 @@
                             <input type="text" class="form-control" id="connUser" placeholder="postgres" value="postgres">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Тип БД <span class="text-danger">*</span></label>
-                            <select class="form-select" id="connDbType">
-                                <option value="PostgreSQL">PostgreSQL</option>
-                                <option value="Greenplum">Greenplum</option>
-                            </select>
+                            <label class="form-label" id="connDbTypeLabel">Тип БД <span class="text-danger">*</span></label>
+                            <div class="db-type-picker" id="connDbTypePicker">
+                                <select class="form-select db-type-picker__native" id="connDbType" aria-labelledby="connDbTypeLabel">
+                                    <option value="PostgreSQL">PostgreSQL</option>
+                                    <option value="Greenplum">Greenplum</option>
+                                </select>
+                                <button class="db-type-picker__toggle" id="connDbTypeToggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="connDbTypeLabel connDbTypeSelectedText">
+                                    <span class="db-type-picker__selected">
+                                        <img class="db-type-picker__icon" id="connDbTypeSelectedIcon" src="{% static 'img/postgresql.svg' %}" alt="" aria-hidden="true">
+                                        <span id="connDbTypeSelectedText">PostgreSQL</span>
+                                    </span>
+                                    <i class="fas fa-chevron-down db-type-picker__chevron" aria-hidden="true"></i>
+                                </button>
+                                <div class="db-type-picker__menu" id="connDbTypeMenu" role="listbox" aria-labelledby="connDbTypeLabel">
+                                    <button class="db-type-picker__option" type="button" role="option" data-db-type="PostgreSQL" aria-selected="true">
+                                        <img class="db-type-picker__icon" src="{% static 'img/postgresql.svg' %}" alt="" aria-hidden="true">
+                                        <span>PostgreSQL</span>
+                                    </button>
+                                    <button class="db-type-picker__option" type="button" role="option" data-db-type="Greenplum" aria-selected="false">
+                                        <img class="db-type-picker__icon" src="{% static 'img/greenplum.svg' %}" alt="" aria-hidden="true">
+                                        <span>Greenplum</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Пароль</label>

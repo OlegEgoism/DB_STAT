@@ -174,6 +174,7 @@
         initUsersControls();
         initGroupsControls();
         initAuditControls();
+        initDbTypePicker();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
 
         document.getElementById('menuToggle').addEventListener('click', function () {
@@ -340,6 +341,81 @@
     // ============================
     // CONNECTION MANAGER
     // ============================
+    const dbTypeIcons = {};
+
+    function setConnectionDbType(dbType) {
+        const normalizedDbType = dbTypeIcons[dbType] ? dbType : 'PostgreSQL';
+        const select = document.getElementById('connDbType');
+        if (select) {
+            select.value = normalizedDbType;
+        }
+        updateDbTypePicker(normalizedDbType);
+    }
+
+    function updateDbTypePicker(dbType) {
+        const selectedIcon = document.getElementById('connDbTypeSelectedIcon');
+        const selectedText = document.getElementById('connDbTypeSelectedText');
+        const options = document.querySelectorAll('#connDbTypeMenu .db-type-picker__option');
+        if (selectedIcon) {
+            selectedIcon.src = dbTypeIcons[dbType] || dbTypeIcons.PostgreSQL;
+        }
+        if (selectedText) {
+            selectedText.textContent = dbType;
+        }
+        options.forEach(option => {
+            option.setAttribute('aria-selected', String(option.dataset.dbType === dbType));
+        });
+    }
+
+    function closeDbTypePicker() {
+        const picker = document.getElementById('connDbTypePicker');
+        const toggle = document.getElementById('connDbTypeToggle');
+        if (!picker || !toggle) return;
+        picker.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function initDbTypePicker() {
+        const picker = document.getElementById('connDbTypePicker');
+        const toggle = document.getElementById('connDbTypeToggle');
+        const select = document.getElementById('connDbType');
+        if (!picker || !toggle || !select) return;
+
+        document.querySelectorAll('#connDbTypeMenu .db-type-picker__option').forEach(option => {
+            const icon = option.querySelector('.db-type-picker__icon');
+            if (option.dataset.dbType && icon?.src) {
+                dbTypeIcons[option.dataset.dbType] = icon.src;
+            }
+        });
+
+        toggle.addEventListener('click', () => {
+            const isOpen = picker.classList.toggle('is-open');
+            toggle.setAttribute('aria-expanded', String(isOpen));
+        });
+
+        document.querySelectorAll('#connDbTypeMenu .db-type-picker__option').forEach(option => {
+            option.addEventListener('click', () => {
+                setConnectionDbType(option.dataset.dbType);
+                select.dispatchEvent(new Event('change', {bubbles: true}));
+                closeDbTypePicker();
+            });
+        });
+
+        document.addEventListener('click', event => {
+            if (!picker.contains(event.target)) {
+                closeDbTypePicker();
+            }
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                closeDbTypePicker();
+            }
+        });
+
+        updateDbTypePicker(select.value || 'PostgreSQL');
+    }
+
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -3171,7 +3247,7 @@
         document.getElementById('connPort').value = '5432';
         document.getElementById('connDatabase').value = 'postgres';
         document.getElementById('connUser').value = 'postgres';
-        document.getElementById('connDbType').value = 'PostgreSQL';
+        setConnectionDbType('PostgreSQL');
         document.getElementById('connPassword').value = '';
     }
 
@@ -3197,7 +3273,7 @@
         document.getElementById('connPort').value = conn.port || '5432';
         document.getElementById('connDatabase').value = conn.database || 'postgres';
         document.getElementById('connUser').value = conn.user || 'postgres';
-        document.getElementById('connDbType').value = conn.db_type || 'PostgreSQL';
+        setConnectionDbType(conn.db_type || 'PostgreSQL');
         document.getElementById('connPassword').value = '';
         modalInstance.show();
     }
