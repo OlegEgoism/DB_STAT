@@ -479,7 +479,7 @@ def database_overview(request):
         {"key": "xact_rollback", "label": "Роллбеков", "value": int(row[26] or 0)},
         {"key": "total_transactions", "label": "Всего транзакций", "value": transaction_total},
         {"key": "rollback_percent", "label": "Откат (Rollback), %", "value": f"{float(row[27] or 0):.2f}%"},
-        {"key": "cache_hit_percent", "label": "Cache hit ratio", "value": f"{float(row[28] or 0):.2f}%"},
+        {"key": "cache_hit_percent", "label": "Доля попаданий в кэш", "value": f"{float(row[28] or 0):.2f}%"},
         {"key": "xid_age", "label": "Возраст транзакций (XID)", "value": int(row[29] or 0)},
     ]
     basic_settings = [
