@@ -201,6 +201,15 @@
                         <span class="card-meta" id="databaseOverviewActivityCount">Нет данных</span>
                     </div>
                     <div class="card-body p-0">
+                        <div class="db-activity-chart" id="databaseOverviewActivityChart" aria-live="polite">
+                            <div class="db-activity-donut" id="databaseOverviewActivityDonut" role="img" aria-label="Активность БД по транзакциям">
+                                <span></span>
+                            </div>
+                            <div class="db-activity-summary">
+                                <span>Коммиты / роллбеки</span>
+                                <strong id="databaseOverviewActivitySummary">—</strong>
+                            </div>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>
