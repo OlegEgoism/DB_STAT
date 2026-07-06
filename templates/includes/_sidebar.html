@@ -1,9 +1,10 @@
+{% load static %}
 <!-- ========== SIDEBAR ========== -->
 <nav class="sidebar" id="sidebar">
     <!-- Brand -->
     <div class="sidebar-brand">
         <button class="logo-icon sidebar-logo-toggle" id="sidebarLogoToggle" type="button" aria-label="Свернуть сайдбар" aria-expanded="true" title="Свернуть/развернуть сайдбар">
-            <i class="fas fa-database"></i>
+            <img class="sidebar-brand__logo" src="{% static 'img/favicon.svg' %}" alt="" aria-hidden="true">
         </button>
         <button class="brand-text brand-home-button" id="brandHomeButton" type="button" title="Главная страница" aria-label="Открыть главную страницу DB STAT">
             <span>DB STAT</span>
