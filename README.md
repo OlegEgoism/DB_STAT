@@ -15,10 +15,10 @@
 
 ## Скриншоты проекта
 
-<img src="screenshots/db.png" width="600"> 
-<img src="screenshots/memory.png" width=600"> 
-<img src="screenshots/service.png" width=600"> 
-<img src="screenshots/session.png" width=600"> 
+<img src="screenshots/db.png" width="400"> 
+<img src="screenshots/memory.png" width=400"> 
+<img src="screenshots/service.png" width=400"> 
+<img src="screenshots/session.png" width=400"> 
 
 ## Настройка окружения
 
