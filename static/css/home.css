@@ -163,8 +163,8 @@ body {
 }
 
 .sidebar-brand .logo-icon {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
     background: transparent;
     border: 0;
     border-radius: var(--radius-md);
@@ -173,7 +173,7 @@ body {
     justify-content: center;
     padding: 0;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px var(--glow-blue);
+    box-shadow: 0 2px 8px var(--glow-blue);
 }
 
 .sidebar-brand__logo {
