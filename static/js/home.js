@@ -175,6 +175,8 @@
         initGroupsControls();
         initAuditControls();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
+        document.getElementById('connDbType')?.addEventListener('change', updateConnectionDbTypeIcon);
+        updateConnectionDbTypeIcon();
 
         document.getElementById('menuToggle').addEventListener('click', function () {
             document.body.classList.remove('sidebar-collapsed');
@@ -358,6 +360,19 @@
             password: document.getElementById('connPassword').value,
             db_type: document.getElementById('connDbType').value
         };
+    }
+
+    function updateConnectionDbTypeIcon() {
+        const select = document.getElementById('connDbType');
+        const icon = document.getElementById('connDbTypeIcon');
+        if (!select || !icon) return;
+
+        const isGreenplum = select.value === 'Greenplum';
+        const iconSrc = isGreenplum ? icon.dataset.greenplumIcon : icon.dataset.postgresqlIcon;
+        const iconAlt = isGreenplum ? 'Greenplum' : 'PostgreSQL';
+
+        if (iconSrc) icon.src = iconSrc;
+        icon.alt = iconAlt;
     }
 
     function validateConnectionPayload(payload) {
@@ -3173,6 +3188,7 @@
         document.getElementById('connUser').value = 'postgres';
         document.getElementById('connDbType').value = 'PostgreSQL';
         document.getElementById('connPassword').value = '';
+        updateConnectionDbTypeIcon();
     }
 
     function editConnection() {
@@ -3199,6 +3215,7 @@
         document.getElementById('connUser').value = conn.user || 'postgres';
         document.getElementById('connDbType').value = conn.db_type || 'PostgreSQL';
         document.getElementById('connPassword').value = '';
+        updateConnectionDbTypeIcon();
         modalInstance.show();
     }
 
