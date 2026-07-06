@@ -1562,20 +1562,94 @@ body {
     position: relative;
 }
 
-.db-type-select__icon {
-    position: absolute;
-    top: 50%;
-    left: 14px;
+.db-type-select__toggle {
+    width: 100%;
+    min-height: 39px;
+    background: var(--bg-primary);
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 8px 38px 8px 14px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+}
+
+.db-type-select__toggle:focus,
+.db-type-select.open .db-type-select__toggle {
+    background: var(--bg-secondary);
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px var(--glow-blue);
+    outline: 0;
+}
+
+.db-type-select__value,
+.db-type-select__option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.db-type-select__icon,
+.db-type-select__option-icon {
     width: 22px;
     height: 22px;
     object-fit: contain;
-    pointer-events: none;
-    transform: translateY(-50%);
-    z-index: 2;
+    flex-shrink: 0;
 }
 
-.db-type-select__control {
-    padding-left: 46px;
+.db-type-select__chevron {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    pointer-events: none;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.db-type-select.open .db-type-select__chevron {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.db-type-select__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    display: none;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent-blue);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card-hover);
+    overflow: hidden;
+    z-index: 1060;
+}
+
+.db-type-select.open .db-type-select__menu {
+    display: block;
+}
+
+.db-type-select__option {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 8px 14px;
+    font-size: 14px;
+    text-align: left;
+}
+
+.db-type-select__option:hover,
+.db-type-select__option:focus,
+.db-type-select__option.is-selected {
+    background: var(--accent-blue);
+    color: #ffffff;
+    outline: 0;
 }
 
 .form-control::placeholder {
