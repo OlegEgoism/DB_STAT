@@ -632,7 +632,9 @@ def active_sessions(request):
                 "wait_event": " / ".join([part for part in [row[11], row[12]] if part]) or "—",
                 "backend_type": row[13] or "—",
                 "session_duration": str(session_duration).split(".")[0] if session_duration else "—",
+                "session_duration_seconds": max(int(session_duration.total_seconds()), 0) if session_duration else 0,
                 "query_duration": str(query_duration).split(".")[0] if query_duration else "—",
+                "query_duration_seconds": max(int(query_duration.total_seconds()), 0) if query_duration else 0,
                 "sql": row[16] or "—",
             }
         )

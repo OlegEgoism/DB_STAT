@@ -24,7 +24,7 @@
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
     let activeSessionsRequestId = 0;
-    let activeSessionsState = {refreshInterval: 0, timer: null, username: '', state: ''};
+    let activeSessionsState = {sort: 'session_duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', state: ''};
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
@@ -656,6 +656,35 @@
     }
 
 
+    function sortActiveSessions(sessions) {
+        const sort = activeSessionsState.sort;
+        const direction = activeSessionsState.direction === 'asc' ? 1 : -1;
+        const numericColumns = new Set(['pid', 'session_duration_seconds', 'query_duration_seconds']);
+        return [...sessions].sort((a, b) => {
+            const aValue = numericColumns.has(sort)
+                ? Number(a[sort]) || 0
+                : String(a[sort] ?? '').toLowerCase();
+            const bValue = numericColumns.has(sort)
+                ? Number(b[sort]) || 0
+                : String(b[sort] ?? '').toLowerCase();
+            if (aValue < bValue) return -1 * direction;
+            if (aValue > bValue) return 1 * direction;
+            return 0;
+        });
+    }
+
+    function updateActiveSessionsSortIndicators() {
+        document.querySelectorAll('[data-active-session-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const isActive = button.dataset.activeSessionSort === activeSessionsState.sort;
+            button.classList.toggle('active', isActive);
+            if (!icon) return;
+            icon.className = isActive
+                ? `fas fa-sort-${activeSessionsState.direction === 'asc' ? 'up' : 'down'}`
+                : 'fas fa-sort';
+        });
+    }
+
     function syncActiveSessionsFilters() {
         const userInput = document.getElementById('activeSessionsUserFilter');
         const stateInput = document.getElementById('activeSessionsStateFilter');
@@ -677,8 +706,9 @@
     function renderActiveSessions(data) {
         const tbody = document.getElementById('activeSessionsTableBody');
         const count = document.getElementById('activeSessionsCount');
-        const sessions = data.sessions || [];
+        const sessions = sortActiveSessions(data.sessions || []);
         const summary = data.summary || {};
+        updateActiveSessionsSortIndicators();
         if (count) count.textContent = activeSessionsState.username
             ? `${sessions.length} сессий для ${activeSessionsState.username}`
             : `${sessions.length} сессий`;
@@ -727,6 +757,19 @@
     }
 
     function initActiveSessionsControls() {
+        document.querySelectorAll('[data-active-session-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.activeSessionSort;
+                if (activeSessionsState.sort === sort) {
+                    activeSessionsState.direction = activeSessionsState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    activeSessionsState.sort = sort;
+                    activeSessionsState.direction = ['pid', 'session_duration_seconds', 'query_duration_seconds'].includes(sort) ? 'desc' : 'asc';
+                }
+                refreshActiveSessionsForConnection(undefined, {silent: true});
+            });
+        });
+        updateActiveSessionsSortIndicators();
         document.getElementById('activeSessionsRefreshInterval')?.addEventListener('change', function () {
             activeSessionsState.refreshInterval = Number(this.value) || 0;
             scheduleActiveSessionsRefresh();
