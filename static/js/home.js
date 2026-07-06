@@ -132,6 +132,13 @@
         return canEditConnection(conn);
     }
 
+    function getConnectionDbTypeIconSrc(dbType, iconElement) {
+        const normalizedType = String(dbType || '').toLowerCase();
+        return normalizedType === 'greenplum'
+            ? iconElement?.dataset?.greenplumIcon
+            : iconElement?.dataset?.postgresqlIcon;
+    }
+
     function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const editButton = document.getElementById('connectionEditBtn');
         if (editButton) {
@@ -3055,6 +3062,7 @@
         const port = document.getElementById('connectionTooltipPort');
         const owner = document.getElementById('connectionTooltipOwner');
         const select = document.getElementById('connectionSelect');
+        const icon = document.getElementById('connectionSelectIcon');
         const databaseValue = conn?.database || '—';
         const hostValue = conn?.host || '—';
         const portValue = conn?.port || '—';
@@ -3071,6 +3079,11 @@
 Порт: ${portValue}
 Владелец: ${ownerValue}`
                 : 'Информация о подключении недоступна';
+        }
+        if (icon) {
+            const iconSrc = getConnectionDbTypeIconSrc(conn?.db_type, icon);
+            if (conn && iconSrc) icon.src = iconSrc;
+            icon.classList.toggle('d-none', !conn);
         }
     }
 
@@ -3349,6 +3362,7 @@
                 document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
                 persistActiveConnectionId(activeConnectionId);
+                updateConnectionTooltip(savedConnection);
                 updateSidebarForConnection(savedConnection);
                 activatePage(getDefaultPageForConnection(savedConnection));
                 if (!isPostgreSQLConnection(savedConnection)) {

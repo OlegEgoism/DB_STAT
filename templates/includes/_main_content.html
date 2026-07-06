@@ -1,3 +1,4 @@
+{% load static %}
 <!-- ========== MAIN CONTENT ========== -->
 <div class="main-content" id="mainContent">
 
@@ -10,6 +11,14 @@
         <div class="topbar-right">
             <!-- Connection Manager -->
             <div class="connection-manager">
+                <img
+                    id="connectionSelectIcon"
+                    class="connection-manager__db-icon d-none"
+                    src="{% static 'img/postgresql-icon.svg' %}"
+                    alt=""
+                    data-postgresql-icon="{% static 'img/postgresql-icon.svg' %}"
+                    data-greenplum-icon="{% static 'img/greenplum-icon.svg' %}"
+                >
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
                     <option value="">Загрузка подключений...</option>
                 </select>
