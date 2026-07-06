@@ -23,6 +23,8 @@
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
+    let activeSessionsRequestId = 0;
+    let activeSessionsState = {refreshInterval: 0, timer: null, username: '', state: ''};
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
@@ -52,6 +54,7 @@
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
+    const activeSessionsApiUrl = '/sessions/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
@@ -70,6 +73,7 @@
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
         'queries': 'Активные запросы <small>Долгие запросы</small>',
+        'sessions': 'Сессии <small>Пользователи и подключения</small>',
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
         'transactions': 'Транзакции <small>Commit / Rollback</small>',
         'memory': 'Память <small>Параметры памяти</small>',
@@ -161,6 +165,7 @@
         initTempTablesControls();
         initDistributionControls();
         initActiveQueriesControls();
+        initActiveSessionsControls();
         initBlockingLocksControls();
         initIdleTransactionsControls();
         initMaintenanceStatsControls();
@@ -647,6 +652,119 @@
             .catch(error => {
                 if (requestId !== activeQueriesRequestId) return;
                 renderActiveQueriesWarning(error.message || 'Не удалось получить активные запросы');
+            });
+    }
+
+
+    function syncActiveSessionsFilters() {
+        const userInput = document.getElementById('activeSessionsUserFilter');
+        const stateInput = document.getElementById('activeSessionsStateFilter');
+        activeSessionsState.username = userInput ? userInput.value.trim() : '';
+        activeSessionsState.state = stateInput ? stateInput.value.trim() : '';
+    }
+
+    function renderActiveSessionsWarning(message) {
+        const tbody = document.getElementById('activeSessionsTableBody');
+        const count = document.getElementById('activeSessionsCount');
+        if (count) count.textContent = 'Нет данных';
+        ['Total', 'Active', 'Idle', 'IdleXact', 'Users', 'Clients'].forEach(key => {
+            const item = document.getElementById(`activeSessionsSummary${key}`);
+            if (item) item.textContent = '—';
+        });
+        if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function renderActiveSessions(data) {
+        const tbody = document.getElementById('activeSessionsTableBody');
+        const count = document.getElementById('activeSessionsCount');
+        const sessions = data.sessions || [];
+        const summary = data.summary || {};
+        if (count) count.textContent = activeSessionsState.username
+            ? `${sessions.length} сессий для ${activeSessionsState.username}`
+            : `${sessions.length} сессий`;
+        const values = {Total: summary.total, Active: summary.active, Idle: summary.idle, IdleXact: summary.idle_in_transaction, Users: summary.users, Clients: summary.clients};
+        Object.entries(values).forEach(([key, value]) => {
+            const item = document.getElementById(`activeSessionsSummary${key}`);
+            if (item) item.textContent = value ?? 0;
+        });
+        if (!tbody) return;
+        if (!sessions.length) {
+            tbody.innerHTML = '<tr><td colspan="11" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
+            return;
+        }
+        tbody.innerHTML = sessions.map(session => {
+            const stateClass = session.state === 'active' ? 'up' : (session.state === 'idle in transaction' ? 'warning' : '');
+            const client = `${session.client_addr}${session.client_port !== '—' ? ':' + session.client_port : ''}`;
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(session.pid)}</strong></td>
+                    <td>${escapeHtml(session.username)}</td>
+                    <td>${escapeHtml(session.database)}</td>
+                    <td>${escapeHtml(session.application_name)}</td>
+                    <td>${escapeHtml(client)}</td>
+                    <td><span class="status-badge ${stateClass}">${escapeHtml(session.state)}</span></td>
+                    <td>${escapeHtml(session.wait_event)}</td>
+                    <td>${escapeHtml(session.backend_type)}</td>
+                    <td>${escapeHtml(session.session_duration)}</td>
+                    <td>${escapeHtml(session.query_duration)}</td>
+                    <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(session.sql)}">${escapeHtml(session.sql)}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function scheduleActiveSessionsRefresh() {
+        if (activeSessionsState.timer) {
+            clearInterval(activeSessionsState.timer);
+            activeSessionsState.timer = null;
+        }
+        if (!activeSessionsState.refreshInterval) return;
+        activeSessionsState.timer = setInterval(() => {
+            if (document.getElementById('page-sessions')?.classList.contains('active')) {
+                refreshActiveSessionsForConnection(undefined, {silent: true});
+            }
+        }, activeSessionsState.refreshInterval * 1000);
+    }
+
+    function initActiveSessionsControls() {
+        document.getElementById('activeSessionsRefreshInterval')?.addEventListener('change', function () {
+            activeSessionsState.refreshInterval = Number(this.value) || 0;
+            scheduleActiveSessionsRefresh();
+            refreshActiveSessionsForConnection(undefined, {silent: true});
+        });
+        document.getElementById('activeSessionsStateFilter')?.addEventListener('change', function () {
+            activeSessionsState.state = this.value.trim();
+            refreshActiveSessionsForConnection(undefined, {silent: true});
+        });
+        let userFilterTimer;
+        document.getElementById('activeSessionsUserFilter')?.addEventListener('input', function () {
+            clearTimeout(userFilterTimer);
+            userFilterTimer = setTimeout(() => {
+                activeSessionsState.username = this.value.trim();
+                refreshActiveSessionsForConnection(undefined, {silent: true});
+            }, 350);
+        });
+        document.getElementById('activeSessionsRefreshBtn')?.addEventListener('click', function () {
+            refreshActiveSessionsForConnection(undefined, {silent: false});
+        });
+    }
+
+    function refreshActiveSessionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderActiveSessionsWarning('Выберите сохранённое подключение для загрузки активных сессий и подключений');
+            return;
+        }
+        syncActiveSessionsFilters();
+        const requestId = ++activeSessionsRequestId;
+        if (!options.silent) renderActiveSessionsWarning('Загрузка активных сессий и подключений...');
+        connectionRequest(activeSessionsApiUrl, {id: conn.id, username: activeSessionsState.username, state: activeSessionsState.state})
+            .then(data => {
+                if (requestId !== activeSessionsRequestId) return;
+                renderActiveSessions(data);
+            })
+            .catch(error => {
+                if (requestId !== activeSessionsRequestId) return;
+                renderActiveSessionsWarning(error.message || 'Не удалось получить активные сессии и подключения');
             });
     }
 
@@ -2818,6 +2936,9 @@
         }
         if (pageId === 'queries') {
             refreshActiveQueriesForConnection(conn);
+        }
+        if (pageId === 'sessions') {
+            refreshActiveSessionsForConnection(conn);
         }
         if (pageId === 'locks') {
             refreshBlockingLocksForConnection(conn);

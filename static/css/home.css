@@ -2266,3 +2266,24 @@ body.sidebar-collapsed .nav-item .nav-icon {
         flex-direction: column;
     }
 }
+
+.metric-card {
+    padding: 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    min-height: 86px;
+}
+
+.metric-card span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.metric-card strong {
+    color: var(--text-primary);
+    font-size: 24px;
+    line-height: 1;
+}
