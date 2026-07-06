@@ -163,17 +163,18 @@ body {
 }
 
 .sidebar-brand .logo-icon {
-    width: 44px;
-    height: 44px;
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-md);
+    width: 48px;
+    height: 48px;
+    /*background: transparent;*/
+    background: rgb(237,242,251);
+    /*border: 0;*/
+    /*border-radius: var(--radius-md);*/
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px var(--glow-blue);
+    /*flex-shrink: 0;*/
+    /*box-shadow: 0 2px 8px var(--glow-blue);*/
 }
 
 .sidebar-brand__logo {
@@ -2271,9 +2272,9 @@ body {
     justify-content: center;
     flex-shrink: 0;
     border-radius: var(--radius-md);
-    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-    color: #fff;
-    box-shadow: 0 4px 12px var(--glow-blue);
+    /*background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));*/
+    /*color: #fff;*/
+    /*box-shadow: 0 4px 12px var(--glow-blue);*/
 }
 
 .text-accent-blue {
