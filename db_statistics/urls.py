@@ -20,6 +20,7 @@ urlpatterns = [
     path("queries/active/", views.active_queries, name="active_queries"),
     path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
+    path("activity/overview/", views.database_activity, name="database_activity"),
     path("memory/overview/", views.memory_overview, name="memory_overview"),
     path("maintenance/stats/", views.maintenance_stats, name="maintenance_stats"),
     path("users/list/", views.database_users_list, name="database_users_list"),

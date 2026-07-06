@@ -27,6 +27,7 @@
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
+    let databaseActivityRequestId = 0;
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
@@ -54,6 +55,7 @@
     const activeQueriesApiUrl = '/queries/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
+    const databaseActivityApiUrl = '/activity/overview/';
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const usersListApiUrl = '/users/list/';
@@ -72,6 +74,7 @@
         'queries': 'Активные запросы <small>Долгие запросы</small>',
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
         'transactions': 'Транзакции <small>Commit / Rollback</small>',
+        'activity': 'Активность БД <small>Транзакции, кэш и ожидания</small>',
         'memory': 'Память <small>Параметры памяти</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
@@ -163,6 +166,7 @@
         initActiveQueriesControls();
         initBlockingLocksControls();
         initIdleTransactionsControls();
+        initDatabaseActivityControls();
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
@@ -820,6 +824,104 @@
             .catch(error => {
                 if (requestId !== idleTransactionsRequestId) return;
                 renderIdleTransactionsWarning(error.message || 'Не удалось получить транзакции');
+            });
+    }
+
+
+    function formatInteger(value) {
+        return Number(value || 0).toLocaleString('ru-RU');
+    }
+
+    function renderDatabaseActivityWarning(message) {
+        const tbody = document.getElementById('databaseActivityTableBody');
+        const sessionsBody = document.getElementById('databaseActivitySessionsTableBody');
+        const waitsBody = document.getElementById('databaseActivityWaitsTableBody');
+        ['databaseActivityCount', 'databaseActivitySessionsCount', 'databaseActivityWaitsCount'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = 'Нет данных';
+        });
+        ['activityTotalTransactions', 'activityRollbackPercent', 'activityActiveSessions', 'activityWaitingSessions'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = '—';
+        });
+        if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (sessionsBody) sessionsBody.innerHTML = '<tr><td colspan="7" class="text-muted">Нет данных</td></tr>';
+        if (waitsBody) waitsBody.innerHTML = '<tr><td colspan="3" class="text-muted">Нет данных</td></tr>';
+    }
+
+    function renderDatabaseActivity(data) {
+        const databases = data.databases || [];
+        const sessions = data.sessions || [];
+        const waits = data.wait_events || [];
+        const totals = data.totals || {};
+        const totalTransactions = document.getElementById('activityTotalTransactions');
+        const rollbackPercent = document.getElementById('activityRollbackPercent');
+        const activeSessions = document.getElementById('activityActiveSessions');
+        const waitingSessions = document.getElementById('activityWaitingSessions');
+        if (totalTransactions) totalTransactions.textContent = formatInteger(totals.total_transactions);
+        if (rollbackPercent) rollbackPercent.textContent = `${Number(totals.rollback_percent || 0).toFixed(2)}%`;
+        if (activeSessions) activeSessions.textContent = formatInteger(totals.active_sessions);
+        if (waitingSessions) waitingSessions.textContent = formatInteger(totals.waiting_sessions);
+
+        const count = document.getElementById('databaseActivityCount');
+        const tbody = document.getElementById('databaseActivityTableBody');
+        if (count) count.textContent = `${databases.length} баз`;
+        if (tbody) {
+            tbody.innerHTML = databases.length ? databases.map(item => `
+                <tr>
+                    <td><strong>${escapeHtml(item.database)}</strong></td>
+                    <td>${formatInteger(item.commits)}</td>
+                    <td>${formatInteger(item.rollbacks)}</td>
+                    <td>${formatInteger(item.total_transactions)}</td>
+                    <td><span class="status-badge ${Number(item.rollback_percent) > 10 ? 'danger' : 'success'}">${Number(item.rollback_percent || 0).toFixed(2)}%</span></td>
+                    <td>${Number(item.cache_hit_percent || 0).toFixed(2)}%</td>
+                    <td>${formatInteger(item.deadlocks)}</td>
+                    <td>${formatInteger(item.temp_files)}</td>
+                    <td>${escapeHtml(item.temp_size)}</td>
+                </tr>
+            `).join('') : '<tr><td colspan="9" class="text-muted">Активность БД не найдена</td></tr>';
+        }
+
+        const sessionsCount = document.getElementById('databaseActivitySessionsCount');
+        const sessionsBody = document.getElementById('databaseActivitySessionsTableBody');
+        if (sessionsCount) sessionsCount.textContent = `${sessions.length} строк`;
+        if (sessionsBody) {
+            sessionsBody.innerHTML = sessions.length ? sessions.map(item => `
+                <tr><td><strong>${escapeHtml(item.database)}</strong></td><td>${formatInteger(item.sessions_total)}</td><td>${formatInteger(item.active_sessions)}</td><td>${formatInteger(item.idle_sessions)}</td><td>${formatInteger(item.idle_in_transaction_sessions)}</td><td>${formatInteger(item.waiting_sessions)}</td><td>${formatInteger(item.client_backends)}</td></tr>
+            `).join('') : '<tr><td colspan="7" class="text-muted">Сессии не найдены</td></tr>';
+        }
+
+        const waitsCount = document.getElementById('databaseActivityWaitsCount');
+        const waitsBody = document.getElementById('databaseActivityWaitsTableBody');
+        if (waitsCount) waitsCount.textContent = `${waits.length} ожиданий`;
+        if (waitsBody) {
+            waitsBody.innerHTML = waits.length ? waits.map(item => `
+                <tr><td><strong>${escapeHtml(item.wait_event_type)}</strong></td><td>${escapeHtml(item.wait_event)}</td><td>${formatInteger(item.sessions_count)}</td></tr>
+            `).join('') : '<tr><td colspan="3" class="text-muted">Ожидания не найдены</td></tr>';
+        }
+    }
+
+    function initDatabaseActivityControls() {
+        document.getElementById('databaseActivityRefreshBtn')?.addEventListener('click', function () {
+            refreshDatabaseActivityForConnection(undefined, {silent: false});
+        });
+    }
+
+    function refreshDatabaseActivityForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderDatabaseActivityWarning('Выберите сохранённое подключение для загрузки активности БД');
+            return;
+        }
+        const requestId = ++databaseActivityRequestId;
+        if (!options.silent) renderDatabaseActivityWarning('Загрузка активности БД...');
+        connectionRequest(databaseActivityApiUrl, {id: conn.id})
+            .then(data => {
+                if (requestId !== databaseActivityRequestId) return;
+                renderDatabaseActivity(data);
+            })
+            .catch(error => {
+                if (requestId !== databaseActivityRequestId) return;
+                renderDatabaseActivityWarning(error.message || 'Не удалось получить активность БД');
             });
     }
 
@@ -2803,6 +2905,9 @@
         }
         if (pageId === 'transactions') {
             refreshIdleTransactionsForConnection(conn);
+        }
+        if (pageId === 'activity') {
+            refreshDatabaseActivityForConnection(conn);
         }
         if (pageId === 'memory') {
             refreshMemoryOverviewForConnection(conn);

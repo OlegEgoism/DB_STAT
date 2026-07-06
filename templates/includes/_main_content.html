@@ -877,6 +877,42 @@
         </div>
     </div>
 
+
+    <!-- ============================================================ -->
+    <!-- PAGE: DB ACTIVITY -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-activity">
+        <div class="row g-3">
+            <div class="col-lg-3 col-md-6">
+                <div class="glass-card metric-card"><div class="card-body"><div class="metric-label">Всего транзакций</div><div class="metric-value" id="activityTotalTransactions">—</div></div></div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="glass-card metric-card"><div class="card-body"><div class="metric-label">Rollback, %</div><div class="metric-value" id="activityRollbackPercent">—</div></div></div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="glass-card metric-card"><div class="card-body"><div class="metric-label">Активные сессии</div><div class="metric-value" id="activityActiveSessions">—</div></div></div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="glass-card metric-card"><div class="card-body"><div class="metric-label">Сессии в ожидании</div><div class="metric-value" id="activityWaitingSessions">—</div></div></div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-chart-line"></i> Активность БД</span><span class="card-meta" id="databaseActivityCount">Нет данных</span></div>
+                    <div class="database-table-toolbar refresh-toolbar">
+                        <button class="btn-conn primary" type="button" id="databaseActivityRefreshBtn"><i class="fas fa-sync-alt"></i> Обновить</button>
+                    </div>
+                    <div class="card-body p-0"><div class="table-responsive"><table class="table table-sm"><thead><tr><th>База</th><th>Коммитов</th><th>Роллбеков</th><th>Всего</th><th>Rollback, %</th><th>Cache hit, %</th><th>Deadlocks</th><th>Temp files</th><th>Temp size</th></tr></thead><tbody id="databaseActivityTableBody"><tr><td colspan="9" class="text-muted">Выберите сохранённое подключение для загрузки активности БД</td></tr></tbody></table></div></div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card"><div class="card-header"><span><i class="fas fa-users"></i> Сессии по базам</span><span class="card-meta" id="databaseActivitySessionsCount">Нет данных</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm"><thead><tr><th>База</th><th>Всего</th><th>Active</th><th>Idle</th><th>Idle in tx</th><th>Waiting</th><th>Client backend</th></tr></thead><tbody id="databaseActivitySessionsTableBody"><tr><td colspan="7" class="text-muted">Нет данных</td></tr></tbody></table></div></div></div>
+            </div>
+            <div class="col-lg-6">
+                <div class="glass-card"><div class="card-header"><span><i class="fas fa-hourglass-half"></i> Ожидания клиентских backend’ов</span><span class="card-meta" id="databaseActivityWaitsCount">Нет данных</span></div><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Тип ожидания</th><th>Событие</th><th>Сессий</th></tr></thead><tbody id="databaseActivityWaitsTableBody"><tr><td colspan="3" class="text-muted">Нет данных</td></tr></tbody></table></div></div></div>
+            </div>
+        </div>
+    </div>
+
     <!-- ============================================================ -->
     <!-- PAGE: MEMORY -->
     <!-- ============================================================ -->

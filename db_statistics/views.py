@@ -648,6 +648,106 @@ def idle_transactions(request):
 
 
 @require_http_methods(["POST"])
+def database_activity(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    activity_query = """
+        SELECT
+            datname,
+            xact_commit::bigint,
+            xact_rollback::bigint,
+            (xact_commit + xact_rollback)::bigint AS total_xacts,
+            ROUND(xact_rollback::numeric / NULLIF(xact_commit + xact_rollback, 0) * 100, 2) AS rollback_percent,
+            blks_read::bigint,
+            blks_hit::bigint,
+            ROUND(blks_hit::numeric / NULLIF(blks_hit + blks_read, 0) * 100, 2) AS cache_hit_percent,
+            deadlocks::bigint,
+            temp_files::bigint,
+            temp_bytes::bigint
+        FROM pg_catalog.pg_stat_database
+        WHERE datname IS NOT NULL
+        ORDER BY (xact_commit + xact_rollback) DESC;
+    """
+    client_activity_query = """
+        SELECT
+            datname,
+            COUNT(*)::bigint AS sessions_total,
+            COUNT(*) FILTER (WHERE state = 'active')::bigint AS active_sessions,
+            COUNT(*) FILTER (WHERE state = 'idle')::bigint AS idle_sessions,
+            COUNT(*) FILTER (WHERE state = 'idle in transaction')::bigint AS idle_in_transaction_sessions,
+            COUNT(*) FILTER (WHERE wait_event_type IS NOT NULL)::bigint AS waiting_sessions,
+            COUNT(*) FILTER (WHERE backend_type = 'client backend')::bigint AS client_backends
+        FROM pg_catalog.pg_stat_activity
+        GROUP BY datname
+        ORDER BY sessions_total DESC;
+    """
+    wait_events_query = """
+        SELECT
+            COALESCE(wait_event_type, 'Без ожидания') AS wait_event_type,
+            COALESCE(wait_event, '—') AS wait_event,
+            COUNT(*)::bigint AS sessions_count
+        FROM pg_catalog.pg_stat_activity
+        WHERE backend_type = 'client backend'
+        GROUP BY wait_event_type, wait_event
+        ORDER BY sessions_count DESC, wait_event_type
+        LIMIT 20;
+    """
+
+    try:
+        activity_rows, client_rows, wait_rows = _fetch_db_resultsets(
+            db_connection,
+            (activity_query, []),
+            (client_activity_query, []),
+            (wait_events_query, []),
+        )
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить активность БД: {exc}"}, status=400)
+
+    databases = []
+    for row in activity_rows:
+        databases.append({
+            "database": row[0] or "—",
+            "commits": int(row[1] or 0),
+            "rollbacks": int(row[2] or 0),
+            "total_transactions": int(row[3] or 0),
+            "rollback_percent": float(row[4] or 0),
+            "blocks_read": int(row[5] or 0),
+            "blocks_hit": int(row[6] or 0),
+            "cache_hit_percent": float(row[7] or 0),
+            "deadlocks": int(row[8] or 0),
+            "temp_files": int(row[9] or 0),
+            "temp_bytes": int(row[10] or 0),
+            "temp_size": _format_bytes(int(row[10] or 0)),
+        })
+
+    sessions = []
+    for row in client_rows:
+        sessions.append({
+            "database": row[0] or "Фоновые процессы",
+            "sessions_total": int(row[1] or 0),
+            "active_sessions": int(row[2] or 0),
+            "idle_sessions": int(row[3] or 0),
+            "idle_in_transaction_sessions": int(row[4] or 0),
+            "waiting_sessions": int(row[5] or 0),
+            "client_backends": int(row[6] or 0),
+        })
+
+    waits = [{"wait_event_type": row[0] or "—", "wait_event": row[1] or "—", "sessions_count": int(row[2] or 0)} for row in wait_rows]
+    totals = {
+        "total_transactions": sum(item["total_transactions"] for item in databases),
+        "rollbacks": sum(item["rollbacks"] for item in databases),
+        "active_sessions": sum(item["active_sessions"] for item in sessions),
+        "waiting_sessions": sum(item["waiting_sessions"] for item in sessions),
+    }
+    totals["rollback_percent"] = round(totals["rollbacks"] / totals["total_transactions"] * 100, 2) if totals["total_transactions"] else 0
+
+    return JsonResponse({"ok": True, "databases": databases, "sessions": sessions, "wait_events": waits, "totals": totals})
+
+
+@require_http_methods(["POST"])
 def memory_overview(request):
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
