@@ -659,7 +659,7 @@
     function sortActiveSessions(sessions) {
         const sort = activeSessionsState.sort;
         const direction = activeSessionsState.direction === 'asc' ? 1 : -1;
-        const numericColumns = new Set(['pid', 'session_duration_seconds', 'query_duration_seconds']);
+        const numericColumns = new Set(['pid', 'session_duration_seconds']);
         return [...sessions].sort((a, b) => {
             const aValue = numericColumns.has(sort)
                 ? Number(a[sort]) || 0
@@ -700,7 +700,7 @@
             const item = document.getElementById(`activeSessionsSummary${key}`);
             if (item) item.textContent = '—';
         });
-        if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderActiveSessions(data) {
@@ -719,7 +719,7 @@
         });
         if (!tbody) return;
         if (!sessions.length) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
             return;
         }
         tbody.innerHTML = sessions.map(session => {
@@ -736,7 +736,6 @@
                     <td>${escapeHtml(session.wait_event)}</td>
                     <td>${escapeHtml(session.backend_type)}</td>
                     <td>${escapeHtml(session.session_duration)}</td>
-                    <td>${escapeHtml(session.query_duration)}</td>
                     <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(session.sql)}">${escapeHtml(session.sql)}</td>
                 </tr>
             `;
@@ -764,7 +763,7 @@
                     activeSessionsState.direction = activeSessionsState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
                     activeSessionsState.sort = sort;
-                    activeSessionsState.direction = ['pid', 'session_duration_seconds', 'query_duration_seconds'].includes(sort) ? 'desc' : 'asc';
+                    activeSessionsState.direction = ['pid', 'session_duration_seconds'].includes(sort) ? 'desc' : 'asc';
                 }
                 refreshActiveSessionsForConnection(undefined, {silent: true});
             });
