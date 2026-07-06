@@ -349,7 +349,7 @@
 
         donut.style.setProperty('--connection-slots-usage', `${usage}%`);
         donut.setAttribute('aria-label', `Использование слотов подключений: ${current} из ${maximum}, ${usageText}%`);
-        summary.textContent = maximum > 0 ? `${current} из ${maximum} (${usageText}%)` : '—';
+        summary.textContent = maximum > 0 ? `${current} из ${maximum}` : '—';
     }
 
 
@@ -375,8 +375,7 @@
         donut.style.setProperty('--db-activity-rollback', `${commitPercent + rollbackPercent}%`);
         donut.setAttribute('aria-label', `Активность БД: коммиты ${commitText}%, роллбеки ${rollbackText}%`);
         summary.textContent = total > 0
-            ? `${commits} / ${rollbacks} (${commitText}% / ${rollbackText}%)`
-            : '—';
+            ? `${commits} / ${rollbacks}` : '—';
     }
 
     function renderDatabaseOverviewWarning(message) {
