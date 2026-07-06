@@ -409,6 +409,13 @@ body {
     box-shadow: var(--shadow-card-hover);
 }
 
+.connection-manager__db-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
 .connection-manager select {
     border: none;
     background: transparent;
