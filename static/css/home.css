@@ -1937,6 +1937,39 @@ body {
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
 
+
+.active-sessions-table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: inset 0 -1px 0 var(--sidebar-border);
+}
+
+.active-sessions-table {
+    min-width: 1320px;
+    table-layout: fixed;
+}
+
+.active-sessions-table th,
+.active-sessions-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.active-sessions-col-pid { width: 80px; }
+.active-sessions-col-user { width: 130px; }
+.active-sessions-col-db { width: 120px; }
+.active-sessions-col-app { width: 160px; }
+.active-sessions-col-client { width: 150px; }
+.active-sessions-col-state { width: 140px; }
+.active-sessions-col-wait { width: 150px; }
+.active-sessions-col-type { width: 160px; }
+.active-sessions-col-session-duration { width: 130px; }
+.active-sessions-col-query-duration { width: 130px; }
+.active-sessions-col-sql { width: 300px; }
+
 .views-table-scroll thead th {
     position: sticky;
     top: 0;
