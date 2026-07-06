@@ -88,9 +88,8 @@ docker build -t db-stat .
 docker run --rm -p 8000:8000 db-stat
 ```
 
-```
+
 Доступно по адресу: http://localhost:8000
 Суперпользователь, логин: admin; пароль admin 
 Пользователь приложения  логин: test; почта: test@gmail.com
-```
 
