@@ -16,9 +16,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DB_ENGINE=sqlite \
     SQLITE_NAME=/app/db.sqlite3 \
-    DJANGO_SUPERUSER_USERNAME=admin \
-    DJANGO_SUPERUSER_EMAIL=admin@example.com \
-    DJANGO_SUPERUSER_PASSWORD=admin \
     ALLOWED_HOSTS=*
 
 WORKDIR /app
@@ -32,8 +29,8 @@ COPY . .
 RUN rm -f /app/db.sqlite3 \
     && python manage.py makemigrations \
     && python manage.py migrate \
-    && python manage.py createsuperuser --noinput \
-    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.update_or_create(login='test', defaults={'email': 'test@gmail.com', 'role': 'Администратор', 'is_active': True})"
+    && python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')" \
+    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
 
 EXPOSE 8000
 
