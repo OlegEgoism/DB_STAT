@@ -804,9 +804,9 @@
                     <span>Состояние</span>
                     <select id="activeSessionsStateFilter" class="form-control form-control-sm">
                         <option value="">Все</option>
-                        <option value="active">active</option>
-                        <option value="idle">idle</option>
-                        <option value="idle in transaction">idle in transaction</option>
+                        <option value="active">Активные</option>
+                        <option value="idle">Простаивают</option>
+                        <option value="idle in transaction">Простой в транзакции</option>
                     </select>
                 </label>
                 <label class="refresh-interval-control" for="activeSessionsRefreshInterval">
@@ -826,9 +826,9 @@
             <div class="card-body">
                 <div class="row g-3" id="activeSessionsSummary">
                     <div class="col-md-2"><div class="metric-card"><span>Всего</span><strong id="activeSessionsSummaryTotal">—</strong></div></div>
-                    <div class="col-md-2"><div class="metric-card"><span>Active</span><strong id="activeSessionsSummaryActive">—</strong></div></div>
-                    <div class="col-md-2"><div class="metric-card"><span>Idle</span><strong id="activeSessionsSummaryIdle">—</strong></div></div>
-                    <div class="col-md-2"><div class="metric-card"><span>Idle in xact</span><strong id="activeSessionsSummaryIdleXact">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Активные</span><strong id="activeSessionsSummaryActive">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Простаивают</span><strong id="activeSessionsSummaryIdle">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Простой в транзакции</span><strong id="activeSessionsSummaryIdleXact">—</strong></div></div>
                     <div class="col-md-2"><div class="metric-card"><span>Пользователи</span><strong id="activeSessionsSummaryUsers">—</strong></div></div>
                     <div class="col-md-2"><div class="metric-card"><span>Клиенты</span><strong id="activeSessionsSummaryClients">—</strong></div></div>
                 </div>

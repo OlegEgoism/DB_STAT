@@ -656,6 +656,19 @@
     }
 
 
+
+    function getActiveSessionStateLabel(state) {
+        const stateLabels = {
+            active: 'Активна',
+            idle: 'Простаивает',
+            'idle in transaction': 'Простой в транзакции',
+            'idle in transaction (aborted)': 'Простой в отменённой транзакции',
+            disabled: 'Отключена',
+            fastpath: 'Fast path'
+        };
+        return stateLabels[String(state || '').toLowerCase()] || state || '—';
+    }
+
     function sortActiveSessions(sessions) {
         const sort = activeSessionsState.sort;
         const direction = activeSessionsState.direction === 'asc' ? 1 : -1;
@@ -732,7 +745,7 @@
                     <td>${escapeHtml(session.database)}</td>
                     <td>${escapeHtml(session.application_name)}</td>
                     <td>${escapeHtml(client)}</td>
-                    <td><span class="status-badge ${stateClass}">${escapeHtml(session.state)}</span></td>
+                    <td><span class="status-badge ${stateClass}">${escapeHtml(getActiveSessionStateLabel(session.state))}</span></td>
                     <td>${escapeHtml(session.wait_event)}</td>
                     <td>${escapeHtml(session.backend_type)}</td>
                     <td>${escapeHtml(session.session_duration)}</td>
