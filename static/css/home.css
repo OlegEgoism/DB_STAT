@@ -1652,6 +1652,12 @@ body {
     outline: 0;
 }
 
+.db-type-select__menu:hover .db-type-select__option.is-selected:not(:hover),
+.db-type-select__menu:focus-within .db-type-select__option.is-selected:not(:focus) {
+    background: transparent;
+    color: var(--text-primary);
+}
+
 .form-control::placeholder {
     color: var(--text-muted);
 }
