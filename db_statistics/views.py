@@ -424,12 +424,33 @@ def database_overview(request):
             current_setting('lock_timeout', true) AS lock_timeout,
             current_setting('idle_in_transaction_session_timeout', true) AS idle_in_transaction_session_timeout,
             current_setting('default_transaction_isolation', true) AS default_transaction_isolation,
-            current_setting('DateStyle', true) AS date_style
+            current_setting('DateStyle', true) AS date_style,
+            (SELECT COALESCE(xact_commit, 0)::bigint FROM pg_catalog.pg_stat_database WHERE datname = %s) AS xact_commit,
+            (SELECT COALESCE(xact_rollback, 0)::bigint FROM pg_catalog.pg_stat_database WHERE datname = %s) AS xact_rollback,
+            (
+                SELECT ROUND(
+                    COALESCE(xact_rollback, 0)::numeric /
+                    NULLIF(COALESCE(xact_commit, 0) + COALESCE(xact_rollback, 0), 0) * 100,
+                    2
+                )
+                FROM pg_catalog.pg_stat_database
+                WHERE datname = %s
+            ) AS rollback_percent,
+            (
+                SELECT ROUND(
+                    COALESCE(blks_hit, 0)::numeric /
+                    NULLIF(COALESCE(blks_hit, 0) + COALESCE(blks_read, 0), 0) * 100,
+                    2
+                )
+                FROM pg_catalog.pg_stat_database
+                WHERE datname = %s
+            ) AS cache_hit_percent,
+            (SELECT age(datfrozenxid)::bigint FROM pg_catalog.pg_database WHERE datname = %s) AS xid_age
         FROM relation_sizes;
     """
 
     try:
-        row = _fetch_db_row(db_connection, overview_query, [db_connection.database, db_connection.database])
+        row = _fetch_db_row(db_connection, overview_query, [db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
 
@@ -451,6 +472,15 @@ def database_overview(request):
         {"key": "current_connections", "label": "Текущие подключения", "value": int(row[11] or 0)},
         {"key": "max_connections", "label": "Максимум подключений", "value": int(row[12] or 0)},
         {"key": "usage_percent", "label": "Использование", "value": float(row[13] or 0)},
+    ]
+    transaction_total = int(row[25] or 0) + int(row[26] or 0)
+    activity_stats = [
+        {"key": "xact_commit", "label": "Коммитов", "value": int(row[25] or 0)},
+        {"key": "xact_rollback", "label": "Роллбеков", "value": int(row[26] or 0)},
+        {"key": "total_transactions", "label": "Всего транзакций", "value": transaction_total},
+        {"key": "rollback_percent", "label": "Откат (Rollback), %", "value": f"{float(row[27] or 0):.2f}%"},
+        {"key": "cache_hit_percent", "label": "Cache hit ratio", "value": f"{float(row[28] or 0):.2f}%"},
+        {"key": "xid_age", "label": "Возраст транзакций (XID)", "value": int(row[29] or 0)},
     ]
     basic_settings = [
         {"key": "host", "label": "Хост", "value": db_connection.host},
@@ -477,6 +507,7 @@ def database_overview(request):
             "memory_settings": memory_settings,
             "role_counts": role_counts,
             "connection_slots": connection_slots,
+            "activity_stats": activity_stats,
             "basic_settings": basic_settings,
         }
     )
