@@ -2580,6 +2580,18 @@
         auditActionsLoaded = true;
     }
 
+    function getAuditActionBadgeClass(actionType) {
+        const classes = {
+            login: 'audit-action-badge--login',
+            logout: 'audit-action-badge--logout',
+            connection_create: 'audit-action-badge--connection-create',
+            connection_update: 'audit-action-badge--connection-update',
+            connection_delete: 'audit-action-badge--connection-delete',
+            connection_test: 'audit-action-badge--connection-test'
+        };
+        return classes[actionType] || 'audit-action-badge--default';
+    }
+
     function renderAuditEvents(data) {
         populateAuditActionFilter(data.actions || []);
         const events = data.events || [];
@@ -2601,7 +2613,7 @@
             <tr>
                 <td class="audit-created">${escapeHtml(event.created)}</td>
                 <td><strong>${escapeHtml(event.username)}</strong></td>
-                <td><span class="audit-action-badge">${escapeHtml(event.action_label || event.action_type)}</span></td>
+                <td><span class="audit-action-badge ${getAuditActionBadgeClass(event.action_type)}">${escapeHtml(event.action_label || event.action_type)}</span></td>
                 <td class="audit-info-cell">${escapeHtml(event.info)}</td>
             </tr>
         `).join('');
