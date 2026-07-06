@@ -1947,7 +1947,7 @@ body {
 }
 
 .active-sessions-table {
-    min-width: 1320px;
+    min-width: 1190px;
     table-layout: fixed;
 }
 
@@ -1967,7 +1967,6 @@ body {
 .active-sessions-col-wait { width: 150px; }
 .active-sessions-col-type { width: 160px; }
 .active-sessions-col-session-duration { width: 130px; }
-.active-sessions-col-query-duration { width: 130px; }
 .active-sessions-col-sql { width: 300px; }
 
 .views-table-scroll thead th {
