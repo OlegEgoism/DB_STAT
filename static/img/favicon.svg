@@ -1,12 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DB STAT database icon">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DB STAT icon">
   <defs>
-    <linearGradient id="dbGradient" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+    <linearGradient id="g9" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#4f8cff"/>
-      <stop offset="1" stop-color="#8b5cf6"/>
+      <stop offset="0.5" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#4f8cff"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#dbGradient)"/>
-  <ellipse cx="32" cy="18" rx="19" ry="8" fill="none" stroke="#fff" stroke-width="5"/>
-  <path d="M13 18v14c0 4.4 8.5 8 19 8s19-3.6 19-8V18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-  <path d="M13 32v14c0 4.4 8.5 8 19 8s19-3.6 19-8V32" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+
+  <circle cx="32" cy="32" r="22" fill="none" stroke="url(#g9)" stroke-width="6">
+    <animate attributeName="stroke-dasharray" values="138;0;138" dur="13s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-dashoffset" values="0;138;0" dur="13s" repeatCount="indefinite"/>
+  </circle>
+
+  <path d="M24 14 L28 32 L34 26 L40 34 L44 28" fill="none" stroke="url(#g9)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <animate attributeName="stroke" values="#4f8cff;#4f8cff;#4f8cff;#4f8cff" dur="2s" repeatCount="indefinite"/>
+  </path>
+
+  <circle cx="24" cy="14" r="5" fill="#4f8cff">
+    <animate attributeName="r" values="5;9;5" dur="0.8s" repeatCount="indefinite"/>
+    <animate attributeName="fill" values="#4f8cff;#4f8cff;#4f8cff;#4f8cff" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
 </svg>
