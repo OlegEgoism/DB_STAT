@@ -17,7 +17,7 @@
 
 - Версия Python 3.12
 
-- Создайте файл .env
+- Файл .env
 
 ```
 SECRET_KEY=
@@ -60,6 +60,12 @@ python manage.py migrate
 
 ```bash
 python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')"
+```
+
+- Создание пользователя DBUser для авторизации в приложении
+
+```
+python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
 ```
 
 - Запуск сервера
