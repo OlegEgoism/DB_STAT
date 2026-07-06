@@ -1,3 +1,4 @@
+{% load static %}
 <!-- ========== CONNECTION MODAL ========== -->
 <div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered connection-modal-dialog">
@@ -32,10 +33,20 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Тип БД <span class="text-danger">*</span></label>
-                            <select class="form-select" id="connDbType">
-                                <option value="PostgreSQL">PostgreSQL</option>
-                                <option value="Greenplum">Greenplum</option>
-                            </select>
+                            <div class="db-type-select">
+                                <img
+                                    id="connDbTypeIcon"
+                                    class="db-type-select__icon"
+                                    src="{% static 'img/postgresql-icon.svg' %}"
+                                    alt="PostgreSQL"
+                                    data-postgresql-icon="{% static 'img/postgresql-icon.svg' %}"
+                                    data-greenplum-icon="{% static 'img/greenplum-icon.svg' %}"
+                                >
+                                <select class="form-select db-type-select__control" id="connDbType">
+                                    <option value="PostgreSQL">PostgreSQL</option>
+                                    <option value="Greenplum">Greenplum</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Пароль</label>

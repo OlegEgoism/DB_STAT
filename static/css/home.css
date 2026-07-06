@@ -1558,6 +1558,26 @@ body {
     color: var(--text-primary);
 }
 
+.db-type-select {
+    position: relative;
+}
+
+.db-type-select__icon {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    pointer-events: none;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+
+.db-type-select__control {
+    padding-left: 46px;
+}
+
 .form-control::placeholder {
     color: var(--text-muted);
 }
