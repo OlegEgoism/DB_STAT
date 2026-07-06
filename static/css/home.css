@@ -2172,19 +2172,26 @@ body {
     --sidebar-collapsed-width: 76px;
 }
 
-.sidebar-logo-toggle {
+.sidebar-brand .sidebar-logo-toggle {
+    width: 18px;
+    height: 18px;
     border: 0;
     padding: 0;
     cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    font-size: 18px;
+    background: transparent;
+    color: var(--text-primary);
+    box-shadow: none;
+    transition: transform 0.2s ease, color 0.2s ease;
 }
 
-.sidebar-logo-toggle:hover {
+.sidebar-brand .sidebar-logo-toggle:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px var(--glow-blue);
+    color: var(--accent-blue);
+    box-shadow: none;
 }
 
-.sidebar-logo-toggle:focus-visible {
+.sidebar-brand .sidebar-logo-toggle:focus-visible {
     outline: 3px solid rgba(79, 140, 255, 0.35);
     outline-offset: 3px;
 }
