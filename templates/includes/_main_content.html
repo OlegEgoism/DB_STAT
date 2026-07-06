@@ -787,6 +787,70 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- PAGE: SESSIONS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-sessions">
+        <div class="glass-card mb-3">
+            <div class="card-header">
+                <span><i class="fas fa-network-wired"></i> Активные сессии пользователей и подключения</span>
+                <span class="card-meta" id="activeSessionsCount">Нет данных</span>
+            </div>
+            <div class="database-table-toolbar refresh-toolbar">
+                <label class="refresh-interval-control" for="activeSessionsUserFilter">
+                    <span>Пользователь</span>
+                    <input id="activeSessionsUserFilter" class="form-control form-control-sm" type="text" placeholder="Все пользователи" autocomplete="off">
+                </label>
+                <label class="refresh-interval-control" for="activeSessionsStateFilter">
+                    <span>Состояние</span>
+                    <select id="activeSessionsStateFilter" class="form-control form-control-sm">
+                        <option value="">Все</option>
+                        <option value="active">active</option>
+                        <option value="idle">idle</option>
+                        <option value="idle in transaction">idle in transaction</option>
+                    </select>
+                </label>
+                <label class="refresh-interval-control" for="activeSessionsRefreshInterval">
+                    <span>Обновление</span>
+                    <select id="activeSessionsRefreshInterval" class="form-control form-control-sm">
+                        <option value="0">Вручную</option>
+                        <option value="5">5 сек</option>
+                        <option value="10">10 сек</option>
+                        <option value="30">30 сек</option>
+                        <option value="60">60 сек</option>
+                    </select>
+                </label>
+                <button class="btn-conn primary" type="button" id="activeSessionsRefreshBtn">
+                    <i class="fas fa-sync-alt"></i> Обновить
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row g-3" id="activeSessionsSummary">
+                    <div class="col-md-2"><div class="metric-card"><span>Всего</span><strong id="activeSessionsSummaryTotal">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Active</span><strong id="activeSessionsSummaryActive">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Idle</span><strong id="activeSessionsSummaryIdle">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Idle in xact</span><strong id="activeSessionsSummaryIdleXact">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Пользователи</span><strong id="activeSessionsSummaryUsers">—</strong></div></div>
+                    <div class="col-md-2"><div class="metric-card"><span>Клиенты</span><strong id="activeSessionsSummaryClients">—</strong></div></div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive table-scroll-lg">
+                    <table class="table table-sm">
+                        <thead>
+                        <tr>
+                            <th>PID</th><th>Пользователь</th><th>База</th><th>Приложение</th><th>Клиент</th><th>Состояние</th><th>Ожидание</th><th>Тип</th><th>Длит. сессии</th><th>Длит. запроса</th><th>SQL</th>
+                        </tr>
+                        </thead>
+                        <tbody id="activeSessionsTableBody">
+                        <tr><td colspan="11" class="text-muted">Выберите сохранённое подключение для загрузки активных сессий</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- PAGE: LOCKS -->
     <!-- ============================================================ -->
     <div class="page" id="page-locks">

@@ -567,6 +567,89 @@ def active_queries(request):
 
 
 @require_http_methods(["POST"])
+def active_sessions(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    username = (payload.get("username") or "").strip()
+    state = (payload.get("state") or "").strip()
+    sessions_query = """
+        SELECT
+            pid,
+            usename,
+            datname,
+            application_name,
+            client_addr,
+            client_port,
+            backend_start,
+            xact_start,
+            query_start,
+            state_change,
+            state,
+            wait_event_type,
+            wait_event,
+            backend_type,
+            now() - backend_start AS session_duration,
+            CASE WHEN query_start IS NULL THEN NULL ELSE now() - query_start END AS query_duration,
+            query
+        FROM pg_catalog.pg_stat_activity
+        WHERE (%s = '' OR usename = %s)
+          AND (%s = '' OR state = %s)
+        ORDER BY
+            CASE WHEN state = 'active' THEN 0 ELSE 1 END,
+            backend_start DESC;
+    """
+
+    try:
+        rows = _fetch_db_rows(db_connection, sessions_query, [username, username, state, state])
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить активные сессии и подключения: {exc}"}, status=400)
+
+    sessions = []
+    state_counts = {}
+    user_counts = {}
+    client_counts = {}
+    for row in rows:
+        session_duration = row[14]
+        query_duration = row[15]
+        row_state = row[10] or "—"
+        row_user = row[1] or "—"
+        row_client = str(row[4]) if row[4] else "local"
+        state_counts[row_state] = state_counts.get(row_state, 0) + 1
+        user_counts[row_user] = user_counts.get(row_user, 0) + 1
+        client_counts[row_client] = client_counts.get(row_client, 0) + 1
+        sessions.append(
+            {
+                "pid": row[0],
+                "username": row_user,
+                "database": row[2] or "—",
+                "application_name": row[3] or "—",
+                "client_addr": row_client,
+                "client_port": row[5] if row[5] is not None else "—",
+                "backend_start": timezone.localtime(row[6]).strftime("%Y-%m-%d %H:%M:%S") if row[6] else "—",
+                "state": row_state,
+                "wait_event": " / ".join([part for part in [row[11], row[12]] if part]) or "—",
+                "backend_type": row[13] or "—",
+                "session_duration": str(session_duration).split(".")[0] if session_duration else "—",
+                "query_duration": str(query_duration).split(".")[0] if query_duration else "—",
+                "sql": row[16] or "—",
+            }
+        )
+
+    summary = {
+        "total": len(sessions),
+        "active": state_counts.get("active", 0),
+        "idle": state_counts.get("idle", 0),
+        "idle_in_transaction": state_counts.get("idle in transaction", 0),
+        "users": len(user_counts),
+        "clients": len(client_counts),
+        "states": [{"state": key, "count": value} for key, value in sorted(state_counts.items())],
+    }
+    return JsonResponse({"ok": True, "sessions": sessions, "summary": summary, "total_count": len(sessions), "username": username, "state": state})
+
+
+@require_http_methods(["POST"])
 def blocking_locks(request):
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
