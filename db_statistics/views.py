@@ -1,4 +1,6 @@
 import json
+import os
+import socket
 
 import psycopg2
 from django.http import JsonResponse
@@ -13,6 +15,52 @@ from db_statistics.models import DBAudit, DBConnection, DBUser
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
+LOCALHOST_NAMES = {"localhost", "127.0.0.1", "::1"}
+DOCKER_HOST_GATEWAY_NAME = "host.docker.internal"
+
+
+def _is_running_in_container():
+    if os.path.exists("/.dockerenv"):
+        return True
+    try:
+        with open("/proc/1/cgroup", encoding="utf-8") as cgroup_file:
+            cgroup = cgroup_file.read()
+    except OSError:
+        return False
+    return any(marker in cgroup for marker in ("docker", "containerd", "kubepods"))
+
+
+def _docker_bridge_gateway():
+    try:
+        with open("/proc/net/route", encoding="utf-8") as route_file:
+            for line in route_file.readlines()[1:]:
+                fields = line.strip().split()
+                if len(fields) >= 3 and fields[1] == "00000000":
+                    gateway_hex = fields[2]
+                    return ".".join(str(int(gateway_hex[index : index + 2], 16)) for index in range(6, -1, -2))
+    except OSError:
+        return None
+    return None
+
+
+def _host_resolves(host):
+    try:
+        socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        return False
+    return True
+
+
+def _resolve_database_host(host):
+    normalized_host = (host or "").strip().lower()
+    if normalized_host not in LOCALHOST_NAMES or not _is_running_in_container():
+        return host
+
+    host_candidates = [os.getenv("DB_LOCALHOST_HOST"), DOCKER_HOST_GATEWAY_NAME, _docker_bridge_gateway()]
+    for candidate in host_candidates:
+        if candidate and _host_resolves(candidate):
+            return candidate
+    return host
 
 
 def _current_db_user(request):
@@ -214,7 +262,7 @@ def _escape_like_pattern(value):
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
-    return {"host": host, "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
+    return {"host": _resolve_database_host(host), "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
