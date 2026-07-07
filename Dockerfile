@@ -16,8 +16,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DB_ENGINE=sqlite \
     SQLITE_NAME=/app/db.sqlite3 \
-    ALLOWED_HOSTS=* \
-    DB_LOCALHOST_HOST=host.docker.internal
+    ALLOWED_HOSTS=*
 
 WORKDIR /app
 
