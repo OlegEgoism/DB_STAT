@@ -134,7 +134,7 @@ docker compose up --build app
 host.docker.internal
 ```
 
-В `docker-compose.yml` уже добавлен `extra_hosts: ["host.docker.internal:host-gateway"]`, чтобы это имя работало и на Linux. При запуске через `docker run` используйте флаг `--add-host=host.docker.internal:host-gateway`, как показано выше.
+Docker-образ при старте автоматически добавляет `host.docker.internal` в `/etc/hosts` через gateway контейнера. В `docker-compose.yml` дополнительно оставлен `extra_hosts: ["host.docker.internal:host-gateway"]`, а при запуске через `docker run` флаг `--add-host=host.docker.internal:host-gateway` можно использовать как явное резервное решение.
 
 Также проверьте, что локальная PostgreSQL/Greenplum слушает TCP-подключения не только на Unix-сокете. Для PostgreSQL обычно нужно:
 

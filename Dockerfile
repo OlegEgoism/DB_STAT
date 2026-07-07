@@ -25,6 +25,7 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requir
     && rm -rf /wheels
 
 COPY . .
+RUN chmod +x /app/docker-entrypoint.sh
 
 RUN rm -f /app/db.sqlite3 \
     && python manage.py makemigrations \
@@ -34,4 +35,5 @@ RUN rm -f /app/db.sqlite3 \
 
 EXPOSE 8000
 
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
