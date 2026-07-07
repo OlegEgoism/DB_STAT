@@ -13,6 +13,15 @@ from db_statistics.models import DBAudit, DBConnection, DBUser
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
+LOCALHOST_NAMES = {"localhost", "::1"}
+LOOPBACK_HOST = "127.0.0.1"
+
+
+def _normalize_database_host(host):
+    normalized_host = (host or "").strip().lower()
+    if normalized_host in LOCALHOST_NAMES:
+        return LOOPBACK_HOST
+    return host
 
 
 def _current_db_user(request):
@@ -214,7 +223,7 @@ def _escape_like_pattern(value):
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
-    return {"host": host, "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
+    return {"host": _normalize_database_host(host), "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
