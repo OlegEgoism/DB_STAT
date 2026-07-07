@@ -128,13 +128,11 @@ docker compose up --build app
 
 ### Подключение из Docker-контейнера к локальной PostgreSQL/Greenplum
 
-Если DB STAT запущен в Docker, значение `localhost` в форме подключения указывает на сам контейнер, а не на вашу машину. Поэтому для базы данных, которая запущена на хосте, в поле **Хост** укажите:
+Если DB STAT запущен в Docker, в поле **Хост** можно указывать привычные `localhost`, `127.0.0.1` или `::1`. Приложение автоматически преобразует эти значения в Docker-адрес хоста перед подключением к PostgreSQL/Greenplum.
 
-```
-host.docker.internal
-```
+По умолчанию Docker-адрес хоста — `host.docker.internal`. Docker-образ при старте автоматически добавляет это имя в `/etc/hosts` через gateway контейнера. В `docker-compose.yml` дополнительно оставлен `extra_hosts: ["host.docker.internal:host-gateway"]`, а при запуске через `docker run` флаг `--add-host=host.docker.internal:host-gateway` можно использовать как явное резервное решение.
 
-Docker-образ при старте автоматически добавляет `host.docker.internal` в `/etc/hosts` через gateway контейнера. В `docker-compose.yml` дополнительно оставлен `extra_hosts: ["host.docker.internal:host-gateway"]`, а при запуске через `docker run` флаг `--add-host=host.docker.internal:host-gateway` можно использовать как явное резервное решение.
+Если нужен другой адрес для подстановки вместо `localhost`, задайте переменную окружения `DBSTAT_DOCKER_LOCALHOST_HOST`.
 
 Также проверьте, что локальная PostgreSQL/Greenplum слушает TCP-подключения не только на Unix-сокете. Для PostgreSQL обычно нужно:
 

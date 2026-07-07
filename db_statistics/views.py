@@ -1,4 +1,5 @@
 import json
+import os
 
 import psycopg2
 from django.http import JsonResponse
@@ -213,8 +214,25 @@ def _escape_like_pattern(value):
     return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
+LOCALHOST_ALIASES = {"localhost", "127.0.0.1", "::1"}
+
+
+def _env_bool(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_connection_host(host):
+    normalized_host = str(host or "").strip()
+    if normalized_host.lower() in LOCALHOST_ALIASES and _env_bool("RUNNING_IN_DOCKER"):
+        return os.getenv("DBSTAT_DOCKER_LOCALHOST_HOST", "host.docker.internal")
+    return normalized_host
+
+
 def _connection_kwargs(host, port, database, username, password, ssl=True):
-    return {"host": host, "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
+    return {"host": _normalize_connection_host(host), "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
