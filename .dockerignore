@@ -1,9 +1,16 @@
 .git
+.gitignore
 .venv
 venv
 __pycache__
 *.py[cod]
 *.sqlite3
+db.sqlite3
 .env
-.pytest_cache
 .ruff_cache
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov
+.DS_Store
+screenshots

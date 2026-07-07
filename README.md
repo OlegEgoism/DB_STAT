@@ -104,10 +104,16 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
-- Запуск Docker-контейнера
+- Запуск Docker-контейнера напрямую
 
 ```bash
-docker run --rm -p 8000:8000 db-stat
+docker run --rm -p 8000:8000 --add-host=host.docker.internal:host-gateway db-stat
+```
+
+- Запуск через Docker Compose
+
+```bash
+docker compose up --build app
 ```
 
 ```
@@ -119,4 +125,28 @@ docker run --rm -p 8000:8000 db-stat
 - логин: admin
 - почта: admin@example.com
 ```
+
+### Подключение из Docker-контейнера к локальной PostgreSQL/Greenplum
+
+Если DB STAT запущен в Docker, значение `localhost` в форме подключения указывает на сам контейнер, а не на вашу машину. Поэтому для базы данных, которая запущена на хосте, в поле **Хост** укажите:
+
+```
+host.docker.internal
+```
+
+В `docker-compose.yml` уже добавлен `extra_hosts: ["host.docker.internal:host-gateway"]`, чтобы это имя работало и на Linux. При запуске через `docker run` используйте флаг `--add-host=host.docker.internal:host-gateway`, как показано выше.
+
+Также проверьте, что локальная PostgreSQL/Greenplum слушает TCP-подключения не только на Unix-сокете. Для PostgreSQL обычно нужно:
+
+- в `postgresql.conf` разрешить адреса, например `listen_addresses = '*'` или конкретный IP хоста;
+- в `pg_hba.conf` разрешить подключение пользователя/базы с Docker-сети;
+- перезапустить PostgreSQL после изменения конфигурации.
+
+Для тестовой PostgreSQL в Docker можно поднять дополнительный сервис:
+
+```bash
+docker compose --profile postgres up --build
+```
+
+После этого в DB STAT создайте подключение с хостом `postgres`, портом `5432`, базой `db_statistics`, пользователем `postgres` и паролем `postgres`.
 
