@@ -110,6 +110,16 @@ docker build -t db-stat .
 docker run --rm -p 8000:8000 db-stat
 ```
 
+Если приложение запущено в Docker, то при создании подключения к базе данных на хост-машине в поле **Хост** можно указывать `localhost`. Контейнер автоматически перенаправит такое подключение на адрес хост-машины: сначала используется `DB_LOCALHOST_HOST` (по умолчанию `host.docker.internal`), затем шлюз Docker bridge.
+
+Для Linux можно явно пробросить имя хоста Docker:
+
+```bash
+docker run --rm --add-host=host.docker.internal:host-gateway -p 8000:8000 db-stat
+```
+
+Важно: PostgreSQL на хост-машине должен принимать TCP-подключения не только с собственного `127.0.0.1`, но и с Docker-сети. При необходимости проверьте `listen_addresses` в `postgresql.conf` и правила `pg_hba.conf`.
+
 ```
 Доступно по адресу: http://localhost:8000
 Суперпользователь Django Admin:
