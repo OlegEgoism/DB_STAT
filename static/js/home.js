@@ -63,6 +63,7 @@
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
+    const sidebarSettingsStoragePrefix = 'dbstat_sidebar_visible_tabs_';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -91,7 +92,13 @@
         return String(conn?.db_type || '').toLowerCase() === 'postgresql';
     }
 
+    function isSidebarPageEnabled(pageId) {
+        if (!pageId || pageId === 'home') return true;
+        return getVisibleSidebarPages().includes(pageId);
+    }
+
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (!isSidebarPageEnabled(pageId)) return false;
         if (pageId === 'home' || pageId === 'audit') return true;
         if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
@@ -100,7 +107,10 @@
 
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
-        return isPostgreSQLConnection(conn) ? 'database-overview' : 'segments';
+        const preferredPages = isPostgreSQLConnection(conn)
+            ? ['database-overview', 'databases', 'tables', 'views', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+        return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
     function updateSidebarForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -181,6 +191,7 @@
         initUsersControls();
         initGroupsControls();
         initAuditControls();
+        initSidebarSettings();
         initLogoutForm();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
         initConnectionDbTypeSelect();
@@ -357,6 +368,92 @@
         return '';
     }
 
+
+
+    function getSidebarSettingsStorageKey() {
+        return `${sidebarSettingsStoragePrefix}${currentDbUser?.id || currentDbUser?.login || 'anonymous'}`;
+    }
+
+    function getAllSidebarPages() {
+        return Array.from(document.querySelectorAll('.nav-item[data-page]')).map(item => item.dataset.page);
+    }
+
+    function getVisibleSidebarPages() {
+        const allPages = getAllSidebarPages();
+        const storedValue = localStorage.getItem(getSidebarSettingsStorageKey());
+        if (!storedValue) return allPages;
+
+        try {
+            const storedPages = JSON.parse(storedValue);
+            const visiblePages = Array.isArray(storedPages) ? storedPages.filter(page => allPages.includes(page)) : allPages;
+            return visiblePages.length ? visiblePages : allPages;
+        } catch (error) {
+            return allPages;
+        }
+    }
+
+    function saveVisibleSidebarPages(pageIds) {
+        const allPages = getAllSidebarPages();
+        const visiblePages = pageIds.filter(page => allPages.includes(page));
+        if (!visiblePages.length) return false;
+        localStorage.setItem(getSidebarSettingsStorageKey(), JSON.stringify(visiblePages));
+        return true;
+    }
+
+    function renderSidebarSettingsList() {
+        const list = document.getElementById('sidebarSettingsList');
+        if (!list) return;
+
+        const visiblePages = new Set(getVisibleSidebarPages());
+        list.innerHTML = '';
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+            const pageId = item.dataset.page;
+            const label = item.getAttribute('title') || item.textContent.trim() || pageId;
+            const icon = item.querySelector('.nav-icon')?.cloneNode(true);
+            const row = document.createElement('label');
+            row.className = 'sidebar-settings-item';
+            row.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
+                <span class="sidebar-settings-item__icon"></span>
+                <span>${escapeHtml(label)}</span>
+            `;
+            if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
+            list.appendChild(row);
+        });
+    }
+
+    function initSidebarSettings() {
+        const settingsButton = document.getElementById('sidebarSettingsBtn');
+        const modalElement = document.getElementById('sidebarSettingsModal');
+        if (!settingsButton || !modalElement) return;
+
+        const settingsModal = new bootstrap.Modal(modalElement);
+        settingsButton.addEventListener('click', function () {
+            renderSidebarSettingsList();
+            settingsModal.show();
+        });
+
+        document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {
+            document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]').forEach(input => {
+                input.checked = true;
+            });
+        });
+
+        document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
+            const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
+            if (!saveVisibleSidebarPages(selectedPages)) {
+                showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
+                return;
+            }
+
+            updateSidebarForConnection();
+            if (!isKnownPage(getCurrentActivePageId())) {
+                activatePage(getDefaultPageForConnection());
+            }
+            settingsModal.hide();
+            showToast('✅ Настройки сайдбара сохранены');
+        });
+    }
 
     function initLogoutForm() {
         const logoutForm = document.getElementById('logoutForm');

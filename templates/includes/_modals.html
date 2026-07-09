@@ -89,6 +89,27 @@
     </div>
 </div>
 
+
+<!-- ========== SIDEBAR SETTINGS MODAL ========== -->
+<div class="modal fade" id="sidebarSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered sidebar-settings-modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-cog me-2 text-accent-blue"></i>Настройки сайдбара</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.</p>
+                <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
+            </div>
+            <div class="modal-footer sidebar-settings-footer">
+                <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
+                <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ========== TOAST ========== -->
 <div class="toast-container">
     <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
