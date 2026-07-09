@@ -83,6 +83,22 @@ class DBUser(DateStamp, Active):
         return self.login
 
 
+class UserSidebarSettings(DateStamp):
+    """Настройки сайдбара пользователя"""
+
+    user = models.OneToOneField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", related_name="sidebar_settings", on_delete=models.CASCADE)
+    visible_tabs = models.JSONField(verbose_name="Видимые вкладки", db_comment="Видимые вкладки", default=list, blank=True)
+
+    class Meta:
+        db_table = "db_user_sidebar_settings"
+        db_table_comment = "Настройки сайдбара пользователя"
+        verbose_name = "Настройки сайдбара"
+        verbose_name_plural = "Настройки сайдбара"
+
+    def __str__(self):
+        return f"Настройки сайдбара: {self.user.login}"
+
+
 class DBConnection(DateStamp, Active):
     """Подключение"""
 
