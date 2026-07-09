@@ -48,6 +48,10 @@ class SidebarSettingsModelTests(TestCase):
         self.assertEqual(UserSidebarSettings.objects.get(user=self.user).visible_tabs, ["tables", "audit"])
         audit = DBAudit.objects.get(username=self.user.login, action_type="sidebar_settings")
         self.assertIn("Настройки сайдбара пользователя изменены", audit.info)
+        self.assertIn("Отображаемые вкладки: Таблицы, Аудит", audit.info)
+        self.assertIn("Предыдущие вкладки: База данных, Сегменты", audit.info)
+        self.assertNotIn("visible_tabs", audit.info)
+        self.assertNotIn("previous_tabs", audit.info)
 
     def test_sidebar_settings_endpoint_defaults_to_all_tabs_when_payload_is_empty(self):
         response = self.client.post(reverse("sidebar_settings"), data=json.dumps({"visible_tabs": []}), content_type="application/json")
