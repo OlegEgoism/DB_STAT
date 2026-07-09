@@ -24,6 +24,12 @@ class SidebarSettingsTemplateTests(SimpleTestCase):
         self.assertIn("updateSidebarForConnection();", script)
         self.assertIn("document.querySelectorAll('.nav-item[data-page]').forEach", script)
 
+    def test_home_page_describes_settings_block(self):
+        main_content = Path("templates/includes/_main_content.html").read_text(encoding="utf-8")
+
+        self.assertIn("<strong>Настройки</strong>", main_content)
+        self.assertIn("Персональная настройка бокового меню", main_content)
+
 
 class SidebarSettingsModelTests(TestCase):
     def setUp(self):
