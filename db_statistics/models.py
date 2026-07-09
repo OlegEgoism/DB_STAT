@@ -140,7 +140,7 @@ class DBConnection(DateStamp, Active):
 class DBAudit(models.Model):
     """Аудит"""
 
-    ACTION_TYPES = [("login", "Вход"), ("logout", "Выход"), ("connection_create", "Создание подключения"), ("connection_update", "Изменение подключения"), ("connection_delete", "Удаление подключения"), ("connection_test", "Проверка подключения")]
+    ACTION_TYPES = [("login", "Вход"), ("logout", "Выход"), ("connection_create", "Создание подключения"), ("connection_update", "Изменение подключения"), ("connection_delete", "Удаление подключения"), ("connection_test", "Проверка подключения"), ("sidebar_settings", "Настройки сайдбара пользователя")]
 
     username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
     action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=32, choices=ACTION_TYPES)
