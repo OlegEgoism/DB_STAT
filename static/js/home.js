@@ -3072,14 +3072,6 @@
         if (host) host.textContent = hostValue;
         if (port) port.textContent = portValue;
         if (owner) owner.textContent = ownerValue;
-        if (select) {
-            select.title = conn
-                ? `База данных: ${databaseValue}
-Хост: ${hostValue}
-Порт: ${portValue}
-Владелец: ${ownerValue}`
-                : 'Информация о подключении недоступна';
-        }
         if (icon) {
             const iconSrc = getConnectionDbTypeIconSrc(conn?.db_type, icon);
             if (conn && iconSrc) icon.src = iconSrc;
