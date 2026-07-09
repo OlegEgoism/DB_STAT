@@ -3525,7 +3525,7 @@
     // NAVIGATION
     // ============================
     function initNavigation() {
-        document.querySelectorAll('.nav-item').forEach(item => {
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.addEventListener('click', function (e) {
                 e.preventDefault();
                 activatePage(this.dataset.page);

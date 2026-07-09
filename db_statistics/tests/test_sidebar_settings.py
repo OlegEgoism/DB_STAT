@@ -10,11 +10,12 @@ from db_statistics.views import SIDEBAR_TAB_IDS
 
 class SidebarSettingsTemplateTests(SimpleTestCase):
     def test_sidebar_settings_controls_are_wired(self):
-        main_content = Path("templates/includes/_main_content.html").read_text(encoding="utf-8")
+        sidebar = Path("templates/includes/_sidebar.html").read_text(encoding="utf-8")
         modals = Path("templates/includes/_modals.html").read_text(encoding="utf-8")
         script = Path("static/js/home.js").read_text(encoding="utf-8")
 
-        self.assertIn('id="sidebarSettingsBtn"', main_content)
+        self.assertIn('id="sidebarSettingsBtn"', sidebar)
+        self.assertIn("Настройки сайдбара", sidebar)
         self.assertIn('id="sidebarSettingsModal"', modals)
         self.assertIn('id="sidebarSettingsList"', modals)
         self.assertIn("function initSidebarSettings()", script)
