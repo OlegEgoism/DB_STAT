@@ -4,7 +4,7 @@ from pathlib import Path
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
 
-from db_statistics.models import DBUser, UserSidebarSettings
+from db_statistics.models import DBAudit, DBUser, UserSidebarSettings
 from db_statistics.views import SIDEBAR_TAB_IDS
 
 
@@ -23,6 +23,7 @@ class SidebarSettingsTemplateTests(SimpleTestCase):
         self.assertIn("currentDbUser.sidebar_visible_tabs", script)
         self.assertIn("updateSidebarForConnection();", script)
         self.assertIn("document.querySelectorAll('.nav-item[data-page]').forEach", script)
+        self.assertIn("sidebar_settings: 'audit-action-badge--sidebar-settings'", script)
 
     def test_home_page_describes_settings_block(self):
         main_content = Path("templates/includes/_main_content.html").read_text(encoding="utf-8")
@@ -45,6 +46,8 @@ class SidebarSettingsModelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["visible_tabs"], ["tables", "audit"])
         self.assertEqual(UserSidebarSettings.objects.get(user=self.user).visible_tabs, ["tables", "audit"])
+        audit = DBAudit.objects.get(username=self.user.login, action_type="sidebar_settings")
+        self.assertIn("Настройки сайдбара пользователя изменены", audit.info)
 
     def test_sidebar_settings_endpoint_defaults_to_all_tabs_when_payload_is_empty(self):
         response = self.client.post(reverse("sidebar_settings"), data=json.dumps({"visible_tabs": []}), content_type="application/json")

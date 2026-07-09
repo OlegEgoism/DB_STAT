@@ -170,9 +170,16 @@ def sidebar_settings(request):
     except json.JSONDecodeError:
         return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
 
+    previous_tabs = settings.visible_tabs
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     settings.visible_tabs = visible_tabs
     settings.save(update_fields=["visible_tabs", "updated"])
+    _write_audit(
+        "sidebar_settings",
+        "Настройки сайдбара пользователя изменены: "
+        f"login={db_user.login}; visible_tabs={', '.join(visible_tabs)}; previous_tabs={', '.join(previous_tabs)}",
+        db_user=db_user,
+    )
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
 
 

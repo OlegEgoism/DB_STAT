@@ -2828,7 +2828,8 @@
             connection_create: 'audit-action-badge--connection-create',
             connection_update: 'audit-action-badge--connection-update',
             connection_delete: 'audit-action-badge--connection-delete',
-            connection_test: 'audit-action-badge--connection-test'
+            connection_test: 'audit-action-badge--connection-test',
+            sidebar_settings: 'audit-action-badge--sidebar-settings'
         };
         return classes[actionType] || 'audit-action-badge--default';
     }
