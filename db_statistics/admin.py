@@ -2,6 +2,25 @@ from django.contrib import admin
 
 from db_statistics.models import DBAudit, DBConnection, DBUser, UserSidebarSettings
 
+SIDEBAR_TAB_LABELS = {
+    "database-overview": "База данных",
+    "segments": "Сегменты",
+    "databases": "Схемы",
+    "tables": "Таблицы",
+    "views": "Представления",
+    "temp-tables": "Временные таблицы",
+    "distribution": "Распределение",
+    "queries": "Запросы",
+    "sessions": "Сессии",
+    "locks": "Блокировки",
+    "transactions": "Транзакции",
+    "memory": "Память",
+    "users": "Пользователи",
+    "groups": "Группы",
+    "maintenance": "Обслуживание",
+    "audit": "Аудит",
+}
+
 
 class BaseAdmin(admin.ModelAdmin):
     """Базовые настройки"""
@@ -32,10 +51,16 @@ class DBUserAdmin(BaseAdmin):
 class UserSidebarSettingsAdmin(BaseAdmin):
     """Настройки сайдбара"""
 
-    list_display = ("user", "visible_tabs", "created", "updated")
+    list_display = ("user", "visible_tabs_display", "created", "updated")
     search_fields = ("user__login", "user__email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("user", "visible_tabs", "created", "updated")
+    fields = ("user", "visible_tabs", "visible_tabs_display", "created", "updated")
+    readonly_fields = BaseAdmin.readonly_fields + ("visible_tabs_display",)
+
+    @admin.display(description="Видимые вкладки")
+    def visible_tabs_display(self, obj):
+        labels = [SIDEBAR_TAB_LABELS.get(tab, tab) for tab in obj.visible_tabs or []]
+        return ", ".join(labels) or "Все вкладки"
 
 
 @admin.register(DBConnection)
