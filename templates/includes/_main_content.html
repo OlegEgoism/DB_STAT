@@ -75,9 +75,6 @@
                         </div>
                     </div>
                 </div>
-                <button type="button" class="btn-conn" id="sidebarSettingsBtn" title="Настройки вкладок" aria-label="Настройки вкладок сайдбара">
-                    <i class="fas fa-cog"></i>
-                </button>
                 <form method="post" action="{% url 'logout' %}" id="logoutForm">
                     {% csrf_token %}
                     <button type="submit" class="btn-conn" title="Выйти">
