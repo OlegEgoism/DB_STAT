@@ -1,5 +1,7 @@
 # <img src="static/img/favicon.svg" width="64">  DB STAT
 
+**Русский** | [English](README.en.md)
+
 ## Описание проекта
 
 ```
