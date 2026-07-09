@@ -2554,3 +2554,51 @@ body.sidebar-collapsed .nav-item .nav-icon {
     font-size: 24px;
     line-height: 1;
 }
+
+.sidebar-settings-modal-dialog {
+    max-width: 520px;
+    width: calc(100% - 24px);
+}
+
+.sidebar-settings-help {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0 0 16px;
+}
+
+.sidebar-settings-list {
+    display: grid;
+    gap: 10px;
+    max-height: 420px;
+    overflow: auto;
+    padding-right: 4px;
+}
+
+.sidebar-settings-item {
+    display: grid;
+    grid-template-columns: auto 24px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sidebar-settings-item:hover {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.12);
+}
+
+.sidebar-settings-item__icon {
+    display: inline-flex;
+    justify-content: center;
+    color: var(--accent-blue);
+}
+
+.sidebar-settings-footer {
+    justify-content: flex-end;
+}
