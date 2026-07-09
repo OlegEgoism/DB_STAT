@@ -75,7 +75,7 @@
                         </div>
                     </div>
                 </div>
-                <form method="post" action="{% url 'logout' %}">
+                <form method="post" action="{% url 'logout' %}" id="logoutForm">
                     {% csrf_token %}
                     <button type="submit" class="btn-conn" title="Выйти">
                         <i class="fas fa-sign-out-alt" style="color: red"></i>

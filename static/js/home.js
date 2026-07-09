@@ -181,6 +181,7 @@
         initUsersControls();
         initGroupsControls();
         initAuditControls();
+        initLogoutForm();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
         initConnectionDbTypeSelect();
         updateConnectionDbTypeIcon();
@@ -354,6 +355,20 @@
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
         return '';
+    }
+
+
+    function initLogoutForm() {
+        const logoutForm = document.getElementById('logoutForm');
+        if (!logoutForm) return;
+
+        logoutForm.addEventListener('submit', function () {
+            const csrfToken = getCookie('csrftoken');
+            const csrfInput = logoutForm.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (csrfToken && csrfInput) {
+                csrfInput.value = csrfToken;
+            }
+        });
     }
 
     function getConnectionFormData() {
