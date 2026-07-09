@@ -384,13 +384,38 @@
         return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
     }
 
-    function saveVisibleSidebarPages(pageIds) {
-        const visiblePages = normalizeSidebarPages(pageIds);
-        if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
+    function getAllAuditActions() {
+        return [
+            {value: 'login', label: 'Вход'},
+            {value: 'logout', label: 'Выход'},
+            {value: 'connection_create', label: 'Создание подключения'},
+            {value: 'connection_update', label: 'Изменение подключения'},
+            {value: 'connection_delete', label: 'Удаление подключения'},
+            {value: 'connection_test', label: 'Проверка подключения'}
+        ];
+    }
 
-        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages}).then(data => {
+    function normalizeAuditActions(actionIds) {
+        const allActions = getAllAuditActions().map(action => action.value);
+        const visibleActions = Array.isArray(actionIds) ? actionIds.filter(action => allActions.includes(action)) : allActions;
+        return visibleActions.length ? visibleActions : allActions;
+    }
+
+    function getVisibleAuditActions() {
+        return normalizeAuditActions(currentDbUser?.audit_visible_actions);
+    }
+
+    function saveUserSettings(pageIds, auditActionIds) {
+        const visiblePages = normalizeSidebarPages(pageIds);
+        const visibleAuditActions = normalizeAuditActions(auditActionIds);
+        if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
+        if (!visibleAuditActions.length) return Promise.reject(new Error('Выберите хотя бы одно действие аудита'));
+
+        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages, visible_audit_actions: visibleAuditActions}).then(data => {
             currentDbUser.sidebar_visible_tabs = normalizeSidebarPages(data.visible_tabs);
-            return currentDbUser.sidebar_visible_tabs;
+            currentDbUser.audit_visible_actions = normalizeAuditActions(data.visible_audit_actions);
+            auditActionsLoaded = false;
+            return currentDbUser;
         });
     }
 
@@ -416,6 +441,24 @@
         });
     }
 
+    function renderAuditActionsSettingsList() {
+        const list = document.getElementById('auditActionsSettingsList');
+        if (!list) return;
+
+        const visibleActions = new Set(getVisibleAuditActions());
+        list.innerHTML = '';
+        getAllAuditActions().forEach(action => {
+            const row = document.createElement('label');
+            row.className = 'sidebar-settings-item';
+            row.innerHTML = `
+                <input class="form-check-input" type="checkbox" value="${escapeHtml(action.value)}" ${visibleActions.has(action.value) ? 'checked' : ''}>
+                <span class="sidebar-settings-item__icon"><i class="fas fa-clipboard-list"></i></span>
+                <span>${escapeHtml(action.label)}</span>
+            `;
+            list.appendChild(row);
+        });
+    }
+
     function initSidebarSettings() {
         const settingsButton = document.getElementById('sidebarSettingsBtn');
         const modalElement = document.getElementById('sidebarSettingsModal');
@@ -424,30 +467,37 @@
         const settingsModal = new bootstrap.Modal(modalElement);
         settingsButton.addEventListener('click', function () {
             renderSidebarSettingsList();
+            renderAuditActionsSettingsList();
             settingsModal.show();
         });
 
         document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {
-            document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]').forEach(input => {
+            document.querySelectorAll('#sidebarSettingsList input[type="checkbox"], #auditActionsSettingsList input[type="checkbox"]').forEach(input => {
                 input.checked = true;
             });
         });
 
         document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
             const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
+            const selectedAuditActions = Array.from(document.querySelectorAll('#auditActionsSettingsList input[type="checkbox"]:checked')).map(input => input.value);
             if (!selectedPages.length) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
             }
+            if (!selectedAuditActions.length) {
+                showToast('⚠️ Выберите хотя бы одно действие аудита');
+                return;
+            }
 
-            saveVisibleSidebarPages(selectedPages)
+            saveUserSettings(selectedPages, selectedAuditActions)
                 .then(() => {
                     updateSidebarForConnection();
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());
                     }
                     settingsModal.hide();
-                    showToast('✅ Настройки сайдбара сохранены');
+                    if (getCurrentActivePageId() === 'audit') refreshAuditEvents();
+                    showToast('✅ Настройки сохранены');
                 })
                 .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить настройки сайдбара'}`));
         });

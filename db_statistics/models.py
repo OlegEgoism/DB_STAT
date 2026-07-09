@@ -88,6 +88,7 @@ class UserSidebarSettings(DateStamp):
 
     user = models.OneToOneField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", related_name="sidebar_settings", on_delete=models.CASCADE)
     visible_tabs = models.JSONField(verbose_name="Видимые вкладки", db_comment="Видимые вкладки", default=list, blank=True)
+    visible_audit_actions = models.JSONField(verbose_name="Видимые действия аудита", db_comment="Видимые действия аудита", default=list, blank=True)
 
     class Meta:
         db_table = "db_user_sidebar_settings"

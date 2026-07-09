@@ -3,8 +3,9 @@ from pathlib import Path
 
 from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from db_statistics.models import DBUser, UserSidebarSettings
+from db_statistics.models import DBAudit, DBUser, UserSidebarSettings
 from db_statistics.views import SIDEBAR_TAB_IDS
 
 
@@ -51,3 +52,43 @@ class SidebarSettingsModelTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["visible_tabs"], SIDEBAR_TAB_IDS)
+
+
+class AuditActionSettingsTests(TestCase):
+    def setUp(self):
+        self.user = DBUser.objects.create(login="auditor", email="auditor@example.com", role="Аналитик")
+        self.client = Client(enforce_csrf_checks=False)
+        session = self.client.session
+        session["db_user_id"] = self.user.pk
+        session.save()
+
+    def test_settings_endpoint_persists_visible_audit_actions(self):
+        response = self.client.post(
+            reverse("sidebar_settings"),
+            data=json.dumps({"visible_tabs": ["audit"], "visible_audit_actions": ["login", "connection_test", "unknown"]}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["visible_audit_actions"], ["login", "connection_test"])
+        self.assertEqual(UserSidebarSettings.objects.get(user=self.user).visible_audit_actions, ["login", "connection_test"])
+
+    def test_audit_events_returns_and_filters_only_configured_actions(self):
+        UserSidebarSettings.objects.create(user=self.user, visible_tabs=["audit"], visible_audit_actions=["login"])
+        DBAudit.objects.create(username=self.user.login, action_type="login", info="login", created=timezone.now())
+        DBAudit.objects.create(username=self.user.login, action_type="logout", info="logout", created=timezone.now())
+
+        response = self.client.get(reverse("audit_events"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual([action["value"] for action in payload["actions"]], ["login"])
+        self.assertEqual(payload["total_count"], 1)
+        self.assertEqual(payload["events"][0]["action_type"], "login")
+
+    def test_audit_events_rejects_action_hidden_by_settings(self):
+        UserSidebarSettings.objects.create(user=self.user, visible_tabs=["audit"], visible_audit_actions=["login"])
+
+        response = self.client.get(reverse("audit_events"), {"action_type": "logout"})
+
+        self.assertEqual(response.status_code, 400)

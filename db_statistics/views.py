@@ -16,6 +16,7 @@ SESSION_USER_ID_KEY = "db_user_id"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
 SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
+AUDIT_ACTION_IDS = [value for value, _label in DBAudit.ACTION_TYPES]
 
 
 def _normalize_database_host(host):
@@ -43,12 +44,26 @@ def _normalize_sidebar_tabs(tabs):
     return normalized_tabs or SIDEBAR_TAB_IDS.copy()
 
 
+def _normalize_audit_actions(actions):
+    if not isinstance(actions, list):
+        return AUDIT_ACTION_IDS.copy()
+    normalized_actions = [action for action in actions if action in AUDIT_ACTION_IDS]
+    return normalized_actions or AUDIT_ACTION_IDS.copy()
+
+
 def _sidebar_settings_for_user(db_user):
     settings, _created = UserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
     normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
+    normalized_actions = _normalize_audit_actions(settings.visible_audit_actions)
+    update_fields = []
     if settings.visible_tabs != normalized_tabs:
         settings.visible_tabs = normalized_tabs
-        settings.save(update_fields=["visible_tabs", "updated"])
+        update_fields.append("visible_tabs")
+    if settings.visible_audit_actions != normalized_actions:
+        settings.visible_audit_actions = normalized_actions
+        update_fields.append("visible_audit_actions")
+    if update_fields:
+        settings.save(update_fields=[*update_fields, "updated"])
     return settings
 
 
@@ -56,7 +71,7 @@ def _user_payload(db_user):
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs}
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs, "audit_visible_actions": sidebar_settings.visible_audit_actions}
 
 
 def _connection_permission_error():
@@ -163,7 +178,7 @@ def sidebar_settings(request):
 
     settings = _sidebar_settings_for_user(db_user)
     if request.method == "GET":
-        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": settings.visible_tabs})
+        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": settings.visible_tabs, "available_audit_actions": [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES], "visible_audit_actions": settings.visible_audit_actions})
 
     try:
         payload = json.loads(request.body or "{}")
@@ -171,9 +186,11 @@ def sidebar_settings(request):
         return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
 
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
+    visible_audit_actions = _normalize_audit_actions(payload.get("visible_audit_actions"))
     settings.visible_tabs = visible_tabs
-    settings.save(update_fields=["visible_tabs", "updated"])
-    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+    settings.visible_audit_actions = visible_audit_actions
+    settings.save(update_fields=["visible_tabs", "visible_audit_actions", "updated"])
+    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs, "available_audit_actions": [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES], "visible_audit_actions": visible_audit_actions})
 
 
 @require_http_methods(["GET"])
@@ -183,11 +200,12 @@ def audit_events(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     action_type = (request.GET.get("action_type") or "").strip()
-    available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
+    visible_action_ids = _sidebar_settings_for_user(db_user).visible_audit_actions
+    available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES if value in visible_action_ids]
 
-    audit_queryset = DBAudit.objects.filter(username=db_user.login)
+    audit_queryset = DBAudit.objects.filter(username=db_user.login, action_type__in=visible_action_ids)
     if action_type:
-        valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
+        valid_action_types = set(visible_action_ids)
         if action_type not in valid_action_types:
             return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
         audit_queryset = audit_queryset.filter(action_type=action_type)
