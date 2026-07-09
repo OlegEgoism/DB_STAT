@@ -16,6 +16,24 @@ SESSION_USER_ID_KEY = "db_user_id"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
 SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
+SIDEBAR_TAB_LABELS = {
+    "database-overview": "База данных",
+    "segments": "Сегменты",
+    "databases": "Схемы",
+    "tables": "Таблицы",
+    "views": "Представления",
+    "temp-tables": "Временные таблицы",
+    "distribution": "Распределение",
+    "queries": "Активные запросы",
+    "sessions": "Сессии",
+    "locks": "Блокировки",
+    "transactions": "Транзакции",
+    "memory": "Память",
+    "users": "Пользователи",
+    "groups": "Группы",
+    "maintenance": "Обслуживание",
+    "audit": "Аудит",
+}
 
 
 def _normalize_database_host(host):
@@ -41,6 +59,21 @@ def _normalize_sidebar_tabs(tabs):
         return SIDEBAR_TAB_IDS.copy()
     normalized_tabs = [tab for tab in tabs if tab in SIDEBAR_TAB_IDS]
     return normalized_tabs or SIDEBAR_TAB_IDS.copy()
+
+
+def _sidebar_tab_labels(tab_ids):
+    return [SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
+
+
+def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
+    visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
+    previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
+    return (
+        "Настройки сайдбара пользователя изменены: "
+        f"Пользователь: {db_user.login}; "
+        f"Отображаемые вкладки: {visible_labels}; "
+        f"Предыдущие вкладки: {previous_labels}"
+    )
 
 
 def _sidebar_settings_for_user(db_user):
@@ -176,8 +209,7 @@ def sidebar_settings(request):
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit(
         "sidebar_settings",
-        "Настройки сайдбара пользователя изменены: "
-        f"login={db_user.login}; visible_tabs={', '.join(visible_tabs)}; previous_tabs={', '.join(previous_tabs)}",
+        _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs),
         db_user=db_user,
     )
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
