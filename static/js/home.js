@@ -2809,7 +2809,8 @@
     function populateAuditActionFilter(actions) {
         const select = document.getElementById('auditActionFilter');
         if (!select || auditActionsLoaded) return;
-        const currentValue = select.value;
+        const currentValues = new Set(Array.from(select.selectedOptions).map(option => option.value));
+        const shouldSelectAll = !currentValues.size || currentValues.has('');
         select.innerHTML = '<option value="">Все действия</option>';
         (actions || []).forEach(action => {
             const option = document.createElement('option');
@@ -2817,7 +2818,9 @@
             option.textContent = action.label;
             select.appendChild(option);
         });
-        select.value = currentValue;
+        Array.from(select.options).forEach(option => {
+            option.selected = shouldSelectAll ? option.value === '' : currentValues.has(option.value);
+        });
         auditActionsLoaded = true;
     }
 
@@ -2862,9 +2865,12 @@
 
     function refreshAuditEvents() {
         const requestId = ++auditRequestId;
-        const actionType = document.getElementById('auditActionFilter')?.value || '';
+        const actionFilter = document.getElementById('auditActionFilter');
+        const selectedActionTypes = actionFilter
+            ? Array.from(actionFilter.selectedOptions).map(option => option.value).filter(Boolean)
+            : [];
         const params = new URLSearchParams({page: String(auditState.page)});
-        if (actionType) params.set('action_type', actionType);
+        selectedActionTypes.forEach(actionType => params.append('action_types', actionType));
         const url = `${auditEventsApiUrl}?${params.toString()}`;
         renderAuditWarning('Загрузка аудита...');
         fetch(url)
@@ -2885,6 +2891,19 @@
 
     function initAuditControls() {
         document.getElementById('auditActionFilter')?.addEventListener('change', function () {
+            const selectedOptions = Array.from(this.selectedOptions);
+            const selectedValues = selectedOptions.map(option => option.value);
+            if (selectedValues.includes('') && selectedValues.length > 1) {
+                Array.from(this.options).forEach(option => {
+                    option.selected = option.value === '';
+                });
+            } else if (!selectedValues.includes('') && selectedValues.length > 0) {
+                const allOption = this.querySelector('option[value=""]');
+                if (allOption) allOption.selected = false;
+            } else {
+                const allOption = this.querySelector('option[value=""]');
+                if (allOption) allOption.selected = true;
+            }
             auditState.page = 1;
             refreshAuditEvents();
         });

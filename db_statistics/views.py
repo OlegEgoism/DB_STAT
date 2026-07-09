@@ -182,15 +182,20 @@ def audit_events(request):
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
-    action_type = (request.GET.get("action_type") or "").strip()
+    action_types = request.GET.getlist("action_types")
+    legacy_action_type = (request.GET.get("action_type") or "").strip()
+    if not action_types and legacy_action_type:
+        action_types = [legacy_action_type]
+    action_types = [action_type.strip() for action_type in action_types if action_type.strip()]
     available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
 
     audit_queryset = DBAudit.objects.filter(username=db_user.login)
-    if action_type:
+    if action_types:
         valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
-        if action_type not in valid_action_types:
+        unknown_action_types = [action_type for action_type in action_types if action_type not in valid_action_types]
+        if unknown_action_types:
             return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
-        audit_queryset = audit_queryset.filter(action_type=action_type)
+        audit_queryset = audit_queryset.filter(action_type__in=action_types)
 
     page_size = 100
     page = max(int(request.GET.get("page") or 1), 1)

@@ -1883,14 +1883,23 @@ body {
     font-weight: 500;
 }
 
+.audit-filter-box {
+    align-items: flex-start;
+}
+
 .audit-filter-box select {
     width: 100%;
+    min-height: 138px;
     border: 0;
     outline: 0;
     background: transparent;
     color: var(--text-primary);
     font-size: 13px;
     font-weight: 600;
+}
+
+.audit-filter-box option {
+    padding: 5px 8px;
 }
 
 .audit-table-scroll {
