@@ -22,6 +22,7 @@ class SidebarSettingsTemplateTests(SimpleTestCase):
         self.assertIn("/settings/sidebar/", script)
         self.assertIn("currentDbUser.sidebar_visible_tabs", script)
         self.assertIn("updateSidebarForConnection();", script)
+        self.assertIn("document.querySelectorAll('.nav-item[data-page]').forEach", script)
 
 
 class SidebarSettingsModelTests(TestCase):

@@ -114,7 +114,7 @@
     }
 
     function updateSidebarForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        document.querySelectorAll('.nav-item').forEach(item => {
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             const isAvailable = isPageAvailableForConnection(item.dataset.page, conn);
             item.classList.toggle('d-none', !isAvailable);
             item.setAttribute('aria-hidden', String(!isAvailable));
@@ -3224,7 +3224,7 @@
         if (pageId === 'home') return true;
         return Boolean(
             isPageAvailableForConnection(pageId) &&
-            Array.from(document.querySelectorAll('.nav-item')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
+            Array.from(document.querySelectorAll('.nav-item[data-page]')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
         );
     }
 
@@ -3306,7 +3306,7 @@
         updateSidebarForConnection();
         const nextPageId = isKnownPage(pageId) ? pageId : getDefaultPageForConnection();
 
-        document.querySelectorAll('.nav-item').forEach(item => {
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.classList.toggle('active', item.dataset.page === nextPageId);
         });
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
