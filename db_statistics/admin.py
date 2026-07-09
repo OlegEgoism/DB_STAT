@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBUser, UserSidebarSettings
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -26,6 +26,16 @@ class DBUserAdmin(BaseAdmin):
     @admin.display(description="Количество подключений")
     def count_column(self, obj):
         return str(obj.connections.count())
+
+
+@admin.register(UserSidebarSettings)
+class UserSidebarSettingsAdmin(BaseAdmin):
+    """Настройки сайдбара"""
+
+    list_display = ("user", "visible_tabs", "created", "updated")
+    search_fields = ("user__login", "user__email")
+    search_help_text = "Поиск по: логин, почта"
+    fields = ("user", "visible_tabs", "created", "updated")
 
 
 @admin.register(DBConnection)

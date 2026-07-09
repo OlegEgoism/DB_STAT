@@ -63,7 +63,7 @@
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
-    const sidebarSettingsStoragePrefix = 'dbstat_sidebar_visible_tabs_';
+    const sidebarSettingsApiUrl = '/settings/sidebar/';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -370,34 +370,28 @@
 
 
 
-    function getSidebarSettingsStorageKey() {
-        return `${sidebarSettingsStoragePrefix}${currentDbUser?.id || currentDbUser?.login || 'anonymous'}`;
-    }
-
     function getAllSidebarPages() {
         return Array.from(document.querySelectorAll('.nav-item[data-page]')).map(item => item.dataset.page);
     }
 
-    function getVisibleSidebarPages() {
+    function normalizeSidebarPages(pageIds) {
         const allPages = getAllSidebarPages();
-        const storedValue = localStorage.getItem(getSidebarSettingsStorageKey());
-        if (!storedValue) return allPages;
+        const visiblePages = Array.isArray(pageIds) ? pageIds.filter(page => allPages.includes(page)) : allPages;
+        return visiblePages.length ? visiblePages : allPages;
+    }
 
-        try {
-            const storedPages = JSON.parse(storedValue);
-            const visiblePages = Array.isArray(storedPages) ? storedPages.filter(page => allPages.includes(page)) : allPages;
-            return visiblePages.length ? visiblePages : allPages;
-        } catch (error) {
-            return allPages;
-        }
+    function getVisibleSidebarPages() {
+        return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
     }
 
     function saveVisibleSidebarPages(pageIds) {
-        const allPages = getAllSidebarPages();
-        const visiblePages = pageIds.filter(page => allPages.includes(page));
-        if (!visiblePages.length) return false;
-        localStorage.setItem(getSidebarSettingsStorageKey(), JSON.stringify(visiblePages));
-        return true;
+        const visiblePages = normalizeSidebarPages(pageIds);
+        if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
+
+        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages}).then(data => {
+            currentDbUser.sidebar_visible_tabs = normalizeSidebarPages(data.visible_tabs);
+            return currentDbUser.sidebar_visible_tabs;
+        });
     }
 
     function renderSidebarSettingsList() {
@@ -441,17 +435,21 @@
 
         document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
             const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
-            if (!saveVisibleSidebarPages(selectedPages)) {
+            if (!selectedPages.length) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
             }
 
-            updateSidebarForConnection();
-            if (!isKnownPage(getCurrentActivePageId())) {
-                activatePage(getDefaultPageForConnection());
-            }
-            settingsModal.hide();
-            showToast('✅ Настройки сайдбара сохранены');
+            saveVisibleSidebarPages(selectedPages)
+                .then(() => {
+                    updateSidebarForConnection();
+                    if (!isKnownPage(getCurrentActivePageId())) {
+                        activatePage(getDefaultPageForConnection());
+                    }
+                    settingsModal.hide();
+                    showToast('✅ Настройки сайдбара сохранены');
+                })
+                .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить настройки сайдбара'}`));
         });
     }
 

@@ -8,13 +8,14 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.models import DBAudit, DBConnection, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBUser, UserSidebarSettings
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
 
 
 def _normalize_database_host(host):
@@ -35,10 +36,27 @@ def _current_db_user(request):
         return None
 
 
+def _normalize_sidebar_tabs(tabs):
+    if not isinstance(tabs, list):
+        return SIDEBAR_TAB_IDS.copy()
+    normalized_tabs = [tab for tab in tabs if tab in SIDEBAR_TAB_IDS]
+    return normalized_tabs or SIDEBAR_TAB_IDS.copy()
+
+
+def _sidebar_settings_for_user(db_user):
+    settings, _created = UserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
+    normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
+    if settings.visible_tabs != normalized_tabs:
+        settings.visible_tabs = normalized_tabs
+        settings.save(update_fields=["visible_tabs", "updated"])
+    return settings
+
+
 def _user_payload(db_user):
     if not db_user:
         return None
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE}
+    sidebar_settings = _sidebar_settings_for_user(db_user)
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs}
 
 
 def _connection_permission_error():
@@ -135,6 +153,27 @@ def logout(request):
     _write_audit("logout", audit_info, db_user=db_user, username=username)
     request.session.flush()
     return redirect("login")
+
+
+@require_http_methods(["GET", "POST"])
+def sidebar_settings(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+
+    settings = _sidebar_settings_for_user(db_user)
+    if request.method == "GET":
+        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": settings.visible_tabs})
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
+
+    visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
+    settings.visible_tabs = visible_tabs
+    settings.save(update_fields=["visible_tabs", "updated"])
+    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
 
 
 @require_http_methods(["GET"])
