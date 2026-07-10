@@ -627,6 +627,7 @@
         const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
         const basicSettingsTbody = document.getElementById('databaseOverviewBasicSettingsTableBody');
         const activityStatsTbody = document.getElementById('databaseOverviewActivityTableBody');
+        const extensionsTbody = document.getElementById('databaseOverviewExtensionsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
@@ -634,6 +635,7 @@
         const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
         const basicSettingsCount = document.getElementById('databaseOverviewBasicSettingsCount');
         const activityStatsCount = document.getElementById('databaseOverviewActivityCount');
+        const extensionsCount = document.getElementById('databaseOverviewExtensionsCount');
         const version = document.getElementById('databaseOverviewVersion');
         if (count) count.textContent = 'Нет данных';
         if (memoryCount) memoryCount.textContent = 'Нет данных';
@@ -642,6 +644,7 @@
         if (connectionSlotsCount) connectionSlotsCount.textContent = 'Нет данных';
         if (basicSettingsCount) basicSettingsCount.textContent = 'Нет данных';
         if (activityStatsCount) activityStatsCount.textContent = 'Нет данных';
+        if (extensionsCount) extensionsCount.textContent = 'Нет данных';
         updateConnectionSlotsChart([]);
         updateDatabaseActivityChart([]);
         if (version) version.textContent = message;
@@ -652,6 +655,7 @@
         if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (basicSettingsTbody) basicSettingsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
         if (activityStatsTbody) activityStatsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
+        if (extensionsTbody) extensionsTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
     }
 
     function renderDatabaseOverview(data) {
@@ -662,6 +666,7 @@
         const connectionSlotsTbody = document.getElementById('databaseOverviewConnectionSlotsTableBody');
         const basicSettingsTbody = document.getElementById('databaseOverviewBasicSettingsTableBody');
         const activityStatsTbody = document.getElementById('databaseOverviewActivityTableBody');
+        const extensionsTbody = document.getElementById('databaseOverviewExtensionsTableBody');
         const count = document.getElementById('databaseOverviewCount');
         const memoryCount = document.getElementById('databaseOverviewMemoryCount');
         const connectionCount = document.getElementById('databaseOverviewConnectionCount');
@@ -669,6 +674,7 @@
         const connectionSlotsCount = document.getElementById('databaseOverviewConnectionSlotsCount');
         const basicSettingsCount = document.getElementById('databaseOverviewBasicSettingsCount');
         const activityStatsCount = document.getElementById('databaseOverviewActivityCount');
+        const extensionsCount = document.getElementById('databaseOverviewExtensionsCount');
         const version = document.getElementById('databaseOverviewVersion');
         const metrics = data.metrics || [];
         const memorySettings = data.memory_settings || [];
@@ -677,6 +683,7 @@
         const connectionSlots = data.connection_slots || [];
         const basicSettings = data.basic_settings || [];
         const activityStats = data.activity_stats || [];
+        const installedExtensions = data.installed_extensions || [];
         if (count) count.textContent = `${metrics.length} метрик`;
         if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
         if (connectionCount) connectionCount.textContent = `${connectionInfo.length} параметров`;
@@ -684,6 +691,7 @@
         if (connectionSlotsCount) connectionSlotsCount.textContent = `${connectionSlots.length} показателя`;
         if (basicSettingsCount) basicSettingsCount.textContent = `${basicSettings.length} параметров`;
         if (activityStatsCount) activityStatsCount.textContent = `${activityStats.length} показателей`;
+        if (extensionsCount) extensionsCount.textContent = `${installedExtensions.length} расширений`;
         if (version) version.textContent = data.database_version || '—';
         if (basicSettingsTbody) {
             if (!basicSettings.length) {
@@ -758,6 +766,20 @@
                     <tr>
                         <td>${item.label}</td>
                         <td><strong>${item.count ?? 0}</strong></td>
+                    </tr>
+                `).join('');
+            }
+        }
+        if (extensionsTbody) {
+            if (!installedExtensions.length) {
+                extensionsTbody.innerHTML = '<tr><td colspan="4" class="text-muted">Нет установленных расширений</td></tr>';
+            } else {
+                extensionsTbody.innerHTML = installedExtensions.map(item => `
+                    <tr>
+                        <td><strong>${escapeHtml(item.name ?? '—')}</strong></td>
+                        <td>${escapeHtml(item.version ?? '—')}</td>
+                        <td>${escapeHtml(item.schema ?? '—')}</td>
+                        <td>${escapeHtml(item.description ?? '—')}</td>
                     </tr>
                 `).join('');
             }

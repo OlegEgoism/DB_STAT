@@ -536,10 +536,31 @@ def database_overview(request):
         FROM relation_sizes;
     """
 
+    extensions_query = """
+        SELECT
+            extension.extname,
+            extension.extversion,
+            namespace.nspname,
+            COALESCE(description.description, '—') AS description
+        FROM pg_catalog.pg_extension AS extension
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = extension.extnamespace
+        LEFT JOIN pg_catalog.pg_description AS description
+            ON description.objoid = extension.oid
+           AND description.classoid = 'pg_catalog.pg_extension'::regclass
+        ORDER BY extension.extname;
+    """
+
     try:
         row = _fetch_db_row(db_connection, overview_query, [db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database, db_connection.database])
+        extension_rows = _fetch_db_rows(db_connection, extensions_query)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
+
+    installed_extensions = [
+        {"name": extension_row[0] or "—", "version": extension_row[1] or "—", "schema": extension_row[2] or "—", "description": extension_row[3] or "—"}
+        for extension_row in extension_rows
+    ]
 
     metrics = [
         {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[4] or 0)},
@@ -596,6 +617,7 @@ def database_overview(request):
             "connection_slots": connection_slots,
             "activity_stats": activity_stats,
             "basic_settings": basic_settings,
+            "installed_extensions": installed_extensions,
         }
     )
 
