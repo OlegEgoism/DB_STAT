@@ -103,8 +103,39 @@
                         <p>Для Greenplum доступны сведения о состоянии сегментов и распределении строк, помогающие обнаружить перекос данных. Раздел обслуживания показывает статистику VACUUM и ANALYZE, количество живых и мёртвых строк и время последних операций.</p>
                         <p>DB STAT подходит для ежедневного контроля, первичной диагностики снижения производительности и административной проверки. Переключайтесь между сохранёнными подключениями, сравнивайте показатели и быстрее находите участки, которым требуется внимание.</p>
                     </div>
-                    <div class="home-hdd-animation">
-                        <canvas id="hddCanvas" role="img" aria-label="Анимация разборки и сборки жёсткого диска"></canvas>
+                    <div class="home-server-animation" id="serverAnimation" role="region" aria-label="Интерактивная анимация серверных стоек">
+                        <div class="home-server-animation__ambient" aria-hidden="true"></div>
+                        <div class="home-server-animation__toolbar" role="group" aria-label="Режим анимации">
+                            <button class="active" type="button" data-server-mode="panels" aria-pressed="true">Панели</button>
+                            <button type="button" data-server-mode="exploded" aria-pressed="false">Exploded view</button>
+                            <button type="button" data-server-mode="digital" aria-pressed="false">Digital dissolve</button>
+                        </div>
+                        <div class="home-server-mode active" data-server-scene="panels">
+                            <div class="home-server-visual home-server-visual--panels">
+                                <div class="home-server-tiles" data-server-tiles></div>
+                                <div class="home-server-scan"></div>
+                            </div>
+                            <div class="home-server-status"><strong>01 · Панельный разлёт</strong><span>Фотография разбивается на 20 объёмных секций.</span></div>
+                        </div>
+                        <div class="home-server-mode" data-server-scene="exploded">
+                            <div class="home-server-visual home-server-visual--exploded">
+                                <div class="home-server-photo"></div>
+                                <div class="home-server-layer home-server-layer--top"></div>
+                                <div class="home-server-layer home-server-layer--left"></div>
+                                <div class="home-server-layer home-server-layer--right"></div>
+                                <div class="home-server-layer home-server-layer--bottom"></div>
+                            </div>
+                            <div class="home-server-status"><strong>02 · Послойный вид</strong><span>Части стойки расходятся как отдельные серверные модули.</span></div>
+                        </div>
+                        <div class="home-server-mode" data-server-scene="digital">
+                            <div class="home-server-visual home-server-visual--digital">
+                                <div class="home-server-digital"></div>
+                                <div class="home-server-pixels" data-server-pixels></div>
+                                <div class="home-server-scan"></div>
+                            </div>
+                            <div class="home-server-status"><strong>03 · Digital dissolve</strong><span>Сервер распадается на светящиеся цифровые фрагменты.</span></div>
+                        </div>
+                        <a class="home-server-credit" href="https://commons.wikimedia.org/wiki/File:Front_of_server_racks_at_NERSC.jpg" target="_blank" rel="noopener noreferrer">Фото: Wikimedia Commons</a>
                     </div>
                 </div>
                 <a class="home-repo-link" href="https://github.com/OlegEgoism/DB-STAT" target="_blank" rel="noopener noreferrer">

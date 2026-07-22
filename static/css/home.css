@@ -2458,21 +2458,243 @@ body.sidebar-collapsed .nav-item .nav-icon {
     min-width: 0;
 }
 
-.home-hdd-animation {
+.home-server-animation {
+    --server-photo: url("https://upload.wikimedia.org/wikipedia/commons/5/51/Front_of_server_racks_at_NERSC.jpg");
     position: relative;
     width: 100%;
-    min-height: 320px;
+    min-height: 360px;
     overflow: hidden;
     border-radius: calc(var(--radius-lg) - 4px);
-    background: radial-gradient(circle at center, rgba(79, 140, 255, 0.13), rgba(139, 92, 246, 0.03) 48%, transparent 72%);
+    border: 1px solid rgba(116, 207, 255, 0.18);
+    background: radial-gradient(circle at 50% 50%, rgba(24, 70, 100, 0.35), transparent 52%), #05080c;
+    box-shadow: inset 0 0 50px rgba(48, 155, 220, 0.08);
+    color: #eaf7ff;
 }
 
-.home-hdd-animation canvas {
+.home-server-animation__ambient {
+    position: absolute;
+    inset: -40%;
+    background: radial-gradient(circle at 45% 45%, rgba(78, 197, 255, 0.14), transparent 28%), conic-gradient(from 30deg, transparent, rgba(44, 146, 230, 0.1), transparent 30%);
+    animation: homeServerAmbient 12s linear infinite;
+}
+
+.home-server-animation__toolbar {
+    position: absolute;
+    z-index: 20;
+    top: 12px;
+    left: 50%;
+    display: flex;
+    gap: 4px;
+    width: max-content;
+    max-width: calc(100% - 20px);
+    padding: 5px;
+    transform: translateX(-50%);
+    border: 1px solid rgba(139, 219, 255, 0.18);
+    border-radius: 13px;
+    background: rgba(5, 11, 18, 0.82);
+    backdrop-filter: blur(15px);
+}
+
+.home-server-animation__toolbar button {
+    border: 0;
+    border-radius: 9px;
+    padding: 7px 9px;
+    background: transparent;
+    color: #a9bac7;
+    cursor: pointer;
+    font: 700 10px/1.2 inherit;
+    transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-server-animation__toolbar button:hover,
+.home-server-animation__toolbar button:focus-visible,
+.home-server-animation__toolbar button.active {
+    color: #ffffff;
+    background: rgba(81, 190, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(116, 214, 255, 0.2);
+    outline: 0;
+}
+
+.home-server-mode {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
+    display: none;
+    perspective: 900px;
+}
+
+.home-server-mode.active {
     display: block;
+}
+
+.home-server-visual {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 84%;
+    aspect-ratio: 1.5;
+    transform: translate(-50%, -52%);
+    transform-style: preserve-3d;
+    filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.5));
+}
+
+.home-server-photo,
+.home-server-tile,
+.home-server-layer,
+.home-server-digital::before,
+.home-server-digital::after {
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(rgba(8, 14, 20, 0.08), rgba(8, 14, 20, 0.16)), var(--server-photo);
+    background-position: center;
+    background-size: cover;
+}
+
+.home-server-tiles {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+}
+
+.home-server-tile {
+    --server-cols: 5;
+    --server-rows: 4;
+    width: calc(100% / var(--server-cols));
+    height: calc(100% / var(--server-rows));
+    left: calc(var(--server-col) * 100% / var(--server-cols));
+    top: calc(var(--server-row) * 100% / var(--server-rows));
+    background-size: calc(var(--server-cols) * 100%) calc(var(--server-rows) * 100%);
+    background-position: calc(var(--server-col) * 100% / (var(--server-cols) - 1)) calc(var(--server-row) * 100% / (var(--server-rows) - 1));
+    border: 0.5px solid rgba(130, 210, 255, 0.06);
+    animation: homeServerTileBurst 6s cubic-bezier(0.18, 0.84, 0.25, 1) infinite;
+    animation-delay: calc((var(--server-col) + var(--server-row)) * 35ms);
+}
+
+.home-server-visual--panels {
+    animation: homeServerShake 6s ease-in-out infinite;
+}
+
+.home-server-scan {
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #73d7ff, transparent);
+    box-shadow: 0 0 18px #4cc8ff;
+    opacity: 0.72;
+    animation: homeServerScan 2.8s linear infinite;
+}
+
+.home-server-photo {
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 -60px 80px rgba(0, 0, 0, 0.34);
+    animation: homeServerPhotoFloat 5s ease-in-out infinite;
+}
+
+.home-server-visual--exploded {
+    transform: translate(-50%, -52%) rotateX(6deg) rotateY(-8deg);
+}
+
+.home-server-layer {
+    overflow: hidden;
+    border-radius: 14px;
+    clip-path: inset(var(--server-top) var(--server-right) var(--server-bottom) var(--server-left));
+    animation: homeServerLayerMove 6.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    animation-delay: var(--server-delay);
+}
+
+.home-server-layer--top { --server-top: 0%; --server-right: 0%; --server-bottom: 75%; --server-left: 0%; --server-x: 0px; --server-y: -70px; --server-z: 100px; --server-rotation: -2deg; --server-delay: 0ms; }
+.home-server-layer--left { --server-top: 25%; --server-right: 52%; --server-bottom: 25%; --server-left: 0%; --server-x: -85px; --server-y: -8px; --server-z: 80px; --server-rotation: -5deg; --server-delay: 45ms; }
+.home-server-layer--right { --server-top: 25%; --server-right: 0%; --server-bottom: 25%; --server-left: 52%; --server-x: 85px; --server-y: -5px; --server-z: 90px; --server-rotation: 5deg; --server-delay: 90ms; }
+.home-server-layer--bottom { --server-top: 75%; --server-right: 0%; --server-bottom: 0%; --server-left: 0%; --server-x: 0px; --server-y: 70px; --server-z: 110px; --server-rotation: 2deg; --server-delay: 135ms; }
+
+.home-server-digital {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: 14px;
+}
+
+.home-server-digital::before,
+.home-server-digital::after {
+    content: "";
+}
+
+.home-server-digital::before {
+    clip-path: polygon(0 0, 100% 0, 100% 13%, 0 13%, 0 22%, 100% 22%, 100% 34%, 0 34%, 0 47%, 100% 47%, 100% 58%, 0 58%, 0 71%, 100% 71%, 100% 82%, 0 82%, 0 92%, 100% 92%, 100% 100%, 0 100%);
+    animation: homeServerGlitchA 4.8s steps(1) infinite;
+}
+
+.home-server-digital::after {
+    opacity: 0.65;
+    filter: hue-rotate(155deg) saturate(1.5);
+    mix-blend-mode: screen;
+    clip-path: polygon(0 13%, 100% 13%, 100% 22%, 0 22%, 0 34%, 100% 34%, 100% 47%, 0 47%, 0 58%, 100% 58%, 100% 71%, 0 71%, 0 82%, 100% 82%, 100% 92%, 0 92%);
+    animation: homeServerGlitchB 4.8s steps(1) infinite;
+}
+
+.home-server-pixels {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.home-server-pixel {
+    position: absolute;
+    width: var(--server-size);
+    height: var(--server-size);
+    top: var(--server-pixel-top);
+    left: var(--server-pixel-left);
+    background: rgba(110, 218, 255, 0.8);
+    box-shadow: 0 0 12px rgba(70, 200, 255, 0.8);
+    animation: homeServerPixelFly 4.8s ease-in-out infinite;
+    animation-delay: var(--server-delay);
+}
+
+.home-server-status {
+    position: absolute;
+    z-index: 15;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    padding: 9px 11px;
+    border: 1px solid rgba(126, 216, 255, 0.17);
+    border-radius: 11px;
+    background: rgba(4, 10, 16, 0.78);
+    backdrop-filter: blur(12px);
+    color: #b8cbd7;
+    font-size: 10px;
+    line-height: 1.35;
+}
+
+.home-server-status strong {
+    display: block;
+    margin-bottom: 2px;
+    color: #f3fbff;
+    font-size: 11px;
+}
+
+.home-server-credit {
+    position: absolute;
+    z-index: 16;
+    right: 12px;
+    bottom: 72px;
+    color: rgba(210, 230, 240, 0.58);
+    font-size: 8px;
+    text-decoration: none;
+}
+
+@keyframes homeServerAmbient { to { transform: rotate(360deg); } }
+@keyframes homeServerScan { from { transform: translateY(0); } to { transform: translateY(230px); } }
+@keyframes homeServerPhotoFloat { 0%, 100% { transform: rotateX(1deg) rotateY(-2deg) translateY(0); } 50% { transform: rotateX(-1deg) rotateY(2deg) translateY(-6px); } }
+@keyframes homeServerShake { 0%, 12%, 88%, 100% { transform: translate(-50%, -52%); } 21% { transform: translate(calc(-50% + 4px), calc(-52% - 2px)) rotateZ(0.3deg); } 24% { transform: translate(calc(-50% - 5px), calc(-52% + 3px)) rotateZ(-0.4deg); } 28%, 72% { transform: translate(-50%, -52%); } }
+@keyframes homeServerTileBurst { 0%, 12%, 88%, 100% { transform: translate3d(0, 0, 0) rotateX(0) rotateY(0) scale(1); filter: brightness(1); } 30%, 68% { transform: translate3d(calc((var(--server-col) - 2) * 27px), calc((var(--server-row) - 1.5) * 24px), calc((var(--server-col) + var(--server-row)) * 18px)) rotateX(calc((var(--server-row) - 1.5) * 10deg)) rotateY(calc((var(--server-col) - 2) * 9deg)) scale(0.94); filter: brightness(1.14) saturate(1.1); } }
+@keyframes homeServerLayerMove { 0%, 12%, 88%, 100% { transform: translate3d(0, 0, 0) rotateZ(0); filter: brightness(1); } 31%, 69% { transform: translate3d(var(--server-x), var(--server-y), var(--server-z)) rotateZ(var(--server-rotation)); filter: brightness(1.12) contrast(1.06); } }
+@keyframes homeServerGlitchA { 0%, 14%, 88%, 100% { transform: translate(0, 0); filter: brightness(1); } 24% { transform: translate(-12px, 3px); filter: brightness(1.25); } 30% { transform: translate(14px, -2px); } 52% { transform: translate(8px, -4px); } 70% { transform: translate(-10px, 2px); } }
+@keyframes homeServerGlitchB { 0%, 14%, 88%, 100% { transform: translate(0, 0); opacity: 0; } 22%, 72% { transform: translate(10px, -2px); opacity: 0.72; } 34% { transform: translate(-14px, 4px); opacity: 0.82; } 52% { transform: translate(6px, -3px); opacity: 0.6; } }
+@keyframes homeServerPixelFly { 0%, 15%, 88%, 100% { transform: translate(0, 0) scale(0); opacity: 0; } 28% { transform: translate(0, 0) scale(1); opacity: 1; } 65% { transform: translate(var(--server-dx), var(--server-dy)) rotate(180deg) scale(0.5); opacity: 0.15; } }
 }
 
 .home-hero h3 {
@@ -2574,20 +2796,27 @@ body.sidebar-collapsed .nav-item .nav-icon {
         grid-template-columns: 1fr;
     }
 
-    .home-hdd-animation {
-        min-height: 300px;
+    .home-server-animation {
+        min-height: 360px;
     }
 }
 
 @media (max-width: 576px) {
-    .home-hdd-animation {
-        min-height: 250px;
+    .home-server-animation {
+        min-height: 300px;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .home-hdd-animation {
-        min-height: 260px;
+    .home-server-animation {
+        min-height: 300px;
+    }
+
+    .home-server-animation *,
+    .home-server-animation *::before,
+    .home-server-animation *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
     }
 }
 
