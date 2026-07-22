@@ -2489,6 +2489,10 @@ body.sidebar-collapsed .nav-item .nav-icon {
     line-height: 1.6;
 }
 
+.home-hero p + p {
+    margin-top: 8px;
+}
+
 .home-repo-link {
     display: inline-flex;
     align-items: center;
