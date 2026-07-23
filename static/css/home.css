@@ -2444,7 +2444,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr);
+    grid-template-columns: minmax(0, 32fr) minmax(300px, 0.72fr);
     align-items: center;
     gap: 28px;
     padding: 22px;
