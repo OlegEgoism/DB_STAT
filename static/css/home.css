@@ -2093,6 +2093,12 @@ body {
     font-weight: 600;
 }
 
+.login-brand__logo {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
 /* ========== UNIFIED LAYOUT SYSTEM ========== */
 .app-page-shell,
 .main-content {
