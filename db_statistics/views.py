@@ -36,6 +36,11 @@ SIDEBAR_TAB_LABELS = {
 }
 
 
+def page_not_found(request, exception):
+    """Показывает фирменную страницу для неизвестных адресов."""
+    return render(request, "404.html", status=404)
+
+
 def _normalize_database_host(host):
     normalized_host = (host or "").strip().lower()
     if normalized_host in LOCALHOST_NAMES:
