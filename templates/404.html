@@ -1,30 +1,29 @@
 {% extends 'base.html' %}
-{% load static %}
-
-{% block title %}Страница не найдена | DB STAT{% endblock %}
+{% block title %}404 — Transaction Rollback{% endblock %}
 
 {% block content %}
-{% include 'includes/_background.html' %}
-<main class="error-page app-page-shell">
-    <section class="error-card glass-card" aria-labelledby="error-title">
-        <div class="error-brand" aria-label="DB STAT">
-            <img class="error-brand__logo" src="{% static 'img/favicon.svg' %}" alt="">
-            <span>DB STAT</span>
+<main class="rollback-page">
+    <section class="rollback-card" aria-labelledby="error-title">
+        <header class="rollback-header">
+            <span class="rollback-logo" aria-hidden="true">🐘</span>
+            <h1 class="rollback-title" id="error-title">PostgreSQL 16 — Query Log</h1>
+            <span class="rollback-badge">ABORTED</span>
+        </header>
+
+        <div class="rollback-log" role="log" aria-label="Журнал ошибочной транзакции">
+            <p class="rollback-log__line"><span class="rollback-ts">[14:32:01]</span> <span class="rollback-info">LOG:</span> <span class="rollback-sql">BEGIN TRANSACTION</span></p>
+            <p class="rollback-log__line"><span class="rollback-ts">[14:32:01]</span> <span class="rollback-info">STATEMENT:</span> <span class="rollback-sql">SELECT * FROM routes WHERE path = <span class="rollback-highlight">'{{ request.path }}'</span></span></p>
+            <p class="rollback-log__line"><span class="rollback-ts">[14:32:01]</span> <span class="rollback-warn">WARNING:</span> 0 rows returned</p>
+            <p class="rollback-log__line"><span class="rollback-ts">[14:32:02]</span> <span class="rollback-error">ERROR:</span> Record not found — HTTP 404</p>
+            <p class="rollback-log__line"><span class="rollback-ts">[14:32:02]</span> <span class="rollback-info">LOG:</span> <span class="rollback-sql">ROLLBACK</span></p>
         </div>
 
-        <div class="error-code" aria-hidden="true">404</div>
-        <div class="error-icon" aria-hidden="true">
-            <i class="fas fa-database"></i>
-            <span class="error-icon__status"><i class="fas fa-xmark"></i></span>
+        <p class="rollback-message">Транзакция откатилась. Страница не существует или была удалена каскадно.</p>
+
+        <div class="rollback-actions">
+            <a class="rollback-button rollback-button--primary" href="{% url 'home' %}">🔄 BEGIN new transaction</a>
+            <button class="rollback-button rollback-button--secondary" type="button" onclick="history.back()">↩ ROLLBACK to previous</button>
         </div>
-
-        <h1 id="error-title">Страница не найдена</h1>
-        <p>Запрошенный адрес отсутствует или был перемещён. Вернитесь на главную страницу, чтобы продолжить работу с DB STAT.</p>
-
-        <a class="btn btn-primary error-action" href="{% url 'home' %}">
-            <i class="fas fa-arrow-left" aria-hidden="true"></i>
-            Вернуться на главную
-        </a>
     </section>
 </main>
 {% endblock %}

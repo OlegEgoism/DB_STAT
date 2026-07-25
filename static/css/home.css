@@ -55,113 +55,154 @@ body {
     overflow-x: hidden;
 }
 
-/* ========== ERROR PAGE ========== */
-.error-page {
-    position: relative;
-    z-index: 1;
+/* ========== 404 TRANSACTION ROLLBACK ========== */
+.rollback-page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-6);
+    padding: 32px 16px;
+    color: #cdd6f4;
+    background: #1e1e2e;
+    font-family: 'Fira Code', 'Courier New', monospace;
 }
 
-.error-card {
-    width: min(100%, 560px);
-    padding: 48px;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-glow);
+.rollback-card {
+    width: min(100%, 650px);
+    padding: 45px 35px;
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 16px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
 }
 
-.error-brand {
-    display: inline-flex;
+.rollback-header {
+    display: flex;
     align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-6);
-    color: var(--text-primary);
+    gap: 10px;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #313244;
+}
+
+.rollback-logo {
+    font-size: 32px;
+    line-height: 1;
+}
+
+.rollback-title {
+    margin: 0;
+    color: #f5c2e7;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.rollback-badge {
+    margin-left: auto;
+    padding: 5px 14px;
+    color: #1e1e2e;
+    background: #f38ba8;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.rollback-log {
+    margin-bottom: 25px;
+    padding: 25px;
+    overflow-x: auto;
+    background: #11111b;
+    border: 1px solid #313244;
+    border-radius: 10px;
+}
+
+.rollback-log__line {
+    min-width: max-content;
+    margin: 0;
+    padding: 5px 0;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.rollback-ts { color: #6c7086; }
+.rollback-info { color: #89b4fa; }
+.rollback-warn { color: #f9e2af; }
+.rollback-error { color: #f38ba8; }
+.rollback-sql { color: #a6e3a1; }
+.rollback-highlight { color: #fab387; font-weight: 700; }
+
+.rollback-message {
+    margin: 0 0 25px;
+    color: #6c7086;
+    font-size: 14px;
+    text-align: center;
+}
+
+.rollback-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.rollback-button {
+    flex: 1;
+    min-width: 160px;
+    padding: 12px 28px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font: inherit;
     font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.5px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 
-.error-brand__logo {
-    width: 30px;
-    height: 30px;
+.rollback-button--primary {
+    color: #1e1e2e;
+    background: #cba6f7;
 }
 
-.error-code {
-    color: var(--accent-blue);
-    font-size: clamp(72px, 18vw, 112px);
-    font-weight: 900;
-    line-height: 0.9;
-    letter-spacing: -0.08em;
-    text-shadow: 0 10px 30px var(--glow-blue);
+.rollback-button--primary:hover {
+    color: #1e1e2e;
+    background: #b4befe;
 }
 
-.error-icon {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 72px;
-    height: 72px;
-    margin: 28px 0 22px;
-    color: var(--accent-blue);
-    background: var(--glow-blue);
-    border-radius: 50%;
-    font-size: 30px;
+.rollback-button--secondary {
+    color: #cdd6f4;
+    background: transparent;
+    border-color: #585b70;
 }
 
-.error-icon__status {
-    position: absolute;
-    right: -2px;
-    bottom: -2px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    color: #fff;
-    background: var(--accent-red);
-    border: 4px solid #fff;
-    border-radius: 50%;
-    font-size: 11px;
+.rollback-button--secondary:hover {
+    color: #cba6f7;
+    border-color: #cba6f7;
 }
 
-.error-card h1 {
-    margin-bottom: var(--space-3);
-    font-size: clamp(24px, 5vw, 32px);
-    font-weight: 700;
-}
-
-.error-card p {
-    max-width: 430px;
-    margin: 0 auto var(--space-7);
-    color: var(--text-secondary);
-    font-size: 15px;
-    line-height: 1.7;
-}
-
-.error-action {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 11px 20px;
-    border-radius: var(--radius-sm);
-    font-weight: 600;
-    box-shadow: 0 6px 18px var(--glow-blue);
+.rollback-button:focus-visible {
+    outline: 2px solid #89b4fa;
+    outline-offset: 3px;
 }
 
 @media (max-width: 575.98px) {
-    .error-page {
-        padding: var(--space-4);
+    .rollback-card {
+        padding: 32px 20px;
     }
 
-    .error-card {
-        padding: 36px 20px;
+    .rollback-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .rollback-badge {
+        margin-left: 42px;
+    }
+
+    .rollback-log {
+        padding: 18px;
     }
 }
 
