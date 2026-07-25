@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Страница не найдена | DB STAT{% endblock %}
+
+{% block content %}
+{% include 'includes/_background.html' %}
+<main class="error-page app-page-shell">
+    <section class="error-card glass-card" aria-labelledby="error-title">
+        <div class="error-brand" aria-label="DB STAT">
+            <img class="error-brand__logo" src="{% static 'img/favicon.svg' %}" alt="">
+            <span>DB STAT</span>
+        </div>
+
+        <div class="error-code" aria-hidden="true">404</div>
+        <div class="error-icon" aria-hidden="true">
+            <i class="fas fa-database"></i>
+            <span class="error-icon__status"><i class="fas fa-xmark"></i></span>
+        </div>
+
+        <h1 id="error-title">Страница не найдена</h1>
+        <p>Запрошенный адрес отсутствует или был перемещён. Вернитесь на главную страницу, чтобы продолжить работу с DB STAT.</p>
+
+        <a class="btn btn-primary error-action" href="{% url 'home' %}">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            Вернуться на главную
+        </a>
+    </section>
+</main>
+{% endblock %}

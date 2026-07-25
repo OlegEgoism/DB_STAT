@@ -55,6 +55,116 @@ body {
     overflow-x: hidden;
 }
 
+/* ========== ERROR PAGE ========== */
+.error-page {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+}
+
+.error-card {
+    width: min(100%, 560px);
+    padding: 48px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-glow);
+}
+
+.error-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.error-brand__logo {
+    width: 30px;
+    height: 30px;
+}
+
+.error-code {
+    color: var(--accent-blue);
+    font-size: clamp(72px, 18vw, 112px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -0.08em;
+    text-shadow: 0 10px 30px var(--glow-blue);
+}
+
+.error-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    margin: 28px 0 22px;
+    color: var(--accent-blue);
+    background: var(--glow-blue);
+    border-radius: 50%;
+    font-size: 30px;
+}
+
+.error-icon__status {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    color: #fff;
+    background: var(--accent-red);
+    border: 4px solid #fff;
+    border-radius: 50%;
+    font-size: 11px;
+}
+
+.error-card h1 {
+    margin-bottom: var(--space-3);
+    font-size: clamp(24px, 5vw, 32px);
+    font-weight: 700;
+}
+
+.error-card p {
+    max-width: 430px;
+    margin: 0 auto var(--space-7);
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.error-action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 11px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    box-shadow: 0 6px 18px var(--glow-blue);
+}
+
+@media (max-width: 575.98px) {
+    .error-page {
+        padding: var(--space-4);
+    }
+
+    .error-card {
+        padding: 36px 20px;
+    }
+}
+
 /* Animated Background */
 .bg-effects {
     position: fixed;
