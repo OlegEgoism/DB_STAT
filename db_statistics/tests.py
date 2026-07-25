@@ -7,8 +7,8 @@ class PageNotFoundTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertTemplateUsed(response, "404.html")
-        self.assertContains(response, "Transaction Rollback", status_code=404)
-        self.assertContains(response, "'/missing-page/'", status_code=404)
+        self.assertContains(response, "Страница не найдена | DB STAT", status_code=404)
+        self.assertContains(response, "/missing-page/", status_code=404)
         self.assertContains(response, "ABORTED", status_code=404)
         self.assertContains(response, 'href="/"', status_code=404)
 
