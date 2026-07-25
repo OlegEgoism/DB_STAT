@@ -2577,9 +2577,9 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hero {
     display: grid;
-    grid-template-columns: minmax(0, 32fr) minmax(300px, 0.72fr);
+    grid-template-columns: minmax(0, 1fr) 240px;
     align-items: center;
-    gap: 28px;
+    gap: 12px;
     padding: 22px;
     border: 1px solid var(--sidebar-border);
     border-radius: var(--radius-lg);
@@ -2593,8 +2593,9 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hdd-animation {
     position: relative;
-    width: 100%;
-    min-height: 320px;
+    width: 240px;
+    min-height: 240px;
+    justify-self: end;
     overflow: hidden;
     border-radius: calc(var(--radius-lg) - 4px);
     background: radial-gradient(circle at center, rgba(79, 140, 255, 0.13), rgba(139, 92, 246, 0.03) 48%, transparent 72%);
@@ -2708,19 +2709,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
     }
 
     .home-hdd-animation {
-        min-height: 300px;
+        width: 220px;
+        min-height: 220px;
+        justify-self: center;
     }
 }
 
 @media (max-width: 576px) {
     .home-hdd-animation {
-        min-height: 250px;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .home-hdd-animation {
-        min-height: 260px;
+        width: 200px;
+        min-height: 200px;
     }
 }
 
