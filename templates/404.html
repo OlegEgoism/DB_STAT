@@ -15,11 +15,9 @@
         </div>
 
         <p class="error-card__code" aria-label="Ошибка 404">404</p>
-        <p class="error-card__status">TRANSACTION ABORTED</p>
         <h1 class="error-card__title" id="error-title">Страница не найдена</h1>
         <p class="error-card__message">
-            Запрошенная страница не существует, была перемещена или удалена.
-            Вернитесь назад либо перейдите на главную страницу.
+            Запрошенная страница не существует, или была удалена.
         </p>
         <code class="error-card__path" title="Запрошенный адрес">{{ request.path }}</code>
 
@@ -28,10 +26,6 @@
                 <i class="fas fa-house" aria-hidden="true"></i>
                 На главную
             </a>
-            <button class="btn btn-outline-secondary" type="button" onclick="history.back()">
-                <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                Назад
-            </button>
         </div>
     </section>
 </main>
