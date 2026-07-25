@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from db_statistics import views
 
@@ -27,4 +27,6 @@ urlpatterns = [
     path("users/list/", views.database_users_list, name="database_users_list"),
     path("groups/list/", views.database_groups_list, name="database_groups_list"),
     path("segments/info/", views.segments_info, name="segments_info"),
+    # Последний маршрут позволяет проверять фирменную 404-страницу и при DEBUG=True.
+    re_path(r"^.*$", views.page_not_found, name="page_not_found"),
 ]

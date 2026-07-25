@@ -36,7 +36,7 @@ SIDEBAR_TAB_LABELS = {
 }
 
 
-def page_not_found(request, exception):
+def page_not_found(request, exception=None):
     """Показывает фирменную страницу для неизвестных адресов."""
     return render(request, "404.html", status=404)
 
