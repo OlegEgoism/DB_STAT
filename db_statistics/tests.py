@@ -2,8 +2,7 @@ from django.test import TestCase, override_settings
 
 
 class PageNotFoundTests(TestCase):
-    @override_settings(DEBUG=False)
-    def test_unknown_url_uses_project_404_page(self):
+    def assert_project_404(self):
         response = self.client.get("/missing-page/")
 
         self.assertEqual(response.status_code, 404)
@@ -12,3 +11,10 @@ class PageNotFoundTests(TestCase):
         self.assertContains(response, "'/missing-page/'", status_code=404)
         self.assertContains(response, "ABORTED", status_code=404)
         self.assertContains(response, 'href="/"', status_code=404)
+
+    def test_unknown_url_uses_project_404_page_in_debug_mode(self):
+        self.assert_project_404()
+
+    @override_settings(DEBUG=False)
+    def test_unknown_url_uses_project_404_page_in_production_mode(self):
+        self.assert_project_404()
