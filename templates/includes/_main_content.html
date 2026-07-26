@@ -85,6 +85,39 @@
         </div>
     </div>
 
+    <!-- Connection health summary -->
+    <section class="connection-health severity-neutral" id="connectionHealth" aria-labelledby="connectionHealthTitle" aria-live="polite">
+        <div class="connection-health__summary">
+            <span class="severity-badge severity-badge--neutral" id="connectionHealthBadge">
+                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                <span id="connectionHealthTitle">Подключение не выбрано</span>
+            </span>
+            <span class="connection-health__database" id="connectionHealthDatabase">Выберите подключение для диагностики</span>
+        </div>
+        <div class="connection-health__metrics" id="connectionHealthMetrics">
+            <div class="connection-health__metric">
+                <span>Аптайм</span>
+                <strong id="connectionHealthUptime">—</strong>
+            </div>
+            <div class="connection-health__metric severity-neutral" id="connectionHealthConnectionsMetric">
+                <span>Подключения</span>
+                <strong id="connectionHealthConnections">—</strong>
+            </div>
+            <div class="connection-health__metric severity-neutral" id="connectionHealthCacheMetric">
+                <span>Попадания в кэш</span>
+                <strong id="connectionHealthCache">—</strong>
+            </div>
+            <div class="connection-health__metric severity-neutral" id="connectionHealthRollbackMetric">
+                <span>Откаты</span>
+                <strong id="connectionHealthRollback">—</strong>
+            </div>
+            <div class="connection-health__metric connection-health__updated">
+                <span>Обновлено</span>
+                <strong id="connectionHealthUpdated">—</strong>
+            </div>
+        </div>
+    </section>
+
     <!-- ============================================================ -->
     <!-- PAGE: HOME -->
     <!-- ============================================================ -->

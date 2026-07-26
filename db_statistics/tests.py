@@ -1,4 +1,18 @@
-from django.test import TestCase, override_settings
+from types import SimpleNamespace
+
+from django.template.loader import render_to_string
+from django.test import SimpleTestCase, TestCase, override_settings
+
+
+class DashboardVisualStatusTests(SimpleTestCase):
+    def test_dashboard_contains_accessible_connection_health_summary(self):
+        html = render_to_string("home.html", {"db_user": SimpleNamespace(login="operator", email="operator@example.com", role="Оператор"), "db_user_json": "{}", "user_can_manage_connections": False})
+
+        self.assertIn('id="connectionHealth"', html)
+        self.assertIn('aria-live="polite"', html)
+        self.assertIn('id="connectionHealthConnections"', html)
+        self.assertIn('id="connectionHealthCache"', html)
+        self.assertIn('id="connectionHealthRollback"', html)
 
 
 class PageNotFoundTests(TestCase):

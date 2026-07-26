@@ -683,6 +683,140 @@ body {
     background: var(--sidebar-border);
 }
 
+/* ========== CONNECTION HEALTH ========== */
+.connection-health {
+    --severity-color: var(--text-muted);
+    --severity-surface: rgba(138, 155, 176, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+    padding: 12px 16px;
+    border: 1px solid var(--sidebar-border);
+    border-color: color-mix(in srgb, var(--severity-color) 24%, var(--sidebar-border));
+    border-left: 4px solid var(--severity-color);
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, var(--severity-surface), var(--bg-secondary) 42%);
+    box-shadow: var(--shadow-card);
+}
+
+.severity-success {
+    --severity-color: var(--accent-green);
+    --severity-surface: rgba(34, 197, 94, 0.08);
+}
+
+.severity-warning {
+    --severity-color: #b45309;
+    --severity-surface: rgba(245, 158, 11, 0.10);
+}
+
+.severity-critical {
+    --severity-color: var(--accent-red);
+    --severity-surface: rgba(239, 68, 68, 0.09);
+}
+
+.severity-neutral {
+    --severity-color: var(--text-muted);
+    --severity-surface: rgba(138, 155, 176, 0.08);
+}
+
+.connection-health__summary {
+    min-width: 220px;
+}
+
+.severity-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--severity-color);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.severity-badge i {
+    font-size: 11px;
+}
+
+.connection-health__database {
+    display: block;
+    max-width: 320px;
+    margin-top: 3px;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.connection-health__metrics {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    flex: 1;
+}
+
+.connection-health__metric {
+    min-width: 112px;
+    padding: 0 16px;
+    border-left: 1px solid var(--sidebar-border);
+}
+
+.connection-health__metric span,
+.connection-health__metric strong {
+    display: block;
+}
+
+.connection-health__metric span {
+    margin-bottom: 2px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.35px;
+    text-transform: uppercase;
+}
+
+.connection-health__metric strong {
+    color: var(--severity-color, var(--text-primary));
+    font-size: 13px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.connection-health__metric:not(.severity-success):not(.severity-warning):not(.severity-critical):not(.severity-neutral) strong,
+.connection-health__updated strong {
+    color: var(--text-primary);
+}
+
+@media (max-width: 1200px) {
+    .connection-health {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .connection-health__metrics {
+        justify-content: flex-start;
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .connection-health__metric:first-child {
+        padding-left: 0;
+        border-left: 0;
+    }
+}
+
+@media (max-width: 576px) {
+    .connection-health {
+        padding: 12px;
+    }
+
+    .connection-health__metric {
+        min-width: 108px;
+        padding: 0 12px;
+    }
+}
+
 /* ========== CARDS ========== */
 .glass-card {
     background: var(--bg-secondary);

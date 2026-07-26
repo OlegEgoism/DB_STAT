@@ -620,6 +620,8 @@
     }
 
     function renderDatabaseOverviewWarning(message) {
+        renderConnectionHealthState('neutral', 'Нет актуальных данных', message);
+        resetConnectionHealthMetrics();
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
@@ -659,6 +661,7 @@
     }
 
     function renderDatabaseOverview(data) {
+        renderConnectionHealth(data);
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
@@ -813,6 +816,109 @@
         connectionRequest(databaseOverviewApiUrl, {id: conn.id})
             .then(data => renderDatabaseOverview(data))
             .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+    }
+
+    const severityRank = {neutral: 0, success: 1, warning: 2, critical: 3};
+
+    function metricSeverity(value, {warning, critical, lowerIsWorse = false}) {
+        if (!Number.isFinite(value)) return 'neutral';
+        if (lowerIsWorse) {
+            if (value < critical) return 'critical';
+            if (value < warning) return 'warning';
+        } else {
+            if (value >= critical) return 'critical';
+            if (value >= warning) return 'warning';
+        }
+        return 'success';
+    }
+
+    function setConnectionHealthMetric(id, value, severity = 'neutral') {
+        const valueElement = document.getElementById(id);
+        const metricElement = document.getElementById(`${id}Metric`);
+        if (valueElement) valueElement.textContent = value;
+        if (metricElement) {
+            metricElement.classList.remove('severity-success', 'severity-warning', 'severity-critical', 'severity-neutral');
+            metricElement.classList.add(`severity-${severity}`);
+        }
+    }
+
+    function renderConnectionHealthState(severity, title, detail) {
+        const container = document.getElementById('connectionHealth');
+        const badge = document.getElementById('connectionHealthBadge');
+        const titleElement = document.getElementById('connectionHealthTitle');
+        const databaseElement = document.getElementById('connectionHealthDatabase');
+        if (!container || !badge) return;
+
+        const icons = {
+            success: 'fa-circle-check',
+            warning: 'fa-triangle-exclamation',
+            critical: 'fa-circle-xmark',
+            neutral: 'fa-circle-info'
+        };
+        container.classList.remove('severity-success', 'severity-warning', 'severity-critical', 'severity-neutral');
+        container.classList.add(`severity-${severity}`);
+        badge.className = `severity-badge severity-badge--${severity}`;
+        badge.querySelector('i').className = `fas ${icons[severity]} `;
+        titleElement.textContent = title;
+        databaseElement.textContent = detail;
+    }
+
+    function resetConnectionHealthMetrics() {
+        setConnectionHealthMetric('connectionHealthConnections', '—');
+        setConnectionHealthMetric('connectionHealthCache', '—');
+        setConnectionHealthMetric('connectionHealthRollback', '—');
+        document.getElementById('connectionHealthUptime').textContent = '—';
+        document.getElementById('connectionHealthUpdated').textContent = '—';
+    }
+
+    function renderConnectionHealth(data) {
+        const slots = Object.fromEntries((data.connection_slots || []).map(item => [item.key, item.value]));
+        const activity = Object.fromEntries((data.activity_stats || []).map(item => [item.key, item]));
+        const settings = Object.fromEntries((data.basic_settings || []).map(item => [item.key, item.value]));
+        const connectionUsage = Number(slots.usage_percent);
+        const cacheHit = activity.cache_hit_percent?.numeric_value == null ? Number.NaN : Number(activity.cache_hit_percent.numeric_value);
+        const rollback = activity.rollback_percent?.numeric_value == null ? Number.NaN : Number(activity.rollback_percent.numeric_value);
+        const severities = {
+            connections: metricSeverity(connectionUsage, {warning: 75, critical: 90}),
+            cache: metricSeverity(cacheHit, {warning: 95, critical: 90, lowerIsWorse: true}),
+            rollback: metricSeverity(rollback, {warning: 5, critical: 10})
+        };
+        const knownSeverities = Object.values(severities).filter(severity => severity !== 'neutral');
+        const overall = knownSeverities.reduce(
+            (worst, current) => severityRank[current] > severityRank[worst] ? current : worst,
+            knownSeverities.length ? 'success' : 'neutral'
+        );
+        const titles = {
+            success: 'Подключение стабильно',
+            warning: 'Требует внимания',
+            critical: 'Критическое состояние',
+            neutral: 'Недостаточно данных'
+        };
+        const conn = connections.find(item => String(item.id) === String(activeConnectionId));
+        const dbType = conn?.db_type || 'База данных';
+        const version = settings.server_version || '—';
+        renderConnectionHealthState(overall, titles[overall], `${dbType} ${version} · ${data.database || conn?.database || '—'}`);
+        setConnectionHealthMetric('connectionHealthConnections', `${slots.current_connections ?? '—'} / ${slots.max_connections ?? '—'}`, severities.connections);
+        setConnectionHealthMetric('connectionHealthCache', Number.isFinite(cacheHit) ? `${cacheHit.toFixed(2)}%` : '—', severities.cache);
+        setConnectionHealthMetric('connectionHealthRollback', Number.isFinite(rollback) ? `${rollback.toFixed(2)}%` : '—', severities.rollback);
+        document.getElementById('connectionHealthUptime').textContent = settings.server_uptime || '—';
+        document.getElementById('connectionHealthUpdated').textContent = new Intl.DateTimeFormat('ru-RU', {hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(new Date());
+    }
+
+    function refreshConnectionHealth(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderConnectionHealthState('neutral', 'Подключение не выбрано', 'Выберите подключение для диагностики');
+            resetConnectionHealthMetrics();
+            return;
+        }
+        renderConnectionHealthState('neutral', 'Проверяем состояние', `${conn.db_type || 'База данных'} · ${conn.database || conn.name}`);
+        resetConnectionHealthMetrics();
+        connectionRequest(databaseOverviewApiUrl, {id: conn.id})
+            .then(data => renderConnectionHealth(data))
+            .catch(error => {
+                renderConnectionHealthState('critical', 'Подключение недоступно', error.message || 'Не удалось получить состояние БД');
+                resetConnectionHealthMetrics();
+            });
     }
 
 
@@ -2975,6 +3081,7 @@
                 populateConnectionSelect();
                 activatePage(getStoredActivePage() || getCurrentActivePageId(), {persist: false, refresh: false});
                 refreshActivePageForConnection();
+                if (getCurrentActivePageId() !== 'database-overview') refreshConnectionHealth();
             })
             .catch(() => {
                 connections = [];
@@ -3364,6 +3471,7 @@
         if (conn) {
             updateSidebarForConnection(conn);
             activatePage(getDefaultPageForConnection(conn));
+            if (getCurrentActivePageId() !== 'database-overview') refreshConnectionHealth(conn);
             if (!isPostgreSQLConnection(conn)) {
                 refreshSegmentsForConnection(conn);
             }
@@ -3534,12 +3642,15 @@
                 conn.status = 'online';
                     populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
+                refreshConnectionHealth(conn);
                 showToast(`✅ ${data.message}`);
             })
             .catch(error => {
                 conn.status = 'offline';
                     populateConnectionSelect();
                 document.getElementById('connectionSelect').value = activeConnectionId;
+                renderConnectionHealthState('critical', 'Подключение недоступно', error.message);
+                resetConnectionHealthMetrics();
                 showToast(`❌ ${error.message}`);
             });
     }
