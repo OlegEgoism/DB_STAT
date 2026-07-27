@@ -8,6 +8,11 @@ from django.db import models
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
 
 
+def vn(name: str, **kwargs) -> dict:
+    """Соединение verbose_name + db_comment из одной строки"""
+    return {"verbose_name": name, "db_comment": name, **kwargs}
+
+
 def _connection_password_cipher():
     secret = getattr(settings, "DB_CONNECTION_ENCRYPTION_KEY", "") or settings.SECRET_KEY
     key = base64.urlsafe_b64encode(hashlib.sha256(str(secret).encode("utf-8")).digest())
@@ -43,8 +48,8 @@ def decrypt_connection_password(stored_password):
 class DateStamp(models.Model):
     """Временные отметки"""
 
-    created = models.DateTimeField(verbose_name="Дата создания", db_comment="Дата создания", auto_now_add=True)
-    updated = models.DateTimeField(verbose_name="Дата изменения", db_comment="Дата изменения", auto_now=True)
+    created = models.DateTimeField(**vn("Дата создания"), auto_now_add=True)
+    updated = models.DateTimeField(**vn("Дата изменения"), auto_now=True)
 
     class Meta:
         abstract = True
@@ -53,7 +58,7 @@ class DateStamp(models.Model):
 class Active(models.Model):
     """Статус активности"""
 
-    is_active = models.BooleanField(verbose_name="Активность", db_comment="Активность", default=True)
+    is_active = models.BooleanField(**vn("Активность"), default=True)
 
     class Meta:
         abstract = True
@@ -67,10 +72,10 @@ class DBUser(DateStamp, Active):
 
     USER_ROLE = [("Администратор", "Администратор"), ("Аналитик", "Аналитик")]
 
-    login = models.CharField(verbose_name="Логин", db_comment="Логин", max_length=100, db_index=True, unique=True)
-    email = models.EmailField(verbose_name="Почта", db_comment="Почта", unique=True)
-    role = models.CharField(verbose_name="Роль", db_comment="Роль", max_length=20, choices=USER_ROLE, default="Аналитик")
-    connections = models.ManyToManyField(to="db_statistics.DBConnection", verbose_name="Подключение к базе данных", db_comment="Подключение к базе данных", blank=True)
+    login = models.CharField(**vn("Логин"), max_length=100, db_index=True, unique=True)
+    email = models.EmailField(**vn("Почта"), unique=True)
+    role = models.CharField(**vn("Роль"), max_length=20, choices=USER_ROLE, default="Аналитик")
+    connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключение к базе данных"), blank=True)
 
     class Meta:
         db_table = "db_user"
@@ -86,8 +91,8 @@ class DBUser(DateStamp, Active):
 class UserSidebarSettings(DateStamp):
     """Настройки сайдбара пользователя"""
 
-    user = models.OneToOneField(to="db_statistics.DBUser", verbose_name="Пользователь", db_comment="Пользователь", related_name="sidebar_settings", on_delete=models.CASCADE)
-    visible_tabs = models.JSONField(verbose_name="Видимые вкладки", db_comment="Видимые вкладки", default=list, blank=True)
+    user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="sidebar_settings", on_delete=models.CASCADE)
+    visible_tabs = models.JSONField(**vn("Видимые вкладки"), default=list, blank=True)
 
     class Meta:
         db_table = "db_user_sidebar_settings"
@@ -104,14 +109,14 @@ class DBConnection(DateStamp, Active):
 
     DATABASE_TYPES = [("PostgreSQL", "PostgreSQL"), ("Greenplum", "Greenplum")]
 
-    name = models.CharField(verbose_name="Название", db_comment="Название", max_length=120)
-    host = models.CharField(verbose_name="Хост", db_comment="Хост", max_length=255)
-    port = models.PositiveIntegerField(verbose_name="Порт", db_comment="Порт", default=5432)
-    database = models.CharField(verbose_name="База данных", db_comment="База данных", max_length=120)
-    username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=120)
-    password = models.CharField(verbose_name="Пароль", db_comment="Пароль", max_length=255)
-    db_type = models.CharField(verbose_name="Тип базы данных", db_comment="Тип базы данных", max_length=20, choices=DATABASE_TYPES, default="PostgreSQL")
-    created_user = models.ForeignKey(to="db_statistics.DBUser", verbose_name="Создатель, подключения", db_comment="Создатель, подключения", related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(**vn("Название"), max_length=120)
+    host = models.CharField(**vn("Хост"), max_length=255)
+    port = models.PositiveIntegerField(**vn("Порт"), default=5432)
+    database = models.CharField(**vn("База данных"), max_length=120)
+    username = models.CharField(**vn("Пользователь"), max_length=120)
+    password = models.CharField(**vn("Пароль"), max_length=255)
+    db_type = models.CharField(**vn("Тип базы данных"), max_length=20, choices=DATABASE_TYPES, default="PostgreSQL")
+    created_user = models.ForeignKey(to="db_statistics.DBUser", **vn("Создатель подключения"), related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         db_table = "db_connection"
@@ -140,12 +145,20 @@ class DBConnection(DateStamp, Active):
 class DBAudit(models.Model):
     """Аудит"""
 
-    ACTION_TYPES = [("login", "Вход"), ("logout", "Выход"), ("connection_create", "Создание подключения"), ("connection_update", "Изменение подключения"), ("connection_delete", "Удаление подключения"), ("connection_test", "Проверка подключения"), ("sidebar_settings", "Настройки сайдбара пользователя")]
+    ACTION_TYPES = [
+        ("login", "Вход"),
+        ("logout", "Выход"),
+        ("connection_create", "Создание подключения"),
+        ("connection_update", "Изменение подключения"),
+        ("connection_delete", "Удаление подключения"),
+        ("connection_test", "Проверка подключения"),
+        ("sidebar_settings", "Настройки сайдбара пользователя"),
+    ]
 
-    username = models.CharField(verbose_name="Пользователь", db_comment="Пользователь", max_length=200)
-    action_type = models.CharField(verbose_name="Действие", db_comment="Действие", max_length=32, choices=ACTION_TYPES)
-    info = models.TextField(verbose_name="Информация", db_comment="Информация")
-    created = models.DateTimeField(verbose_name="Дата действия", db_comment="Дата действия")
+    username = models.CharField(**vn("Пользователь"), max_length=200)
+    action_type = models.CharField(**vn("Действие"), max_length=32, choices=ACTION_TYPES)
+    info = models.TextField(**vn("Информация"))
+    created = models.DateTimeField(**vn("Дата действия"))
 
     def __str__(self):
         return f"{self.username} - {self.action_type}"

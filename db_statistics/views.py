@@ -73,12 +73,7 @@ def _sidebar_tab_labels(tab_ids):
 def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
-    return (
-        "Настройки сайдбара пользователя изменены: "
-        f"Пользователь: {db_user.login}; "
-        f"Отображаемые вкладки: {visible_labels}; "
-        f"Предыдущие вкладки: {previous_labels}"
-    )
+    return "Настройки сайдбара пользователя изменены: " f"Пользователь: {db_user.login}; " f"Отображаемые вкладки: {visible_labels}; " f"Предыдущие вкладки: {previous_labels}"
 
 
 def _sidebar_settings_for_user(db_user):
@@ -212,11 +207,7 @@ def sidebar_settings(request):
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     settings.visible_tabs = visible_tabs
     settings.save(update_fields=["visible_tabs", "updated"])
-    _write_audit(
-        "sidebar_settings",
-        _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs),
-        db_user=db_user,
-    )
+    _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
 
 
@@ -562,10 +553,7 @@ def database_overview(request):
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400)
 
-    installed_extensions = [
-        {"name": extension_row[0] or "—", "version": extension_row[1] or "—", "schema": extension_row[2] or "—", "description": extension_row[3] or "—"}
-        for extension_row in extension_rows
-    ]
+    installed_extensions = [{"name": extension_row[0] or "—", "version": extension_row[1] or "—", "schema": extension_row[2] or "—", "description": extension_row[3] or "—"} for extension_row in extension_rows]
 
     metrics = [
         {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[4] or 0)},
