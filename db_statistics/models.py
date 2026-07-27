@@ -14,12 +14,14 @@ def vn(name: str, **kwargs) -> dict:
 
 
 def _connection_password_cipher():
+    """Создаёт экземпляр шифра на основе секретного ключа из настроек"""
     secret = getattr(settings, "DB_CONNECTION_ENCRYPTION_KEY", "") or settings.SECRET_KEY
     key = base64.urlsafe_b64encode(hashlib.sha256(str(secret).encode("utf-8")).digest())
     return Fernet(key)
 
 
 def encrypt_connection_password(raw_password):
+    """Шифрует пароль подключения"""
     if raw_password in (None, ""):
         return raw_password or ""
     text = str(raw_password)
@@ -30,6 +32,7 @@ def encrypt_connection_password(raw_password):
 
 
 def decrypt_connection_password(stored_password):
+    """Расшифровывает пароль подключения"""
     if stored_password in (None, ""):
         return stored_password or ""
     text = str(stored_password)
