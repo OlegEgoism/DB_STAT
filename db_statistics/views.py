@@ -261,12 +261,6 @@ def _read_json_body(request):
 
 
 def _parse_pg_size_to_bytes(value, default_unit="B"):
-    """Convert a PostgreSQL/Greenplum size setting to bytes.
-
-    Most memory settings include a unit in ``current_setting`` output.  Some
-    Greenplum settings, notably ``gp_vmem_protect_limit``, are bare numbers
-    whose documented unit is MB, so callers can supply that implicit unit.
-    """
     if value in (None, ""):
         return None
     text = str(value).strip()
@@ -927,8 +921,7 @@ def memory_overview(request):
     ]
 
     sizes = {
-        # Greenplum exposes gp_vmem_protect_limit as a bare number in MB,
-        # unlike the other settings whose values normally contain a unit.
+        # Greenplum отображает параметр gp_vmem_protect_limit как число в МБ, в отличие от других параметров, значения которых обычно содержат единицу измерения.
         "gp_vmem_protect_limit": _parse_pg_size_to_bytes(row[0], default_unit="MB"),
         "shared_buffers": _parse_pg_size_to_bytes(row[1]),
         "work_mem": _parse_pg_size_to_bytes(row[2]),
