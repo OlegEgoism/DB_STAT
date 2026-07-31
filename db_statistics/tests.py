@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 from django.test import SimpleTestCase
 
-from db_statistics.views import _format_bytes, _memory_ratio, _memory_setting, _parse_pg_size_to_bytes
+from db_statistics.views import _format_bytes, _greenplum_memory_item, _greenplum_runtime_memory, _memory_setting, _parse_pg_size_to_bytes
 
 
 class PostgreSQLSizeHelpersTests(SimpleTestCase):
@@ -36,11 +38,19 @@ class MemoryOverviewHelpersTests(SimpleTestCase):
 
         self.assertEqual(setting["value"], "64.00 ГБ")
 
-    def test_ratio_is_a_configuration_comparison_not_usage(self):
-        value = _memory_setting("statement_mem", "Память запроса", "Лимит", "1GB", "kB")
-        reference = _memory_setting("max_statement_mem", "Максимум", "Лимит", "4GB", "kB")
 
+class GreenplumRuntimeMemoryTests(SimpleTestCase):
+    def test_builds_actual_usage_from_used_and_available_memory(self):
         self.assertEqual(
-            _memory_ratio("Память запроса / максимум", value, reference),
-            {"label": "Память запроса / максимум", "value": "1.00 ГБ", "reference": "4.00 ГБ", "ratio_percent": 25.0},
+            _greenplum_memory_item("6438", "sdw1", 3072, 1024),
+            {"group": "6438", "hostname": "sdw1", "used": "3.00 ГБ", "available": "1.00 ГБ", "limit": "4.00 ГБ", "usage_percent": 75.0},
         )
+
+    @patch("db_statistics.views._fetch_db_rows", return_value=[("6438", "sdw1", 3072, 1024)])
+    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
+    def test_reads_greenplum_resource_group_view(self, _fetch_row, _fetch_rows):
+        result = _greenplum_runtime_memory(object())
+
+        self.assertTrue(result["supported"])
+        self.assertEqual(result["source"], "gp_toolkit.gp_resgroup_status_per_host")
+        self.assertEqual(result["items"][0]["usage_percent"], 75.0)

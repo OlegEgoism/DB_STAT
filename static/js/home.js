@@ -1361,10 +1361,11 @@
         const usageCount = document.getElementById('memoryUsageCount');
         const sizeMetrics = data.size_metrics || [];
         const settings = data.settings || [];
-        const ratios = data.ratios || [];
+        const runtimeMemory = data.runtime_memory || {};
+        const runtimeItems = runtimeMemory.items || [];
         if (sizeCount) sizeCount.textContent = `${sizeMetrics.length} метрик`;
         if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
-        if (usageCount) usageCount.textContent = `${ratios.length} сравнений`;
+        if (usageCount) usageCount.textContent = runtimeItems.length ? `${runtimeItems.length} записей` : 'Нет данных';
         updateMemorySizeMetricsChart(sizeMetrics);
         if (sizeTbody) {
             if (!sizeMetrics.length) {
@@ -1392,24 +1393,28 @@
             }
         }
         if (usageList) {
-            if (!ratios.length) {
-                usageList.innerHTML = '<div class="text-muted">Недостаточно параметров для сравнения</div>';
+            if (!runtimeItems.length) {
+                usageList.innerHTML = `<div class="text-muted">${escapeHtml(runtimeMemory.message || 'Фактическое использование памяти недоступно')}</div>`;
             } else {
-                usageList.innerHTML = ratios.map(item => {
-                    const ratioPercent = Math.max(0, Number(item.ratio_percent) || 0);
-                    const barPercent = Math.min(ratioPercent, 100);
+                const rows = runtimeItems.map(item => {
+                    const usagePercent = Math.max(0, Number(item.usage_percent) || 0);
+                    const barPercent = Math.min(usagePercent, 100);
+                    const barClass = usagePercent >= 85 ? 'danger' : usagePercent >= 70 ? 'warning' : 'success';
                     return `
                     <div class="memory-usage-item">
                         <div class="memory-usage-row">
-                            <span class="memory-usage-label">${escapeHtml(item.label)}</span>
-                            <span class="memory-usage-value">${escapeHtml(item.value)} / ${escapeHtml(item.reference)} (${ratioPercent.toFixed(2)}%)</span>
+                            <span class="memory-usage-label">Группа ${escapeHtml(item.group)} · ${escapeHtml(item.hostname)}</span>
+                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)} (${usagePercent.toFixed(2)}%)</span>
                         </div>
                         <div class="memory-usage-track">
-                            <div class="memory-usage-bar" style="width: ${barPercent}%;"></div>
+                            <div class="memory-usage-bar ${barClass}" style="width: ${barPercent}%;"></div>
                         </div>
+                        <div class="text-muted small mt-1">Доступно группе: ${escapeHtml(item.available)}</div>
                     </div>
                 `;
                 }).join('');
+                const source = runtimeMemory.source ? `<div class="text-muted small">Источник: <code>${escapeHtml(runtimeMemory.source)}</code></div>` : '';
+                usageList.innerHTML = rows + source;
             }
         }
     }

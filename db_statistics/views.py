@@ -1,4 +1,5 @@
 import json
+import math
 import re
 
 import psycopg2
@@ -309,17 +310,50 @@ def _memory_setting(key, label, role, raw_value, unit, fallback_unit="B"):
     return {"key": key, "label": label, "value": _format_bytes(size_bytes), "raw_value": raw_value or "—", "role": role, "size_bytes": size_bytes}
 
 
-def _memory_ratio(label, value_setting, reference_setting):
-    value = value_setting["size_bytes"]
-    reference = reference_setting["size_bytes"]
-    if value is None or not reference:
+def _greenplum_memory_item(group_id, hostname, used_mb, available_mb):
+    try:
+        used_mb = max(float(used_mb or 0), 0)
+        available_mb = max(float(available_mb or 0), 0)
+    except (TypeError, ValueError):
         return None
+    if not math.isfinite(used_mb) or not math.isfinite(available_mb):
+        return None
+    used_bytes = round(used_mb * 1024**2)
+    available_bytes = round(available_mb * 1024**2)
+    limit_bytes = used_bytes + available_bytes
     return {
-        "label": label,
-        "value": value_setting["value"],
-        "reference": reference_setting["value"],
-        "ratio_percent": round(value * 100 / reference, 2),
+        "group": str(group_id),
+        "hostname": hostname or "—",
+        "used": _format_bytes(used_bytes),
+        "available": _format_bytes(available_bytes),
+        "limit": _format_bytes(limit_bytes),
+        "usage_percent": round(used_bytes * 100 / limit_bytes, 2) if limit_bytes else 0,
     }
+
+
+def _greenplum_runtime_memory(db_connection):
+    availability_query = "SELECT to_regclass('gp_toolkit.gp_resgroup_status_per_host') IS NOT NULL;"
+    status_query = """
+        SELECT
+            COALESCE(resource_group.rsgname, status.groupid::text),
+            status.hostname,
+            status.memory_usage::double precision,
+            status.memory_available::double precision
+        FROM gp_toolkit.gp_resgroup_status_per_host AS status
+        LEFT JOIN pg_catalog.pg_resgroup AS resource_group
+            ON resource_group.oid = status.groupid
+        ORDER BY status.hostname, status.groupid;
+    """
+    try:
+        available = _fetch_db_row(db_connection, availability_query)
+        if not available or not available[0]:
+            return {"supported": False, "source": None, "items": [], "message": "Статистика групп ресурсов недоступна на этом сервере Greenplum"}
+        rows = _fetch_db_rows(db_connection, status_query)
+    except Exception as exc:
+        return {"supported": False, "source": "gp_toolkit.gp_resgroup_status_per_host", "items": [], "message": f"Не удалось прочитать фактическую память групп ресурсов: {exc}"}
+    items = [item for row in rows if (item := _greenplum_memory_item(*row)) is not None]
+    message = "" if items else "Группы ресурсов не вернули данных; проверьте режим управления ресурсами и права пользователя"
+    return {"supported": True, "source": "gp_toolkit.gp_resgroup_status_per_host", "items": items, "message": message}
 
 
 def _escape_like_pattern(value):
@@ -956,18 +990,6 @@ def memory_overview(request):
         ("max_statement_mem", "Максимальная память запроса", "Верхний лимит запроса", "B"),
     ]
     settings = [_memory_setting(key, label, role, row[index], row[index + 6], fallback_unit) for index, (key, label, role, fallback_unit) in enumerate(setting_specs) if row[index] is not None]
-    settings_by_key = {setting["key"]: setting for setting in settings}
-
-    ratio_specs = [
-        ("Память запроса / максимум запроса", "statement_mem", "max_statement_mem"),
-        ("Максимум запроса / лимит сегмента", "max_statement_mem", "gp_vmem_protect_limit"),
-    ]
-    ratios = [
-        ratio
-        for label, value_key, reference_key in ratio_specs
-        if value_key in settings_by_key and reference_key in settings_by_key
-        if (ratio := _memory_ratio(label, settings_by_key[value_key], settings_by_key[reference_key])) is not None
-    ]
     size_metrics = [
         {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[12] or 0), "value": _format_bytes(int(row[12] or 0))},
         {"key": "indexes", "label": "Размер пользовательских индексов", "size_bytes": int(row[13] or 0), "value": _format_bytes(int(row[13] or 0))},
@@ -975,7 +997,16 @@ def memory_overview(request):
         {"key": "temp_tables", "label": "Видимые временные таблицы", "size_bytes": int(row[15] or 0), "value": _format_bytes(int(row[15] or 0))},
         {"key": "materialized_views", "label": "Материализованные представления", "size_bytes": int(row[16] or 0), "value": _format_bytes(int(row[16] or 0))},
     ]
-    return JsonResponse({"ok": True, "settings": settings, "ratios": ratios, "size_metrics": size_metrics})
+    if db_connection.db_type == "Greenplum":
+        runtime_memory = _greenplum_runtime_memory(db_connection)
+    else:
+        runtime_memory = {
+            "supported": False,
+            "source": None,
+            "items": [],
+            "message": "PostgreSQL не предоставляет общую фактическую память сервера через стандартные статистические представления",
+        }
+    return JsonResponse({"ok": True, "settings": settings, "runtime_memory": runtime_memory, "size_metrics": size_metrics})
 
 
 def _format_role_timestamp(value):
