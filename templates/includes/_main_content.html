@@ -1090,8 +1090,8 @@
                                 <span>Общий размер БД</span>
                                 <strong id="memorySizeMetricsSummary">—</strong>
                                 <div class="size-metrics-legend" aria-hidden="true">
-                                    <div><i class="size-metrics-dot data"></i> Данные</div>
-                                    <div><i class="size-metrics-dot indexes"></i> Индексы</div>
+                                    <div><i class="size-metrics-dot data"></i> Остальной объём</div>
+                                    <div><i class="size-metrics-dot indexes"></i> Пользовательские индексы</div>
                                 </div>
                             </div>
                         </div>
@@ -1142,12 +1142,13 @@
             <div class="col-lg-4">
                 <div class="glass-card">
                     <div class="card-header">
-                        <span><i class="fas fa-chart-bar"></i> Использование памяти</span>
+                        <span><i class="fas fa-chart-bar"></i> Соотношение параметров</span>
                         <span class="card-meta" id="memoryUsageCount">Нет данных</span>
                     </div>
                     <div class="card-body">
+                        <p class="text-muted small mb-3">Сравниваются настроенные лимиты. Это не фактическое потребление оперативной памяти.</p>
                         <div id="memoryUsageList" class="memory-usage-list">
-                            <div class="text-muted">Выберите сохранённое подключение для загрузки использования памяти</div>
+                            <div class="text-muted">Выберите сохранённое подключение для сравнения параметров памяти</div>
                         </div>
                     </div>
                 </div>

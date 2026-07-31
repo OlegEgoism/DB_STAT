@@ -1332,7 +1332,7 @@
             : '#e8eaee 0 100%';
 
         donut.style.setProperty('--size-metrics-gradient', gradient);
-        donut.setAttribute('aria-label', `Детализация размеров: данные ${dataPercent.toFixed(2)}%, индексы ${indexPercent.toFixed(2)}%`);
+        donut.setAttribute('aria-label', `Детализация размеров: остальной объём ${dataPercent.toFixed(2)}%, пользовательские индексы ${indexPercent.toFixed(2)}%`);
         summary.textContent = totalLabel;
     }
 
@@ -1361,10 +1361,10 @@
         const usageCount = document.getElementById('memoryUsageCount');
         const sizeMetrics = data.size_metrics || [];
         const settings = data.settings || [];
-        const usage = data.usage || [];
+        const ratios = data.ratios || [];
         if (sizeCount) sizeCount.textContent = `${sizeMetrics.length} метрик`;
         if (settingsCount) settingsCount.textContent = `${settings.length} параметров`;
-        if (usageCount) usageCount.textContent = `${usage.length} показателя`;
+        if (usageCount) usageCount.textContent = `${ratios.length} сравнений`;
         updateMemorySizeMetricsChart(sizeMetrics);
         if (sizeTbody) {
             if (!sizeMetrics.length) {
@@ -1392,20 +1392,20 @@
             }
         }
         if (usageList) {
-            if (!usage.length) {
-                usageList.innerHTML = '<div class="text-muted">Использование памяти не найдено</div>';
+            if (!ratios.length) {
+                usageList.innerHTML = '<div class="text-muted">Недостаточно параметров для сравнения</div>';
             } else {
-                usageList.innerHTML = usage.map(item => {
-                    const percent = Math.max(0, Math.min(Number(item.usage_percent) || 0, 100));
-                    const barClass = percent >= 85 ? 'danger' : percent >= 70 ? 'warning' : 'success';
+                usageList.innerHTML = ratios.map(item => {
+                    const ratioPercent = Math.max(0, Number(item.ratio_percent) || 0);
+                    const barPercent = Math.min(ratioPercent, 100);
                     return `
                     <div class="memory-usage-item">
                         <div class="memory-usage-row">
                             <span class="memory-usage-label">${escapeHtml(item.label)}</span>
-                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)}</span>
+                            <span class="memory-usage-value">${escapeHtml(item.value)} / ${escapeHtml(item.reference)} (${ratioPercent.toFixed(2)}%)</span>
                         </div>
                         <div class="memory-usage-track">
-                            <div class="memory-usage-bar ${barClass}" style="width: ${percent}%;"></div>
+                            <div class="memory-usage-bar" style="width: ${barPercent}%;"></div>
                         </div>
                     </div>
                 `;

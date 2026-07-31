@@ -1,4 +1,5 @@
 import json
+import re
 
 import psycopg2
 from django.http import JsonResponse
@@ -260,25 +261,36 @@ def _read_json_body(request):
         return {}
 
 
-def _parse_pg_size_to_bytes(value):
+def _parse_pg_size_to_bytes(value, default_unit="B"):
+    """Convert a PostgreSQL/Greenplum size setting to bytes.
+
+    Most memory settings include a unit in ``current_setting`` output.  Some
+    Greenplum settings, notably ``gp_vmem_protect_limit``, are bare numbers
+    whose documented unit is MB, so callers can supply that implicit unit.
+    """
     if value in (None, ""):
         return None
     text = str(value).strip()
     if not text:
         return None
-    parts = text.split()
-    if len(parts) == 1:
-        number_part = "".join(ch for ch in text if ch.isdigit() or ch in ".,-")
-        unit_part = text[len(number_part) :].strip() or "B"
-    else:
-        number_part, unit_part = parts[0], parts[1]
+    match = re.fullmatch(r"([+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+))\s*([A-Za-z]+)?", text)
+    if not match:
+        return None
+    number_part, explicit_unit = match.groups()
     try:
         number = float(number_part.replace(",", "."))
     except ValueError:
         return None
-    unit = unit_part.lower()
+    unit_part = explicit_unit or default_unit
+    unit_match = re.fullmatch(r"(\d+)?\s*([A-Za-z]+)", str(unit_part).strip())
+    if not unit_match:
+        return None
+    block_size, unit_name = unit_match.groups()
+    unit = unit_name.lower()
     multipliers = {"b": 1, "byte": 1, "bytes": 1, "kb": 1024, "kib": 1024, "mb": 1024**2, "mib": 1024**2, "gb": 1024**3, "gib": 1024**3, "tb": 1024**4, "tib": 1024**4}
-    return int(number * multipliers.get(unit, 1))
+    if unit not in multipliers:
+        return None
+    return int(number * int(block_size or 1) * multipliers[unit])
 
 
 def _format_bytes(size_bytes):
@@ -290,6 +302,24 @@ def _format_bytes(size_bytes):
             return f"{value:.2f} {unit}"
         value /= 1024
     return f"{value:.2f} ТБ"
+
+
+def _memory_setting(key, label, role, raw_value, unit, fallback_unit="B"):
+    size_bytes = _parse_pg_size_to_bytes(raw_value, default_unit=unit or fallback_unit)
+    return {"key": key, "label": label, "value": _format_bytes(size_bytes), "raw_value": raw_value or "—", "role": role, "size_bytes": size_bytes}
+
+
+def _memory_ratio(label, value_setting, reference_setting):
+    value = value_setting["size_bytes"]
+    reference = reference_setting["size_bytes"]
+    if value is None or not reference:
+        return None
+    return {
+        "label": label,
+        "value": value_setting["value"],
+        "reference": reference_setting["value"],
+        "ratio_percent": round(value * 100 / reference, 2),
+    }
 
 
 def _escape_like_pattern(value):
@@ -898,6 +928,12 @@ def memory_overview(request):
             current_setting('maintenance_work_mem', true) AS maintenance_work_mem,
             current_setting('statement_mem', true) AS statement_mem,
             current_setting('max_statement_mem', true) AS max_statement_mem,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'gp_vmem_protect_limit') AS gp_vmem_protect_limit_unit,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'shared_buffers') AS shared_buffers_unit,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'work_mem') AS work_mem_unit,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'maintenance_work_mem') AS maintenance_work_mem_unit,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'statement_mem') AS statement_mem_unit,
+            (SELECT unit FROM pg_catalog.pg_settings WHERE name = 'max_statement_mem') AS max_statement_mem_unit,
             pg_database_size(%s)::bigint AS total_size_bytes,
             COALESCE(SUM(index_size_bytes), 0)::bigint AS index_size_bytes,
             GREATEST(pg_database_size(%s)::bigint - COALESCE(SUM(index_size_bytes), 0)::bigint, 0)::bigint AS data_size_without_indexes_bytes,
@@ -911,44 +947,35 @@ def memory_overview(request):
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить параметры памяти: {exc}"}, status=400)
 
-    settings = [
-        {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "value": row[0] or "—", "role": "Защита OOM"},
-        {"key": "shared_buffers", "label": "Кэш данных", "value": row[1] or "—", "role": "Буферы"},
-        {"key": "work_mem", "label": "Память операций", "value": row[2] or "—", "role": "Сортировка/Hash"},
-        {"key": "maintenance_work_mem", "label": "Память обслуживания", "value": row[3] or "—", "role": "Очистка / создание индекса"},
-        {"key": "statement_mem", "label": "Память запроса", "value": row[4] or "—", "role": "Лимит запроса"},
-        {"key": "max_statement_mem", "label": "Максимальная память запроса", "value": row[5] or "—", "role": "Макс. лимит"},
+    setting_specs = [
+        ("gp_vmem_protect_limit", "Лимит виртуальной памяти сегмента", "Защита OOM", "MB"),
+        ("shared_buffers", "Кэш данных", "Буферы", "B"),
+        ("work_mem", "Память одной операции", "Сортировка / Hash", "B"),
+        ("maintenance_work_mem", "Память операции обслуживания", "VACUUM / создание индекса", "B"),
+        ("statement_mem", "Память запроса", "Базовый лимит запроса", "B"),
+        ("max_statement_mem", "Максимальная память запроса", "Верхний лимит запроса", "B"),
     ]
+    settings = [_memory_setting(key, label, role, row[index], row[index + 6], fallback_unit) for index, (key, label, role, fallback_unit) in enumerate(setting_specs) if row[index] is not None]
+    settings_by_key = {setting["key"]: setting for setting in settings}
 
-    sizes = {
-        "gp_vmem_protect_limit": _parse_pg_size_to_bytes(row[0]),
-        "shared_buffers": _parse_pg_size_to_bytes(row[1]),
-        "work_mem": _parse_pg_size_to_bytes(row[2]),
-        "maintenance_work_mem": _parse_pg_size_to_bytes(row[3]),
-        "statement_mem": _parse_pg_size_to_bytes(row[4]),
-        "max_statement_mem": _parse_pg_size_to_bytes(row[5]),
-    }
-
-    def usage_row(label, used_key, limit_key):
-        used = sizes.get(used_key)
-        limit = sizes.get(limit_key)
-        percent = round((used * 100 / limit), 2) if used is not None and limit else 0
-        return {"label": label, "used": _format_bytes(used), "limit": _format_bytes(limit), "usage_percent": percent}
-
-    usage = [
-        usage_row("Память запроса", "statement_mem", "max_statement_mem"),
-        usage_row("Максимальная память запроса", "max_statement_mem", "gp_vmem_protect_limit"),
-        usage_row("Память операций", "work_mem", "max_statement_mem"),
-        usage_row("Кэш данных", "shared_buffers", "gp_vmem_protect_limit"),
+    ratio_specs = [
+        ("Память запроса / максимум запроса", "statement_mem", "max_statement_mem"),
+        ("Максимум запроса / лимит сегмента", "max_statement_mem", "gp_vmem_protect_limit"),
+    ]
+    ratios = [
+        ratio
+        for label, value_key, reference_key in ratio_specs
+        if value_key in settings_by_key and reference_key in settings_by_key
+        if (ratio := _memory_ratio(label, settings_by_key[value_key], settings_by_key[reference_key])) is not None
     ]
     size_metrics = [
-        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[6] or 0), "value": _format_bytes(int(row[6] or 0))},
-        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[7] or 0), "value": _format_bytes(int(row[7] or 0))},
-        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[8] or 0), "value": _format_bytes(int(row[8] or 0))},
-        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[9] or 0), "value": _format_bytes(int(row[9] or 0))},
-        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[10] or 0), "value": _format_bytes(int(row[10] or 0))},
+        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[12] or 0), "value": _format_bytes(int(row[12] or 0))},
+        {"key": "indexes", "label": "Размер пользовательских индексов", "size_bytes": int(row[13] or 0), "value": _format_bytes(int(row[13] or 0))},
+        {"key": "data_without_indexes", "label": "Остальной объём БД", "size_bytes": int(row[14] or 0), "value": _format_bytes(int(row[14] or 0))},
+        {"key": "temp_tables", "label": "Видимые временные таблицы", "size_bytes": int(row[15] or 0), "value": _format_bytes(int(row[15] or 0))},
+        {"key": "materialized_views", "label": "Материализованные представления", "size_bytes": int(row[16] or 0), "value": _format_bytes(int(row[16] or 0))},
     ]
-    return JsonResponse({"ok": True, "settings": settings, "usage": usage, "size_metrics": size_metrics})
+    return JsonResponse({"ok": True, "settings": settings, "ratios": ratios, "size_metrics": size_metrics})
 
 
 def _format_role_timestamp(value):
