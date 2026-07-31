@@ -43,14 +43,24 @@ class GreenplumRuntimeMemoryTests(SimpleTestCase):
     def test_builds_actual_usage_from_used_and_available_memory(self):
         self.assertEqual(
             _greenplum_memory_item("6438", "sdw1", 3072, 1024),
-            {"group": "6438", "hostname": "sdw1", "used": "3.00 ГБ", "available": "1.00 ГБ", "limit": "4.00 ГБ", "usage_percent": 75.0},
+            {"group": "6438", "hostname": "sdw1", "used": "3.00 ГБ", "available": "1.00 ГБ", "limit": "4.00 ГБ", "usage_percent": 75.0, "limit_available": True},
         )
 
-    @patch("db_statistics.views._fetch_db_rows", return_value=[("6438", "sdw1", 3072, 1024)])
-    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
-    def test_reads_greenplum_resource_group_view(self, _fetch_row, _fetch_rows):
+    def test_builds_usage_without_limit_for_older_greenplum(self):
+        item = _greenplum_memory_item("6438", "sdw1", 3072, None)
+
+        self.assertEqual(item["used"], "3.00 ГБ")
+        self.assertIsNone(item["usage_percent"])
+        self.assertFalse(item["limit_available"])
+
+    @patch(
+        "db_statistics.views._fetch_db_rows",
+        side_effect=[[("groupid",), ("hostname",), ("memory_usage",)], [("default_group", "sdw1", 3072, None)]],
+    )
+    def test_reads_older_greenplum_view_without_memory_available(self, _fetch_rows):
         result = _greenplum_runtime_memory(object())
 
         self.assertTrue(result["supported"])
         self.assertEqual(result["source"], "gp_toolkit.gp_resgroup_status_per_host")
-        self.assertEqual(result["items"][0]["usage_percent"], 75.0)
+        self.assertFalse(result["has_limit_data"])
+        self.assertEqual(result["items"][0]["used"], "3.00 ГБ")

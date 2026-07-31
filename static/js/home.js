@@ -1397,19 +1397,26 @@
                 usageList.innerHTML = `<div class="text-muted">${escapeHtml(runtimeMemory.message || 'Фактическое использование памяти недоступно')}</div>`;
             } else {
                 const rows = runtimeItems.map(item => {
-                    const usagePercent = Math.max(0, Number(item.usage_percent) || 0);
+                    const hasLimit = item.limit_available && item.usage_percent !== null;
+                    const usagePercent = hasLimit ? Math.max(0, Number(item.usage_percent) || 0) : 0;
                     const barPercent = Math.min(usagePercent, 100);
                     const barClass = usagePercent >= 85 ? 'danger' : usagePercent >= 70 ? 'warning' : 'success';
+                    const value = hasLimit
+                        ? `${escapeHtml(item.used)} / ${escapeHtml(item.limit)} (${usagePercent.toFixed(2)}%)`
+                        : `${escapeHtml(item.used)} использовано`;
+                    const detail = hasLimit
+                        ? `Доступно группе: ${escapeHtml(item.available)}`
+                        : 'Эта версия Greenplum не публикует доступный объём в представлении по хостам';
                     return `
                     <div class="memory-usage-item">
                         <div class="memory-usage-row">
                             <span class="memory-usage-label">Группа ${escapeHtml(item.group)} · ${escapeHtml(item.hostname)}</span>
-                            <span class="memory-usage-value">${escapeHtml(item.used)} / ${escapeHtml(item.limit)} (${usagePercent.toFixed(2)}%)</span>
+                            <span class="memory-usage-value">${value}</span>
                         </div>
-                        <div class="memory-usage-track">
+                        <div class="memory-usage-track${hasLimit ? '' : ' d-none'}">
                             <div class="memory-usage-bar ${barClass}" style="width: ${barPercent}%;"></div>
                         </div>
-                        <div class="text-muted small mt-1">Доступно группе: ${escapeHtml(item.available)}</div>
+                        <div class="text-muted small mt-1">${detail}</div>
                     </div>
                 `;
                 }).join('');

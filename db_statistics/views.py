@@ -313,47 +313,61 @@ def _memory_setting(key, label, role, raw_value, unit, fallback_unit="B"):
 def _greenplum_memory_item(group_id, hostname, used_mb, available_mb):
     try:
         used_mb = max(float(used_mb or 0), 0)
-        available_mb = max(float(available_mb or 0), 0)
+        available_mb = max(float(available_mb), 0) if available_mb is not None else None
     except (TypeError, ValueError):
         return None
-    if not math.isfinite(used_mb) or not math.isfinite(available_mb):
+    if not math.isfinite(used_mb) or (available_mb is not None and not math.isfinite(available_mb)):
         return None
     used_bytes = round(used_mb * 1024**2)
-    available_bytes = round(available_mb * 1024**2)
-    limit_bytes = used_bytes + available_bytes
+    available_bytes = round(available_mb * 1024**2) if available_mb is not None else None
+    limit_bytes = used_bytes + available_bytes if available_bytes is not None else None
     return {
         "group": str(group_id),
         "hostname": hostname or "—",
         "used": _format_bytes(used_bytes),
         "available": _format_bytes(available_bytes),
         "limit": _format_bytes(limit_bytes),
-        "usage_percent": round(used_bytes * 100 / limit_bytes, 2) if limit_bytes else 0,
+        "usage_percent": round(used_bytes * 100 / limit_bytes, 2) if limit_bytes else None,
+        "limit_available": limit_bytes is not None,
     }
 
 
 def _greenplum_runtime_memory(db_connection):
-    availability_query = "SELECT to_regclass('gp_toolkit.gp_resgroup_status_per_host') IS NOT NULL;"
-    status_query = """
+    columns_query = """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'gp_toolkit'
+          AND table_name = 'gp_resgroup_status_per_host';
+    """
+    try:
+        columns = {row[0] for row in _fetch_db_rows(db_connection, columns_query)}
+    except Exception as exc:
+        return {"supported": False, "source": None, "items": [], "message": f"Не удалось проверить статистику групп ресурсов: {exc}"}
+    required_columns = {"groupid", "hostname", "memory_usage"}
+    if not required_columns.issubset(columns):
+        return {"supported": False, "source": None, "items": [], "message": "Статистика групп ресурсов недоступна на этом сервере Greenplum"}
+
+    # memory_available присутствует не во всех версиях Greenplum. Не включаем
+    # отсутствующий столбец в SQL и продолжаем показывать реальный расход.
+    available_expression = "status.memory_available::double precision" if "memory_available" in columns else "NULL::double precision"
+    status_query = f"""
         SELECT
             COALESCE(resource_group.rsgname, status.groupid::text),
             status.hostname,
             status.memory_usage::double precision,
-            status.memory_available::double precision
+            {available_expression}
         FROM gp_toolkit.gp_resgroup_status_per_host AS status
         LEFT JOIN pg_catalog.pg_resgroup AS resource_group
             ON resource_group.oid = status.groupid
         ORDER BY status.hostname, status.groupid;
     """
     try:
-        available = _fetch_db_row(db_connection, availability_query)
-        if not available or not available[0]:
-            return {"supported": False, "source": None, "items": [], "message": "Статистика групп ресурсов недоступна на этом сервере Greenplum"}
         rows = _fetch_db_rows(db_connection, status_query)
     except Exception as exc:
         return {"supported": False, "source": "gp_toolkit.gp_resgroup_status_per_host", "items": [], "message": f"Не удалось прочитать фактическую память групп ресурсов: {exc}"}
     items = [item for row in rows if (item := _greenplum_memory_item(*row)) is not None]
     message = "" if items else "Группы ресурсов не вернули данных; проверьте режим управления ресурсами и права пользователя"
-    return {"supported": True, "source": "gp_toolkit.gp_resgroup_status_per_host", "items": items, "message": message}
+    return {"supported": True, "source": "gp_toolkit.gp_resgroup_status_per_host", "items": items, "message": message, "has_limit_data": "memory_available" in columns}
 
 
 def _escape_like_pattern(value):
