@@ -2581,7 +2581,7 @@
         }
         options.innerHTML = tables.map(table => {
             const label = distributionTableOptionLabel(table);
-            return `<option value="${escapeHtml(label)}" label="${escapeHtml(table.object_type || 'Таблица')}"></option>`;
+            return `<option value="${escapeHtml(label)}" label="${escapeHtml(translateInterfaceText(table.object_type || 'Таблица'))}"></option>`;
         }).join('');
         select.placeholder = 'Начните вводить схему или название таблицы';
         if (!tables.some(table => distributionTableOptionLabel(table) === select.value)) {
@@ -3109,7 +3109,7 @@
     function updateSegmentsChart(segments) {
         if (!charts.segments) return;
         const contents = [...new Set(segments.filter(segment => Number(segment.segment) >= 0).map(segment => String(segment.segment)))].sort((a, b) => Number(a) - Number(b));
-        charts.segments.data.labels = contents.map(content => `Сегмент ${content}`);
+        charts.segments.data.labels = contents.map(content => translateInterfaceText(`Сегмент ${content}`));
         charts.segments.data.datasets[0].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'p').length);
         charts.segments.data.datasets[1].data = contents.map(content => segments.filter(segment => String(segment.segment) === content && segment.role === 'm').length);
         charts.segments.update();
@@ -3706,7 +3706,7 @@
             data: {
                 labels: [],
                 datasets: [{
-                    label: 'Строк',
+                    label: translateInterfaceText('Строк'),
                     data: [],
                     backgroundColor: [],
                     borderRadius: 4
