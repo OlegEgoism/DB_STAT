@@ -28,7 +28,7 @@ templateFiles.forEach(file => {
         if (hasRussianText(value) && !value.includes('{{') && !value.includes('{%')) templateStrings.add(value);
     }
     for (const match of source.matchAll(/(?:title|aria-label|placeholder)="([^"]+)"/g)) {
-        if (hasRussianText(match[1])) templateStrings.add(match[1]);
+        if (hasRussianText(match[1]) && !match[1].includes('{%')) templateStrings.add(match[1]);
     }
 });
 

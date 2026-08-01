@@ -1,8 +1,10 @@
 import json
 
 from django.conf import settings
-from django.test import Client, TestCase
+from django.template.loader import render_to_string
+from django.test import Client, SimpleTestCase, TestCase
 from django.urls import reverse
+from django.utils import translation
 
 
 class LanguageSettingsTests(TestCase):
@@ -27,3 +29,18 @@ class LanguageSettingsTests(TestCase):
         response = self.client.get(reverse("language_settings"))
 
         self.assertEqual(response.status_code, 405)
+
+
+class EnglishSearchFieldsTests(SimpleTestCase):
+    def test_dashboard_search_and_filter_placeholders_are_rendered_in_english(self):
+        with translation.override("en"):
+            content = render_to_string("includes/_main_content.html")
+
+        self.assertIn('placeholder="Search by schema..."', content)
+        self.assertIn('placeholder="Search by schema or table..."', content)
+        self.assertIn('placeholder="Search by schema or view..."', content)
+        self.assertIn('placeholder="Search by user..."', content)
+        self.assertIn('placeholder="Search by group..."', content)
+        self.assertIn('placeholder="All users"', content)
+        self.assertNotIn('placeholder="Поиск ', content)
+        self.assertNotIn('placeholder="Все пользователи"', content)
