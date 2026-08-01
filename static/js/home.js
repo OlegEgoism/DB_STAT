@@ -64,6 +64,7 @@
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
+    const languageSettingsApiUrl = '/settings/language/';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -422,6 +423,8 @@
         if (!settingsButton || !modalElement) return;
 
         const settingsModal = new bootstrap.Modal(modalElement);
+        const languageSelect = document.getElementById('interfaceLanguage');
+        if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         settingsButton.addEventListener('click', function () {
             renderSidebarSettingsList();
             settingsModal.show();
@@ -440,8 +443,18 @@
                 return;
             }
 
-            saveVisibleSidebarPages(selectedPages)
+            const selectedLanguage = languageSelect?.value || 'ru';
+            const languageChanged = selectedLanguage !== (window.DBStatI18n?.language || 'ru');
+            const languageRequest = languageChanged
+                ? connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
+                : Promise.resolve();
+
+            Promise.all([saveVisibleSidebarPages(selectedPages), languageRequest])
                 .then(() => {
+                    if (languageChanged) {
+                        window.location.reload();
+                        return;
+                    }
                     updateSidebarForConnection();
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());

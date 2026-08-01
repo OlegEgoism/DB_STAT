@@ -8,6 +8,7 @@ urlpatterns = [
     path("logout/", views.logout, name="logout"),
     path("audit/events/", views.audit_events, name="audit_events"),
     path("settings/sidebar/", views.sidebar_settings, name="sidebar_settings"),
+    path("settings/language/", views.language_settings, name="language_settings"),
     path("connections/", views.connections, name="connections"),
     path("connections/test/", views.test_connection, name="test_connection"),
     path("connections/delete/", views.delete_connection, name="delete_connection"),

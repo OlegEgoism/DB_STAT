@@ -55,6 +55,12 @@ body {
     overflow-x: hidden;
 }
 
+.sidebar-language-setting {
+    margin-bottom: var(--space-5);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
 /* ========== 404 ERROR PAGE ========== */
 .error-page {
     position: relative;
