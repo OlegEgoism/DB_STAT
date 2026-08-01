@@ -313,6 +313,7 @@
 
     window.DBStatI18n = {language, translate: translateText, translateElement};
     document.addEventListener('DOMContentLoaded', () => {
+        document.title = translateText(document.title);
         translateElement(document.body);
         new MutationObserver(mutations => mutations.forEach(mutation => {
             mutation.addedNodes.forEach(translateElement);

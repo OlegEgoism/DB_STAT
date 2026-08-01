@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const childProcess = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -9,6 +10,7 @@ require('./i18n.js');
 const {translate} = window.DBStatI18n;
 const hasRussianText = value => /[А-Яа-яЁё]/.test(value);
 const templatesDirectory = path.resolve(__dirname, '../../templates');
+const projectDirectory = path.resolve(__dirname, '../..');
 const templateFiles = [];
 
 function collectTemplates(directory) {
@@ -36,6 +38,41 @@ templateStrings.forEach(value => {
     assert.equal(hasRussianText(translate(value)), false, `Missing template translation: ${value}`);
 });
 
+const renderedDashboard = childProcess.execFileSync('python', [
+    'manage.py', 'shell', '-c',
+    "from django.template.loader import render_to_string; from django.test import RequestFactory; from django.utils import translation; " +
+    "translation.activate('en'); print(render_to_string('includes/_main_content.html', request=RequestFactory().get('/')))"
+], {cwd: projectDirectory, encoding: 'utf8'});
+const renderedStrings = new Set();
+for (const match of renderedDashboard.matchAll(/>([^<]+)</g)) {
+    const value = match[1].replace(/\s+/g, ' ').trim();
+    if (hasRussianText(value)) renderedStrings.add(value);
+}
+for (const match of renderedDashboard.matchAll(/(?:title|aria-label|placeholder)="([^"]+)"/g)) {
+    if (hasRussianText(match[1])) renderedStrings.add(match[1]);
+}
+renderedStrings.forEach(value => {
+    assert.equal(hasRussianText(translate(value)), false, `Missing rendered translation: ${value}`);
+});
+
+const homeSource = fs.readFileSync(path.join(projectDirectory, 'static/js/home.js'), 'utf8');
+const runtimeStrings = new Set();
+function collectRuntimeString(value) {
+    if (!hasRussianText(value)) return;
+    value.replace(/\$\{[^{}]*\}/g, '0').split(/<[^>]+>/).forEach(part => {
+        const normalized = part.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+        if (hasRussianText(normalized) && normalized !== 'не существует') runtimeStrings.add(normalized);
+    });
+}
+homeSource.split('\n').forEach(line => {
+    for (const match of line.matchAll(/'([^'\\]*(?:\\.[^'\\]*)*)'/g)) collectRuntimeString(match[1]);
+    for (const match of line.matchAll(/"([^"\\]*(?:\\.[^"\\]*)*)"/g)) collectRuntimeString(match[1]);
+    for (const match of line.matchAll(/`([^`]*)`/g)) collectRuntimeString(match[1]);
+});
+runtimeStrings.forEach(value => {
+    assert.equal(hasRussianText(translate(value)), false, `Missing runtime translation: ${value}`);
+});
+
 const dynamicStrings = [
     '5 активных запросов для alice', '4 сессии для analyst', '3 транзакции для admin', '2 блокировок (заблок.: user)',
     '15 из 30 таблиц', '7 из 20 схем', '8 из 10 представлений', '3 из 8 временных таблиц', '10 из 12 пользователей',
@@ -51,11 +88,12 @@ const dynamicStrings = [
     'Не удалось получить размеры таблиц: permission denied', 'Не удалось получить список пользователей: permission denied',
     'Не удалось получить список групп: permission denied', 'Не удалось получить список таблиц: permission denied',
     '⚠️ Заполните все обязательные поля',
-    '✅ Подключение "Main" проверено и сохранено', 'Удалить подключение "Main"?'
+    '✅ Подключение "Main" проверено и сохранено', 'Удалить подключение "Main"?',
+    'Авторизация | DB STAT', '404 — Страница не найдена | DB STAT'
 ];
 
 dynamicStrings.forEach(value => {
     assert.equal(hasRussianText(translate(value)), false, `Missing dynamic translation: ${value}`);
 });
 
-console.log(`Verified ${templateStrings.size} template strings and ${dynamicStrings.length} dynamic strings.`);
+console.log(`Verified ${templateStrings.size} template strings, ${renderedStrings.size} rendered strings, ${runtimeStrings.size} runtime strings, and ${dynamicStrings.length} dynamic cases.`);
