@@ -589,6 +589,10 @@
         return window.DBStatI18n?.translate(String(value ?? '')) ?? String(value ?? '');
     }
 
+    function translateRenderedInterface() {
+        window.DBStatI18n?.translateElement(document.body);
+    }
+
     function getConnectionSlotValue(connectionSlots, key) {
         const item = connectionSlots.find(slot => slot.key === key);
         return item ? item.value : null;
@@ -2960,6 +2964,7 @@
             if (!response.ok || data.ok === false) {
                 throw new Error(data.message || 'Ошибка запроса');
             }
+            window.setTimeout(translateRenderedInterface, 0);
             return data;
         });
     }

@@ -193,6 +193,10 @@
         'Статистика VACUUM/ANALYZE, живые и мёртвые строки.': 'VACUUM/ANALYZE statistics and live/dead rows.'
     });
 
+    const inlineTranslations = Object.entries(translations)
+        .filter(([source]) => /[А-Яа-яЁё]/.test(source) && !/[<>]/.test(source))
+        .sort(([left], [right]) => right.length - left.length);
+
     const patterns = [
         [/^Страница (\d+) из (\d+)$/, 'Page $1 of $2'], [/^(\d+) из (\d+) записей$/, '$1 of $2 records'],
         [/^(\d+) из (\d+)$/, '$1 of $2'],
@@ -275,7 +279,10 @@
             if (pattern.test(clean)) return leading + clean.replace(pattern, replacement) + trailing;
         }
         let translated = clean;
-        phraseTranslations.forEach(([source, target]) => { translated = translated.replace(source, target); });
+        phraseTranslations.forEach(([source, target]) => { translated = translated.split(source).join(target); });
+        if (/[А-Яа-яЁё]/.test(translated)) {
+            inlineTranslations.forEach(([source, target]) => { translated = translated.split(source).join(target); });
+        }
         if (translated !== clean) return leading + translated + trailing;
         return value;
     }
