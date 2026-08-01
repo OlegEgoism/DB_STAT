@@ -1,9 +1,10 @@
 import json
 
 import psycopg2
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
@@ -34,6 +35,7 @@ SIDEBAR_TAB_LABELS = {
     "maintenance": "Обслуживание",
     "audit": "Аудит",
 }
+SUPPORTED_LANGUAGES = {"ru", "en"}
 
 
 def page_not_found(request, exception=None):
@@ -209,6 +211,25 @@ def sidebar_settings(request):
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+
+
+@require_http_methods(["POST"])
+def language_settings(request):
+    """Сохраняет выбранный язык интерфейса в стандартной cookie Django."""
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
+
+    language = str(payload.get("language", "")).lower()
+    if language not in SUPPORTED_LANGUAGES:
+        return JsonResponse({"ok": False, "message": "Поддерживаются только языки RU и EN"}, status=400)
+
+    translation.activate(language)
+    request.session["django_language"] = language
+    response = JsonResponse({"ok": True, "language": language})
+    response.set_cookie(settings.LANGUAGE_COOKIE_NAME, language, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return response
 
 
 @require_http_methods(["GET"])
