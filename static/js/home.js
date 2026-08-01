@@ -585,6 +585,10 @@
         return {value: value.toFixed(precision), unit: units[unitIndex]};
     }
 
+    function translateInterfaceText(value) {
+        return window.DBStatI18n?.translate(String(value ?? '')) ?? String(value ?? '');
+    }
+
     function getConnectionSlotValue(connectionSlots, key) {
         const item = connectionSlots.find(slot => slot.key === key);
         return item ? item.value : null;
@@ -602,8 +606,8 @@
         const usageText = rawUsage.toFixed(2);
 
         donut.style.setProperty('--connection-slots-usage', `${usage}%`);
-        donut.setAttribute('aria-label', `Использование слотов подключений: ${current} из ${maximum}, ${usageText}%`);
-        summary.textContent = maximum > 0 ? `${current} из ${maximum}` : '—';
+        donut.setAttribute('aria-label', translateInterfaceText(`Использование слотов подключений: ${current} из ${maximum}, ${usageText}%`));
+        summary.textContent = maximum > 0 ? translateInterfaceText(`${current} из ${maximum}`) : '—';
     }
 
 
@@ -627,12 +631,13 @@
 
         donut.style.setProperty('--db-activity-commit', `${commitPercent}%`);
         donut.style.setProperty('--db-activity-rollback', `${commitPercent + rollbackPercent}%`);
-        donut.setAttribute('aria-label', `Активность БД: коммиты ${commitText}%, роллбеки ${rollbackText}%`);
+        donut.setAttribute('aria-label', translateInterfaceText(`Активность БД: коммиты ${commitText}%, роллбеки ${rollbackText}%`));
         summary.textContent = total > 0
             ? `${commits} / ${rollbacks}` : '—';
     }
 
     function renderDatabaseOverviewWarning(message) {
+        message = translateInterfaceText(message);
         const tbody = document.getElementById('databaseOverviewTableBody');
         const memoryTbody = document.getElementById('databaseOverviewMemoryTableBody');
         const connectionTbody = document.getElementById('databaseOverviewConnectionTableBody');
@@ -650,14 +655,15 @@
         const activityStatsCount = document.getElementById('databaseOverviewActivityCount');
         const extensionsCount = document.getElementById('databaseOverviewExtensionsCount');
         const version = document.getElementById('databaseOverviewVersion');
-        if (count) count.textContent = 'Нет данных';
-        if (memoryCount) memoryCount.textContent = 'Нет данных';
-        if (connectionCount) connectionCount.textContent = 'Нет данных';
-        if (rolesCount) rolesCount.textContent = 'Нет данных';
-        if (connectionSlotsCount) connectionSlotsCount.textContent = 'Нет данных';
-        if (basicSettingsCount) basicSettingsCount.textContent = 'Нет данных';
-        if (activityStatsCount) activityStatsCount.textContent = 'Нет данных';
-        if (extensionsCount) extensionsCount.textContent = 'Нет данных';
+        const noData = translateInterfaceText('Нет данных');
+        if (count) count.textContent = noData;
+        if (memoryCount) memoryCount.textContent = noData;
+        if (connectionCount) connectionCount.textContent = noData;
+        if (rolesCount) rolesCount.textContent = noData;
+        if (connectionSlotsCount) connectionSlotsCount.textContent = noData;
+        if (basicSettingsCount) basicSettingsCount.textContent = noData;
+        if (activityStatsCount) activityStatsCount.textContent = noData;
+        if (extensionsCount) extensionsCount.textContent = noData;
         updateConnectionSlotsChart([]);
         updateDatabaseActivityChart([]);
         if (version) version.textContent = message;
@@ -697,14 +703,14 @@
         const basicSettings = data.basic_settings || [];
         const activityStats = data.activity_stats || [];
         const installedExtensions = data.installed_extensions || [];
-        if (count) count.textContent = `${metrics.length} метрик`;
-        if (memoryCount) memoryCount.textContent = `${memorySettings.length} параметра`;
-        if (connectionCount) connectionCount.textContent = `${connectionInfo.length} параметров`;
-        if (rolesCount) rolesCount.textContent = `${roleCounts.length} показателя`;
-        if (connectionSlotsCount) connectionSlotsCount.textContent = `${connectionSlots.length} показателя`;
-        if (basicSettingsCount) basicSettingsCount.textContent = `${basicSettings.length} параметров`;
-        if (activityStatsCount) activityStatsCount.textContent = `${activityStats.length} показателей`;
-        if (extensionsCount) extensionsCount.textContent = `${installedExtensions.length} расширений`;
+        if (count) count.textContent = translateInterfaceText(`${metrics.length} метрик`);
+        if (memoryCount) memoryCount.textContent = translateInterfaceText(`${memorySettings.length} параметра`);
+        if (connectionCount) connectionCount.textContent = translateInterfaceText(`${connectionInfo.length} параметров`);
+        if (rolesCount) rolesCount.textContent = translateInterfaceText(`${roleCounts.length} показателя`);
+        if (connectionSlotsCount) connectionSlotsCount.textContent = translateInterfaceText(`${connectionSlots.length} показателя`);
+        if (basicSettingsCount) basicSettingsCount.textContent = translateInterfaceText(`${basicSettings.length} параметров`);
+        if (activityStatsCount) activityStatsCount.textContent = translateInterfaceText(`${activityStats.length} показателей`);
+        if (extensionsCount) extensionsCount.textContent = translateInterfaceText(`${installedExtensions.length} расширений`);
         if (version) version.textContent = data.database_version || '—';
         if (basicSettingsTbody) {
             if (!basicSettings.length) {
@@ -712,7 +718,7 @@
             } else {
                 basicSettingsTbody.innerHTML = basicSettings.map(item => `
                     <tr>
-                        <td>${escapeHtml(item.label)}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${escapeHtml(item.value ?? '—')}</strong></td>
                     </tr>
                 `).join('');
@@ -726,7 +732,7 @@
             } else {
                 activityStatsTbody.innerHTML = activityStats.map(item => `
                     <tr>
-                        <td>${escapeHtml(item.label)}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${escapeHtml(item.value ?? '—')}</strong></td>
                     </tr>
                 `).join('');
@@ -738,7 +744,7 @@
             } else {
                 connectionTbody.innerHTML = connectionInfo.map(item => `
                     <tr>
-                        <td>${item.label}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${item.value ?? '—'}</strong></td>
                     </tr>
                 `).join('');
@@ -752,7 +758,7 @@
                     const formatted = formatDatabaseSize(item.size_bytes);
                     return `
                         <tr>
-                            <td>${item.label}</td>
+                            <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                             <td><strong>${formatted.value} ${formatted.unit}</strong></td>
                         </tr>
                     `;
@@ -765,7 +771,7 @@
             } else {
                 memoryTbody.innerHTML = memorySettings.map(item => `
                     <tr>
-                        <td>${item.label}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${item.value}</strong></td>
                     </tr>
                 `).join('');
@@ -777,7 +783,7 @@
             } else {
                 rolesTbody.innerHTML = roleCounts.map(item => `
                     <tr>
-                        <td>${item.label}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${item.count ?? 0}</strong></td>
                     </tr>
                 `).join('');
@@ -808,7 +814,7 @@
                         : (item.value ?? '—');
                     return `
                     <tr>
-                        <td>${item.label}</td>
+                        <td>${escapeHtml(translateInterfaceText(item.label))}</td>
                         <td><strong>${value}</strong></td>
                     </tr>
                 `;
