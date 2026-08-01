@@ -1,4 +1,5 @@
-{% load static %}
+{% load static i18n %}
+{% get_current_language as CURRENT_LANGUAGE %}
 <!-- ========== MAIN CONTENT ========== -->
 <div class="main-content" id="mainContent">
 
@@ -384,7 +385,7 @@
                     <div class="database-table-toolbar">
                         <div class="search-box">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="schemaSearchInput" placeholder="Поиск по схеме...">
+                            <input type="text" id="schemaSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema...{% else %}Поиск по схеме...{% endif %}">
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -455,7 +456,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="tableSearchInput" placeholder="Поиск по схеме или таблице...">
+                    <input type="text" id="tableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
                 </div>
             </div>
             <div class="card-body p-0">
@@ -533,7 +534,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="viewSearchInput" placeholder="Поиск по схеме или представлению...">
+                    <input type="text" id="viewSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or view...{% else %}Поиск по схеме или представлению...{% endif %}">
                 </div>
                 <div class="toolbar-filter">
                     <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
@@ -621,7 +622,7 @@
                     <div class="database-table-toolbar">
                         <div class="search-box search-box-wide">
                             <i class="fas fa-table"></i>
-                            <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="Выберите сохранённое подключение для загрузки таблиц" autocomplete="off">
+                            <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Select a saved connection to load tables{% else %}Выберите сохранённое подключение для загрузки таблиц{% endif %}" autocomplete="off">
                             <datalist id="distributionTableOptions"></datalist>
                         </div>
                         <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
@@ -724,7 +725,7 @@
                     <div class="database-table-toolbar">
                         <div class="search-box">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="tempTableSearchInput" placeholder="Поиск по схеме или таблице...">
+                            <input type="text" id="tempTableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -790,7 +791,7 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="activeQueriesUserFilter">
                     <span>Пользователь</span>
-                    <input id="activeQueriesUserFilter" class="form-control form-control-sm" type="text" placeholder="Все пользователи" autocomplete="off">
+                    <input id="activeQueriesUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="activeQueriesRefreshInterval">
                     <span>Обновление</span>
@@ -854,7 +855,7 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="activeSessionsUserFilter">
                     <span>Пользователь</span>
-                    <input id="activeSessionsUserFilter" class="form-control form-control-sm" type="text" placeholder="Все пользователи" autocomplete="off">
+                    <input id="activeSessionsUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="activeSessionsStateFilter">
                     <span>Состояние</span>
@@ -961,11 +962,11 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="blockingLocksBlockedUserFilter">
                     <span>Заблок. пользователь</span>
-                    <input id="blockingLocksBlockedUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="Все пользователи" autocomplete="off">
+                    <input id="blockingLocksBlockedUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="blockingLocksBlockerUserFilter">
                     <span>Блок. пользователь</span>
-                    <input id="blockingLocksBlockerUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="Все пользователи" autocomplete="off">
+                    <input id="blockingLocksBlockerUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="blockingLocksRefreshInterval">
                     <span>Обновление</span>
@@ -1021,7 +1022,7 @@
                     <div class="database-table-toolbar refresh-toolbar">
                         <label class="refresh-interval-control" for="idleTransactionsUserFilter">
                             <span>Пользователь</span>
-                            <input id="idleTransactionsUserFilter" class="form-control form-control-sm" type="text" placeholder="Все пользователи" autocomplete="off">
+                            <input id="idleTransactionsUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
                         </label>
                         <label class="refresh-interval-control" for="idleTransactionsRefreshInterval">
                             <span>Обновление</span>
@@ -1172,7 +1173,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="usersSearchInput" placeholder="Поиск по пользователю...">
+                    <input type="text" id="usersSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}">
                 </div>
             </div>
             <div class="role-visuals-grid" id="usersPrivilegeCharts">
@@ -1266,7 +1267,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="groupsSearchInput" placeholder="Поиск по группе...">
+                    <input type="text" id="groupsSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by group...{% else %}Поиск по группе...{% endif %}">
                 </div>
             </div>
             <div class="groups-visuals-grid" id="groupsPrivilegeCharts">
@@ -1347,7 +1348,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input id="maintenanceSearchInput" type="text" placeholder="Поиск по схеме или таблице...">
+                    <input id="maintenanceSearchInput" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
                 </div>
             </div>
             <div class="card-body p-0">
