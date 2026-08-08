@@ -620,10 +620,15 @@
                         <span class="card-meta" id="distributionTableCount">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">
-                        <div class="search-box search-box-wide">
-                            <i class="fas fa-table"></i>
-                            <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Select a saved connection to load tables{% else %}Выберите сохранённое подключение для загрузки таблиц{% endif %}" autocomplete="off">
-                            <datalist id="distributionTableOptions"></datalist>
+                        <div class="distribution-table-picker" id="distributionTablePicker">
+                            <div class="search-box search-box-wide distribution-table-picker-input">
+                                <i class="fas fa-search" aria-hidden="true"></i>
+                                <input id="distributionTableSelect" type="search" role="combobox" aria-autocomplete="list" aria-controls="distributionTableOptions" aria-expanded="false" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Select a saved connection to load tables{% else %}Выберите сохранённое подключение для загрузки таблиц{% endif %}" autocomplete="off">
+                                <button class="distribution-picker-toggle" id="distributionTableToggle" type="button" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Show table list{% else %}Показать список таблиц{% endif %}" tabindex="-1">
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="distribution-table-options" id="distributionTableOptions" role="listbox" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Database tables{% else %}Таблицы базы данных{% endif %}" hidden></div>
                         </div>
                         <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
                             <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}

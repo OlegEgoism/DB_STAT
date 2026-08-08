@@ -17,6 +17,8 @@
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
+    let selectedDistributionTable = null;
+    let distributionPickerActiveIndex = -1;
     let currentDistributionSegments = [];
     let currentDistributionTotalRows = 0;
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
@@ -2545,10 +2547,69 @@
         return `${table.schema_name}.${table.table_name}`;
     }
 
+    function closeDistributionTablePicker() {
+        const picker = document.getElementById('distributionTablePicker');
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        if (options) options.hidden = true;
+        if (select) select.setAttribute('aria-expanded', 'false');
+        picker?.classList.remove('is-open');
+        distributionPickerActiveIndex = -1;
+    }
+
+    function filteredDistributionTables(query = '') {
+        const normalizedQuery = query.trim().toLocaleLowerCase();
+        if (!normalizedQuery) return distributionTables;
+        return distributionTables.filter(table => {
+            const label = distributionTableOptionLabel(table).toLocaleLowerCase();
+            return label.includes(normalizedQuery)
+                || (table.schema_name || '').toLocaleLowerCase().includes(normalizedQuery)
+                || (table.table_name || '').toLocaleLowerCase().includes(normalizedQuery);
+        });
+    }
+
+    function openDistributionTablePicker(query = '') {
+        const picker = document.getElementById('distributionTablePicker');
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        if (!distributionTables.length || !select || !options) return;
+        renderDistributionPickerOptions(filteredDistributionTables(query));
+        options.hidden = false;
+        select.setAttribute('aria-expanded', 'true');
+        picker?.classList.add('is-open');
+    }
+
+    function renderDistributionPickerOptions(tables) {
+        const options = document.getElementById('distributionTableOptions');
+        if (!options) return;
+        distributionPickerActiveIndex = -1;
+        if (!tables.length) {
+            options.innerHTML = '<div class="distribution-table-options-empty">Таблицы не найдены</div>';
+            return;
+        }
+        options.innerHTML = tables.map((table, index) => {
+            const label = distributionTableOptionLabel(table);
+            const isSelected = selectedDistributionTable && distributionTableOptionLabel(selectedDistributionTable) === label;
+            return `<button class="distribution-table-option${isSelected ? ' is-selected' : ''}" type="button" role="option" aria-selected="${isSelected}" data-distribution-option-index="${index}" data-table-label="${escapeHtml(label)}">
+                <span class="distribution-table-option-name" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+                <span class="distribution-table-option-type">${escapeHtml(translateInterfaceText(table.object_type || 'Таблица'))}</span>
+            </button>`;
+        }).join('');
+    }
+
+    function selectDistributionTable(table) {
+        const select = document.getElementById('distributionTableSelect');
+        selectedDistributionTable = table || null;
+        if (select) select.value = table ? distributionTableOptionLabel(table) : '';
+        closeDistributionTablePicker();
+        refreshDistributionForSelectedTable();
+    }
+
     function refreshDistributionForSelectedTable() {
         const select = document.getElementById('distributionTableSelect');
         const selectedValue = (select?.value || '').trim();
-        const selectedTable = distributionTables.find(table => distributionTableOptionLabel(table) === selectedValue);
+        const selectedTable = distributionTables.find(table => distributionTableOptionLabel(table) === selectedValue)
+            || selectedDistributionTable;
         const requestId = ++distributionRequestId;
         if (!selectedTable) {
             renderDistributionWarning('Выберите таблицу для расчёта распределения');
@@ -2572,25 +2633,22 @@
 
     function renderDistributionTableOptions(tables) {
         const select = document.getElementById('distributionTableSelect');
-        const options = document.getElementById('distributionTableOptions');
         const count = document.getElementById('distributionTableCount');
         if (count) count.textContent = `${tables.length} таблиц`;
-        if (!select || !options) return;
+        if (!select) return;
         if (!tables.length) {
+            selectedDistributionTable = null;
             select.value = '';
             select.placeholder = 'Таблицы не найдены';
-            options.innerHTML = '';
+            closeDistributionTablePicker();
             renderDistributionWarning('Таблицы не найдены');
             return;
         }
-        options.innerHTML = tables.map(table => {
-            const label = distributionTableOptionLabel(table);
-            return `<option value="${escapeHtml(label)}" label="${escapeHtml(translateInterfaceText(table.object_type || 'Таблица'))}"></option>`;
-        }).join('');
         select.placeholder = 'Начните вводить схему или название таблицы';
-        if (!tables.some(table => distributionTableOptionLabel(table) === select.value)) {
-            select.value = distributionTableOptionLabel(tables[0]);
-        }
+        const previousLabel = selectedDistributionTable ? distributionTableOptionLabel(selectedDistributionTable) : select.value;
+        selectedDistributionTable = tables.find(table => distributionTableOptionLabel(table) === previousLabel) || tables[0];
+        select.value = distributionTableOptionLabel(selectedDistributionTable);
+        renderDistributionPickerOptions(tables);
         refreshDistributionForSelectedTable();
     }
 
@@ -2599,11 +2657,13 @@
         const options = document.getElementById('distributionTableOptions');
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             distributionTables = [];
+            selectedDistributionTable = null;
             if (select) {
                 select.value = '';
                 select.placeholder = 'Выберите сохранённое подключение для загрузки таблиц';
             }
             if (options) options.innerHTML = '';
+            closeDistributionTablePicker();
             renderDistributionWarning('Выберите сохранённое подключение для загрузки списка таблиц');
             return;
         }
@@ -2612,6 +2672,7 @@
             select.placeholder = 'Загрузка таблиц...';
         }
         if (options) options.innerHTML = '';
+        closeDistributionTablePicker();
         connectionRequest(distributionTablesApiUrl, {id: conn.id})
             .then(data => {
                 distributionTables = data.tables || [];
@@ -2619,6 +2680,7 @@
             })
             .catch(error => {
                 distributionTables = [];
+                selectedDistributionTable = null;
                 if (select) {
                     select.value = '';
                     select.placeholder = 'Не удалось загрузить таблицы';
@@ -2629,12 +2691,55 @@
     }
 
     function initDistributionControls() {
-        document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
-        document.getElementById('distributionTableSelect')?.addEventListener('keydown', function(event) {
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        select?.addEventListener('focus', function() {
+            this.select();
+            openDistributionTablePicker('');
+        });
+        select?.addEventListener('input', function() {
+            selectedDistributionTable = null;
+            openDistributionTablePicker(this.value);
+        });
+        select?.addEventListener('keydown', function(event) {
+            const optionButtons = [...(options?.querySelectorAll('.distribution-table-option') || [])];
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (options?.hidden) openDistributionTablePicker(this.value);
+                const visibleOptions = [...(options?.querySelectorAll('.distribution-table-option') || [])];
+                if (!visibleOptions.length) return;
+                distributionPickerActiveIndex = event.key === 'ArrowDown'
+                    ? Math.min(distributionPickerActiveIndex + 1, visibleOptions.length - 1)
+                    : Math.max(distributionPickerActiveIndex - 1, 0);
+                visibleOptions.forEach((option, index) => option.classList.toggle('is-active', index === distributionPickerActiveIndex));
+                visibleOptions[distributionPickerActiveIndex].scrollIntoView({block: 'nearest'});
+                return;
+            }
             if (event.key === 'Enter') {
                 event.preventDefault();
-                refreshDistributionForSelectedTable();
+                const activeOption = optionButtons[distributionPickerActiveIndex];
+                const label = activeOption?.dataset.tableLabel || this.value.trim();
+                const table = distributionTables.find(item => distributionTableOptionLabel(item) === label);
+                if (table) selectDistributionTable(table);
+                else refreshDistributionForSelectedTable();
+            } else if (event.key === 'Escape') {
+                closeDistributionTablePicker();
             }
+        });
+        options?.addEventListener('mousedown', event => event.preventDefault());
+        options?.addEventListener('click', function(event) {
+            const option = event.target.closest('.distribution-table-option');
+            if (!option) return;
+            const table = distributionTables.find(item => distributionTableOptionLabel(item) === option.dataset.tableLabel);
+            if (table) selectDistributionTable(table);
+        });
+        document.getElementById('distributionTableToggle')?.addEventListener('click', function() {
+            if (options?.hidden) openDistributionTablePicker('');
+            else closeDistributionTablePicker();
+            select?.focus();
+        });
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#distributionTablePicker')) closeDistributionTablePicker();
         });
         document.querySelectorAll('[data-distribution-sort]').forEach(button => {
             button.addEventListener('click', function () {
