@@ -1491,6 +1491,14 @@ body {
     margin-bottom: 0;
 }
 
+/* The table menu must be able to extend past the selector card and stay above
+   the metrics/chart row below it. The base glass-card clips its contents. */
+.distribution-picker-card {
+    position: relative;
+    z-index: 20;
+    overflow: visible;
+}
+
 .distribution-metrics-card .card-body,
 .distribution-chart-card .card-body {
     height: calc(100% - 57px);
