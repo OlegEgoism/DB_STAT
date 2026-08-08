@@ -34,6 +34,7 @@
         'Дата': 'Date', 'Действие': 'Action', 'Информация': 'Information', 'События аудита не найдены': 'No audit events found',
         'Страница 1 из 1': 'Page 1 of 1', 'Страница 1': 'Page 1', 'Все действия': 'All actions', 'Свернуть график': 'Collapse chart',
         'Развернуть график': 'Expand chart', 'Выберите таблицу': 'Select a table', 'Таблицы не найдены': 'No tables found',
+        'Показать список таблиц': 'Show table list', 'Таблицы базы данных': 'Database tables',
         'Пользователи не найдены': 'No users found', 'Группы не найдены': 'No groups found', 'Схемы не найдены': 'No schemas found',
         'Представления не найдены': 'No views found', 'Временные таблицы не найдены': 'No temporary tables found',
         'Транзакции не найдены': 'No transactions found', 'Блокировки не найдены': 'No locks found', 'Сессии не найдены': 'No sessions found',
