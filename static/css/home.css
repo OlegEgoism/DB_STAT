@@ -1431,6 +1431,20 @@ body {
     border-radius: 0.35rem;
 }
 
+.table th.favorite-column,
+.table td.favorite-column {
+    width: 48px;
+    min-width: 48px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.table th.favorite-column {
+    color: #9aa7b6;
+}
+
 .favorite-btn:hover, .favorite-btn:focus-visible, .favorite-btn.active {
     color: #f5b301;
     background: rgba(245, 179, 1, 0.12);

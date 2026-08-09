@@ -1602,7 +1602,7 @@
         usersState.totalCount = 0;
         updateUsersPrivilegeCharts([]);
         if (info) info.textContent = 'Страница 1 из 1';
-        renderRolesListWarning('usersTableBody', 'usersCount', 8, message);
+        renderRolesListWarning('usersTableBody', 'usersCount', 9, message);
         updateUsersPaginationButtons();
     }
 
@@ -1610,7 +1610,7 @@
         const tbody = document.getElementById(tbodyId);
         const count = document.getElementById(countId);
         const roles = data.roles || [];
-        const colspan = includeMembersCount ? 9 : 8;
+        const colspan = includeMembersCount ? 10 : 9;
         if (count) count.textContent = `${roles.length} записей`;
         if (!tbody) return;
         if (!roles.length) {
@@ -1619,7 +1619,8 @@
         }
         tbody.innerHTML = roles.map(role => `
             <tr>
-                <td>${favoriteButton(includeMembersCount ? 'group' : 'user', role.name, role.name)} <strong>${escapeHtml(role.name)}</strong></td>
+                <td class="favorite-column">${favoriteButton(includeMembersCount ? 'group' : 'user', role.name, role.name)}</td>
+                <td><strong>${escapeHtml(role.name)}</strong></td>
                 <td>${escapeHtml(role.superuser)}</td>
                 <td>${escapeHtml(role.createdb)}</td>
                 <td>${escapeHtml(role.createrole)}</td>
@@ -1713,11 +1714,11 @@
         const requestId = ++groupsRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             updateGroupsPrivilegeCharts([]);
-            renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Выберите сохранённое подключение для загрузки групп');
+            renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Выберите сохранённое подключение для загрузки групп');
             return;
         }
         updateGroupsPrivilegeCharts([]);
-        renderRolesListWarning('groupsTableBody', 'groupsCount', 9, 'Загрузка групп...');
+        renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Загрузка групп...');
         connectionRequest(groupsListApiUrl, {
             id: conn.id,
             search: groupsState.search,
@@ -1733,7 +1734,7 @@
             .catch(error => {
                 if (requestId !== groupsRequestId) return;
                 updateGroupsPrivilegeCharts([]);
-                renderRolesListWarning('groupsTableBody', 'groupsCount', 9, error.message || 'Не удалось получить список групп');
+                renderRolesListWarning('groupsTableBody', 'groupsCount', 10, error.message || 'Не удалось получить список групп');
             });
     }
 
@@ -2041,7 +2042,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateSchemaDistributionChart([]);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${message}</td></tr>`;
         }
         updateSchemaPaginationButtons();
     }
@@ -2080,13 +2081,14 @@
         if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
         if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
         if (!data.schemas?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Схемы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Схемы не найдены</td></tr>';
             updateSchemaPaginationButtons();
             return;
         }
         tbody.innerHTML = data.schemas.map(schema => `
             <tr>
-                <td>${favoriteButton('schema', schema.schema_name, schema.schema_name)} <strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
+                <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
+                <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
                 <td>${schema.schema_owner || '-'}</td>
                 <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
@@ -2225,7 +2227,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${message}</td></tr>`;
         updateTablePaginationButtons();
     }
 
@@ -2263,14 +2265,15 @@
         if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
         if (!data.tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Таблицы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Таблицы не найдены</td></tr>';
             updateTablePaginationButtons();
             return;
         }
         tbody.innerHTML = data.tables.map(table => `
             <tr>
+                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
                 <td>${table.schema_name || '-'}</td>
-                <td>${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)} <strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td>${table.table_owner || '-'}</td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.index_size || '-'}</td>
@@ -2372,7 +2375,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateViewsSummaryChart(null, []);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${message}</td></tr>`;
         updateViewPaginationButtons();
     }
 
@@ -2410,14 +2413,15 @@
         if (count) count.textContent = `${data.views?.length || 0} из ${viewsState.totalCount} представлений`;
         if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
         if (!data.views?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Представления не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Представления не найдены</td></tr>';
             updateViewPaginationButtons();
             return;
         }
         tbody.innerHTML = data.views.map(view => `
             <tr>
+                <td class="favorite-column">${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)}</td>
                 <td>${view.schema_name || '-'}</td>
-                <td>${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)} <strong>${escapeHtml(view.view_name || '-')}</strong></td>
+                <td><strong>${escapeHtml(view.view_name || '-')}</strong></td>
                 <td>${view.view_owner || '-'}</td>
                 <td>${view.view_type || '-'}</td>
                 <td>${view.view_size || '-'}</td>
