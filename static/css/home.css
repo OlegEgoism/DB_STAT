@@ -1422,6 +1422,22 @@ body {
     background: rgba(0, 0, 0, 0.02);
 }
 
+.favorite-btn {
+    border: 0;
+    background: transparent;
+    color: #9aa7b6;
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: 0.35rem;
+}
+
+.favorite-btn:hover, .favorite-btn:focus-visible, .favorite-btn.active {
+    color: #f5b301;
+    background: rgba(245, 179, 1, 0.12);
+}
+
+.favorite-btn:disabled { opacity: 0.55; cursor: wait; }
+
 .table .text-success {
     color: var(--accent-green) !important;
 }

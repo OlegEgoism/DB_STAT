@@ -67,6 +67,8 @@
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
+    const favoritesApiUrl = '/favorites/';
+    let favoriteKeys = new Set();
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -168,6 +170,50 @@
             .replace(/'/g, '&#039;');
     }
 
+    function favoriteId(type, key) { return `${type}:${key}`; }
+
+    function favoriteButton(type, key, label) {
+        const selected = favoriteKeys.has(favoriteId(type, key));
+        const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+        return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
+    }
+
+    function updateFavoriteButtons() {
+        document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
+            const selected = favoriteKeys.has(favoriteId(button.dataset.favoriteType, button.dataset.favoriteKey));
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+            button.querySelector('i').className = `${selected ? 'fas' : 'far'} fa-star`;
+        });
+    }
+
+    function loadFavorites(connectionId = activeConnectionId) {
+        if (!connectionId) return Promise.resolve();
+        return fetch(`${favoritesApiUrl}?id=${encodeURIComponent(connectionId)}`)
+            .then(response => response.ok ? response.json() : Promise.reject(new Error('Не удалось загрузить избранное')))
+            .then(data => {
+                if (String(connectionId) !== String(activeConnectionId)) return;
+                favoriteKeys = new Set((data.favorites || []).map(item => favoriteId(item.object_type, item.object_key)));
+                updateFavoriteButtons();
+            });
+    }
+
+    function initFavoriteControls() {
+        document.addEventListener('click', event => {
+            const button = event.target.closest('[data-favorite-type][data-favorite-key]');
+            if (!button || !activeConnectionId) return;
+            button.disabled = true;
+            connectionRequest(favoritesApiUrl, {id: activeConnectionId, object_type: button.dataset.favoriteType, object_key: button.dataset.favoriteKey})
+                .then(data => {
+                    const id = favoriteId(data.object_type, data.object_key);
+                    data.is_favorite ? favoriteKeys.add(id) : favoriteKeys.delete(id);
+                    updateFavoriteButtons();
+                })
+                .catch(error => window.alert(error.message))
+                .finally(() => { button.disabled = false; });
+        });
+    }
+
     // ============================
     // INIT
     // ============================
@@ -193,6 +239,7 @@
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
+        initFavoriteControls();
         initAuditControls();
         initSidebarSettings();
         initLogoutForm();
@@ -1572,7 +1619,7 @@
         }
         tbody.innerHTML = roles.map(role => `
             <tr>
-                <td><strong>${escapeHtml(role.name)}</strong></td>
+                <td>${favoriteButton(includeMembersCount ? 'group' : 'user', role.name, role.name)} <strong>${escapeHtml(role.name)}</strong></td>
                 <td>${escapeHtml(role.superuser)}</td>
                 <td>${escapeHtml(role.createdb)}</td>
                 <td>${escapeHtml(role.createrole)}</td>
@@ -2039,7 +2086,7 @@
         }
         tbody.innerHTML = data.schemas.map(schema => `
             <tr>
-                <td><strong>${schema.schema_name || '-'}</strong></td>
+                <td>${favoriteButton('schema', schema.schema_name, schema.schema_name)} <strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
                 <td>${schema.schema_owner || '-'}</td>
                 <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
@@ -2223,7 +2270,7 @@
         tbody.innerHTML = data.tables.map(table => `
             <tr>
                 <td>${table.schema_name || '-'}</td>
-                <td><strong>${table.table_name || '-'}</strong></td>
+                <td>${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)} <strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td>${table.table_owner || '-'}</td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.index_size || '-'}</td>
@@ -2370,7 +2417,7 @@
         tbody.innerHTML = data.views.map(view => `
             <tr>
                 <td>${view.schema_name || '-'}</td>
-                <td><strong>${view.view_name || '-'}</strong></td>
+                <td>${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)} <strong>${escapeHtml(view.view_name || '-')}</strong></td>
                 <td>${view.view_owner || '-'}</td>
                 <td>${view.view_type || '-'}</td>
                 <td>${view.view_size || '-'}</td>
@@ -3451,6 +3498,7 @@
     }
 
     function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        if (conn?.id) loadFavorites(conn.id).catch(() => {});
         refreshPageData(getCurrentActivePageId(), conn);
     }
 

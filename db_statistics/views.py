@@ -9,7 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.models import DBAudit, DBConnection, DBUser, UserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBUser, Favorite, UserSidebarSettings
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
@@ -211,6 +211,31 @@ def sidebar_settings(request):
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+
+
+@require_http_methods(["GET", "POST"])
+def favorites(request):
+    """Возвращает избранное пользователя или изменяет состояние одного объекта."""
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+
+    payload = request.GET if request.method == "GET" else _read_json_body(request)
+    connection_id = payload.get("id")
+    connection = _get_connection_for_request(request, connection_id)
+    queryset = Favorite.objects.filter(user=db_user, connection=connection)
+    if request.method == "GET":
+        return JsonResponse({"ok": True, "favorites": [{"object_type": item.object_type, "object_key": item.object_key} for item in queryset]})
+
+    object_type = str(payload.get("object_type") or "").strip()
+    object_key = str(payload.get("object_key") or "").strip()
+    valid_types = {value for value, _label in Favorite.OBJECT_TYPES}
+    if object_type not in valid_types or not object_key or len(object_key) > 512:
+        return JsonResponse({"ok": False, "message": "Некорректный объект избранного"}, status=400)
+    favorite, created = Favorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
+    if not created:
+        favorite.delete()
+    return JsonResponse({"ok": True, "is_favorite": created, "object_type": object_type, "object_key": object_key})
 
 
 @require_http_methods(["POST"])
