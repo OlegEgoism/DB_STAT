@@ -299,24 +299,6 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "favorite_connections",
-                    models.JSONField(
-                        blank=True,
-                        db_comment="Избранные подключения",
-                        default=list,
-                        verbose_name="Избранные подключения",
-                    ),
-                ),
-                (
-                    "favorite_tables",
-                    models.JSONField(
-                        blank=True,
-                        db_comment="Избранные таблицы",
-                        default=list,
-                        verbose_name="Избранные таблицы",
-                    ),
-                ),
-                (
                     "user",
                     models.OneToOneField(
                         db_comment="Пользователь",

@@ -71,6 +71,15 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
+If the database was created by a project version that did not include migration
+files, mark the initial migration as applied and then apply the favorites migration:
+
+```bash
+python manage.py migrate --fake-initial
+```
+
+Run this command after updating the project and before starting the server.
+
 - Create a superuser for Django Admin access
 
 ```bash
