@@ -64,12 +64,13 @@ STATIC_URL=static/
 pip install -r requirements.txt
 ```
 
-- Create and apply migrations
+- Apply migrations (also run this command after updating the project)
 
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
+
+In particular, this creates the `db_favorite` table required by favorites. The migration supports both new databases and existing databases whose tables were previously created with `run-syncdb`.
 
 - Create a superuser for Django Admin access
 

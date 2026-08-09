@@ -4,6 +4,36 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+class CreateModelIfMissing(migrations.CreateModel):
+    """Создаёт таблицу, не ломая базы, ранее созданные через ``run-syncdb``."""
+
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        table = to_state.apps.get_model(app_label, self.name)._meta.db_table
+        if table not in schema_editor.connection.introspection.table_names():
+            super().database_forwards(app_label, schema_editor, from_state, to_state)
+
+
+class AddFieldIfMissing(migrations.AddField):
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        model = to_state.apps.get_model(app_label, self.model_name)
+        with schema_editor.connection.cursor() as cursor:
+            columns = {column.name for column in schema_editor.connection.introspection.get_table_description(cursor, model._meta.db_table)}
+        if model._meta.get_field(self.name).column not in columns:
+            super().database_forwards(app_label, schema_editor, from_state, to_state)
+
+
+class AlterUniqueTogetherIfMissing(migrations.AlterUniqueTogether):
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        model = to_state.apps.get_model(app_label, self.name)
+        expected = {tuple(item) for item in self.unique_together}
+        with schema_editor.connection.cursor() as cursor:
+            constraints = schema_editor.connection.introspection.get_constraints(cursor, model._meta.db_table)
+        existing = {tuple(data["columns"]) for data in constraints.values() if data.get("unique")}
+        expected_columns = {tuple(model._meta.get_field(field).column for field in item) for item in expected}
+        if not expected_columns.issubset(existing):
+            super().database_forwards(app_label, schema_editor, from_state, to_state)
+
+
 class Migration(migrations.Migration):
 
     initial = True
@@ -11,7 +41,7 @@ class Migration(migrations.Migration):
     dependencies = []
 
     operations = [
-        migrations.CreateModel(
+        CreateModelIfMissing(
             name="DBAudit",
             fields=[
                 (
@@ -69,7 +99,7 @@ class Migration(migrations.Migration):
                 "ordering": ("-created",),
             },
         ),
-        migrations.CreateModel(
+        CreateModelIfMissing(
             name="DBConnection",
             fields=[
                 (
@@ -164,7 +194,7 @@ class Migration(migrations.Migration):
                 "db_table_comment": "Подключение",
             },
         ),
-        migrations.CreateModel(
+        CreateModelIfMissing(
             name="DBUser",
             fields=[
                 (
@@ -248,7 +278,7 @@ class Migration(migrations.Migration):
                 "ordering": ["login"],
             },
         ),
-        migrations.AddField(
+        AddFieldIfMissing(
             model_name="dbconnection",
             name="created_user",
             field=models.ForeignKey(
@@ -261,7 +291,7 @@ class Migration(migrations.Migration):
                 verbose_name="Создатель подключения",
             ),
         ),
-        migrations.CreateModel(
+        CreateModelIfMissing(
             name="UserSidebarSettings",
             fields=[
                 (
@@ -316,11 +346,11 @@ class Migration(migrations.Migration):
                 "db_table_comment": "Настройки сайдбара пользователя",
             },
         ),
-        migrations.AlterUniqueTogether(
+        AlterUniqueTogetherIfMissing(
             name="dbconnection",
             unique_together={("name", "host", "port", "database", "username")},
         ),
-        migrations.CreateModel(
+        CreateModelIfMissing(
             name="Favorite",
             fields=[
                 (
