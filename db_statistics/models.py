@@ -97,6 +97,7 @@ class UserSidebarSettings(DateStamp):
     user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="sidebar_settings", on_delete=models.CASCADE)
     visible_tabs = models.JSONField(**vn("Видимые вкладки"), default=list, blank=True)
     favorite_connections = models.JSONField(**vn("Избранные подключения"), default=list, blank=True)
+    favorite_schemas = models.JSONField(**vn("Избранные схемы"), default=list, blank=True)
     favorite_tables = models.JSONField(**vn("Избранные таблицы"), default=list, blank=True)
 
     class Meta:

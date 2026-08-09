@@ -41,6 +41,7 @@
     let auditActionsLoaded = false;
     let auditState = {page: 1, pageSize: 100, totalCount: 0};
     let favoriteConnectionIds = new Set();
+    let favoriteSchemaKeys = new Set();
     let favoriteTableKeys = new Set();
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
@@ -144,8 +145,13 @@
         return `${connectionId}\u0000${schemaName}\u0000${tableName}`;
     }
 
+    function favoriteSchemaKey(connectionId, schemaName) {
+        return `${connectionId}\u0000${schemaName}`;
+    }
+
     function applyFavorites(data) {
         favoriteConnectionIds = new Set((data.favorite_connections || []).map(String));
+        favoriteSchemaKeys = new Set((data.favorite_schemas || []).map(item => favoriteSchemaKey(String(item.connection_id), item.schema_name)));
         favoriteTableKeys = new Set((data.favorite_tables || []).map(item => favoriteTableKey(String(item.connection_id), item.schema_name, item.table_name)));
     }
 
@@ -176,6 +182,14 @@
         const enabled = !favoriteTableKeys.has(key);
         saveFavorite({kind: 'table', connection_id: activeConnectionId, schema_name: schemaName, table_name: tableName, enabled})
             .then(() => refreshTableSizesForConnection())
+            .catch(error => showToast(`❌ ${error.message}`));
+    }
+
+    function toggleFavoriteSchema(schemaName) {
+        const key = favoriteSchemaKey(String(activeConnectionId), schemaName);
+        const enabled = !favoriteSchemaKeys.has(key);
+        saveFavorite({kind: 'schema', connection_id: activeConnectionId, schema_name: schemaName, enabled})
+            .then(() => refreshSchemaSizesForConnection())
             .catch(error => showToast(`❌ ${error.message}`));
     }
 
@@ -2036,7 +2050,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateSchemaDistributionChart([]);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${message}</td></tr>`;
         }
         updateSchemaPaginationButtons();
     }
@@ -2075,14 +2089,15 @@
         if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
         if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
         if (!data.schemas?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Схемы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Схемы не найдены</td></tr>';
             updateSchemaPaginationButtons();
             return;
         }
         tbody.innerHTML = data.schemas.map(schema => `
             <tr>
-                <td><strong>${schema.schema_name || '-'}</strong></td>
-                <td>${schema.schema_owner || '-'}</td>
+                <td class="favorite-column"><button class="favorite-star ${favoriteSchemaKeys.has(favoriteSchemaKey(String(activeConnectionId), schema.schema_name)) ? 'active' : ''}" type="button" data-favorite-schema="${escapeHtml(schema.schema_name)}" title="Избранная схема" aria-label="Переключить избранную схему"><i class="${favoriteSchemaKeys.has(favoriteSchemaKey(String(activeConnectionId), schema.schema_name)) ? 'fas' : 'far'} fa-star"></i></button></td>
+                <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
+                <td>${escapeHtml(schema.schema_owner || '-')}</td>
                 <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
             </tr>
@@ -2092,6 +2107,10 @@
 
     function initSchemaSizesControls() {
         let searchTimer = null;
+        document.getElementById('schemaSizesTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-favorite-schema]');
+            if (button) toggleFavoriteSchema(button.dataset.favoriteSchema);
+        });
         document.getElementById('schemaSearchInput')?.addEventListener('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
