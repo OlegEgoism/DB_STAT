@@ -9,10 +9,10 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
-    let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
-    let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let tableSizesRequestId = 0;
-    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: ''};
+    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
@@ -33,9 +33,9 @@
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
-    let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: ''};
+    let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
-    let groupsState = {sort: 'name', direction: 'asc', search: ''};
+    let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
@@ -208,6 +208,9 @@
                     const id = favoriteId(data.object_type, data.object_key);
                     data.is_favorite ? favoriteKeys.add(id) : favoriteKeys.delete(id);
                     updateFavoriteButtons();
+                    if ([schemaSizesState, tableSizesState, viewsState, usersState, groupsState].some(state => state.favoritesOnly)) {
+                        refreshActivePageForConnection();
+                    }
                 })
                 .catch(error => window.alert(error.message))
                 .finally(() => { button.disabled = false; });
@@ -1660,7 +1663,8 @@
             page: usersState.page,
             search: usersState.search,
             sort: usersState.sort,
-            direction: usersState.direction
+            direction: usersState.direction,
+            favorites_only: usersState.favoritesOnly
         })
             .then(data => {
                 if (requestId === usersRequestId) renderUsers(data);
@@ -1706,6 +1710,7 @@
                 refreshUsersForConnection();
             }
         });
+        document.getElementById('usersFavoritesFilter')?.addEventListener('change', function () { usersState.favoritesOnly = this.value === 'favorites'; usersState.page = 1; refreshUsersForConnection(); });
         updateUsersSortIndicators();
         updateUsersPaginationButtons();
     }
@@ -1723,7 +1728,8 @@
             id: conn.id,
             search: groupsState.search,
             sort: groupsState.sort,
-            direction: groupsState.direction
+            direction: groupsState.direction,
+            favorites_only: groupsState.favoritesOnly
         })
             .then(data => {
                 if (requestId !== groupsRequestId) return;
@@ -1759,6 +1765,7 @@
                 refreshGroupsForConnection();
             });
         });
+        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; refreshGroupsForConnection(); });
         updateGroupsSortIndicators();
     }
 
@@ -2133,6 +2140,7 @@
                 refreshSchemaSizesForConnection();
             }
         });
+        document.getElementById('schemaFavoritesFilter')?.addEventListener('change', function () { schemaSizesState.favoritesOnly = this.value === 'favorites'; schemaSizesState.page = 1; refreshSchemaSizesForConnection(); });
         updateSchemaSortIndicators();
         updateSchemaPaginationButtons();
     }
@@ -2149,7 +2157,8 @@
             page: schemaSizesState.page,
             search: schemaSizesState.search,
             sort: schemaSizesState.sort,
-            direction: schemaSizesState.direction
+            direction: schemaSizesState.direction,
+            favorites_only: schemaSizesState.favoritesOnly
         })
             .then(data => renderSchemaSizes(data))
             .catch(error => {
@@ -2296,7 +2305,8 @@
             page: tableSizesState.page,
             search: tableSizesState.search,
             sort: tableSizesState.sort,
-            direction: tableSizesState.direction
+            direction: tableSizesState.direction,
+            favorites_only: tableSizesState.favoritesOnly
         })
             .then(data => {
                 if (requestId === tableSizesRequestId) renderTableSizes(data);
@@ -2344,6 +2354,7 @@
                 refreshTableSizesForConnection();
             }
         });
+        document.getElementById('tableFavoritesFilter')?.addEventListener('change', function () { tableSizesState.favoritesOnly = this.value === 'favorites'; tableSizesState.page = 1; refreshTableSizesForConnection(); });
         updateTableSortIndicators();
         updateTablePaginationButtons();
     }
@@ -2445,7 +2456,8 @@
             search: viewsState.search,
             view_type: viewsState.viewType,
             sort: viewsState.sort,
-            direction: viewsState.direction
+            direction: viewsState.direction,
+            favorites_only: viewsState.favoritesOnly
         })
             .then(data => {
                 if (requestId === viewsRequestId) renderViews(data);
@@ -2498,6 +2510,7 @@
                 refreshViewsForConnection();
             }
         });
+        document.getElementById('viewFavoritesFilter')?.addEventListener('change', function () { viewsState.favoritesOnly = this.value === 'favorites'; viewsState.page = 1; refreshViewsForConnection(); });
         updateViewSortIndicators();
         updateViewPaginationButtons();
     }

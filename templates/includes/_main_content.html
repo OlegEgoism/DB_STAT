@@ -387,6 +387,7 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="schemaSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema...{% else %}Поиск по схеме...{% endif %}">
                         </div>
+                        <div class="toolbar-filter"><select id="schemaFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
                     </div>
                     <div class="card-body p-0">
                         <div class="schema-distribution-chart" id="schemaDistributionChart" aria-live="polite">
@@ -459,6 +460,7 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="tableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
                 </div>
+                <div class="toolbar-filter"><select id="tableFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
             </div>
             <div class="card-body p-0">
                 <div class="schema-distribution-chart" id="tableDistributionChart" aria-live="polite">
@@ -545,6 +547,7 @@
                         <option value="materialized">{% if CURRENT_LANGUAGE == 'en' %}Materialized{% else %}Материализованное{% endif %}</option>
                     </select>
                 </div>
+                <div class="toolbar-filter"><select id="viewFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
             </div>
             <div class="role-visuals-grid" id="viewsSummaryChart" aria-live="polite">
                 <div class="role-visual-card">
@@ -1183,6 +1186,7 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="usersSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}">
                 </div>
+                <div class="toolbar-filter"><select id="usersFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
             </div>
             <div class="role-visuals-grid" id="usersPrivilegeCharts">
                 <div class="role-visual-card">
@@ -1278,6 +1282,7 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="groupsSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by group...{% else %}Поиск по группе...{% endif %}">
                 </div>
+                <div class="toolbar-filter"><select id="groupsFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
             </div>
             <div class="groups-visuals-grid" id="groupsPrivilegeCharts">
                 <div class="groups-visual-card groups-members-card">
