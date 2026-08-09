@@ -17,11 +17,14 @@
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
+    let selectedDistributionTable = null;
+    let distributionPickerActiveIndex = -1;
     let currentDistributionSegments = [];
     let currentDistributionTotalRows = 0;
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
+    let queryPlanRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
     let activeSessionsRequestId = 0;
     let activeSessionsState = {sort: 'session_duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', state: ''};
@@ -55,6 +58,7 @@
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
+    const queryPlanApiUrl = '/queries/plan/';
     const activeSessionsApiUrl = '/sessions/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
@@ -76,6 +80,7 @@
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
         'queries': 'Активные запросы <small>Долгие запросы</small>',
+        'query-plan': 'План запроса <small>EXPLAIN без выполнения</small>',
         'sessions': 'Сессии <small>Пользователи и подключения</small>',
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
         'transactions': 'Транзакции <small>Commit / Rollback</small>',
@@ -109,8 +114,8 @@
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
         const preferredPages = isPostgreSQLConnection(conn)
-            ? ['database-overview', 'databases', 'tables', 'views', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+            ? ['database-overview', 'databases', 'tables', 'views', 'temp-tables', 'queries', 'query-plan', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'temp-tables', 'distribution', 'queries', 'query-plan', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -185,6 +190,7 @@
         initTempTablesControls();
         initDistributionControls();
         initActiveQueriesControls();
+        initQueryPlanControls();
         initActiveSessionsControls();
         initBlockingLocksControls();
         initIdleTransactionsControls();
@@ -836,6 +842,109 @@
         connectionRequest(databaseOverviewApiUrl, {id: conn.id})
             .then(data => renderDatabaseOverview(data))
             .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+    }
+
+
+    function flattenQueryPlan(node, depth = 0, rows = []) {
+        if (!node || typeof node !== 'object') return rows;
+        rows.push({node, depth});
+        (node.Plans || []).forEach(child => flattenQueryPlan(child, depth + 1, rows));
+        return rows;
+    }
+
+    function queryPlanNodeDetails(node) {
+        const relation = [node['Schema'], node['Relation Name']].filter(Boolean).join('.');
+        const indexName = node['Index Name'];
+        const condition = node['Filter'] || node['Index Cond'] || node['Hash Cond'] || node['Join Filter'] || node['Merge Cond'];
+        return [
+            relation ? `Объект: ${relation}` : '',
+            indexName ? `Индекс: ${indexName}` : '',
+            condition ? `Условие: ${condition}` : ''
+        ].filter(Boolean).join(' · ');
+    }
+
+    function renderQueryPlan(data) {
+        const result = document.getElementById('queryPlanResult');
+        const count = document.getElementById('queryPlanNodeCount');
+        const summary = document.getElementById('queryPlanSummary');
+        if (!result) return;
+        const nodes = flattenQueryPlan(data.plan);
+        if (count) count.textContent = `${nodes.length} операций`;
+        if (summary) summary.hidden = false;
+        document.getElementById('queryPlanRootNode').textContent = data.summary?.node_type ?? '—';
+        document.getElementById('queryPlanTotalCost').textContent = data.summary?.total_cost ?? '—';
+        document.getElementById('queryPlanRows').textContent = data.summary?.plan_rows != null ? formatRowCount(data.summary.plan_rows) : '—';
+        document.getElementById('queryPlanWidth').textContent = data.summary?.plan_width != null ? `${data.summary.plan_width} Б` : '—';
+        result.innerHTML = `<div class="query-plan-tree">${nodes.map(({node, depth}, index) => {
+            const details = queryPlanNodeDetails(node);
+            const cost = `${node['Startup Cost'] ?? 0}…${node['Total Cost'] ?? 0}`;
+            return `<div class="query-plan-node" style="--plan-depth:${depth}">
+                <div class="query-plan-node-line" aria-hidden="true"></div>
+                <span class="query-plan-node-number">${index + 1}</span>
+                <div class="query-plan-node-content">
+                    <strong>${escapeHtml(node['Node Type'] || 'Операция')}</strong>
+                    ${details ? `<span title="${escapeHtml(details)}">${escapeHtml(details)}</span>` : ''}
+                </div>
+                <div class="query-plan-node-metrics">
+                    <span title="Стоимость">cost ${escapeHtml(cost)}</span>
+                    <span title="Оценка строк">rows ${formatRowCount(node['Plan Rows'])}</span>
+                </div>
+            </div>`;
+        }).join('')}</div>`;
+    }
+
+    function renderQueryPlanMessage(message, isError = false) {
+        const result = document.getElementById('queryPlanResult');
+        const count = document.getElementById('queryPlanNodeCount');
+        const summary = document.getElementById('queryPlanSummary');
+        if (count) count.textContent = 'Нет данных';
+        if (summary) summary.hidden = true;
+        if (result) result.innerHTML = `<div class="query-plan-empty${isError ? ' is-error' : ''}">${escapeHtml(message)}</div>`;
+    }
+
+    function buildQueryPlan() {
+        const query = document.getElementById('queryPlanSql')?.value.trim() || '';
+        const button = document.getElementById('queryPlanBuildBtn');
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
+        const requestId = ++queryPlanRequestId;
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderQueryPlanMessage('Выберите сохранённое подключение для построения плана', true);
+            return;
+        }
+        if (!query) {
+            renderQueryPlanMessage('Введите SQL-запрос', true);
+            document.getElementById('queryPlanSql')?.focus();
+            return;
+        }
+        if (button) button.disabled = true;
+        renderQueryPlanMessage('Построение плана запроса...');
+        connectionRequest(queryPlanApiUrl, {id: conn.id, query})
+            .then(data => {
+                if (requestId === queryPlanRequestId) renderQueryPlan(data);
+            })
+            .catch(error => {
+                if (requestId === queryPlanRequestId) renderQueryPlanMessage(error.message || 'Не удалось построить план запроса', true);
+            })
+            .finally(() => {
+                if (requestId === queryPlanRequestId && button) button.disabled = false;
+            });
+    }
+
+    function initQueryPlanControls() {
+        document.getElementById('queryPlanBuildBtn')?.addEventListener('click', buildQueryPlan);
+        document.getElementById('queryPlanSql')?.addEventListener('keydown', event => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                buildQueryPlan();
+            }
+        });
+    }
+
+    function refreshQueryPlanForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        queryPlanRequestId += 1;
+        const button = document.getElementById('queryPlanBuildBtn');
+        if (button) button.disabled = !conn || !/^\d+$/.test(String(conn.id));
+        renderQueryPlanMessage(conn ? 'Введите запрос и постройте его план' : 'Выберите сохранённое подключение для построения плана');
     }
 
 
@@ -2545,10 +2654,69 @@
         return `${table.schema_name}.${table.table_name}`;
     }
 
+    function closeDistributionTablePicker() {
+        const picker = document.getElementById('distributionTablePicker');
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        if (options) options.hidden = true;
+        if (select) select.setAttribute('aria-expanded', 'false');
+        picker?.classList.remove('is-open');
+        distributionPickerActiveIndex = -1;
+    }
+
+    function filteredDistributionTables(query = '') {
+        const normalizedQuery = query.trim().toLocaleLowerCase();
+        if (!normalizedQuery) return distributionTables;
+        return distributionTables.filter(table => {
+            const label = distributionTableOptionLabel(table).toLocaleLowerCase();
+            return label.includes(normalizedQuery)
+                || (table.schema_name || '').toLocaleLowerCase().includes(normalizedQuery)
+                || (table.table_name || '').toLocaleLowerCase().includes(normalizedQuery);
+        });
+    }
+
+    function openDistributionTablePicker(query = '') {
+        const picker = document.getElementById('distributionTablePicker');
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        if (!distributionTables.length || !select || !options) return;
+        renderDistributionPickerOptions(filteredDistributionTables(query));
+        options.hidden = false;
+        select.setAttribute('aria-expanded', 'true');
+        picker?.classList.add('is-open');
+    }
+
+    function renderDistributionPickerOptions(tables) {
+        const options = document.getElementById('distributionTableOptions');
+        if (!options) return;
+        distributionPickerActiveIndex = -1;
+        if (!tables.length) {
+            options.innerHTML = '<div class="distribution-table-options-empty">Таблицы не найдены</div>';
+            return;
+        }
+        options.innerHTML = tables.map((table, index) => {
+            const label = distributionTableOptionLabel(table);
+            const isSelected = selectedDistributionTable && distributionTableOptionLabel(selectedDistributionTable) === label;
+            return `<button class="distribution-table-option${isSelected ? ' is-selected' : ''}" type="button" role="option" aria-selected="${isSelected}" data-distribution-option-index="${index}" data-table-label="${escapeHtml(label)}">
+                <span class="distribution-table-option-name" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
+                <span class="distribution-table-option-type">${escapeHtml(translateInterfaceText(table.object_type || 'Таблица'))}</span>
+            </button>`;
+        }).join('');
+    }
+
+    function selectDistributionTable(table) {
+        const select = document.getElementById('distributionTableSelect');
+        selectedDistributionTable = table || null;
+        if (select) select.value = table ? distributionTableOptionLabel(table) : '';
+        closeDistributionTablePicker();
+        refreshDistributionForSelectedTable();
+    }
+
     function refreshDistributionForSelectedTable() {
         const select = document.getElementById('distributionTableSelect');
         const selectedValue = (select?.value || '').trim();
-        const selectedTable = distributionTables.find(table => distributionTableOptionLabel(table) === selectedValue);
+        const selectedTable = distributionTables.find(table => distributionTableOptionLabel(table) === selectedValue)
+            || selectedDistributionTable;
         const requestId = ++distributionRequestId;
         if (!selectedTable) {
             renderDistributionWarning('Выберите таблицу для расчёта распределения');
@@ -2572,25 +2740,22 @@
 
     function renderDistributionTableOptions(tables) {
         const select = document.getElementById('distributionTableSelect');
-        const options = document.getElementById('distributionTableOptions');
         const count = document.getElementById('distributionTableCount');
         if (count) count.textContent = `${tables.length} таблиц`;
-        if (!select || !options) return;
+        if (!select) return;
         if (!tables.length) {
+            selectedDistributionTable = null;
             select.value = '';
             select.placeholder = 'Таблицы не найдены';
-            options.innerHTML = '';
+            closeDistributionTablePicker();
             renderDistributionWarning('Таблицы не найдены');
             return;
         }
-        options.innerHTML = tables.map(table => {
-            const label = distributionTableOptionLabel(table);
-            return `<option value="${escapeHtml(label)}" label="${escapeHtml(translateInterfaceText(table.object_type || 'Таблица'))}"></option>`;
-        }).join('');
         select.placeholder = 'Начните вводить схему или название таблицы';
-        if (!tables.some(table => distributionTableOptionLabel(table) === select.value)) {
-            select.value = distributionTableOptionLabel(tables[0]);
-        }
+        const previousLabel = selectedDistributionTable ? distributionTableOptionLabel(selectedDistributionTable) : select.value;
+        selectedDistributionTable = tables.find(table => distributionTableOptionLabel(table) === previousLabel) || tables[0];
+        select.value = distributionTableOptionLabel(selectedDistributionTable);
+        renderDistributionPickerOptions(tables);
         refreshDistributionForSelectedTable();
     }
 
@@ -2599,11 +2764,13 @@
         const options = document.getElementById('distributionTableOptions');
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             distributionTables = [];
+            selectedDistributionTable = null;
             if (select) {
                 select.value = '';
                 select.placeholder = 'Выберите сохранённое подключение для загрузки таблиц';
             }
             if (options) options.innerHTML = '';
+            closeDistributionTablePicker();
             renderDistributionWarning('Выберите сохранённое подключение для загрузки списка таблиц');
             return;
         }
@@ -2612,6 +2779,7 @@
             select.placeholder = 'Загрузка таблиц...';
         }
         if (options) options.innerHTML = '';
+        closeDistributionTablePicker();
         connectionRequest(distributionTablesApiUrl, {id: conn.id})
             .then(data => {
                 distributionTables = data.tables || [];
@@ -2619,6 +2787,7 @@
             })
             .catch(error => {
                 distributionTables = [];
+                selectedDistributionTable = null;
                 if (select) {
                     select.value = '';
                     select.placeholder = 'Не удалось загрузить таблицы';
@@ -2629,12 +2798,55 @@
     }
 
     function initDistributionControls() {
-        document.getElementById('distributionTableSelect')?.addEventListener('change', refreshDistributionForSelectedTable);
-        document.getElementById('distributionTableSelect')?.addEventListener('keydown', function(event) {
+        const select = document.getElementById('distributionTableSelect');
+        const options = document.getElementById('distributionTableOptions');
+        select?.addEventListener('focus', function() {
+            this.select();
+            openDistributionTablePicker('');
+        });
+        select?.addEventListener('input', function() {
+            selectedDistributionTable = null;
+            openDistributionTablePicker(this.value);
+        });
+        select?.addEventListener('keydown', function(event) {
+            const optionButtons = [...(options?.querySelectorAll('.distribution-table-option') || [])];
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (options?.hidden) openDistributionTablePicker(this.value);
+                const visibleOptions = [...(options?.querySelectorAll('.distribution-table-option') || [])];
+                if (!visibleOptions.length) return;
+                distributionPickerActiveIndex = event.key === 'ArrowDown'
+                    ? Math.min(distributionPickerActiveIndex + 1, visibleOptions.length - 1)
+                    : Math.max(distributionPickerActiveIndex - 1, 0);
+                visibleOptions.forEach((option, index) => option.classList.toggle('is-active', index === distributionPickerActiveIndex));
+                visibleOptions[distributionPickerActiveIndex].scrollIntoView({block: 'nearest'});
+                return;
+            }
             if (event.key === 'Enter') {
                 event.preventDefault();
-                refreshDistributionForSelectedTable();
+                const activeOption = optionButtons[distributionPickerActiveIndex];
+                const label = activeOption?.dataset.tableLabel || this.value.trim();
+                const table = distributionTables.find(item => distributionTableOptionLabel(item) === label);
+                if (table) selectDistributionTable(table);
+                else refreshDistributionForSelectedTable();
+            } else if (event.key === 'Escape') {
+                closeDistributionTablePicker();
             }
+        });
+        options?.addEventListener('mousedown', event => event.preventDefault());
+        options?.addEventListener('click', function(event) {
+            const option = event.target.closest('.distribution-table-option');
+            if (!option) return;
+            const table = distributionTables.find(item => distributionTableOptionLabel(item) === option.dataset.tableLabel);
+            if (table) selectDistributionTable(table);
+        });
+        document.getElementById('distributionTableToggle')?.addEventListener('click', function() {
+            if (options?.hidden) openDistributionTablePicker('');
+            else closeDistributionTablePicker();
+            select?.focus();
+        });
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('#distributionTablePicker')) closeDistributionTablePicker();
         });
         document.querySelectorAll('[data-distribution-sort]').forEach(button => {
             button.addEventListener('click', function () {
@@ -3318,6 +3530,9 @@
         if (pageId === 'queries') {
             refreshActiveQueriesForConnection(conn);
         }
+        if (pageId === 'query-plan') {
+            refreshQueryPlanForConnection(conn);
+        }
         if (pageId === 'sessions') {
             refreshActiveSessionsForConnection(conn);
         }
@@ -3616,6 +3831,9 @@
         }
         if (document.getElementById('page-queries')?.classList.contains('active')) {
             refreshActiveQueriesForConnection();
+        }
+        if (document.getElementById('page-query-plan')?.classList.contains('active')) {
+            refreshQueryPlanForConnection();
         }
         if (document.getElementById('page-locks')?.classList.contains('active')) {
             refreshBlockingLocksForConnection();

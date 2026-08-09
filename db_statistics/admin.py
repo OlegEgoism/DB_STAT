@@ -11,6 +11,7 @@ SIDEBAR_TAB_LABELS = {
     "temp-tables": "Временные таблицы",
     "distribution": "Распределение",
     "queries": "Запросы",
+    "query-plan": "План запроса",
     "sessions": "Сессии",
     "locks": "Блокировки",
     "transactions": "Транзакции",

@@ -614,16 +614,21 @@
     <div class="page" id="page-distribution">
         <div class="row g-3">
             <div class="col-12">
-                <div class="glass-card distribution-analysis-card distribution-metrics-card">
+                <div class="glass-card distribution-analysis-card distribution-metrics-card distribution-picker-card">
                     <div class="card-header">
                         <span><i class="fas fa-arrows-alt-h"></i> Выбор таблицы для анализа распределения</span>
                         <span class="card-meta" id="distributionTableCount">Нет данных</span>
                     </div>
                     <div class="database-table-toolbar">
-                        <div class="search-box search-box-wide">
-                            <i class="fas fa-table"></i>
-                            <input id="distributionTableSelect" class="form-control form-control-sm" list="distributionTableOptions" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Select a saved connection to load tables{% else %}Выберите сохранённое подключение для загрузки таблиц{% endif %}" autocomplete="off">
-                            <datalist id="distributionTableOptions"></datalist>
+                        <div class="distribution-table-picker" id="distributionTablePicker">
+                            <div class="search-box search-box-wide distribution-table-picker-input">
+                                <i class="fas fa-search" aria-hidden="true"></i>
+                                <input id="distributionTableSelect" type="search" role="combobox" aria-autocomplete="list" aria-controls="distributionTableOptions" aria-expanded="false" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Select a saved connection to load tables{% else %}Выберите сохранённое подключение для загрузки таблиц{% endif %}" autocomplete="off">
+                                <button class="distribution-picker-toggle" id="distributionTableToggle" type="button" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Show table list{% else %}Показать список таблиц{% endif %}" tabindex="-1">
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                            <div class="distribution-table-options" id="distributionTableOptions" role="listbox" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Database tables{% else %}Таблицы базы данных{% endif %}" hidden></div>
                         </div>
                         <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
                             <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
@@ -839,6 +844,43 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: QUERY PLAN -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-query-plan">
+        <div class="glass-card query-plan-editor-card">
+            <div class="card-header">
+                <span><i class="fas fa-project-diagram"></i> План запроса</span>
+                <span class="card-meta">EXPLAIN · {% if CURRENT_LANGUAGE == 'en' %}without execution{% else %}без выполнения{% endif %}</span>
+            </div>
+            <div class="card-body">
+                <label class="query-plan-label" for="queryPlanSql">SQL</label>
+                <textarea id="queryPlanSql" class="query-plan-sql" rows="8" spellcheck="false" placeholder="SELECT * FROM public.table_name WHERE id = 1"></textarea>
+                <div class="query-plan-actions">
+                    <span class="query-plan-hint"><i class="fas fa-shield-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Only one SELECT or WITH ... SELECT statement is allowed. The query is not executed.{% else %}Разрешён один запрос SELECT или WITH ... SELECT. Запрос не выполняется.{% endif %}</span>
+                    <button class="btn-conn primary" type="button" id="queryPlanBuildBtn">
+                        <i class="fas fa-play"></i> {% if CURRENT_LANGUAGE == 'en' %}Build plan{% else %}Построить план{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="query-plan-summary" id="queryPlanSummary" hidden>
+            <div class="metric-card"><span>{% if CURRENT_LANGUAGE == 'en' %}Root operation{% else %}Корневая операция{% endif %}</span><strong id="queryPlanRootNode">—</strong></div>
+            <div class="metric-card"><span>{% if CURRENT_LANGUAGE == 'en' %}Total cost{% else %}Полная стоимость{% endif %}</span><strong id="queryPlanTotalCost">—</strong></div>
+            <div class="metric-card"><span>{% if CURRENT_LANGUAGE == 'en' %}Estimated rows{% else %}Оценка строк{% endif %}</span><strong id="queryPlanRows">—</strong></div>
+            <div class="metric-card"><span>{% if CURRENT_LANGUAGE == 'en' %}Row width{% else %}Ширина строки{% endif %}</span><strong id="queryPlanWidth">—</strong></div>
+        </div>
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-sitemap"></i> {% if CURRENT_LANGUAGE == 'en' %}Execution plan tree{% else %}Дерево плана выполнения{% endif %}</span>
+                <span class="card-meta" id="queryPlanNodeCount">{% if CURRENT_LANGUAGE == 'en' %}No data{% else %}Нет данных{% endif %}</span>
+            </div>
+            <div class="card-body" id="queryPlanResult">
+                <div class="query-plan-empty">{% if CURRENT_LANGUAGE == 'en' %}Enter a query and build its plan{% else %}Введите запрос и постройте его план{% endif %}</div>
             </div>
         </div>
     </div>

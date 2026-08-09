@@ -1,6 +1,7 @@
 import json
 
 import psycopg2
+import sqlparse
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -16,7 +17,7 @@ ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "query-plan", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -26,6 +27,7 @@ SIDEBAR_TAB_LABELS = {
     "temp-tables": "Временные таблицы",
     "distribution": "Распределение",
     "queries": "Активные запросы",
+    "query-plan": "План запроса",
     "sessions": "Сессии",
     "locks": "Блокировки",
     "transactions": "Транзакции",
@@ -81,6 +83,10 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 def _sidebar_settings_for_user(db_user):
     settings, _created = UserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
     normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
+    previous_default_tabs = set(SIDEBAR_TAB_IDS) - {"query-plan"}
+    if "query-plan" not in normalized_tabs and set(normalized_tabs) == previous_default_tabs:
+        queries_index = normalized_tabs.index("queries") + 1
+        normalized_tabs.insert(queries_index, "query-plan")
     if settings.visible_tabs != normalized_tabs:
         settings.visible_tabs = normalized_tabs
         settings.save(update_fields=["visible_tabs", "updated"])
@@ -361,6 +367,56 @@ def _require_payload_connection(request, payload):
     if not connection_id:
         return None, JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
     return _get_connection_for_request(request, connection_id), None
+
+
+def _validate_explain_query(query):
+    query = str(query or "").strip()
+    if not query:
+        return None, "Введите SQL-запрос"
+    if len(query) > 100_000:
+        return None, "SQL-запрос слишком длинный"
+
+    statements = [statement for statement in sqlparse.parse(query) if str(statement).strip()]
+    if len(statements) != 1:
+        return None, "Можно построить план только для одного SQL-запроса"
+    if statements[0].get_type() != "SELECT":
+        return None, "План доступен только для запросов SELECT и WITH ... SELECT"
+    return str(statements[0]).strip().rstrip(";").rstrip(), None
+
+
+@require_http_methods(["POST"])
+def query_plan(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    query, validation_error = _validate_explain_query(payload.get("query"))
+    if validation_error:
+        return JsonResponse({"ok": False, "message": validation_error}, status=400)
+
+    try:
+        with _open_database_connection(db_connection) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SET TRANSACTION READ ONLY")
+                cursor.execute("SET LOCAL statement_timeout = '15s'")
+                cursor.execute(f"EXPLAIN (FORMAT JSON, VERBOSE TRUE, COSTS TRUE) {query}")
+                result = cursor.fetchone()
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось построить план запроса: {exc}"}, status=400)
+
+    explain = result[0] if result else []
+    if isinstance(explain, str):
+        explain = json.loads(explain)
+    plan_document = explain[0] if isinstance(explain, list) and explain else explain
+    plan = plan_document.get("Plan", {}) if isinstance(plan_document, dict) else {}
+    summary = {
+        "node_type": plan.get("Node Type", "—"),
+        "total_cost": plan.get("Total Cost"),
+        "plan_rows": plan.get("Plan Rows"),
+        "plan_width": plan.get("Plan Width"),
+    }
+    return JsonResponse({"ok": True, "plan": plan, "summary": summary})
 
 
 @require_http_methods(["GET", "POST"])
