@@ -1008,6 +1008,19 @@ def _role_flag(value):
     return "Да" if value else "Нет"
 
 
+def _favorite_filter(payload, db_user, db_connection, object_type, columns):
+    """Возвращает безопасное SQL-условие и параметры для фильтра «Избранные»."""
+    if not payload.get("favorites_only"):
+        return "", []
+    keys = list(Favorite.objects.filter(user=db_user, connection=db_connection, object_type=object_type).values_list("object_key", flat=True))
+    values = [tuple(key.split("\x1f", 1)) if len(columns) == 2 else (key,) for key in keys]
+    values = [value for value in values if len(value) == len(columns)]
+    if not values:
+        return "AND FALSE", []
+    clauses = ["(" + " AND ".join(f"{column} = %s" for column in columns) + ")" for _value in values]
+    return f"AND ({' OR '.join(clauses)})", [part for value in values for part in value]
+
+
 def _database_roles_list(request, *, can_login):
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
@@ -1028,6 +1041,9 @@ def _database_roles_list(request, *, can_login):
     if search:
         where_sql = "AND role_info.rolname ILIKE %s ESCAPE '!'"
         params.append(f"%{_escape_like_pattern(search)}%")
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "user" if can_login else "group", ("role_info.rolname",))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     roles_query = f"""
         WITH roles AS (
@@ -1202,6 +1218,9 @@ def database_schema_sizes(request):
     if search:
         where_sql = "AND (namespace.nspname ILIKE %s OR owner.rolname ILIKE %s)"
         params.extend([f"%{search}%", f"%{search}%"])
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "schema", ("namespace.nspname",))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     schema_sizes_query = f"""
         WITH schema_sizes AS (
@@ -1295,6 +1314,9 @@ def database_table_sizes(request):
           )
         """
         params.extend([search_pattern, search_pattern, search_pattern])
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "table", ("namespace.nspname", "table_class.relname"))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     table_sizes_query = f"""
         WITH table_sizes AS (
@@ -1404,6 +1426,9 @@ def database_views_list(request):
           )
         """
         params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "view", ("namespace.nspname", "view_class.relname"))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     views_query = f"""
         WITH database_views AS (
