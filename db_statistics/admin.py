@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser, UserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBUser, Favorite, UserSidebarSettings
 
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
@@ -77,6 +77,13 @@ class DBConnectionAdmin(BaseAdmin):
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
         return obj.dbuser_set.count()
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(BaseAdmin):
+    list_display = ("user", "connection", "object_type", "object_key", "created")
+    list_filter = ("object_type", "connection")
+    search_fields = ("user__login", "object_key")
 
 
 @admin.register(DBAudit)

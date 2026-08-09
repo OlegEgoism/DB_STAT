@@ -107,6 +107,28 @@ class UserSidebarSettings(DateStamp):
         return f"Настройки сайдбара: {self.user.login}"
 
 
+class Favorite(DateStamp):
+    """Объект внешней базы данных, добавленный пользователем в избранное."""
+
+    OBJECT_TYPES = [(value, label) for value, label in [("schema", "Схема"), ("table", "Таблица"), ("view", "Представление"), ("user", "Пользователь"), ("group", "Группа")]]
+
+    user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь"), related_name="favorites", on_delete=models.CASCADE)
+    connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение"), related_name="favorites", on_delete=models.CASCADE)
+    object_type = models.CharField(**vn("Тип объекта"), max_length=16, choices=OBJECT_TYPES)
+    object_key = models.CharField(**vn("Идентификатор объекта"), max_length=512)
+
+    class Meta:
+        db_table = "db_favorite"
+        db_table_comment = "Избранный объект базы данных"
+        verbose_name = "Избранный объект"
+        verbose_name_plural = "Избранные объекты"
+        ordering = ("object_type", "object_key")
+        constraints = [models.UniqueConstraint(fields=("user", "connection", "object_type", "object_key"), name="unique_user_connection_favorite")]
+
+    def __str__(self):
+        return f"{self.user}: {self.object_type} {self.object_key}"
+
+
 class DBConnection(DateStamp, Active):
     """Подключение"""
 
