@@ -54,7 +54,7 @@ class UserSidebarSettingsAdmin(BaseAdmin):
     list_display = ("user", "visible_tabs_display", "created", "updated")
     search_fields = ("user__login", "user__email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("user", "visible_tabs", "visible_tabs_display", "created", "updated")
+    fields = ("user", "visible_tabs", "favorite_connections", "favorite_tables", "visible_tabs_display", "created", "updated")
     readonly_fields = BaseAdmin.readonly_fields + ("visible_tabs_display",)
 
     @admin.display(description="Видимые вкладки")

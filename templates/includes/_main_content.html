@@ -23,6 +23,9 @@
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
                     <option value="">Загрузка подключений...</option>
                 </select>
+                <button class="btn-conn favorite-toggle" id="favoriteConnectionBtn" type="button" onclick="toggleFavoriteConnection()" title="Добавить подключение в избранное" aria-label="Добавить подключение в избранное">
+                    <i class="far fa-star"></i>
+                </button>
                 <div class="connection-info-tooltip" id="connectionSelectInfo" role="tooltip">
                     <div class="connection-info-tooltip-title">Информация о подключении</div>
                     <div class="connection-info-tooltip-row">
@@ -474,6 +477,7 @@
                     <table class="table table-sm tables-table">
                         <thead>
                         <tr>
+                            <th class="favorite-column"><span class="visually-hidden">Избранное</span></th>
                             <th>
                                 <button class="table-sort-btn" type="button" data-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
                             </th>
@@ -499,7 +503,7 @@
                         </thead>
                         <tbody id="tableSizesTableBody">
                         <tr>
-                            <td colspan="7" class="text-muted">Выберите сохранённое подключение для загрузки размеров таблиц</td>
+                            <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки размеров таблиц</td>
                         </tr>
                         </tbody>
                     </table>

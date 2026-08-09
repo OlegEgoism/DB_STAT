@@ -683,6 +683,11 @@ body {
     background: rgba(79, 140, 255, 0.08);
 }
 
+.favorite-toggle.active, .favorite-star.active { color: #f59e0b; }
+.favorite-star { background: transparent; border: 0; color: var(--text-muted); cursor: pointer; padding: 4px; }
+.favorite-star:hover { color: #f59e0b; transform: scale(1.1); }
+.favorite-column { width: 38px; text-align: center; }
+
 .conn-divider {
     width: 1px;
     height: 24px;

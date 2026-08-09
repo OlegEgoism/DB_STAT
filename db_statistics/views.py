@@ -94,6 +94,38 @@ def _user_payload(db_user):
     return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs}
 
 
+def _normalized_favorites(db_user, sidebar_settings):
+    available_connection_ids = {str(pk) for pk in db_user.connections.filter(is_active=True).values_list("pk", flat=True)}
+    favorite_connections = list(dict.fromkeys(str(value) for value in (sidebar_settings.favorite_connections or []) if str(value) in available_connection_ids))
+    favorite_tables = []
+    seen_tables = set()
+    for item in sidebar_settings.favorite_tables or []:
+        if not isinstance(item, dict):
+            continue
+        connection_id = str(item.get("connection_id", ""))
+        schema_name = str(item.get("schema_name", "")).strip()
+        table_name = str(item.get("table_name", "")).strip()
+        key = (connection_id, schema_name, table_name)
+        if connection_id in available_connection_ids and schema_name and table_name and key not in seen_tables:
+            favorite_tables.append({"connection_id": connection_id, "schema_name": schema_name, "table_name": table_name})
+            seen_tables.add(key)
+    return favorite_connections, favorite_tables
+
+
+def _favorites_payload(db_user, sidebar_settings):
+    favorite_connections, favorite_tables = _normalized_favorites(db_user, sidebar_settings)
+    changed_fields = []
+    if sidebar_settings.favorite_connections != favorite_connections:
+        sidebar_settings.favorite_connections = favorite_connections
+        changed_fields.append("favorite_connections")
+    if sidebar_settings.favorite_tables != favorite_tables:
+        sidebar_settings.favorite_tables = favorite_tables
+        changed_fields.append("favorite_tables")
+    if changed_fields:
+        sidebar_settings.save(update_fields=[*changed_fields, "updated"])
+    return {"favorite_connections": favorite_connections, "favorite_tables": favorite_tables}
+
+
 def _connection_permission_error():
     return JsonResponse({"ok": False, "message": "Создавать и редактировать подключения может только Администратор"}, status=403)
 
@@ -211,6 +243,47 @@ def sidebar_settings(request):
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+
+
+@require_http_methods(["GET", "POST"])
+def favorites_settings(request):
+    """Возвращает и обновляет избранные подключения и таблицы пользователя."""
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    sidebar_settings = _sidebar_settings_for_user(db_user)
+    if request.method == "GET":
+        return JsonResponse({"ok": True, **_favorites_payload(db_user, sidebar_settings)})
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
+    favorite_connections, favorite_tables = _normalized_favorites(db_user, sidebar_settings)
+    kind = payload.get("kind")
+    enabled = bool(payload.get("enabled"))
+    if kind == "connection":
+        connection_id = str(payload.get("connection_id", ""))
+        if not db_user.connections.filter(pk=connection_id, is_active=True).exists():
+            return JsonResponse({"ok": False, "message": "Подключение недоступно"}, status=404)
+        favorite_connections = [value for value in favorite_connections if value != connection_id]
+        if enabled:
+            favorite_connections.append(connection_id)
+    elif kind == "table":
+        connection_id = str(payload.get("connection_id", ""))
+        schema_name = str(payload.get("schema_name", "")).strip()
+        table_name = str(payload.get("table_name", "")).strip()
+        if not schema_name or not table_name or not db_user.connections.filter(pk=connection_id, is_active=True).exists():
+            return JsonResponse({"ok": False, "message": "Таблица или подключение не указаны"}, status=400)
+        favorite_tables = [item for item in favorite_tables if (item["connection_id"], item["schema_name"], item["table_name"]) != (connection_id, schema_name, table_name)]
+        if enabled:
+            favorite_tables.append({"connection_id": connection_id, "schema_name": schema_name, "table_name": table_name})
+    else:
+        return JsonResponse({"ok": False, "message": "Неизвестный тип избранного"}, status=400)
+    sidebar_settings.favorite_connections = favorite_connections
+    sidebar_settings.favorite_tables = favorite_tables
+    sidebar_settings.save(update_fields=["favorite_connections", "favorite_tables", "updated"])
+    return JsonResponse({"ok": True, "favorite_connections": favorite_connections, "favorite_tables": favorite_tables})
 
 
 @require_http_methods(["POST"])

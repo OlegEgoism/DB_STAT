@@ -40,6 +40,8 @@
     let auditRequestId = 0;
     let auditActionsLoaded = false;
     let auditState = {page: 1, pageSize: 100, totalCount: 0};
+    let favoriteConnectionIds = new Set();
+    let favoriteTableKeys = new Set();
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -67,6 +69,7 @@
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
+    const favoritesSettingsApiUrl = '/settings/favorites/';
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -135,6 +138,45 @@
 
     function canManageConnections() {
         return currentDbUser?.can_manage_connections === true;
+    }
+
+    function favoriteTableKey(connectionId, schemaName, tableName) {
+        return `${connectionId}\u0000${schemaName}\u0000${tableName}`;
+    }
+
+    function applyFavorites(data) {
+        favoriteConnectionIds = new Set((data.favorite_connections || []).map(String));
+        favoriteTableKeys = new Set((data.favorite_tables || []).map(item => favoriteTableKey(String(item.connection_id), item.schema_name, item.table_name)));
+    }
+
+    function loadFavorites() {
+        return fetch(favoritesSettingsApiUrl)
+            .then(response => response.json())
+            .then(data => { if (data.ok) applyFavorites(data); });
+    }
+
+    function saveFavorite(payload) {
+        return connectionRequest(favoritesSettingsApiUrl, payload).then(data => {
+            applyFavorites(data);
+            populateConnectionSelect();
+            return data;
+        });
+    }
+
+    function toggleFavoriteConnection() {
+        if (!activeConnectionId) return;
+        const enabled = !favoriteConnectionIds.has(String(activeConnectionId));
+        saveFavorite({kind: 'connection', connection_id: activeConnectionId, enabled})
+            .then(() => showToast(enabled ? '⭐ Подключение добавлено в избранное' : 'Подключение удалено из избранного'))
+            .catch(error => showToast(`❌ ${error.message}`));
+    }
+
+    function toggleFavoriteTable(schemaName, tableName) {
+        const key = favoriteTableKey(String(activeConnectionId), schemaName, tableName);
+        const enabled = !favoriteTableKeys.has(key);
+        saveFavorite({kind: 'table', connection_id: activeConnectionId, schema_name: schemaName, table_name: tableName, enabled})
+            .then(() => refreshTableSizesForConnection())
+            .catch(error => showToast(`❌ ${error.message}`));
     }
 
     function canEditConnection(conn) {
@@ -2178,7 +2220,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${message}</td></tr>`;
         updateTablePaginationButtons();
     }
 
@@ -2216,15 +2258,16 @@
         if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
         if (!data.tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Таблицы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Таблицы не найдены</td></tr>';
             updateTablePaginationButtons();
             return;
         }
         tbody.innerHTML = data.tables.map(table => `
             <tr>
-                <td>${table.schema_name || '-'}</td>
-                <td><strong>${table.table_name || '-'}</strong></td>
-                <td>${table.table_owner || '-'}</td>
+                <td class="favorite-column"><button class="favorite-star ${favoriteTableKeys.has(favoriteTableKey(String(activeConnectionId), table.schema_name, table.table_name)) ? 'active' : ''}" type="button" data-favorite-schema="${escapeHtml(table.schema_name)}" data-favorite-table="${escapeHtml(table.table_name)}" title="Избранная таблица" aria-label="Переключить избранную таблицу"><i class="${favoriteTableKeys.has(favoriteTableKey(String(activeConnectionId), table.schema_name, table.table_name)) ? 'fas' : 'far'} fa-star"></i></button></td>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td>${escapeHtml(table.table_owner || '-')}</td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.index_size || '-'}</td>
                 <td>${formatRowCount(table.index_count)}</td>
@@ -2260,6 +2303,10 @@
 
     function initTableSizesControls() {
         let searchTimer = null;
+        document.getElementById('tableSizesTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-favorite-table]');
+            if (button) toggleFavoriteTable(button.dataset.favoriteSchema, button.dataset.favoriteTable);
+        });
         document.getElementById('tableSearchInput')?.addEventListener('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
@@ -3095,9 +3142,8 @@
     }
 
     function loadConnections() {
-        fetch(connectionApiUrl)
-            .then(response => response.json())
-            .then(data => {
+        Promise.all([fetch(connectionApiUrl).then(response => response.json()), loadFavorites().catch(() => null)])
+            .then(([data]) => {
                 connections = data.connections || [];
                 activeConnectionId = getInitialActiveConnectionId();
                 persistActiveConnectionId(activeConnectionId);
@@ -3356,10 +3402,11 @@
             persistActiveConnectionId(null);
             return;
         }
-        connections.forEach(conn => {
+        const sortedConnections = [...connections].sort((left, right) => Number(favoriteConnectionIds.has(String(right.id))) - Number(favoriteConnectionIds.has(String(left.id))) || left.name.localeCompare(right.name, 'ru'));
+        sortedConnections.forEach(conn => {
             const option = document.createElement('option');
             option.value = conn.id;
-            option.textContent = conn.name;
+            option.textContent = `${favoriteConnectionIds.has(String(conn.id)) ? '★ ' : ''}${conn.name}`;
             select.appendChild(option);
         });
         if (activeConnectionId) {
@@ -3367,6 +3414,13 @@
             persistActiveConnectionId(activeConnectionId);
         }
         updateConnectionTooltip();
+        const favoriteButton = document.getElementById('favoriteConnectionBtn');
+        const isFavorite = favoriteConnectionIds.has(String(activeConnectionId));
+        if (favoriteButton) {
+            favoriteButton.classList.toggle('active', isFavorite);
+            favoriteButton.querySelector('i').className = `${isFavorite ? 'fas' : 'far'} fa-star`;
+            favoriteButton.disabled = !activeConnectionId;
+        }
         updateConnectionActionButtons();
         updateSidebarForConnection();
     }
