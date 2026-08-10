@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -80,6 +81,34 @@ class LoginSessionDurationTests(TestCase):
 
         self.assertRedirects(response, reverse("home"))
         self.assertAlmostEqual(self.client.session.get_expiry_age(), 8 * 60 * 60, delta=2)
+
+
+class SidebarFavoritesSettingsTests(TestCase):
+    def setUp(self):
+        self.user = DBUser.objects.create(login="analyst", email="analyst@example.com")
+        session = self.client.session
+        session[SESSION_USER_ID_KEY] = self.user.pk
+        session.save()
+
+    def test_favorites_is_available_in_sidebar_settings(self):
+        data = self.client.get(reverse("sidebar_settings")).json()
+
+        self.assertIn("favorites", data["available_tabs"])
+        self.assertIn("favorites", data["visible_tabs"])
+
+    def test_user_can_hide_favorites_in_sidebar_settings(self):
+        response = self.client.post(reverse("sidebar_settings"), data=json.dumps({"visible_tabs": ["tables", "audit"]}), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["visible_tabs"], ["tables", "audit"])
+
+    def test_favorites_filters_are_rendered_in_english(self):
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
+
+        response = self.client.get(reverse("home"))
+
+        self.assertContains(response, '<option value="">All records</option>', count=5, html=True)
+        self.assertContains(response, '<option value="favorites">Favorites only</option>', count=5, html=True)
 
 
 class AuditEventsTests(TestCase):

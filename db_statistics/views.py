@@ -20,7 +20,7 @@ MIN_SESSION_DURATION_HOURS = 1
 MAX_SESSION_DURATION_HOURS = 24
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit"]
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -37,6 +37,7 @@ SIDEBAR_TAB_LABELS = {
     "users": "Пользователи",
     "groups": "Группы",
     "maintenance": "Обслуживание",
+    "favorites": "Избранное",
     "audit": "Аудит",
 }
 SUPPORTED_LANGUAGES = {"ru", "en"}

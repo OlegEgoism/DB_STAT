@@ -102,7 +102,7 @@
     }
 
     function isSidebarPageEnabled(pageId) {
-        if (!pageId || pageId === 'home' || pageId === 'favorites') return true;
+        if (!pageId || pageId === 'home') return true;
         return getVisibleSidebarPages().includes(pageId);
     }
 
@@ -3164,7 +3164,7 @@
         (actions || []).forEach(action => {
             const option = document.createElement('option');
             option.value = action.value;
-            option.textContent = action.label;
+            option.textContent = translateInterfaceText(action.label);
             option.classList.add(`audit-action-filter-option--${action.value.replaceAll('_', '-')}`);
             select.appendChild(option);
         });
@@ -3249,8 +3249,8 @@
             <tr>
                 <td class="audit-created">${escapeHtml(event.created)}</td>
                 <td><strong>${escapeHtml(event.username)}</strong></td>
-                <td><span class="audit-action-badge ${getAuditActionBadgeClass(event.action_type)}">${escapeHtml(event.action_label || event.action_type)}</span></td>
-                <td class="audit-info-cell">${escapeHtml(event.info)}</td>
+                <td><span class="audit-action-badge ${getAuditActionBadgeClass(event.action_type)}">${escapeHtml(translateInterfaceText(event.action_label || event.action_type))}</span></td>
+                <td class="audit-info-cell">${escapeHtml(translateInterfaceText(event.info))}</td>
             </tr>
         `).join('');
     }
