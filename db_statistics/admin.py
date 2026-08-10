@@ -81,9 +81,15 @@ class DBConnectionAdmin(BaseAdmin):
 
 @admin.register(DBFavorite)
 class DBFavoriteAdmin(BaseAdmin):
-    list_display = ("user", "connection", "object_type", "object_key", "created")
+    list_display = ("user", "connection", "object_type", "object_key", "created", "updated")
     list_filter = ("object_type", "connection")
-    search_fields = ("user__login", "object_key")
+    search_fields = ("user__login",)
+    search_help_text = "Поиск по: Логин"
+    date_hierarchy = "created"
+    list_per_page = 20
+    fields = ("user", "connection", "object_type", "object_key", "created", "updated")
+    readonly_fields = ("user", "connection", "object_type", "object_key", "created", "updated")
+    ordering = ("-created",)
 
 
 @admin.register(DBAudit)
