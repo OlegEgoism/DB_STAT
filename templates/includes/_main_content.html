@@ -153,7 +153,13 @@
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-sm favorites-objects-table">
-                        <thead><tr><th class="favorite-column" title="Избранное" aria-label="Избранное"><i class="fas fa-star" aria-hidden="true"></i></th><th>Тип объекта</th><th>Объект</th></tr></thead>
+                        <thead>
+                        <tr>
+                            <th class="favorite-column" title="Избранное" aria-label="Избранное"><i class="fas fa-star" aria-hidden="true"></i></th>
+                            <th aria-sort="none"><button class="table-sort-btn" type="button" data-favorites-sort="type">Тип объекта <i class="fas fa-sort" aria-hidden="true"></i></button></th>
+                            <th aria-sort="ascending"><button class="table-sort-btn active" type="button" data-favorites-sort="object">Объект <i class="fas fa-sort-up" aria-hidden="true"></i></button></th>
+                        </tr>
+                        </thead>
                         <tbody id="favoritesObjectsTableBody">
                         <tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>
                         </tbody>
