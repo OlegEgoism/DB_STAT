@@ -2014,6 +2014,16 @@ body {
     gap: 8px;
 }
 
+.toolbar-filter-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    max-width: 100%;
+    margin-left: auto;
+}
+
 .toolbar-filter label {
     margin: 0;
     color: var(--text-muted);
