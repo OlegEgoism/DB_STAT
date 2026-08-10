@@ -82,6 +82,15 @@ class LoginSessionDurationTests(TestCase):
         self.assertRedirects(response, reverse("home"))
         self.assertAlmostEqual(self.client.session.get_expiry_age(), 8 * 60 * 60, delta=2)
 
+    def test_session_duration_field_is_rendered_in_english(self):
+        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
+
+        response = self.client.get(reverse("login"))
+
+        self.assertContains(response, "Session duration (hours)")
+        self.assertContains(response, "From 1 to 24 hours. You will need to sign in again after that.")
+        self.assertNotContains(response, "Время сессии (часы)")
+
 
 class SidebarFavoritesSettingsTests(TestCase):
     def setUp(self):

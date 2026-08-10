@@ -4,7 +4,7 @@
     const language = String(window.DB_STAT_LANGUAGE || 'ru').toLowerCase();
     const translations = {
         'Авторизация': 'Sign in', 'Авторизация пользователя': 'User sign in', 'Войти': 'Sign in',
-        'Логин/Login': 'Login', 'Почта/Email': 'Email', 'Время сессии, часов': 'Session duration, hours', 'Ошибка 404': 'Error 404',
+        'Логин/Login': 'Login', 'Почта/Email': 'Email', 'Время сессии, часов': 'Session duration (hours)', 'Время сессии (часы)': 'Session duration (hours)', 'Ошибка 404': 'Error 404',
         'Страница не найдена': 'Page not found', 'Запрошенная страница не существует или была удалена.': 'The requested page does not exist or has been removed.',
         'Запрошенный адрес': 'Requested address', 'На главную': 'Home', 'Главная': 'Home', 'Главная страница': 'Home page',
         'Инфраструктура': 'Infrastructure', 'Данные': 'Data', 'Производительность': 'Performance', 'Администрирование': 'Administration',
