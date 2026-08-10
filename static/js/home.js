@@ -3038,7 +3038,15 @@
     }
 
     function updateAuditActionFilterColor(select) {
-        select?.classList.toggle('audit-action-filter--favorite', ['favorite_add', 'favorite_remove'].includes(select.value));
+        if (!select) return;
+        if (select.dataset.actionColorClass) {
+            select.classList.remove(select.dataset.actionColorClass);
+        }
+        const actionColorClass = select.value ? `audit-action-filter--${select.value.replaceAll('_', '-')}` : '';
+        if (actionColorClass) {
+            select.classList.add(actionColorClass);
+        }
+        select.dataset.actionColorClass = actionColorClass;
     }
 
     function getAuditActionBadgeClass(actionType) {
