@@ -82,19 +82,26 @@ class LoginSessionDurationTests(TestCase):
         self.assertRedirects(response, reverse("home"))
         self.assertAlmostEqual(self.client.session.get_expiry_age(), 8 * 60 * 60, delta=2)
 
-    def test_login_window_text_is_rendered_in_russian_and_english(self):
-        for language in ("ru", "en"):
+    def test_login_window_uses_selected_language(self):
+        cases = {
+            "ru": {
+                "expected": ["Авторизация пользователя", "Логин", "Почта", "Время сессии (часы)", "От 1 до 24 часов.", "Войти", "<title>Авторизация | DB STAT</title>"],
+                "unexpected": ["User sign in", "Login", "Email", "Session duration (hours)", "From 1 to 24 hours.", "Sign in"],
+            },
+            "en": {
+                "expected": ["User sign in", "Login", "Email", "Session duration (hours)", "From 1 to 24 hours.", "Sign in", "<title>Sign in | DB STAT</title>"],
+                "unexpected": ["Авторизация пользователя", "Логин", "Почта", "Время сессии (часы)", "От 1 до 24 часов.", "Войти"],
+            },
+        }
+        for language, assertions in cases.items():
             with self.subTest(language=language):
                 self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
                 response = self.client.get(reverse("login"))
 
-                self.assertContains(response, "Авторизация пользователя/User sign in")
-                self.assertContains(response, "Логин/Login")
-                self.assertContains(response, "Почта/Email")
-                self.assertContains(response, "Время сессии (часы)/Session duration (hours)")
-                self.assertContains(response, "От 1 до 24 часов./From 1 to 24 hours.")
-                self.assertContains(response, "Войти/Sign in")
-                self.assertContains(response, "<title>Авторизация | DB STAT</title>", html=True)
+                for text in assertions["expected"]:
+                    self.assertContains(response, text)
+                for text in assertions["unexpected"]:
+                    self.assertNotContains(response, text)
                 self.assertNotContains(response, "После этого потребуется повторный вход")
                 self.assertNotContains(response, "You will need to sign in again after that")
 
@@ -103,12 +110,20 @@ class LoginSessionDurationTests(TestCase):
 
         self.assertContains(response, "static/js/i18n.js?v=10")
 
-    def test_login_errors_are_rendered_in_russian_and_english(self):
-        response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": "25"})
-        self.assertContains(response, "Время сессии должно быть от 1 до 24 часов/Session duration must be between 1 and 24 hours")
+    def test_login_errors_use_selected_language(self):
+        cases = {
+            "ru": ("Время сессии должно быть от 1 до 24 часов", "Пользователь с указанными логином и электронной почтой не найден или отключён"),
+            "en": ("Session duration must be between 1 and 24 hours", "No active user with the specified login and email was found"),
+        }
+        for language, (duration_error, credentials_error) in cases.items():
+            with self.subTest(language=language):
+                self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
 
-        response = self.client.post(reverse("login"), {"login": "unknown", "email": "unknown@example.com", "session_duration": "8"})
-        self.assertContains(response, "Пользователь с указанными login и email не найден или отключён/No active user with the specified login and email was found")
+                response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": "25"})
+                self.assertContains(response, duration_error)
+
+                response = self.client.post(reverse("login"), {"login": "unknown", "email": "unknown@example.com", "session_duration": "8"})
+                self.assertContains(response, credentials_error)
 
 
 class SidebarFavoritesSettingsTests(TestCase):
