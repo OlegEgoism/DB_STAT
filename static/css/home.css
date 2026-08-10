@@ -2017,6 +2017,10 @@ body {
     background: rgba(248, 250, 252, 0.65);
 }
 
+.audit-table-toolbar {
+    justify-content: flex-start;
+}
+
 .toolbar-filter {
     display: flex;
     align-items: center;
