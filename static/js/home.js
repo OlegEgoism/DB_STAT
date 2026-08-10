@@ -284,7 +284,6 @@
         loadConnections();
         initCharts();
         initNavigation();
-        document.getElementById('favoritesPageTab')?.addEventListener('click', () => activatePage('favorites'));
         initSidebarCollapse();
         initSidebarSectionToggles();
         initBrandHomeNavigation();
@@ -485,7 +484,7 @@
 
 
     function getAllSidebarPages() {
-        return Array.from(document.querySelectorAll('.nav-item[data-page]')).map(item => item.dataset.page);
+        return Array.from(document.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])')).map(item => item.dataset.page);
     }
 
     function normalizeSidebarPages(pageIds) {
@@ -514,7 +513,7 @@
 
         const visiblePages = new Set(getVisibleSidebarPages());
         list.innerHTML = '';
-        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+        document.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])').forEach(item => {
             const pageId = item.dataset.page;
             const label = item.getAttribute('title') || item.textContent.trim() || pageId;
             const icon = item.querySelector('.nav-icon')?.cloneNode(true);
@@ -3559,7 +3558,7 @@
 
     function isKnownPage(pageId) {
         if (!pageId || !pageTitles[pageId] || !document.getElementById('page-' + pageId)) return false;
-        if (pageId === 'home' || pageId === 'favorites') return isPageAvailableForConnection(pageId);
+        if (pageId === 'home') return true;
         return Boolean(
             isPageAvailableForConnection(pageId) &&
             Array.from(document.querySelectorAll('.nav-item[data-page]')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
@@ -3651,12 +3650,6 @@
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.classList.toggle('active', item.dataset.page === nextPageId);
         });
-        const favoritesTab = document.getElementById('favoritesPageTab');
-        if (favoritesTab) {
-            const isActive = nextPageId === 'favorites';
-            favoritesTab.classList.toggle('active', isActive);
-            favoritesTab.setAttribute('aria-pressed', String(isActive));
-        }
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
         document.getElementById('page-' + nextPageId).classList.add('active');
         document.getElementById('pageTitle').innerHTML = pageTitles[nextPageId] || nextPageId;
