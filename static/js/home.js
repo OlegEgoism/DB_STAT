@@ -71,6 +71,7 @@
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
+    let favoritesSortState = {column: 'object', direction: 'asc'};
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -266,11 +267,31 @@
             return;
         }
         const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
-        tbody.innerHTML = favoriteItems.map(item => {
+        const sortedItems = [...favoriteItems].sort((first, second) => {
+            const value = item => favoritesSortState.column === 'type'
+                ? (typeLabels[item.object_type] || item.object_type)
+                : String(item.object_key || '').split('\u001f').join('.');
+            const comparison = String(value(first)).localeCompare(String(value(second)), 'ru', {numeric: true, sensitivity: 'base'});
+            if (comparison !== 0) return favoritesSortState.direction === 'asc' ? comparison : -comparison;
+            return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), 'ru', {numeric: true, sensitivity: 'base'});
+        });
+        updateFavoritesSortIndicators();
+        tbody.innerHTML = sortedItems.map(item => {
             const label = String(item.object_key || '').split('\u001f').join('.');
             const targetAttributes = `data-favorite-target-type="${escapeHtml(item.object_type)}" data-favorite-target-key="${escapeHtml(item.object_key)}"`;
             return `<tr><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td></tr>`;
         }).join('');
+    }
+
+    function updateFavoritesSortIndicators() {
+        document.querySelectorAll('[data-favorites-sort]').forEach(button => {
+            const isActive = button.dataset.favoritesSort === favoritesSortState.column;
+            const header = button.closest('th');
+            button.classList.toggle('active', isActive);
+            if (header) header.setAttribute('aria-sort', isActive ? (favoritesSortState.direction === 'asc' ? 'ascending' : 'descending') : 'none');
+            const icon = button.querySelector('i');
+            if (icon) icon.className = isActive ? `fas fa-sort-${favoritesSortState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+        });
     }
 
     function openFavoriteObject(objectType, objectKey) {
@@ -296,6 +317,18 @@
     }
 
     function initFavoriteControls() {
+        document.querySelectorAll('[data-favorites-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const column = this.dataset.favoritesSort;
+                if (favoritesSortState.column === column) {
+                    favoritesSortState.direction = favoritesSortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    favoritesSortState = {column, direction: 'asc'};
+                }
+                renderFavoritesPage();
+            });
+        });
+        updateFavoritesSortIndicators();
         document.addEventListener('click', event => {
             const objectLink = event.target.closest('[data-favorite-target-type][data-favorite-target-key]');
             if (objectLink) {

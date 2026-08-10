@@ -52,6 +52,36 @@ class FavoritesAuditTests(TestCase):
         self.assertIn("Идентификатор объекта: public\u001fevents", audit.info)
 
 
+class LoginSessionDurationTests(TestCase):
+    def setUp(self):
+        self.user = DBUser.objects.create(login="analyst", email="analyst@example.com")
+
+    def test_user_can_choose_session_duration(self):
+        previous_session_key = self.client.session.session_key
+        response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": "12"})
+
+        self.assertRedirects(response, reverse("home"))
+        self.assertNotEqual(self.client.session.session_key, previous_session_key)
+        self.assertEqual(self.client.session[SESSION_USER_ID_KEY], self.user.pk)
+        self.assertAlmostEqual(self.client.session.get_expiry_age(), 12 * 60 * 60, delta=2)
+        self.assertIn("session_duration=12h", DBAudit.objects.get(action_type="login").info)
+
+    def test_session_duration_must_be_within_allowed_range(self):
+        for duration in ("0", "25", "1.5", "invalid"):
+            with self.subTest(duration=duration):
+                response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": duration})
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, "Время сессии должно быть от 1 до 24 часов")
+                self.assertNotIn(SESSION_USER_ID_KEY, self.client.session)
+
+    def test_session_duration_defaults_to_eight_hours(self):
+        response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email})
+
+        self.assertRedirects(response, reverse("home"))
+        self.assertAlmostEqual(self.client.session.get_expiry_age(), 8 * 60 * 60, delta=2)
+
+
 class AuditEventsTests(TestCase):
     def setUp(self):
         self.admin = DBUser.objects.create(login="admin", email="admin@example.com", role="Администратор")
