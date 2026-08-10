@@ -67,6 +67,7 @@ pip install -r requirements.txt
 - Применение миграций (команду необходимо выполнять и после обновления проекта)
 
 ```bash
+python manage.py makemigrations
 python manage.py migrate
 ```
 
