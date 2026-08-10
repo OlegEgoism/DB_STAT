@@ -129,9 +129,9 @@ def _connection_audit_info(action, connection, *, result=None, error=None):
     return "; ".join(details)
 
 
-def _favorite_audit_info(connection, object_type, object_key):
+def _favorite_audit_info(action, connection, object_type, object_key):
     object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
-    return "; ".join(["Объект добавлен в избранные объекты", f"Подключение: {connection.name}", f"Тип объекта: {object_type_label}", f"Идентификатор объекта: {object_key}"])
+    return "; ".join([action, f"Подключение: {connection.name}", f"Тип объекта: {object_type_label}", f"Идентификатор объекта: {object_key}"])
 
 
 def _can_manage_connections(request):
@@ -240,8 +240,9 @@ def favorites(request):
     favorite, created = DBFavorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
     if not created:
         favorite.delete()
+        _write_audit("favorite_remove", _favorite_audit_info("Объект удалён из избранных объектов", connection, object_type, object_key), db_user=db_user)
     else:
-        _write_audit("favorite_add", _favorite_audit_info(connection, object_type, object_key), db_user=db_user)
+        _write_audit("favorite_add", _favorite_audit_info("Объект добавлен в избранные объекты", connection, object_type, object_key), db_user=db_user)
     return JsonResponse({"ok": True, "is_favorite": created, "object_type": object_type, "object_key": object_key})
 
 

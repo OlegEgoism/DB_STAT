@@ -34,7 +34,7 @@ class FavoritesAuditTests(TestCase):
         self.assertIn("Тип объекта: Таблица", audit.info)
         self.assertIn("Идентификатор объекта: public\u001fevents", audit.info)
 
-    def test_removing_favorite_does_not_write_add_audit_event(self):
+    def test_removing_favorite_writes_audit_event(self):
         self.toggle_favorite()
         DBAudit.objects.all().delete()
 
@@ -42,4 +42,9 @@ class FavoritesAuditTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.json()["is_favorite"])
-        self.assertFalse(DBAudit.objects.exists())
+        audit = DBAudit.objects.get(action_type="favorite_remove")
+        self.assertEqual(audit.username, self.user.login)
+        self.assertIn("Объект удалён из избранных объектов", audit.info)
+        self.assertIn("Подключение: Основная БД", audit.info)
+        self.assertIn("Тип объекта: Таблица", audit.info)
+        self.assertIn("Идентификатор объекта: public\u001fevents", audit.info)
