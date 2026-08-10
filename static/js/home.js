@@ -226,7 +226,7 @@
         tbody.innerHTML = favoriteItems.map(item => {
             const label = String(item.object_key || '').split('\u001f').join('.');
             const targetAttributes = `data-favorite-target-type="${escapeHtml(item.object_type)}" data-favorite-target-key="${escapeHtml(item.object_key)}"`;
-            return `<tr><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td></tr>`;
+            return `<tr><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td></tr>`;
         }).join('');
     }
 
