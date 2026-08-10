@@ -2,6 +2,7 @@ import json
 
 import psycopg2
 from django.conf import settings
+from django.db.models import Case, CharField, F, Value, When
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone, translation
@@ -272,9 +273,18 @@ def audit_events(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     action_type = (request.GET.get("action_type") or "").strip()
+    username = (request.GET.get("username") or "").strip()
+    sort = (request.GET.get("sort") or "created").strip()
+    direction = (request.GET.get("direction") or "desc").strip().lower()
     available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
+    available_sorts = {"created", "username", "action_type", "info"}
+    if sort not in available_sorts or direction not in {"asc", "desc"}:
+        return JsonResponse({"ok": False, "message": "Некорректные параметры сортировки"}, status=400)
 
-    audit_queryset = DBAudit.objects.filter(username=db_user.login)
+    audit_queryset = DBAudit.objects.all() if db_user.role == ADMIN_ROLE else DBAudit.objects.filter(username=db_user.login)
+    available_users = list(audit_queryset.order_by("username").values_list("username", flat=True).distinct())
+    if username:
+        audit_queryset = audit_queryset.filter(username=username)
     if action_type:
         valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
         if action_type not in valid_action_types:
@@ -284,12 +294,18 @@ def audit_events(request):
     page_size = 100
     page = max(int(request.GET.get("page") or 1), 1)
     offset = (page - 1) * page_size
+    order_by = sort
+    if sort == "action_type":
+        action_label_order = Case(*[When(action_type=value, then=Value(label)) for value, label in DBAudit.ACTION_TYPES], default=F("action_type"), output_field=CharField())
+        audit_queryset = audit_queryset.annotate(action_label_order=action_label_order)
+        order_by = "action_label_order"
+    audit_queryset = audit_queryset.order_by(f"-{order_by}" if direction == "desc" else order_by, "-id")
     total_count = audit_queryset.count()
     events = [
         {"id": audit.pk, "username": audit.username, "action_type": audit.action_type, "action_label": _audit_action_label(audit.action_type), "info": audit.info, "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S")}
         for audit in audit_queryset[offset : offset + page_size]
     ]
-    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "page": page, "page_size": page_size, "total_count": total_count})
+    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "users": available_users, "page": page, "page_size": page_size, "total_count": total_count, "sort": sort, "direction": direction})
 
 
 def _connection_to_dict(connection):
