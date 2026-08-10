@@ -179,16 +179,59 @@
     function favoriteButton(type, key, label) {
         const selected = favoriteKeys.has(favoriteId(type, key));
         const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
-        return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
+        return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" data-favorite-label="${escapeHtml(label)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
     }
 
     function updateFavoriteButtons() {
         document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
             const selected = favoriteKeys.has(favoriteId(button.dataset.favoriteType, button.dataset.favoriteKey));
+            const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+            const label = button.dataset.favoriteLabel || button.dataset.favoriteKey;
             button.classList.toggle('active', selected);
             button.setAttribute('aria-pressed', String(selected));
+            button.title = `${action}: ${label}`;
+            button.setAttribute('aria-label', `${action}: ${label}`);
             button.querySelector('i').className = `${selected ? 'fas' : 'far'} fa-star`;
         });
+    }
+
+    function setFavoriteButtonsDisabled(type, key, disabled) {
+        document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
+            if (button.dataset.favoriteType === type && button.dataset.favoriteKey === key) {
+                button.disabled = disabled;
+            }
+        });
+    }
+
+    function applyFavoriteChange(data) {
+        const id = favoriteId(data.object_type, data.object_key);
+        if (data.is_favorite) {
+            favoriteKeys.add(id);
+            if (!favoriteItems.some(item => favoriteId(item.object_type, item.object_key) === id)) {
+                favoriteItems.push({object_type: data.object_type, object_key: data.object_key});
+            }
+        } else {
+            favoriteKeys.delete(id);
+            favoriteItems = favoriteItems.filter(item => favoriteId(item.object_type, item.object_key) !== id);
+        }
+        updateFavoriteButtons();
+        if (document.getElementById('page-favorites')?.classList.contains('active')) {
+            renderFavoritesPage();
+        }
+    }
+
+    function refreshFavoriteFilteredTable(objectType) {
+        const targets = {
+            schema: {page: 'databases', state: schemaSizesState, refresh: refreshSchemaSizesForConnection},
+            table: {page: 'tables', state: tableSizesState, refresh: refreshTableSizesForConnection},
+            view: {page: 'views', state: viewsState, refresh: refreshViewsForConnection},
+            user: {page: 'users', state: usersState, refresh: refreshUsersForConnection},
+            group: {page: 'groups', state: groupsState, refresh: refreshGroupsForConnection}
+        };
+        const target = targets[objectType];
+        if (target?.state.favoritesOnly && document.getElementById(`page-${target.page}`)?.classList.contains('active')) {
+            target.refresh();
+        }
     }
 
     function loadFavorites(connectionId = activeConnectionId) {
@@ -261,19 +304,18 @@
             }
             const button = event.target.closest('[data-favorite-type][data-favorite-key]');
             if (!button || !activeConnectionId) return;
-            button.disabled = true;
-            connectionRequest(favoritesApiUrl, {id: activeConnectionId, object_type: button.dataset.favoriteType, object_key: button.dataset.favoriteKey})
+            const connectionId = activeConnectionId;
+            const objectType = button.dataset.favoriteType;
+            const objectKey = button.dataset.favoriteKey;
+            setFavoriteButtonsDisabled(objectType, objectKey, true);
+            connectionRequest(favoritesApiUrl, {id: connectionId, object_type: objectType, object_key: objectKey})
                 .then(data => {
-                    const id = favoriteId(data.object_type, data.object_key);
-                    data.is_favorite ? favoriteKeys.add(id) : favoriteKeys.delete(id);
-                    updateFavoriteButtons();
-                    loadFavorites(activeConnectionId).catch(() => {});
-                    if ([schemaSizesState, tableSizesState, viewsState, usersState, groupsState].some(state => state.favoritesOnly)) {
-                        refreshActivePageForConnection();
-                    }
+                    if (String(connectionId) !== String(activeConnectionId)) return;
+                    applyFavoriteChange(data);
+                    refreshFavoriteFilteredTable(data.object_type);
                 })
                 .catch(error => window.alert(error.message))
-                .finally(() => { button.disabled = false; });
+                .finally(() => setFavoriteButtonsDisabled(objectType, objectKey, false));
         });
     }
 
