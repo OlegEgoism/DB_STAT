@@ -91,10 +91,10 @@ class DBUser(DateStamp, Active):
         return self.login
 
 
-class UserSidebarSettings(DateStamp):
+class DBUserSidebarSettings(DateStamp):
     """Настройки сайдбара пользователя"""
 
-    user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="sidebar_settings", on_delete=models.CASCADE)
+    user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="user_db_user_sidebar_settings", on_delete=models.CASCADE)
     visible_tabs = models.JSONField(**vn("Видимые вкладки"), default=list, blank=True)
 
     class Meta:
@@ -107,7 +107,7 @@ class UserSidebarSettings(DateStamp):
         return f"Настройки сайдбара: {self.user.login}"
 
 
-class Favorite(DateStamp):
+class DBFavorite(DateStamp):
     """Объект внешней базы данных, добавленный пользователем в избранное."""
 
     OBJECT_TYPES = [(value, label) for value, label in [
@@ -118,8 +118,8 @@ class Favorite(DateStamp):
         ("group", "Группа")
     ]]
 
-    user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь"), related_name="favorites", on_delete=models.CASCADE)
-    connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение"), related_name="favorites", on_delete=models.CASCADE)
+    user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь"), related_name="user_db_favorite", on_delete=models.CASCADE)
+    connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение"), related_name="connection_db_favorite", on_delete=models.CASCADE)
     object_type = models.CharField(**vn("Тип объекта"), max_length=16, choices=OBJECT_TYPES)
     object_key = models.CharField(**vn("Идентификатор объекта"), max_length=512)
 

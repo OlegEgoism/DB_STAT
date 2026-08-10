@@ -9,7 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.models import DBAudit, DBConnection, DBUser, Favorite, UserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
@@ -79,7 +79,7 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 
 
 def _sidebar_settings_for_user(db_user):
-    settings, _created = UserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
+    settings, _created = DBUserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
     normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
     if settings.visible_tabs != normalized_tabs:
         settings.visible_tabs = normalized_tabs
@@ -223,16 +223,16 @@ def favorites(request):
     payload = request.GET if request.method == "GET" else _read_json_body(request)
     connection_id = payload.get("id")
     connection = _get_connection_for_request(request, connection_id)
-    queryset = Favorite.objects.filter(user=db_user, connection=connection)
+    queryset = DBFavorite.objects.filter(user=db_user, connection=connection)
     if request.method == "GET":
         return JsonResponse({"ok": True, "favorites": [{"object_type": item.object_type, "object_key": item.object_key} for item in queryset]})
 
     object_type = str(payload.get("object_type") or "").strip()
     object_key = str(payload.get("object_key") or "").strip()
-    valid_types = {value for value, _label in Favorite.OBJECT_TYPES}
+    valid_types = {value for value, _label in DBFavorite.OBJECT_TYPES}
     if object_type not in valid_types or not object_key or len(object_key) > 512:
         return JsonResponse({"ok": False, "message": "Некорректный объект избранного"}, status=400)
-    favorite, created = Favorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
+    favorite, created = DBFavorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
     if not created:
         favorite.delete()
     return JsonResponse({"ok": True, "is_favorite": created, "object_type": object_type, "object_key": object_key})
@@ -1012,7 +1012,7 @@ def _favorite_filter(payload, db_user, db_connection, object_type, columns):
     """Возвращает безопасное SQL-условие и параметры для фильтра «Избранные»."""
     if not payload.get("favorites_only"):
         return "", []
-    keys = list(Favorite.objects.filter(user=db_user, connection=db_connection, object_type=object_type).values_list("object_key", flat=True))
+    keys = list(DBFavorite.objects.filter(user=db_user, connection=db_connection, object_type=object_type).values_list("object_key", flat=True))
     values = [tuple(key.split("\x1f", 1)) if len(columns) == 2 else (key,) for key in keys]
     values = [value for value in values if len(value) == len(columns)]
     if not values:
