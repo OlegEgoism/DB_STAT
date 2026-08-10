@@ -71,6 +71,7 @@
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
+    let favoritesSortState = {column: 'object', direction: 'asc'};
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -101,7 +102,7 @@
     }
 
     function isSidebarPageEnabled(pageId) {
-        if (!pageId || pageId === 'home' || pageId === 'favorites') return true;
+        if (!pageId || pageId === 'home') return true;
         return getVisibleSidebarPages().includes(pageId);
     }
 
@@ -178,14 +179,14 @@
 
     function favoriteButton(type, key, label) {
         const selected = favoriteKeys.has(favoriteId(type, key));
-        const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+        const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
         return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" data-favorite-label="${escapeHtml(label)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
     }
 
     function updateFavoriteButtons() {
         document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
             const selected = favoriteKeys.has(favoriteId(button.dataset.favoriteType, button.dataset.favoriteKey));
-            const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+            const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
             const label = button.dataset.favoriteLabel || button.dataset.favoriteKey;
             button.classList.toggle('active', selected);
             button.setAttribute('aria-pressed', String(selected));
@@ -255,22 +256,43 @@
     function renderFavoritesPage() {
         const tbody = document.getElementById('favoritesObjectsTableBody');
         const count = document.getElementById('favoritesObjectsCount');
-        if (count) count.textContent = activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных';
+        if (count) count.textContent = translateInterfaceText(activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных');
         if (!tbody) return;
         if (!activeConnectionId) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(translateInterfaceText('Выберите подключение для просмотра избранных объектов'))}</td></tr>`;
             return;
         }
         if (!favoriteItems.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Для выбранного подключения нет избранных объектов</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(translateInterfaceText('Для выбранного подключения нет избранных объектов'))}</td></tr>`;
             return;
         }
-        const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
-        tbody.innerHTML = favoriteItems.map(item => {
+        const typeLabels = Object.fromEntries(Object.entries({schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'}).map(([type, label]) => [type, translateInterfaceText(label)]));
+        const sortLocale = window.DBStatI18n?.language === 'en' ? 'en' : 'ru';
+        const sortedItems = [...favoriteItems].sort((first, second) => {
+            const value = item => favoritesSortState.column === 'type'
+                ? (typeLabels[item.object_type] || item.object_type)
+                : String(item.object_key || '').split('\u001f').join('.');
+            const comparison = String(value(first)).localeCompare(String(value(second)), sortLocale, {numeric: true, sensitivity: 'base'});
+            if (comparison !== 0) return favoritesSortState.direction === 'asc' ? comparison : -comparison;
+            return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), sortLocale, {numeric: true, sensitivity: 'base'});
+        });
+        updateFavoritesSortIndicators();
+        tbody.innerHTML = sortedItems.map(item => {
             const label = String(item.object_key || '').split('\u001f').join('.');
             const targetAttributes = `data-favorite-target-type="${escapeHtml(item.object_type)}" data-favorite-target-key="${escapeHtml(item.object_key)}"`;
             return `<tr><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td></tr>`;
         }).join('');
+    }
+
+    function updateFavoritesSortIndicators() {
+        document.querySelectorAll('[data-favorites-sort]').forEach(button => {
+            const isActive = button.dataset.favoritesSort === favoritesSortState.column;
+            const header = button.closest('th');
+            button.classList.toggle('active', isActive);
+            if (header) header.setAttribute('aria-sort', isActive ? (favoritesSortState.direction === 'asc' ? 'ascending' : 'descending') : 'none');
+            const icon = button.querySelector('i');
+            if (icon) icon.className = isActive ? `fas fa-sort-${favoritesSortState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+        });
     }
 
     function openFavoriteObject(objectType, objectKey) {
@@ -296,6 +318,18 @@
     }
 
     function initFavoriteControls() {
+        document.querySelectorAll('[data-favorites-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const column = this.dataset.favoritesSort;
+                if (favoritesSortState.column === column) {
+                    favoritesSortState.direction = favoritesSortState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    favoritesSortState = {column, direction: 'asc'};
+                }
+                renderFavoritesPage();
+            });
+        });
+        updateFavoritesSortIndicators();
         document.addEventListener('click', event => {
             const objectLink = event.target.closest('[data-favorite-target-type][data-favorite-target-key]');
             if (objectLink) {
@@ -314,7 +348,7 @@
                     applyFavoriteChange(data);
                     refreshFavoriteFilteredTable(data.object_type);
                 })
-                .catch(error => window.alert(error.message))
+                .catch(error => window.alert(translateInterfaceText(error.message)))
                 .finally(() => setFavoriteButtonsDisabled(objectType, objectKey, false));
         });
     }
@@ -3130,7 +3164,7 @@
         (actions || []).forEach(action => {
             const option = document.createElement('option');
             option.value = action.value;
-            option.textContent = action.label;
+            option.textContent = translateInterfaceText(action.label);
             option.classList.add(`audit-action-filter-option--${action.value.replaceAll('_', '-')}`);
             select.appendChild(option);
         });
@@ -3215,8 +3249,8 @@
             <tr>
                 <td class="audit-created">${escapeHtml(event.created)}</td>
                 <td><strong>${escapeHtml(event.username)}</strong></td>
-                <td><span class="audit-action-badge ${getAuditActionBadgeClass(event.action_type)}">${escapeHtml(event.action_label || event.action_type)}</span></td>
-                <td class="audit-info-cell">${escapeHtml(event.info)}</td>
+                <td><span class="audit-action-badge ${getAuditActionBadgeClass(event.action_type)}">${escapeHtml(translateInterfaceText(event.action_label || event.action_type))}</span></td>
+                <td class="audit-info-cell">${escapeHtml(translateInterfaceText(event.info))}</td>
             </tr>
         `).join('');
     }

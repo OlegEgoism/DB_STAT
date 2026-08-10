@@ -29,6 +29,11 @@
                 <label class="form-label" for="emailInput">Почта/Email</label>
                 <input class="form-control" id="emailInput" name="email" type="email" value="{{ email_value }}" autocomplete="email" required>
             </div>
+            <div class="form-field">
+                <label class="form-label" for="sessionDurationInput">Время сессии, часов</label>
+                <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="1" inputmode="numeric" required aria-describedby="sessionDurationHelp">
+                <div class="form-text" id="sessionDurationHelp">От {{ min_session_duration_hours }} до {{ max_session_duration_hours }} часов. После этого потребуется повторный вход.</div>
+            </div>
             <button class="btn btn-primary w-100" type="submit">
                 <i class="fas fa-sign-in-alt"></i> Войти
             </button>

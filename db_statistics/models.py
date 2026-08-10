@@ -183,7 +183,7 @@ class DBAudit(models.Model):
         ("connection_update", "Изменение подключения"),
         ("connection_delete", "Удаление подключения"),
         ("connection_test", "Проверка подключения"),
-        ("sidebar_settings", "Настройки сайдбара"),
+        ("sidebar_settings", "Настройки сайдбара пользователя"),
         ("favorite_add", "Добавление в избранные объекты"),
         ("favorite_remove", "Удаление из избранных объектов"),
     ]
