@@ -540,14 +540,16 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="viewSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or view...{% else %}Поиск по схеме или представлению...{% endif %}">
                 </div>
-                <div class="toolbar-filter">
-                    <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
-                        <option value="">{% if CURRENT_LANGUAGE == 'en' %}All types{% else %}Все типы{% endif %}</option>
-                        <option value="ordinary">{% if CURRENT_LANGUAGE == 'en' %}Regular{% else %}Обычное{% endif %}</option>
-                        <option value="materialized">{% if CURRENT_LANGUAGE == 'en' %}Materialized{% else %}Материализованное{% endif %}</option>
-                    </select>
+                <div class="toolbar-filter-group">
+                    <div class="toolbar-filter">
+                        <select id="viewTypeFilter" class="form-select form-select-sm view-type-filter">
+                            <option value="">{% if CURRENT_LANGUAGE == 'en' %}All types{% else %}Все типы{% endif %}</option>
+                            <option value="ordinary">{% if CURRENT_LANGUAGE == 'en' %}Regular{% else %}Обычное{% endif %}</option>
+                            <option value="materialized">{% if CURRENT_LANGUAGE == 'en' %}Materialized{% else %}Материализованное{% endif %}</option>
+                        </select>
+                    </div>
+                    <div class="toolbar-filter"><select id="viewFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
                 </div>
-                <div class="toolbar-filter"><select id="viewFavoritesFilter" class="form-select form-select-sm"><option value="">Все записи</option><option value="favorites">Только избранные</option></select></div>
             </div>
             <div class="role-visuals-grid" id="viewsSummaryChart" aria-live="polite">
                 <div class="role-visual-card">
