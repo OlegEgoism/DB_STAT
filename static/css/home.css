@@ -19,6 +19,15 @@
     --accent-cyan: #06b6d4;
     --accent-orange: #f97316;
 
+    --audit-action-login-color: #15803d;
+    --audit-action-logout-color: #475569;
+    --audit-action-connection-create-color: #1d4ed8;
+    --audit-action-connection-update-color: #b45309;
+    --audit-action-connection-delete-color: #b91c1c;
+    --audit-action-connection-test-color: #0369a1;
+    --audit-action-sidebar-settings-color: #6d28d9;
+    --audit-action-favorite-color: #9333ea;
+
     --glow-blue: rgba(79, 140, 255, 0.12);
     --glow-purple: rgba(139, 92, 246, 0.12);
 
@@ -2108,59 +2117,91 @@ body {
 .audit-action-badge--login {
     background: rgba(34, 197, 94, 0.13);
     border-color: rgba(34, 197, 94, 0.25);
-    color: #15803d;
+    color: var(--audit-action-login-color);
 }
 
 .audit-action-badge--logout {
     background: rgba(100, 116, 139, 0.13);
     border-color: rgba(100, 116, 139, 0.25);
-    color: #475569;
+    color: var(--audit-action-logout-color);
 }
 
 .audit-action-badge--connection-create {
     background: rgba(59, 130, 246, 0.13);
     border-color: rgba(59, 130, 246, 0.25);
-    color: #1d4ed8;
+    color: var(--audit-action-connection-create-color);
 }
 
 .audit-action-badge--connection-update {
     background: rgba(245, 158, 11, 0.15);
     border-color: rgba(245, 158, 11, 0.28);
-    color: #b45309;
+    color: var(--audit-action-connection-update-color);
 }
 
 .audit-action-badge--connection-delete {
     background: rgba(239, 68, 68, 0.13);
     border-color: rgba(239, 68, 68, 0.25);
-    color: #b91c1c;
+    color: var(--audit-action-connection-delete-color);
 }
 
 .audit-action-badge--connection-test {
     background: rgba(14, 165, 233, 0.13);
     border-color: rgba(14, 165, 233, 0.25);
-    color: #0369a1;
+    color: var(--audit-action-connection-test-color);
 }
 
 .audit-action-badge--sidebar-settings {
     background: rgba(139, 92, 246, 0.13);
     border-color: rgba(139, 92, 246, 0.25);
-    color: #6d28d9;
+    color: var(--audit-action-sidebar-settings-color);
 }
 
 .audit-action-badge--favorite {
     background: rgba(168, 85, 247, 0.10);
     border-color: rgba(168, 85, 247, 0.25);
-    color: #9333ea;
+    color: var(--audit-action-favorite-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--login,
+.audit-filter-box select.audit-action-filter--login {
+    color: var(--audit-action-login-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--logout,
+.audit-filter-box select.audit-action-filter--logout {
+    color: var(--audit-action-logout-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--connection-create,
+.audit-filter-box select.audit-action-filter--connection-create {
+    color: var(--audit-action-connection-create-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--connection-update,
+.audit-filter-box select.audit-action-filter--connection-update {
+    color: var(--audit-action-connection-update-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--connection-delete,
+.audit-filter-box select.audit-action-filter--connection-delete {
+    color: var(--audit-action-connection-delete-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--connection-test,
+.audit-filter-box select.audit-action-filter--connection-test {
+    color: var(--audit-action-connection-test-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--sidebar-settings,
+.audit-filter-box select.audit-action-filter--sidebar-settings {
+    color: var(--audit-action-sidebar-settings-color);
 }
 
 .audit-filter-box select option.audit-action-filter-option--favorite-add,
-.audit-filter-box select option.audit-action-filter-option--favorite-remove {
-    color: #9333ea;
-    font-weight: 700;
-}
-
-.audit-filter-box select.audit-action-filter--favorite {
-    color: #9333ea;
+.audit-filter-box select option.audit-action-filter-option--favorite-remove,
+.audit-filter-box select.audit-action-filter--favorite-add,
+.audit-filter-box select.audit-action-filter--favorite-remove {
+    color: var(--audit-action-favorite-color);
     font-weight: 700;
 }
 
