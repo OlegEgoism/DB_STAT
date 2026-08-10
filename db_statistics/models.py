@@ -92,14 +92,14 @@ class DBUser(DateStamp, Active):
 
 
 class DBUserSidebarSettings(DateStamp):
-    """Настройки сайдбара пользователя"""
+    """Настройки сайдбара """
 
     user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="user_db_user_sidebar_settings", on_delete=models.CASCADE)
     visible_tabs = models.JSONField(**vn("Видимые вкладки"), default=list, blank=True)
 
     class Meta:
         db_table = "db_user_sidebar_settings"
-        db_table_comment = "Настройки сайдбара пользователя"
+        db_table_comment = "Настройки сайдбара"
         verbose_name = "Настройки сайдбара"
         verbose_name_plural = "Настройки сайдбара"
 
@@ -108,7 +108,7 @@ class DBUserSidebarSettings(DateStamp):
 
 
 class DBFavorite(DateStamp):
-    """Объект внешней базы данных, добавленный пользователем в избранное."""
+    """Избранные объекты"""
 
     OBJECT_TYPES = [(value, label) for value, label in [
         ("schema", "Схема"),
@@ -125,7 +125,7 @@ class DBFavorite(DateStamp):
 
     class Meta:
         db_table = "db_favorite"
-        db_table_comment = "Избранный объект базы данных"
+        db_table_comment = "Избранный объект"
         verbose_name = "Избранный объект"
         verbose_name_plural = "Избранные объекты"
         ordering = ("object_type", "object_key")
