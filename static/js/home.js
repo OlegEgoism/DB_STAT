@@ -70,6 +70,7 @@
     const languageSettingsApiUrl = '/settings/language/';
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
+    let favoriteItems = [];
 
     const pageTitles = {
         'home': 'Главная <small>Описание разделов</small>',
@@ -88,7 +89,8 @@
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
         'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
-        'audit': 'Аудит <small>Действия пользователя</small>'
+        'audit': 'Аудит <small>Действия пользователя</small>',
+        'favorites': 'Избранные объекты <small>Сохранённые объекты подключения</small>'
     };
 
 
@@ -99,13 +101,14 @@
     }
 
     function isSidebarPageEnabled(pageId) {
-        if (!pageId || pageId === 'home') return true;
+        if (!pageId || pageId === 'home' || pageId === 'favorites') return true;
         return getVisibleSidebarPages().includes(pageId);
     }
 
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!isSidebarPageEnabled(pageId)) return false;
         if (pageId === 'home' || pageId === 'audit') return true;
+        if (pageId === 'favorites') return Boolean(conn);
         if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
@@ -189,14 +192,41 @@
     }
 
     function loadFavorites(connectionId = activeConnectionId) {
-        if (!connectionId) return Promise.resolve();
+        if (!connectionId) {
+            favoriteItems = [];
+            favoriteKeys = new Set();
+            renderFavoritesPage();
+            return Promise.resolve();
+        }
         return fetch(`${favoritesApiUrl}?id=${encodeURIComponent(connectionId)}`)
             .then(response => response.ok ? response.json() : Promise.reject(new Error('Не удалось загрузить избранное')))
             .then(data => {
                 if (String(connectionId) !== String(activeConnectionId)) return;
-                favoriteKeys = new Set((data.favorites || []).map(item => favoriteId(item.object_type, item.object_key)));
+                favoriteItems = data.favorites || [];
+                favoriteKeys = new Set(favoriteItems.map(item => favoriteId(item.object_type, item.object_key)));
                 updateFavoriteButtons();
+                renderFavoritesPage();
             });
+    }
+
+    function renderFavoritesPage() {
+        const tbody = document.getElementById('favoritesObjectsTableBody');
+        const count = document.getElementById('favoritesObjectsCount');
+        if (count) count.textContent = activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных';
+        if (!tbody) return;
+        if (!activeConnectionId) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>';
+            return;
+        }
+        if (!favoriteItems.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Для выбранного подключения нет избранных объектов</td></tr>';
+            return;
+        }
+        const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
+        tbody.innerHTML = favoriteItems.map(item => {
+            const label = String(item.object_key || '').split('\u001f').join('.');
+            return `<tr><td>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</td><td>${escapeHtml(label)}</td><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td></tr>`;
+        }).join('');
     }
 
     function initFavoriteControls() {
@@ -209,6 +239,7 @@
                     const id = favoriteId(data.object_type, data.object_key);
                     data.is_favorite ? favoriteKeys.add(id) : favoriteKeys.delete(id);
                     updateFavoriteButtons();
+                    loadFavorites(activeConnectionId).catch(() => {});
                     if ([schemaSizesState, tableSizesState, viewsState, usersState, groupsState].some(state => state.favoritesOnly)) {
                         refreshActivePageForConnection();
                     }
@@ -225,6 +256,7 @@
         loadConnections();
         initCharts();
         initNavigation();
+        document.getElementById('favoritesPageTab')?.addEventListener('click', () => activatePage('favorites'));
         initSidebarCollapse();
         initSidebarSectionToggles();
         initBrandHomeNavigation();
@@ -3499,7 +3531,7 @@
 
     function isKnownPage(pageId) {
         if (!pageId || !pageTitles[pageId] || !document.getElementById('page-' + pageId)) return false;
-        if (pageId === 'home') return true;
+        if (pageId === 'home' || pageId === 'favorites') return isPageAvailableForConnection(pageId);
         return Boolean(
             isPageAvailableForConnection(pageId) &&
             Array.from(document.querySelectorAll('.nav-item[data-page]')).some(item => item.dataset.page === pageId && !item.classList.contains('d-none'))
@@ -3574,6 +3606,9 @@
         if (pageId === 'audit') {
             refreshAuditEvents();
         }
+        if (pageId === 'favorites') {
+            loadFavorites(conn?.id || activeConnectionId).catch(() => renderFavoritesPage());
+        }
     }
 
     function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -3588,6 +3623,12 @@
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.classList.toggle('active', item.dataset.page === nextPageId);
         });
+        const favoritesTab = document.getElementById('favoritesPageTab');
+        if (favoritesTab) {
+            const isActive = nextPageId === 'favorites';
+            favoritesTab.classList.toggle('active', isActive);
+            favoritesTab.setAttribute('aria-pressed', String(isActive));
+        }
         document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
         document.getElementById('page-' + nextPageId).classList.add('active');
         document.getElementById('pageTitle').innerHTML = pageTitles[nextPageId] || nextPageId;
