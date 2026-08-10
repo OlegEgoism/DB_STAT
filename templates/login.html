@@ -41,3 +41,6 @@
     </div>
 </div>
 {% endblock %}
+
+{# The login template is localized on the server; running the DOM translator here can duplicate labels from stale cached markup. #}
+{% block i18n_scripts %}{% endblock %}
