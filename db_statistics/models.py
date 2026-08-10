@@ -38,7 +38,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :]
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
     try:
         return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
     except InvalidToken:
@@ -110,7 +110,13 @@ class UserSidebarSettings(DateStamp):
 class Favorite(DateStamp):
     """Объект внешней базы данных, добавленный пользователем в избранное."""
 
-    OBJECT_TYPES = [(value, label) for value, label in [("schema", "Схема"), ("table", "Таблица"), ("view", "Представление"), ("user", "Пользователь"), ("group", "Группа")]]
+    OBJECT_TYPES = [(value, label) for value, label in [
+        ("schema", "Схема"),
+        ("table", "Таблица"),
+        ("view", "Представление"),
+        ("user", "Пользователь"),
+        ("group", "Группа")
+    ]]
 
     user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь"), related_name="favorites", on_delete=models.CASCADE)
     connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение"), related_name="favorites", on_delete=models.CASCADE)
