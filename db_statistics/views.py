@@ -171,6 +171,19 @@ def login(request):
     if db_user:
         return redirect("home")
 
+    requested_language = str(request.POST.get("language") if request.method == "POST" else request.GET.get("language") or "").lower()
+    if requested_language in SUPPORTED_LANGUAGES:
+        translation.activate(requested_language)
+        request.session["django_language"] = requested_language
+    else:
+        requested_language = ""
+    selected_language = str(requested_language or translation.get_language() or settings.LANGUAGE_CODE).split("-")[0]
+
+    def language_response(response):
+        if requested_language:
+            response.set_cookie(settings.LANGUAGE_COOKIE_NAME, requested_language, max_age=60 * 60 * 24 * 365, samesite="Lax")
+        return response
+
     error = ""
     login_value = ""
     email_value = ""
@@ -194,11 +207,11 @@ def login(request):
             request.session[SESSION_USER_ID_KEY] = db_user.pk
             request.session.set_expiry(session_duration_hours * 60 * 60)
             _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_hours}h", db_user=db_user)
-            return redirect("home")
+            return language_response(redirect("home"))
         if not error:
             error = "Пользователь с указанными login и email не найден или отключён"
 
-    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
+    return language_response(render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS, "selected_language": selected_language}))
 
 
 @require_http_methods(["POST"])

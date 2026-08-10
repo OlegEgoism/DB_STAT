@@ -17,7 +17,7 @@
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.': 'The language applies to the entire interface and is saved for future visits.',
         'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.': 'Select the tabs to show in the sidebar for the current user.',
-        'Выбрать все': 'Select all', 'Сохранить': 'Save', 'Уведомление': 'Notification', 'Новое подключение': 'New connection',
+        'Выбрать все': 'Select all', 'Сохранить': 'Save', 'Применить': 'Apply', 'Уведомление': 'Notification', 'Новое подключение': 'New connection',
         'Название': 'Name', 'Хост': 'Host', 'Порт': 'Port', 'Тип БД': 'Database type', 'Пароль': 'Password', 'Пользователь': 'User',
         'Пользователь БД': 'Database user', 'Владелец': 'Owner', 'Информация о подключении': 'Connection information',
         'Информация о пользователе': 'User information', 'Почта': 'Email', 'Роль': 'Role', 'Новое подключение': 'New connection',

@@ -91,6 +91,21 @@ class LoginSessionDurationTests(TestCase):
         self.assertContains(response, "From 1 to 24 hours. You will need to sign in again after that.")
         self.assertNotContains(response, "Время сессии (часы)")
 
+    def test_user_can_choose_language_on_login_page(self):
+        response = self.client.get(reverse("login"), {"language": "en"})
+
+        self.assertContains(response, "Interface language")
+        self.assertContains(response, '<option value="en" selected>English (EN)</option>', html=True)
+        self.assertEqual(response.cookies[settings.LANGUAGE_COOKIE_NAME].value, "en")
+        self.assertEqual(self.client.session["django_language"], "en")
+
+    def test_selected_language_is_kept_after_login(self):
+        response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": "8", "language": "en"})
+
+        self.assertRedirects(response, reverse("home"))
+        self.assertEqual(response.cookies[settings.LANGUAGE_COOKIE_NAME].value, "en")
+        self.assertEqual(self.client.session["django_language"], "en")
+
 
 class SidebarFavoritesSettingsTests(TestCase):
     def setUp(self):
