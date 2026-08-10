@@ -179,14 +179,14 @@
 
     function favoriteButton(type, key, label) {
         const selected = favoriteKeys.has(favoriteId(type, key));
-        const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+        const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
         return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" data-favorite-label="${escapeHtml(label)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
     }
 
     function updateFavoriteButtons() {
         document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
             const selected = favoriteKeys.has(favoriteId(button.dataset.favoriteType, button.dataset.favoriteKey));
-            const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+            const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
             const label = button.dataset.favoriteLabel || button.dataset.favoriteKey;
             button.classList.toggle('active', selected);
             button.setAttribute('aria-pressed', String(selected));
@@ -256,24 +256,25 @@
     function renderFavoritesPage() {
         const tbody = document.getElementById('favoritesObjectsTableBody');
         const count = document.getElementById('favoritesObjectsCount');
-        if (count) count.textContent = activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных';
+        if (count) count.textContent = translateInterfaceText(activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных');
         if (!tbody) return;
         if (!activeConnectionId) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(translateInterfaceText('Выберите подключение для просмотра избранных объектов'))}</td></tr>`;
             return;
         }
         if (!favoriteItems.length) {
-            tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Для выбранного подключения нет избранных объектов</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(translateInterfaceText('Для выбранного подключения нет избранных объектов'))}</td></tr>`;
             return;
         }
-        const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
+        const typeLabels = Object.fromEntries(Object.entries({schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'}).map(([type, label]) => [type, translateInterfaceText(label)]));
+        const sortLocale = window.DBStatI18n?.language === 'en' ? 'en' : 'ru';
         const sortedItems = [...favoriteItems].sort((first, second) => {
             const value = item => favoritesSortState.column === 'type'
                 ? (typeLabels[item.object_type] || item.object_type)
                 : String(item.object_key || '').split('\u001f').join('.');
-            const comparison = String(value(first)).localeCompare(String(value(second)), 'ru', {numeric: true, sensitivity: 'base'});
+            const comparison = String(value(first)).localeCompare(String(value(second)), sortLocale, {numeric: true, sensitivity: 'base'});
             if (comparison !== 0) return favoritesSortState.direction === 'asc' ? comparison : -comparison;
-            return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), 'ru', {numeric: true, sensitivity: 'base'});
+            return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), sortLocale, {numeric: true, sensitivity: 'base'});
         });
         updateFavoritesSortIndicators();
         tbody.innerHTML = sortedItems.map(item => {
@@ -347,7 +348,7 @@
                     applyFavoriteChange(data);
                     refreshFavoriteFilteredTable(data.object_type);
                 })
-                .catch(error => window.alert(error.message))
+                .catch(error => window.alert(translateInterfaceText(error.message)))
                 .finally(() => setFavoriteButtonsDisabled(objectType, objectKey, false));
         });
     }
