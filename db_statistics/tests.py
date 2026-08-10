@@ -105,10 +105,11 @@ class LoginSessionDurationTests(TestCase):
                 self.assertNotContains(response, "После этого потребуется повторный вход")
                 self.assertNotContains(response, "You will need to sign in again after that")
 
-    def test_login_uses_current_i18n_asset_version(self):
+    def test_login_does_not_run_client_side_translator(self):
         response = self.client.get(reverse("login"))
 
-        self.assertContains(response, "static/js/i18n.js?v=10")
+        self.assertNotContains(response, "static/js/i18n.js")
+        self.assertNotContains(response, "window.DB_STAT_LANGUAGE")
 
     def test_login_errors_use_selected_language(self):
         cases = {
