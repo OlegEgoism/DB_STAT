@@ -225,12 +225,40 @@
         const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
         tbody.innerHTML = favoriteItems.map(item => {
             const label = String(item.object_key || '').split('\u001f').join('.');
-            return `<tr><td>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</td><td>${escapeHtml(label)}</td><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td></tr>`;
+            const targetAttributes = `data-favorite-target-type="${escapeHtml(item.object_type)}" data-favorite-target-key="${escapeHtml(item.object_key)}"`;
+            return `<tr><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td></tr>`;
         }).join('');
+    }
+
+    function openFavoriteObject(objectType, objectKey) {
+        const targets = {
+            schema: {page: 'databases', state: schemaSizesState, input: 'schemaSearchInput', filter: 'schemaFavoritesFilter'},
+            table: {page: 'tables', state: tableSizesState, input: 'tableSearchInput', filter: 'tableFavoritesFilter'},
+            view: {page: 'views', state: viewsState, input: 'viewSearchInput', filter: 'viewFavoritesFilter'},
+            user: {page: 'users', state: usersState, input: 'usersSearchInput', filter: 'usersFavoritesFilter'},
+            group: {page: 'groups', state: groupsState, input: 'groupsSearchInput', filter: 'groupsFavoritesFilter'}
+        };
+        const target = targets[objectType];
+        if (!target) return;
+        const keyParts = String(objectKey || '').split('\u001f');
+        const search = objectType === 'schema' ? keyParts[0] : keyParts[keyParts.length - 1];
+        target.state.search = search;
+        target.state.favoritesOnly = true;
+        if ('page' in target.state) target.state.page = 1;
+        const searchInput = document.getElementById(target.input);
+        const favoritesFilter = document.getElementById(target.filter);
+        if (searchInput) searchInput.value = search;
+        if (favoritesFilter) favoritesFilter.value = 'favorites';
+        activatePage(target.page);
     }
 
     function initFavoriteControls() {
         document.addEventListener('click', event => {
+            const objectLink = event.target.closest('[data-favorite-target-type][data-favorite-target-key]');
+            if (objectLink) {
+                openFavoriteObject(objectLink.dataset.favoriteTargetType, objectLink.dataset.favoriteTargetKey);
+                return;
+            }
             const button = event.target.closest('[data-favorite-type][data-favorite-key]');
             if (!button || !activeConnectionId) return;
             button.disabled = true;
