@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from db_statistics.models import DBAudit, DBConnection, DBUser, Favorite, UserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
 
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
@@ -47,8 +47,8 @@ class DBUserAdmin(BaseAdmin):
         return str(obj.connections.count())
 
 
-@admin.register(UserSidebarSettings)
-class UserSidebarSettingsAdmin(BaseAdmin):
+@admin.register(DBUserSidebarSettings)
+class DBUserSidebarSettingsAdmin(BaseAdmin):
     """Настройки сайдбара"""
 
     list_display = ("user", "visible_tabs_display", "created", "updated")
@@ -79,8 +79,8 @@ class DBConnectionAdmin(BaseAdmin):
         return obj.dbuser_set.count()
 
 
-@admin.register(Favorite)
-class FavoriteAdmin(BaseAdmin):
+@admin.register(DBFavorite)
+class DBFavoriteAdmin(BaseAdmin):
     list_display = ("user", "connection", "object_type", "object_key", "created")
     list_filter = ("object_type", "connection")
     search_fields = ("user__login", "object_key")
