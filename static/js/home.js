@@ -3029,10 +3029,16 @@
             const option = document.createElement('option');
             option.value = action.value;
             option.textContent = action.label;
+            option.classList.add(`audit-action-filter-option--${action.value.replaceAll('_', '-')}`);
             select.appendChild(option);
         });
         select.value = currentValue;
+        updateAuditActionFilterColor(select);
         auditActionsLoaded = true;
+    }
+
+    function updateAuditActionFilterColor(select) {
+        select?.classList.toggle('audit-action-filter--favorite', ['favorite_add', 'favorite_remove'].includes(select.value));
     }
 
     function getAuditActionBadgeClass(actionType) {
@@ -3043,7 +3049,9 @@
             connection_update: 'audit-action-badge--connection-update',
             connection_delete: 'audit-action-badge--connection-delete',
             connection_test: 'audit-action-badge--connection-test',
-            sidebar_settings: 'audit-action-badge--sidebar-settings'
+            sidebar_settings: 'audit-action-badge--sidebar-settings',
+            favorite_add: 'audit-action-badge--favorite',
+            favorite_remove: 'audit-action-badge--favorite'
         };
         return classes[actionType] || 'audit-action-badge--default';
     }
@@ -3100,6 +3108,7 @@
 
     function initAuditControls() {
         document.getElementById('auditActionFilter')?.addEventListener('change', function () {
+            updateAuditActionFilterColor(this);
             auditState.page = 1;
             refreshAuditEvents();
         });
