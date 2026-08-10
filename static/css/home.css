@@ -2080,7 +2080,11 @@ body {
     background: transparent;
     color: var(--text-primary);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 400;
+}
+
+.audit-filter-box select option {
+    font-weight: 400;
 }
 
 .audit-table-scroll {
@@ -2202,7 +2206,6 @@ body {
 .audit-filter-box select.audit-action-filter--favorite-add,
 .audit-filter-box select.audit-action-filter--favorite-remove {
     color: var(--audit-action-favorite-color);
-    font-weight: 700;
 }
 
 .audit-action-badge--default {
