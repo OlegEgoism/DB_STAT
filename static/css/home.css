@@ -2420,6 +2420,13 @@ body {
     max-height: 560px;
 }
 
+.segments-detail-table-scroll,
+.active-sessions-table-scroll,
+.users-table-scroll,
+.groups-table-scroll {
+    max-height: 720px;
+}
+
 .users-table-scroll thead th {
     position: sticky;
     top: 0;
