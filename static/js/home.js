@@ -39,7 +39,8 @@
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
-    let auditState = {page: 1, pageSize: 100, totalCount: 0};
+    let auditUsersLoaded = false;
+    let auditState = {page: 1, pageSize: 100, totalCount: 0, sort: 'created', direction: 'desc'};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -3037,6 +3038,30 @@
         auditActionsLoaded = true;
     }
 
+    function populateAuditUserFilter(users) {
+        const select = document.getElementById('auditUserFilter');
+        if (!select || auditUsersLoaded) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Все пользователи</option>';
+        (users || []).forEach(username => {
+            const option = document.createElement('option');
+            option.value = username;
+            option.textContent = username;
+            select.appendChild(option);
+        });
+        select.value = currentValue;
+        auditUsersLoaded = true;
+    }
+
+    function updateAuditSortIndicators() {
+        document.querySelectorAll('[data-audit-sort]').forEach(button => {
+            const isActive = button.dataset.auditSort === auditState.sort;
+            button.classList.toggle('active', isActive);
+            const icon = button.querySelector('i');
+            if (icon) icon.className = isActive ? `fas fa-sort-${auditState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+        });
+    }
+
     function updateAuditActionFilterColor(select) {
         if (!select) return;
         if (select.dataset.actionColorClass) {
@@ -3066,16 +3091,20 @@
 
     function renderAuditEvents(data) {
         populateAuditActionFilter(data.actions || []);
+        populateAuditUserFilter(data.users || []);
         const events = data.events || [];
         auditState.page = data.page || auditState.page;
         auditState.pageSize = data.page_size || auditState.pageSize;
         auditState.totalCount = data.total_count || 0;
+        auditState.sort = data.sort || auditState.sort;
+        auditState.direction = data.direction || auditState.direction;
         const tbody = document.getElementById('auditEventsTableBody');
         const count = document.getElementById('auditEventsCount');
         if (count) {
             count.textContent = `${events.length} из ${auditState.totalCount} записей`;
         }
         updateAuditPaginationButtons();
+        updateAuditSortIndicators();
         if (!tbody) return;
         if (!events.length) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-muted">События аудита не найдены</td></tr>';
@@ -3094,8 +3123,10 @@
     function refreshAuditEvents() {
         const requestId = ++auditRequestId;
         const actionType = document.getElementById('auditActionFilter')?.value || '';
-        const params = new URLSearchParams({page: String(auditState.page)});
+        const username = document.getElementById('auditUserFilter')?.value || '';
+        const params = new URLSearchParams({page: String(auditState.page), sort: auditState.sort, direction: auditState.direction});
         if (actionType) params.set('action_type', actionType);
+        if (username) params.set('username', username);
         const url = `${auditEventsApiUrl}?${params.toString()}`;
         renderAuditWarning('Загрузка аудита...');
         fetch(url)
@@ -3120,6 +3151,19 @@
             auditState.page = 1;
             refreshAuditEvents();
         });
+        document.getElementById('auditUserFilter')?.addEventListener('change', function () {
+            auditState.page = 1;
+            refreshAuditEvents();
+        });
+        document.querySelectorAll('[data-audit-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.auditSort;
+                auditState.direction = auditState.sort === sort && auditState.direction === 'asc' ? 'desc' : 'asc';
+                auditState.sort = sort;
+                auditState.page = 1;
+                refreshAuditEvents();
+            });
+        });
         document.getElementById('auditRefreshBtn')?.addEventListener('click', refreshAuditEvents);
         document.getElementById('auditPrevPageBtn')?.addEventListener('click', function () {
             if (auditState.page > 1) {
@@ -3135,6 +3179,7 @@
             }
         });
         updateAuditPaginationButtons();
+        updateAuditSortIndicators();
     }
 
     function connectionRequest(url, payload) {

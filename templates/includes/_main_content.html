@@ -1453,16 +1453,22 @@
                         <option value="">{% if CURRENT_LANGUAGE == 'en' %}All actions{% else %}Все действия{% endif %}</option>
                     </select>
                 </div>
+                <div class="search-box audit-filter-box">
+                    <i class="fas fa-user"></i>
+                    <select id="auditUserFilter" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Audit user filter{% else %}Фильтр пользователей аудита{% endif %}">
+                        <option value="">{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}</option>
+                    </select>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive audit-table-scroll">
                     <table class="table table-sm audit-table">
                         <thead>
                         <tr>
-                            <th>Дата и время</th>
-                            <th>Пользователь</th>
-                            <th>Действие</th>
-                            <th>Информация</th>
+                            <th><button class="table-sort-btn" type="button" data-audit-sort="created">Дата и время <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-audit-sort="username">Пользователь <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-audit-sort="action_type">Действие <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-audit-sort="info">Информация <i class="fas fa-sort"></i></button></th>
                         </tr>
                         </thead>
                         <tbody id="auditEventsTableBody">
