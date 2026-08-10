@@ -81,6 +81,8 @@ class DBConnectionAdmin(BaseAdmin):
 
 @admin.register(DBFavorite)
 class DBFavoriteAdmin(BaseAdmin):
+    """Избранные объекты"""
+
     list_display = ("user", "connection", "object_type", "object_key", "created", "updated")
     list_filter = ("object_type", "connection")
     search_fields = ("user__login",)
