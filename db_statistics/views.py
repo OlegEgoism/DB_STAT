@@ -129,6 +129,11 @@ def _connection_audit_info(action, connection, *, result=None, error=None):
     return "; ".join(details)
 
 
+def _favorite_audit_info(connection, object_type, object_key):
+    object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
+    return "; ".join(["Объект добавлен в избранные объекты", f"Подключение: {connection.name}", f"Тип объекта: {object_type_label}", f"Идентификатор объекта: {object_key}"])
+
+
 def _can_manage_connections(request):
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == ADMIN_ROLE)
@@ -235,6 +240,8 @@ def favorites(request):
     favorite, created = DBFavorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
     if not created:
         favorite.delete()
+    else:
+        _write_audit("favorite_add", _favorite_audit_info(connection, object_type, object_key), db_user=db_user)
     return JsonResponse({"ok": True, "is_favorite": created, "object_type": object_type, "object_key": object_key})
 
 
