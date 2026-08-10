@@ -15,9 +15,12 @@ from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUs
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
+DEFAULT_SESSION_DURATION_HOURS = 8
+MIN_SESSION_DURATION_HOURS = 1
+MAX_SESSION_DURATION_HOURS = 24
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "audit"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit"]
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -34,6 +37,7 @@ SIDEBAR_TAB_LABELS = {
     "users": "Пользователи",
     "groups": "Группы",
     "maintenance": "Обслуживание",
+    "favorites": "Избранное",
     "audit": "Аудит",
 }
 SUPPORTED_LANGUAGES = {"ru", "en"}
@@ -170,17 +174,31 @@ def login(request):
     error = ""
     login_value = ""
     email_value = ""
+    session_duration_value = str(DEFAULT_SESSION_DURATION_HOURS)
     if request.method == "POST":
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
-        db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
-        if db_user:
-            request.session[SESSION_USER_ID_KEY] = db_user.pk
-            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}", db_user=db_user)
-            return redirect("home")
-        error = "Пользователь с указанными login и email не найден или отключён"
+        session_duration_value = (request.POST.get("session_duration") or str(DEFAULT_SESSION_DURATION_HOURS)).strip()
+        try:
+            session_duration_hours = int(session_duration_value)
+        except ValueError:
+            session_duration_hours = None
 
-    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value})
+        if session_duration_hours is None or not MIN_SESSION_DURATION_HOURS <= session_duration_hours <= MAX_SESSION_DURATION_HOURS:
+            error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов"
+        else:
+            db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
+
+        if not error and db_user:
+            request.session.cycle_key()
+            request.session[SESSION_USER_ID_KEY] = db_user.pk
+            request.session.set_expiry(session_duration_hours * 60 * 60)
+            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_hours}h", db_user=db_user)
+            return redirect("home")
+        if not error:
+            error = "Пользователь с указанными login и email не найден или отключён"
+
+    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
 
 
 @require_http_methods(["POST"])
