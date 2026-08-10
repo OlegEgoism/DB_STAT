@@ -185,6 +185,7 @@ class DBAudit(models.Model):
         ("connection_test", "Проверка подключения"),
         ("sidebar_settings", "Настройки сайдбара пользователя"),
         ("favorite_add", "Добавление в избранные объекты"),
+        ("favorite_remove", "Удаление из избранных объектов"),
     ]
 
     username = models.CharField(**vn("Пользователь"), max_length=200)
