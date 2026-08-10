@@ -548,8 +548,12 @@ body {
 }
 
 .favorites-objects-table .favorite-column {
-    width: 110px;
+    width: 56px;
     text-align: center;
+}
+
+.favorites-objects-table thead .favorite-column i {
+    color: var(--accent-yellow);
 }
 
 .favorite-object-link {
