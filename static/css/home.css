@@ -2147,6 +2147,23 @@ body {
     color: #6d28d9;
 }
 
+.audit-action-badge--favorite {
+    background: rgba(168, 85, 247, 0.10);
+    border-color: rgba(168, 85, 247, 0.25);
+    color: #9333ea;
+}
+
+.audit-filter-box select option.audit-action-filter-option--favorite-add,
+.audit-filter-box select option.audit-action-filter-option--favorite-remove {
+    color: #9333ea;
+    font-weight: 700;
+}
+
+.audit-filter-box select.audit-action-filter--favorite {
+    color: #9333ea;
+    font-weight: 700;
+}
+
 .audit-action-badge--default {
     background: rgba(139, 92, 246, 0.10);
     border-color: rgba(139, 92, 246, 0.22);
