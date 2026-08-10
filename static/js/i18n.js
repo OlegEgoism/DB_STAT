@@ -302,11 +302,13 @@
     function translateElement(root) {
         if (language !== 'en' || !root) return;
         if (root.nodeType === Node.TEXT_NODE) {
+            if (root.parentElement && root.parentElement.closest('[data-i18n-skip]')) return;
             const translated = translateText(root.nodeValue);
             if (translated !== root.nodeValue) root.nodeValue = translated;
             return;
         }
         if (root.nodeType !== Node.ELEMENT_NODE) return;
+        if (root.closest('[data-i18n-skip]')) return;
         ['title', 'aria-label', 'placeholder'].forEach(attribute => {
             if (!root.hasAttribute(attribute)) return;
             const current = root.getAttribute(attribute);
