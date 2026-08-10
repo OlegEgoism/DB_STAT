@@ -8,6 +8,10 @@
         <div class="topbar-left">
             <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
             <h4 id="pageTitle">База данных <small>Размеры и структура</small></h4>
+            <button class="topbar-page-tab" id="favoritesPageTab" type="button" aria-controls="page-favorites" aria-pressed="false">
+                <i class="fas fa-star"></i>
+                <span>Избранные объекты</span>
+            </button>
         </div>
         <div class="topbar-right">
             <!-- Connection Manager -->
@@ -136,6 +140,28 @@
                     <div class="home-tab-card"><i class="fas fa-tools"></i><strong>Обслуживание</strong><span>Статистика VACUUM/ANALYZE, живые и мёртвые строки.</span></div>
                     <div class="home-tab-card"><i class="fas fa-clipboard-list"></i><strong>Аудит</strong><span>История действий пользователя с фильтром по типу события.</span></div>
                     <div class="home-tab-card"><i class="fas fa-cog"></i><strong>Настройки</strong><span>Персональная настройка бокового меню.</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: FAVORITES -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-favorites">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-star"></i> Избранные объекты</span>
+                <span class="card-meta" id="favoritesObjectsCount">Нет данных</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm favorites-objects-table">
+                        <thead><tr><th>Тип объекта</th><th>Объект</th><th class="favorite-column">Избранное</th></tr></thead>
+                        <tbody id="favoritesObjectsTableBody">
+                        <tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

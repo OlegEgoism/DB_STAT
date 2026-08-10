@@ -543,6 +543,37 @@ body {
     margin-left: 10px;
 }
 
+.topbar-page-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-card);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.topbar-page-tab i { color: var(--accent-yellow); }
+
+.topbar-page-tab:hover,
+.topbar-page-tab.active {
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.10);
+    color: #b45309;
+}
+
+.favorites-objects-table .favorite-column {
+    width: 110px;
+    text-align: center;
+}
+
 .topbar-right {
     display: flex;
     align-items: center;
