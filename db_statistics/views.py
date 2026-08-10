@@ -185,7 +185,7 @@ def login(request):
             session_duration_hours = None
 
         if session_duration_hours is None or not MIN_SESSION_DURATION_HOURS <= session_duration_hours <= MAX_SESSION_DURATION_HOURS:
-            error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов"
+            error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов/Session duration must be between {MIN_SESSION_DURATION_HOURS} and {MAX_SESSION_DURATION_HOURS} hours"
         else:
             db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
 
@@ -196,7 +196,7 @@ def login(request):
             _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_hours}h", db_user=db_user)
             return redirect("home")
         if not error:
-            error = "Пользователь с указанными login и email не найден или отключён"
+            error = "Пользователь с указанными login и email не найден или отключён/No active user with the specified login and email was found"
 
     return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
 

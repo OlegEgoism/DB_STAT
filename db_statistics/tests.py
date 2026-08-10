@@ -82,14 +82,25 @@ class LoginSessionDurationTests(TestCase):
         self.assertRedirects(response, reverse("home"))
         self.assertAlmostEqual(self.client.session.get_expiry_age(), 8 * 60 * 60, delta=2)
 
-    def test_session_duration_field_is_rendered_in_english(self):
-        self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = "en"
+    def test_login_window_text_is_rendered_in_russian_and_english(self):
+        for language in ("ru", "en"):
+            with self.subTest(language=language):
+                self.client.cookies[settings.LANGUAGE_COOKIE_NAME] = language
+                response = self.client.get(reverse("login"))
 
-        response = self.client.get(reverse("login"))
+                self.assertContains(response, "Авторизация пользователя/User sign in")
+                self.assertContains(response, "Логин/Login")
+                self.assertContains(response, "Почта/Email")
+                self.assertContains(response, "Время сессии (часы)/Session duration (hours)")
+                self.assertContains(response, "От 1 до 24 часов. После этого потребуется повторный вход./From 1 to 24 hours. You will need to sign in again after that.")
+                self.assertContains(response, "Войти/Sign in")
 
-        self.assertContains(response, "Session duration (hours)")
-        self.assertContains(response, "From 1 to 24 hours. You will need to sign in again after that.")
-        self.assertNotContains(response, "Время сессии (часы)")
+    def test_login_errors_are_rendered_in_russian_and_english(self):
+        response = self.client.post(reverse("login"), {"login": self.user.login, "email": self.user.email, "session_duration": "25"})
+        self.assertContains(response, "Время сессии должно быть от 1 до 24 часов/Session duration must be between 1 and 24 hours")
+
+        response = self.client.post(reverse("login"), {"login": "unknown", "email": "unknown@example.com", "session_duration": "8"})
+        self.assertContains(response, "Пользователь с указанными login и email не найден или отключён/No active user with the specified login and email was found")
 
 
 class SidebarFavoritesSettingsTests(TestCase):

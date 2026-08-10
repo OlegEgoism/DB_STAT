@@ -1,20 +1,19 @@
 {% extends 'base.html' %}
 {% load static i18n %}
 
-{% block title %}Авторизация | DB STAT{% endblock %}
+{% block title %}Авторизация/Sign in | DB STAT{% endblock %}
 
 {% block content %}
-{% get_current_language as CURRENT_LANGUAGE %}
 {% include 'includes/_background.html' %}
 <div class="login-page app-page-shell">
-    <div class="login-card glass-card">
+    <div class="login-card glass-card" data-i18n-skip>
         <div class="login-brand">
             <div class="logo-icon">
                 <img class="login-brand__logo" src="{% static 'img/favicon.svg' %}" alt="" aria-hidden="true">
             </div>
             <div>
                 <h1>DB STAT</h1>
-                <p>Авторизация пользователя</p>
+                <p>Авторизация пользователя/User sign in</p>
             </div>
         </div>
         {% if error %}
@@ -31,12 +30,12 @@
                 <input class="form-control" id="emailInput" name="email" type="email" value="{{ email_value }}" autocomplete="email" required>
             </div>
             <div class="form-field">
-                <label class="form-label" for="sessionDurationInput">{% if CURRENT_LANGUAGE == 'en' %}Session duration (hours){% else %}Время сессии (часы){% endif %}</label>
+                <label class="form-label" for="sessionDurationInput">Время сессии (часы)/Session duration (hours)</label>
                 <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="1" inputmode="numeric" required aria-describedby="sessionDurationHelp">
-                <div class="form-text" id="sessionDurationHelp">{% if CURRENT_LANGUAGE == 'en' %}From {{ min_session_duration_hours }} to {{ max_session_duration_hours }} hours. You will need to sign in again after that.{% else %}От {{ min_session_duration_hours }} до {{ max_session_duration_hours }} часов. После этого потребуется повторный вход.{% endif %}</div>
+                <div class="form-text" id="sessionDurationHelp">От {{ min_session_duration_hours }} до {{ max_session_duration_hours }} часов. После этого потребуется повторный вход./From {{ min_session_duration_hours }} to {{ max_session_duration_hours }} hours. You will need to sign in again after that.</div>
             </div>
             <button class="btn btn-primary w-100" type="submit">
-                <i class="fas fa-sign-in-alt"></i> Войти
+                <i class="fas fa-sign-in-alt"></i> Войти/Sign in
             </button>
         </form>
     </div>
