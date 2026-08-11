@@ -1,9 +1,10 @@
 import json
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, SimpleTestCase
 
-from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, active_queries, active_sessions, terminate_active_query, terminate_active_session
+from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_SECTION_IDS, SIDEBAR_TAB_IDS, _normalize_sidebar_sections, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, _sidebar_settings_values, active_queries, active_sessions, terminate_active_query, terminate_active_session
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -20,6 +21,28 @@ class SidebarTabNormalizationTests(SimpleTestCase):
 
     def test_uses_default_order_when_selection_is_empty(self):
         self.assertEqual(_normalize_sidebar_tabs([]), SIDEBAR_TAB_IDS)
+
+
+class SidebarSectionNormalizationTests(SimpleTestCase):
+    def test_preserves_custom_order_and_adds_missing_sections(self):
+        self.assertEqual(
+            _normalize_sidebar_sections(["additional", "data", "additional", "unknown"]),
+            ["additional", "data", "infrastructure", "performance", "administration"],
+        )
+
+    def test_uses_default_order_for_invalid_value(self):
+        self.assertEqual(_normalize_sidebar_sections(None), SIDEBAR_SECTION_IDS)
+
+    def test_reads_tabs_and_section_order_from_combined_settings(self):
+        settings = SimpleNamespace(visible_tabs={
+            "visible_tabs": ["tables", "audit"],
+            "section_order": ["additional", "data"],
+        })
+
+        tabs, sections = _sidebar_settings_values(settings)
+
+        self.assertEqual(tabs, ["tables", "audit", "settings"])
+        self.assertEqual(sections, ["additional", "data", "infrastructure", "performance", "administration"])
 
 
 class SessionDurationTests(SimpleTestCase):

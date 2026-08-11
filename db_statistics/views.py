@@ -25,6 +25,7 @@ SESSION_EXPIRES_AT_KEY = "session_expires_at"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
 SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
 FIXED_SIDEBAR_TAB_IDS = {"settings"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
@@ -85,6 +86,24 @@ def _normalize_sidebar_tabs(tabs):
     return normalized_tabs
 
 
+def _normalize_sidebar_sections(sections):
+    if not isinstance(sections, list):
+        return SIDEBAR_SECTION_IDS.copy()
+    normalized_sections = list(dict.fromkeys(section for section in sections if section in SIDEBAR_SECTION_IDS))
+    normalized_sections.extend(section for section in SIDEBAR_SECTION_IDS if section not in normalized_sections)
+    return normalized_sections
+
+
+def _sidebar_settings_values(settings):
+    stored_value = settings.visible_tabs
+    if isinstance(stored_value, dict):
+        return (
+            _normalize_sidebar_tabs(stored_value.get("visible_tabs")),
+            _normalize_sidebar_sections(stored_value.get("section_order")),
+        )
+    return _normalize_sidebar_tabs(stored_value), SIDEBAR_SECTION_IDS.copy()
+
+
 def _session_duration_seconds(value):
     try:
         seconds = int(Decimal(str(value)) * 60 * 60)
@@ -118,10 +137,14 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 
 
 def _sidebar_settings_for_user(db_user):
-    settings, _created = DBUserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
-    normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
-    if settings.visible_tabs != normalized_tabs:
-        settings.visible_tabs = normalized_tabs
+    settings, _created = DBUserSidebarSettings.objects.get_or_create(
+        user=db_user,
+        defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()},
+    )
+    normalized_tabs, normalized_sections = _sidebar_settings_values(settings)
+    normalized_value = {"visible_tabs": normalized_tabs, "section_order": normalized_sections}
+    if settings.visible_tabs != normalized_value:
+        settings.visible_tabs = normalized_value
         settings.save(update_fields=["visible_tabs", "updated"])
     return settings
 
@@ -130,7 +153,8 @@ def _user_payload(db_user):
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs}
+    visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": visible_tabs, "sidebar_section_order": section_order}
 
 
 def _connection_permission_error():
@@ -288,20 +312,22 @@ def sidebar_settings(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     settings = _sidebar_settings_for_user(db_user)
+    current_tabs, current_section_order = _sidebar_settings_values(settings)
     if request.method == "GET":
-        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": settings.visible_tabs})
+        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": current_tabs, "section_order": current_section_order})
 
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
 
-    previous_tabs = settings.visible_tabs
+    previous_tabs = current_tabs
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
-    settings.visible_tabs = visible_tabs
+    section_order = _normalize_sidebar_sections(payload.get("section_order"))
+    settings.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
-    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs, "section_order": section_order})
 
 
 @require_http_methods(["GET", "POST"])

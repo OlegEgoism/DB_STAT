@@ -363,6 +363,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
         initCharts();
@@ -581,9 +582,29 @@
         return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
     }
 
+    function getAllSidebarSections() {
+        return Array.from(document.querySelectorAll('.sidebar-nav > [data-sidebar-section]')).map(section => section.dataset.sidebarSection);
+    }
+
+    function normalizeSidebarSections(sectionIds) {
+        const allSections = getAllSidebarSections();
+        const normalized = Array.isArray(sectionIds)
+            ? Array.from(new Set(sectionIds.filter(sectionId => allSections.includes(sectionId))))
+            : [];
+        normalized.push(...allSections.filter(sectionId => !normalized.includes(sectionId)));
+        return normalized;
+    }
+
+    function applySidebarSectionOrder(sectionIds) {
+        const sidebarNav = document.querySelector('.sidebar-nav');
+        if (!sidebarNav) return;
+        const sections = new Map(Array.from(sidebarNav.querySelectorAll(':scope > [data-sidebar-section]')).map(section => [section.dataset.sidebarSection, section]));
+        normalizeSidebarSections(sectionIds).forEach(sectionId => sidebarNav.appendChild(sections.get(sectionId)));
+    }
+
     function applySidebarPageOrder(pageIds) {
         const order = new Map(normalizeSidebarPages(pageIds).map((pageId, index) => [pageId, index]));
-        document.querySelectorAll('.sidebar-nav .nav-section, .sidebar-bottom').forEach(container => {
+        document.querySelectorAll('.sidebar-nav .nav-section').forEach(container => {
             const items = Array.from(container.querySelectorAll(':scope > .nav-item[data-page]'));
             items.sort((first, second) => {
                 const firstOrder = order.has(first.dataset.page) ? order.get(first.dataset.page) : Number.MAX_SAFE_INTEGER;
@@ -594,13 +615,14 @@
         });
     }
 
-    function saveVisibleSidebarPages(pageIds) {
+    function saveSidebarSettings(pageIds, sectionIds) {
         const visiblePages = normalizeSidebarPages(pageIds);
         if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
 
-        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages}).then(data => {
+        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages, section_order: normalizeSidebarSections(sectionIds)}).then(data => {
             currentDbUser.sidebar_visible_tabs = normalizeSidebarPages(data.visible_tabs);
-            return currentDbUser.sidebar_visible_tabs;
+            currentDbUser.sidebar_section_order = normalizeSidebarSections(data.section_order);
+            return data;
         });
     }
 
@@ -632,20 +654,22 @@
         const appendSettingsGroup = (label, items) => {
             if (!items.length) return;
             const group = document.createElement('section');
+            const sectionId = items[0].closest('[data-sidebar-section]')?.dataset.sidebarSection;
             group.className = 'sidebar-settings-group';
-            group.innerHTML = `<h6 class="sidebar-settings-group__title">${escapeHtml(label)}</h6><div class="sidebar-settings-group__items"></div>`;
+            group.dataset.sidebarSection = sectionId;
+            group.innerHTML = `<h6 class="sidebar-settings-group__title" draggable="true" data-sidebar-group-drag-handle tabindex="0" role="button" title="Перетащить блок" aria-label="Перетащить блок ${escapeHtml(label)}"><span>${escapeHtml(label)}</span><i class="fas fa-grip-vertical" aria-hidden="true"></i></h6><div class="sidebar-settings-group__items"></div>`;
             const groupItems = group.querySelector('.sidebar-settings-group__items');
             items.forEach(item => appendSettingsItem(item, groupItems));
             list.appendChild(group);
         };
 
-        document.querySelectorAll('.sidebar-nav .nav-section').forEach(section => {
+        normalizeSidebarSections(currentDbUser?.sidebar_section_order).forEach(sectionId => {
+            const section = document.querySelector(`.sidebar-nav > [data-sidebar-section="${sectionId}"]`);
+            if (!section) return;
             const label = section.querySelector('.nav-section-title span')?.textContent.trim() || '';
-            const items = Array.from(section.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])'));
+            const items = Array.from(section.querySelectorAll('.nav-item[data-page]'));
             appendSettingsGroup(label, items);
         });
-        const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]'));
-        appendSettingsGroup('Дополнительно', bottomItems);
     }
 
     function initSidebarSettings() {
@@ -657,7 +681,16 @@
         renderSidebarSettingsList();
 
         let draggedItem = null;
+        let draggedGroup = null;
         settingsList.addEventListener('dragstart', function (event) {
+            const groupHandle = event.target.closest('[data-sidebar-group-drag-handle]');
+            if (groupHandle) {
+                draggedGroup = groupHandle.closest('.sidebar-settings-group');
+                draggedGroup.classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', draggedGroup.dataset.sidebarSection || '');
+                return;
+            }
             const handle = event.target.closest('[data-sidebar-drag-handle]');
             draggedItem = handle?.closest('.sidebar-settings-item') || null;
             if (!draggedItem) return;
@@ -666,6 +699,15 @@
             event.dataTransfer.setData('text/plain', draggedItem.querySelector('input')?.value || '');
         });
         settingsList.addEventListener('dragover', function (event) {
+            const targetGroup = event.target.closest('.sidebar-settings-group');
+            if (draggedGroup && targetGroup && targetGroup !== draggedGroup) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+                const targetBox = targetGroup.getBoundingClientRect();
+                const insertAfter = event.clientX > targetBox.left + targetBox.width / 2 || event.clientY > targetBox.top + targetBox.height / 2;
+                settingsList.insertBefore(draggedGroup, insertAfter ? targetGroup.nextElementSibling : targetGroup);
+                return;
+            }
             const targetItem = event.target.closest('.sidebar-settings-item');
             if (!draggedItem || !targetItem || targetItem === draggedItem || targetItem.parentElement !== draggedItem.parentElement) return;
             event.preventDefault();
@@ -675,13 +717,26 @@
             targetItem.parentElement.insertBefore(draggedItem, insertAfter ? targetItem.nextElementSibling : targetItem);
         });
         settingsList.addEventListener('drop', function (event) {
-            if (draggedItem) event.preventDefault();
+            if (draggedItem || draggedGroup) event.preventDefault();
         });
         settingsList.addEventListener('dragend', function () {
             draggedItem?.classList.remove('dragging');
+            draggedGroup?.classList.remove('dragging');
             draggedItem = null;
+            draggedGroup = null;
         });
         settingsList.addEventListener('keydown', function (event) {
+            const groupHandle = event.target.closest('[data-sidebar-group-drag-handle]');
+            if (groupHandle && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+                const group = groupHandle.closest('.sidebar-settings-group');
+                const moveBack = ['ArrowLeft', 'ArrowUp'].includes(event.key);
+                const sibling = moveBack ? group.previousElementSibling : group.nextElementSibling;
+                if (!sibling) return;
+                event.preventDefault();
+                settingsList.insertBefore(group, moveBack ? sibling : sibling.nextElementSibling);
+                groupHandle.focus();
+                return;
+            }
             const handle = event.target.closest('[data-sidebar-drag-handle]');
             if (!handle || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
             const item = handle.closest('.sidebar-settings-item');
@@ -706,6 +761,8 @@
             const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList .sidebar-settings-item'))
                 .filter(item => item.dataset.fixedPage === 'true' || item.querySelector('input[type="checkbox"]:checked'))
                 .map(item => item.dataset.sidebarPage);
+            const sectionOrder = Array.from(document.querySelectorAll('#sidebarSettingsList .sidebar-settings-group'))
+                .map(group => group.dataset.sidebarSection);
             if (!selectedPages.some(pageId => pageId !== 'settings')) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
@@ -717,13 +774,14 @@
                 ? connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
                 : Promise.resolve();
 
-            Promise.all([saveVisibleSidebarPages(selectedPages), languageRequest])
+            Promise.all([saveSidebarSettings(selectedPages, sectionOrder), languageRequest])
                 .then(() => {
                     if (languageChanged) {
                         window.location.reload();
                         return;
                     }
                     applySidebarPageOrder(currentDbUser.sidebar_visible_tabs);
+                    applySidebarSectionOrder(currentDbUser.sidebar_section_order);
                     updateSidebarForConnection();
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());

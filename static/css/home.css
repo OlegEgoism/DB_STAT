@@ -3148,12 +3148,32 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 .sidebar-settings-group__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin: 0 0 8px;
+    padding: 4px;
+    border-radius: var(--radius-sm);
     color: var(--text-secondary);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    cursor: grab;
+}
+
+.sidebar-settings-group__title:hover,
+.sidebar-settings-group__title:focus-visible {
+    background: rgba(79, 140, 255, 0.1);
+    color: var(--accent-blue);
+    outline: none;
+}
+
+.sidebar-settings-group.dragging {
+    border-color: var(--accent-blue);
+    box-shadow: 0 8px 24px rgba(79, 140, 255, 0.18);
+    opacity: 0.65;
 }
 
 .sidebar-settings-group__items {

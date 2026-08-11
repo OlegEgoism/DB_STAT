@@ -59,7 +59,8 @@ class DBUserSidebarSettingsAdmin(BaseAdmin):
 
     @admin.display(description="Видимые вкладки")
     def visible_tabs_display(self, obj):
-        labels = [SIDEBAR_TAB_LABELS.get(tab, tab) for tab in obj.visible_tabs or []]
+        stored_tabs = obj.visible_tabs.get("visible_tabs", []) if isinstance(obj.visible_tabs, dict) else obj.visible_tabs
+        labels = [SIDEBAR_TAB_LABELS.get(tab, tab) for tab in stored_tabs or []]
         return ", ".join(labels) or "Все вкладки"
 
 
