@@ -883,6 +883,7 @@ def active_sessions(request):
     if error_response:
         return error_response
     username = (payload.get("username") or "").strip()
+    username_pattern = f"%{_escape_like_pattern(username)}%" if username else ""
     state = (payload.get("state") or "").strip()
     sessions_query = """
         SELECT
@@ -904,7 +905,7 @@ def active_sessions(request):
             CASE WHEN query_start IS NULL THEN NULL ELSE now() - query_start END AS query_duration,
             query
         FROM pg_catalog.pg_stat_activity
-        WHERE (%s = '' OR usename = %s)
+        WHERE (%s = '' OR usename ILIKE %s ESCAPE '!')
           AND (%s = '' OR state = %s)
         ORDER BY
             CASE WHEN state = 'active' THEN 0 ELSE 1 END,
@@ -912,7 +913,7 @@ def active_sessions(request):
     """
 
     try:
-        rows = _fetch_db_rows(db_connection, sessions_query, [username, username, state, state])
+        rows = _fetch_db_rows(db_connection, sessions_query, [username, username_pattern, state, state])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить активные сессии и подключения: {exc}"}, status=400)
 
