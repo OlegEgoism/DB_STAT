@@ -60,6 +60,9 @@ def _normalize_database_host(host):
 
 
 def _current_db_user(request):
+    if _session_has_expired(request.session):
+        request.session.flush()
+        return None
     user_id = request.session.get(SESSION_USER_ID_KEY)
     if not user_id:
         return None
@@ -85,6 +88,18 @@ def _session_duration_seconds(value):
     if not MIN_SESSION_DURATION_SECONDS <= seconds <= MAX_SESSION_DURATION_SECONDS:
         return None
     return seconds
+
+
+def _session_has_expired(session, now_timestamp=None):
+    expires_at = session.get(SESSION_EXPIRES_AT_KEY)
+    if not expires_at:
+        return False
+    try:
+        expires_at = int(expires_at)
+    except (TypeError, ValueError):
+        return True
+    current_timestamp = int(timezone.now().timestamp()) if now_timestamp is None else int(now_timestamp)
+    return expires_at <= current_timestamp
 
 
 def _sidebar_tab_labels(tab_ids):

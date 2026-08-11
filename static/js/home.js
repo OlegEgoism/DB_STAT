@@ -743,6 +743,19 @@
         const expiresAt = Number(countdown?.dataset.expiresAt || 0);
         if (!countdown || !value || !expiresAt) return;
 
+        let logoutStarted = false;
+        const finishSession = () => {
+            if (logoutStarted) return;
+            logoutStarted = true;
+            window.clearInterval(timerId);
+            countdown.classList.add('expired');
+            const logoutForm = document.getElementById('logoutForm');
+            if (logoutForm) {
+                logoutForm.requestSubmit();
+                return;
+            }
+            window.location.replace('/login/');
+        };
         const updateCountdown = () => {
             const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
             const hours = Math.floor(remainingSeconds / 3600);
@@ -750,8 +763,7 @@
             const seconds = remainingSeconds % 60;
             value.textContent = [hours, minutes, seconds].map(part => String(part).padStart(2, '0')).join(':');
             if (remainingSeconds === 0) {
-                window.clearInterval(timerId);
-                window.location.reload();
+                finishSession();
             }
         };
         const timerId = window.setInterval(updateCountdown, 1000);
