@@ -134,8 +134,37 @@
                     <div class="home-tab-card"><i class="fas fa-user"></i><strong>Пользователи</strong><span>Пользователи, права, лимиты подключений и срок действия ролей.</span></div>
                     <div class="home-tab-card"><i class="fas fa-users"></i><strong>Группы</strong><span>Группы ролей, привилегии и количество участников.</span></div>
                     <div class="home-tab-card"><i class="fas fa-tools"></i><strong>Обслуживание</strong><span>Статистика VACUUM/ANALYZE, живые и мёртвые строки.</span></div>
+                    <div class="home-tab-card"><i class="fas fa-star"></i><strong>Избранное</strong><span>Сохранённые схемы, таблицы, представления, пользователи и группы для быстрого доступа.</span></div>
                     <div class="home-tab-card"><i class="fas fa-clipboard-list"></i><strong>Аудит</strong><span>История действий пользователя с фильтром по типу события.</span></div>
                     <div class="home-tab-card"><i class="fas fa-cog"></i><strong>Настройки</strong><span>Персональная настройка бокового меню.</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: SETTINGS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-settings">
+        <div class="glass-card sidebar-settings-card">
+            <div class="card-header">
+                <span><i class="fas fa-cog"></i> Настройки</span>
+                <span class="card-meta">Настройки сайдбара</span>
+            </div>
+            <div class="card-body">
+                <div class="sidebar-language-setting">
+                    <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
+                    <select class="form-select" id="interfaceLanguage">
+                        <option value="ru">Русский (RU)</option>
+                        <option value="en">English (EN)</option>
+                    </select>
+                    <div class="form-text">Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</div>
+                </div>
+                <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.</p>
+                <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
+                <div class="sidebar-settings-footer">
+                    <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
+                    <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
                 </div>
             </div>
         </div>

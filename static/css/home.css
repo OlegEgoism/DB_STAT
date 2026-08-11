@@ -2990,9 +2990,8 @@ body.sidebar-collapsed .nav-item .nav-icon {
     line-height: 1;
 }
 
-.sidebar-settings-modal-dialog {
-    max-width: 520px;
-    width: calc(100% - 24px);
+.sidebar-settings-card {
+    max-width: 760px;
 }
 
 .sidebar-settings-help {
@@ -3003,10 +3002,29 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .sidebar-settings-list {
     display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sidebar-settings-group {
+    padding: 16px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.sidebar-settings-group__title {
+    margin: 0 0 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.sidebar-settings-group__items {
+    display: grid;
     gap: 10px;
-    max-height: 420px;
-    overflow: auto;
-    padding-right: 4px;
 }
 
 .sidebar-settings-item {
@@ -3035,5 +3053,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 .sidebar-settings-footer {
+    display: flex;
     justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+@media (max-width: 768px) {
+    .sidebar-settings-list {
+        grid-template-columns: 1fr;
+    }
 }
