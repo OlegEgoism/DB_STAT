@@ -25,8 +25,10 @@
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
+    const terminatedActiveQueryKeys = new Set();
     let activeSessionsRequestId = 0;
     let activeSessionsState = {sort: 'session_duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', state: ''};
+    const terminatedActiveSessionKeys = new Set();
     let blockingLocksRequestId = 0;
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
@@ -179,6 +181,8 @@
     }
 
     function favoriteId(type, key) { return `${type}:${key}`; }
+
+    function backendTerminationKey(connectionId, pid) { return `${connectionId}:${pid}`; }
 
     function favoriteButton(type, key, label) {
         const selected = favoriteKeys.has(favoriteId(type, key));
@@ -1230,7 +1234,14 @@
     function renderActiveQueries(data) {
         const tbody = document.getElementById('activeQueriesTableBody');
         const count = document.getElementById('activeQueriesCount');
-        const queries = sortActiveQueries(data.queries || []);
+        const receivedQueries = data.queries || [];
+        const connectionPrefix = `${activeConnectionId}:`;
+        terminatedActiveQueryKeys.forEach(key => {
+            if (!key.startsWith(connectionPrefix)) return;
+            const pid = key.slice(connectionPrefix.length);
+            if (!receivedQueries.some(query => String(query.pid) === pid)) terminatedActiveQueryKeys.delete(key);
+        });
+        const queries = sortActiveQueries(receivedQueries.filter(query => !terminatedActiveQueryKeys.has(backendTerminationKey(activeConnectionId, query.pid))));
         updateActiveQueriesSortIndicators();
         if (count) count.textContent = activeQueriesState.username
             ? `${queries.length} активных запросов для ${activeQueriesState.username}`
@@ -1290,14 +1301,26 @@
             button.disabled = true;
             connectionRequest(terminateActiveQueryApiUrl, {id: conn.id, pid: Number(pid)})
                 .then(data => {
+                    terminatedActiveQueryKeys.add(backendTerminationKey(conn.id, pid));
+                    button.closest('tr')?.remove();
                     showToast(`✅ ${data.message}`);
-                    refreshActiveQueriesForConnection(conn, {silent: true});
+                    refreshActiveQueriesAfterTermination(conn);
                 })
                 .catch(error => {
                     button.disabled = false;
                     showToast(`❌ ${error.message || 'Не удалось завершить активный запрос'}`);
                 });
         });
+    }
+
+    function refreshActiveQueriesAfterTermination(conn) {
+        if (String(activeConnectionId) !== String(conn.id)) return;
+        refreshActiveQueriesForConnection(conn, {silent: true});
+        [500, 1500].forEach(delay => window.setTimeout(() => {
+            if (String(activeConnectionId) === String(conn.id) && document.getElementById('page-queries')?.classList.contains('active')) {
+                refreshActiveQueriesForConnection(conn, {silent: true});
+            }
+        }, delay));
     }
 
     function refreshActiveQueriesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
@@ -1383,7 +1406,14 @@
     function renderActiveSessions(data) {
         const tbody = document.getElementById('activeSessionsTableBody');
         const count = document.getElementById('activeSessionsCount');
-        const sessions = sortActiveSessions(data.sessions || []);
+        const receivedSessions = data.sessions || [];
+        const connectionPrefix = `${activeConnectionId}:`;
+        terminatedActiveSessionKeys.forEach(key => {
+            if (!key.startsWith(connectionPrefix)) return;
+            const pid = key.slice(connectionPrefix.length);
+            if (!receivedSessions.some(session => String(session.pid) === pid)) terminatedActiveSessionKeys.delete(key);
+        });
+        const sessions = sortActiveSessions(receivedSessions.filter(session => !terminatedActiveSessionKeys.has(backendTerminationKey(activeConnectionId, session.pid))));
         const summary = data.summary || {};
         updateActiveSessionsSortIndicators();
         if (count) count.textContent = activeSessionsState.username
@@ -1482,14 +1512,26 @@
             button.disabled = true;
             connectionRequest(terminateActiveSessionApiUrl, {id: conn.id, pid: Number(pid)})
                 .then(data => {
+                    terminatedActiveSessionKeys.add(backendTerminationKey(conn.id, pid));
+                    button.closest('tr')?.remove();
                     showToast(`✅ ${data.message}`);
-                    refreshActiveSessionsForConnection(conn, {silent: true});
+                    refreshActiveSessionsAfterTermination(conn);
                 })
                 .catch(error => {
                     button.disabled = false;
                     showToast(`❌ ${error.message || 'Не удалось завершить сессию пользователя'}`);
                 });
         });
+    }
+
+    function refreshActiveSessionsAfterTermination(conn) {
+        if (String(activeConnectionId) !== String(conn.id)) return;
+        refreshActiveSessionsForConnection(conn, {silent: true});
+        [500, 1500].forEach(delay => window.setTimeout(() => {
+            if (String(activeConnectionId) === String(conn.id) && document.getElementById('page-sessions')?.classList.contains('active')) {
+                refreshActiveSessionsForConnection(conn, {silent: true});
+            }
+        }, delay));
     }
 
     function refreshActiveSessionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
