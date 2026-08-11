@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from db_statistics.views import SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds
+from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -28,3 +28,16 @@ class SessionDurationTests(SimpleTestCase):
 
     def test_rejects_non_numeric_duration(self):
         self.assertIsNone(_session_duration_seconds("invalid"))
+
+
+class SessionExpirationTests(SimpleTestCase):
+    def test_detects_expired_session(self):
+        self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: 100}, now_timestamp=100))
+        self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: 99}, now_timestamp=100))
+
+    def test_keeps_active_and_legacy_sessions(self):
+        self.assertFalse(_session_has_expired({SESSION_EXPIRES_AT_KEY: 101}, now_timestamp=100))
+        self.assertFalse(_session_has_expired({}, now_timestamp=100))
+
+    def test_rejects_invalid_expiration_timestamp(self):
+        self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: "invalid"}, now_timestamp=100))

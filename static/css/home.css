@@ -603,6 +603,11 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+.session-countdown.expired {
+    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--accent-red);
+}
+
 .connection-manager {
     position: relative;
     display: flex;
