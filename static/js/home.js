@@ -45,6 +45,7 @@
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
     const sidebarSectionsCollapsedStorageKey = 'gp_sidebar_sections_collapsed';
+    const defaultSidebarSectionOrder = ['infrastructure', 'data', 'performance', 'administration', 'additional'];
     const tableChartCollapsedStorageKey = 'gp_table_chart_collapsed';
     const connectionApiUrl = '/connections/';
     const connectionTestApiUrl = '/connections/test/';
@@ -356,6 +357,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        applySidebarSectionOrder(getSidebarSectionOrder());
         loadConnections();
         initCharts();
         initNavigation();
@@ -572,14 +574,82 @@
         return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
     }
 
-    function saveVisibleSidebarPages(pageIds) {
+    function normalizeSidebarSectionOrder(sectionIds) {
+        const requested = Array.isArray(sectionIds) ? sectionIds : [];
+        const normalized = [...new Set(requested.filter(section => defaultSidebarSectionOrder.includes(section)))];
+        return normalized.concat(defaultSidebarSectionOrder.filter(section => !normalized.includes(section)));
+    }
+
+    function getSidebarSectionOrder() {
+        return normalizeSidebarSectionOrder(currentDbUser?.sidebar_section_order);
+    }
+
+    function applySidebarSectionOrder(sectionIds) {
+        const container = document.querySelector('.sidebar-nav');
+        if (!container) return;
+        normalizeSidebarSectionOrder(sectionIds).forEach(sectionId => {
+            const section = container.querySelector(`[data-sidebar-section="${sectionId}"]`);
+            if (section) container.appendChild(section);
+        });
+    }
+
+    function saveSidebarSettings(pageIds, sectionIds) {
         const visiblePages = normalizeSidebarPages(pageIds);
         if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
+        const sectionOrder = normalizeSidebarSectionOrder(sectionIds);
 
-        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages}).then(data => {
+        return connectionRequest(sidebarSettingsApiUrl, {visible_tabs: visiblePages, section_order: sectionOrder}).then(data => {
             currentDbUser.sidebar_visible_tabs = normalizeSidebarPages(data.visible_tabs);
-            return currentDbUser.sidebar_visible_tabs;
+            currentDbUser.sidebar_section_order = normalizeSidebarSectionOrder(data.section_order);
+            applySidebarSectionOrder(currentDbUser.sidebar_section_order);
+            return currentDbUser;
         });
+    }
+
+    function renderSidebarSectionOrder() {
+        const list = document.getElementById('sidebarSectionOrderList');
+        if (!list) return;
+        list.innerHTML = '';
+        getSidebarSectionOrder().forEach(sectionId => {
+            const sidebarSection = document.querySelector(`[data-sidebar-section="${sectionId}"]`);
+            const label = sidebarSection?.querySelector('.nav-section-title span')?.textContent.trim() || sectionId;
+            const item = document.createElement('div');
+            item.className = 'sidebar-section-order-item';
+            item.dataset.sectionId = sectionId;
+            item.draggable = true;
+            item.tabIndex = 0;
+            item.setAttribute('role', 'listitem');
+            item.setAttribute('aria-label', label);
+            item.innerHTML = `<i class="fas fa-grip-vertical" aria-hidden="true"></i><span>${escapeHtml(label)}</span>`;
+            item.addEventListener('dragstart', event => {
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', sectionId);
+                item.classList.add('dragging');
+            });
+            item.addEventListener('dragend', () => item.classList.remove('dragging'));
+            item.addEventListener('keydown', event => {
+                if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+                event.preventDefault();
+                const sibling = event.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+                if (!sibling) return;
+                if (event.key === 'ArrowUp') list.insertBefore(item, sibling);
+                else list.insertBefore(sibling, item);
+                item.focus();
+            });
+            list.appendChild(item);
+        });
+        list.ondragover = event => {
+            event.preventDefault();
+            const dragging = list.querySelector('.dragging');
+            if (!dragging) return;
+            const target = event.target.closest('.sidebar-section-order-item:not(.dragging)');
+            if (!target) {
+                list.appendChild(dragging);
+                return;
+            }
+            const bounds = target.getBoundingClientRect();
+            list.insertBefore(dragging, event.clientY < bounds.top + bounds.height / 2 ? target : target.nextSibling);
+        };
     }
 
     function renderSidebarSettingsList() {
@@ -613,6 +683,7 @@
         const languageSelect = document.getElementById('interfaceLanguage');
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         settingsButton.addEventListener('click', function () {
+            renderSidebarSectionOrder();
             renderSidebarSettingsList();
             settingsModal.show();
         });
@@ -625,6 +696,7 @@
 
         document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
             const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
+            const sectionOrder = Array.from(document.querySelectorAll('#sidebarSectionOrderList [data-section-id]')).map(item => item.dataset.sectionId);
             if (!selectedPages.length) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
@@ -636,7 +708,7 @@
                 ? connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
                 : Promise.resolve();
 
-            Promise.all([saveVisibleSidebarPages(selectedPages), languageRequest])
+            Promise.all([saveSidebarSettings(selectedPages, sectionOrder), languageRequest])
                 .then(() => {
                     if (languageChanged) {
                         window.location.reload();

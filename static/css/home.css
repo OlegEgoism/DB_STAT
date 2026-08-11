@@ -3001,6 +3001,51 @@ body.sidebar-collapsed .nav-item .nav-icon {
     margin: 0 0 16px;
 }
 
+.sidebar-section-order-setting {
+    margin-bottom: 18px;
+}
+
+.sidebar-settings-subtitle {
+    color: var(--text-primary);
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+
+.sidebar-section-order-list {
+    display: grid;
+    gap: 8px;
+}
+
+.sidebar-section-order-item {
+    align-items: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: grab;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 18px 1fr;
+    padding: 10px 12px;
+    user-select: none;
+}
+
+.sidebar-section-order-item:hover,
+.sidebar-section-order-item:focus-visible {
+    border-color: var(--accent-blue);
+    outline: none;
+}
+
+.sidebar-section-order-item.dragging {
+    box-shadow: 0 8px 20px rgba(29, 48, 78, 0.18);
+    cursor: grabbing;
+    opacity: 0.55;
+}
+
+.sidebar-section-order-item i {
+    color: var(--text-secondary);
+}
+
 .sidebar-settings-list {
     display: grid;
     gap: 10px;

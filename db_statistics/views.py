@@ -40,6 +40,14 @@ SIDEBAR_TAB_LABELS = {
     "favorites": "Избранное",
     "audit": "Аудит",
 }
+SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
+SIDEBAR_SECTION_LABELS = {
+    "infrastructure": "Инфраструктура",
+    "data": "Данные",
+    "performance": "Производительность",
+    "administration": "Администрирование",
+    "additional": "Дополнительно",
+}
 SUPPORTED_LANGUAGES = {"ru", "en"}
 
 
@@ -73,21 +81,41 @@ def _normalize_sidebar_tabs(tabs):
     return normalized_tabs or SIDEBAR_TAB_IDS.copy()
 
 
+def _normalize_sidebar_sections(sections):
+    if not isinstance(sections, list):
+        return SIDEBAR_SECTION_IDS.copy()
+    normalized = list(dict.fromkeys(section for section in sections if section in SIDEBAR_SECTION_IDS))
+    return normalized + [section for section in SIDEBAR_SECTION_IDS if section not in normalized]
+
+
+def _normalize_sidebar_preferences(value):
+    if isinstance(value, dict):
+        visible_tabs = _normalize_sidebar_tabs(value.get("visible_tabs"))
+        section_order = _normalize_sidebar_sections(value.get("section_order"))
+    else:
+        visible_tabs = _normalize_sidebar_tabs(value)
+        section_order = SIDEBAR_SECTION_IDS.copy()
+    return {"visible_tabs": visible_tabs, "section_order": section_order}
+
+
 def _sidebar_tab_labels(tab_ids):
     return [SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
 
 
-def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
+def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs, section_order, previous_section_order):
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
-    return "Настройки сайдбара пользователя изменены: " f"Пользователь: {db_user.login}; " f"Отображаемые вкладки: {visible_labels}; " f"Предыдущие вкладки: {previous_labels}"
+    section_labels = ", ".join(SIDEBAR_SECTION_LABELS[section] for section in section_order)
+    previous_section_labels = ", ".join(SIDEBAR_SECTION_LABELS[section] for section in previous_section_order)
+    return "Настройки сайдбара пользователя изменены: " f"Пользователь: {db_user.login}; " f"Отображаемые вкладки: {visible_labels}; " f"Предыдущие вкладки: {previous_labels}; " f"Порядок блоков: {section_labels}; " f"Предыдущий порядок блоков: {previous_section_labels}"
 
 
 def _sidebar_settings_for_user(db_user):
-    settings, _created = DBUserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()})
-    normalized_tabs = _normalize_sidebar_tabs(settings.visible_tabs)
-    if settings.visible_tabs != normalized_tabs:
-        settings.visible_tabs = normalized_tabs
+    default_preferences = {"visible_tabs": SIDEBAR_TAB_IDS.copy(), "section_order": SIDEBAR_SECTION_IDS.copy()}
+    settings, _created = DBUserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": default_preferences})
+    preferences = _normalize_sidebar_preferences(settings.visible_tabs)
+    if settings.visible_tabs != preferences:
+        settings.visible_tabs = preferences
         settings.save(update_fields=["visible_tabs", "updated"])
     return settings
 
@@ -96,7 +124,8 @@ def _user_payload(db_user):
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": sidebar_settings.visible_tabs}
+    preferences = _normalize_sidebar_preferences(sidebar_settings.visible_tabs)
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": preferences["visible_tabs"], "sidebar_section_order": preferences["section_order"]}
 
 
 def _connection_permission_error():
@@ -172,6 +201,7 @@ def login(request):
         return redirect("home")
 
     error = ""
+    is_english = translation.get_language() == "en"
     login_value = ""
     email_value = ""
     session_duration_value = str(DEFAULT_SESSION_DURATION_HOURS)
@@ -185,7 +215,10 @@ def login(request):
             session_duration_hours = None
 
         if session_duration_hours is None or not MIN_SESSION_DURATION_HOURS <= session_duration_hours <= MAX_SESSION_DURATION_HOURS:
-            error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов/Session duration must be between {MIN_SESSION_DURATION_HOURS} and {MAX_SESSION_DURATION_HOURS} hours"
+            if is_english:
+                error = f"Session duration must be between {MIN_SESSION_DURATION_HOURS} and {MAX_SESSION_DURATION_HOURS} hours"
+            else:
+                error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов"
         else:
             db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
 
@@ -196,7 +229,7 @@ def login(request):
             _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_hours}h", db_user=db_user)
             return redirect("home")
         if not error:
-            error = "Пользователь с указанными login и email не найден или отключён/No active user with the specified login and email was found"
+            error = "No active user with the specified login and email was found" if is_english else "Пользователь с указанными логином и электронной почтой не найден или отключён"
 
     return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
 
@@ -221,20 +254,23 @@ def sidebar_settings(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     settings = _sidebar_settings_for_user(db_user)
+    preferences = _normalize_sidebar_preferences(settings.visible_tabs)
     if request.method == "GET":
-        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": settings.visible_tabs})
+        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, **preferences})
 
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
 
-    previous_tabs = settings.visible_tabs
+    previous_tabs = preferences["visible_tabs"]
+    previous_section_order = preferences["section_order"]
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
-    settings.visible_tabs = visible_tabs
+    section_order = _normalize_sidebar_sections(payload["section_order"]) if "section_order" in payload else previous_section_order
+    settings.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
     settings.save(update_fields=["visible_tabs", "updated"])
-    _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
-    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs})
+    _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs, section_order, previous_section_order), db_user=db_user)
+    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs, "section_order": section_order})
 
 
 @require_http_methods(["GET", "POST"])

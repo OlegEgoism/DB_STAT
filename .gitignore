@@ -21,5 +21,6 @@ staticfiles/
 # User-uploaded media files
 media/
 
-# Django migrations are source code and must be committed so deployed databases
-# receive schema updates through ``python manage.py migrate``.
+# Generated Django migrations (keep the package marker tracked)
+db_statistics/migrations/*
+!db_statistics/migrations/__init__.py

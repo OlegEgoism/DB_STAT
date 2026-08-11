@@ -87,6 +87,11 @@ TIME_ZONE = os.getenv("TIME_ZONE", "Europe/Minsk")
 USE_I18N = True
 USE_TZ = True
 
+# ``db_statistics`` migrations are intentionally generated locally and ignored.
+# Treat the app as unmigrated so Django creates its tables when synchronizing a
+# new database (including the test database).
+MIGRATION_MODULES = {"db_statistics": None}
+
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
