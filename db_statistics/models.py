@@ -188,6 +188,8 @@ class DBAudit(models.Model):
         ("favorite_remove", "Удаление из избранных объектов"),
         ("query_terminate", "Завершение активного запроса"),
         ("session_terminate", "Завершение активной сессии"),
+        ("vacuum", "VACUUM таблицы"),
+        ("vacuum_full", "VACUUM FULL таблицы"),
     ]
 
     username = models.CharField(**vn("Пользователь"), max_length=200)

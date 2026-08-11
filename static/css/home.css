@@ -30,6 +30,8 @@
     --audit-action-favorite-remove-color: #a21caf;
     --audit-action-query-terminate-color: #c2410c;
     --audit-action-session-terminate-color: #0f766e;
+    --audit-action-vacuum-color: #047857;
+    --audit-action-vacuum-full-color: #b91c1c;
 
     --glow-blue: rgba(79, 140, 255, 0.12);
     --glow-purple: rgba(139, 92, 246, 0.12);
@@ -2308,6 +2310,18 @@ body {
     color: var(--audit-action-session-terminate-color);
 }
 
+.audit-action-badge--vacuum {
+    background: rgba(16, 185, 129, 0.13);
+    border-color: rgba(16, 185, 129, 0.28);
+    color: var(--audit-action-vacuum-color);
+}
+
+.audit-action-badge--vacuum-full {
+    background: rgba(239, 68, 68, 0.13);
+    border-color: rgba(239, 68, 68, 0.28);
+    color: var(--audit-action-vacuum-full-color);
+}
+
 .audit-filter-box select option.audit-action-filter-option--login,
 .audit-filter-box select.audit-action-filter--login {
     color: var(--audit-action-login-color);
@@ -2361,6 +2375,16 @@ body {
 .audit-filter-box select option.audit-action-filter-option--session-terminate,
 .audit-filter-box select.audit-action-filter--session-terminate {
     color: var(--audit-action-session-terminate-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--vacuum,
+.audit-filter-box select.audit-action-filter--vacuum {
+    color: var(--audit-action-vacuum-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--vacuum-full,
+.audit-filter-box select.audit-action-filter--vacuum-full {
+    color: var(--audit-action-vacuum-full-color);
 }
 
 .audit-action-badge--default {

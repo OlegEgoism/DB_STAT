@@ -234,6 +234,24 @@ def _backend_termination_audit_info(action, connection, row):
     )
 
 
+def _maintenance_vacuum_audit_info(operation, connection, schema_name, table_name, result, error=None):
+    operation_label = "VACUUM FULL" if operation == "vacuum_full" else "VACUUM"
+    details = [
+        f"Действие: {operation_label}",
+        f"Подключение: {connection.name}",
+        f"Тип БД: {connection.db_type}",
+        f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
+        f"База данных: {connection.database}",
+        f"Пользователь БД: {connection.username}",
+        f"Схема: {schema_name}",
+        f"Таблица: {table_name}",
+        f"Результат: {result}",
+    ]
+    if error:
+        details.append(f"Ошибка: {error}")
+    return "; ".join(details)
+
+
 def _can_manage_connections(request):
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == ADMIN_ROLE)
@@ -522,12 +540,13 @@ def _fetch_db_resultsets(db_connection, *queries):
     return resultsets
 
 
-def _run_maintenance_vacuum(job_id, connection_id, schema_name, table_name, full):
+def _run_maintenance_vacuum(job_id, connection_id, schema_name, table_name, operation, username):
     connection = None
+    db_connection = None
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
         statement = sql.SQL("VACUUM {mode} {table}").format(
-            mode=sql.SQL("FULL") if full else sql.SQL(""),
+            mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""),
             table=sql.Identifier(schema_name, table_name),
         )
         # VACUUM запрещён внутри транзакции. Контекстный менеджер psycopg2
@@ -549,6 +568,28 @@ def _run_maintenance_vacuum(job_id, connection_id, schema_name, table_name, full
         job = MAINTENANCE_JOBS.get(job_id)
         if job:
             job.update(result)
+
+    if db_connection is not None:
+        audit_info = _maintenance_vacuum_audit_info(
+            operation,
+            db_connection,
+            schema_name,
+            table_name,
+            "успешно завершено" if result["status"] == "completed" else "ошибка выполнения",
+            result.get("message") if result["status"] == "failed" else None,
+        )
+    else:
+        audit_info = "; ".join(
+            [
+                f"Действие: {'VACUUM FULL' if operation == 'vacuum_full' else 'VACUUM'}",
+                f"ID подключения: {connection_id}",
+                f"Схема: {schema_name}",
+                f"Таблица: {table_name}",
+                "Результат: ошибка выполнения",
+                f"Ошибка: {result['message']}",
+            ]
+        )
+    _write_audit(operation, audit_info, username=username)
 
 
 def _require_payload_connection(request, payload):
@@ -1516,13 +1557,19 @@ def maintenance_vacuum(request):
     }
     with MAINTENANCE_JOBS_LOCK:
         MAINTENANCE_JOBS[job_id] = job
+    _write_audit(
+        operation,
+        _maintenance_vacuum_audit_info(operation, db_connection, schema_name, table_name, "запущено в фоновом режиме"),
+        db_user=db_user,
+    )
     MAINTENANCE_JOB_EXECUTOR.submit(
         _run_maintenance_vacuum,
         job_id,
         db_connection.pk,
         schema_name,
         table_name,
-        operation == "vacuum_full",
+        operation,
+        db_user.login,
     )
     return JsonResponse({"ok": True, "job": {key: value for key, value in job.items() if key != "user_id"}}, status=202)
 
