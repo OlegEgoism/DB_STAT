@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, SimpleTestCase
 
-from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, terminate_active_query, terminate_active_session
+from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, active_sessions, terminate_active_query, terminate_active_session
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -47,6 +47,44 @@ class SessionExpirationTests(SimpleTestCase):
 
     def test_rejects_invalid_expiration_timestamp(self):
         self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: "invalid"}, now_timestamp=100))
+
+
+class ActiveSessionsFilterTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.connection = Mock(name="saved_connection")
+
+    @patch("db_statistics.views._fetch_db_rows", return_value=[])
+    @patch("db_statistics.views._require_payload_connection")
+    def test_filters_username_by_case_insensitive_substring(self, require_connection, fetch_rows):
+        require_connection.return_value = (self.connection, None)
+        request = self.factory.post(
+            "/sessions/active/",
+            data=json.dumps({"id": 7, "username": "Anal", "state": ""}),
+            content_type="application/json",
+        )
+
+        response = active_sessions(request)
+
+        self.assertEqual(response.status_code, 200)
+        _connection, query, params = fetch_rows.call_args.args
+        self.assertIn("usename ILIKE %s ESCAPE '!'", query)
+        self.assertEqual(params, ["Anal", "%Anal%", "", ""])
+
+    @patch("db_statistics.views._fetch_db_rows", return_value=[])
+    @patch("db_statistics.views._require_payload_connection")
+    def test_escapes_like_wildcards_in_username(self, require_connection, fetch_rows):
+        require_connection.return_value = (self.connection, None)
+        request = self.factory.post(
+            "/sessions/active/",
+            data=json.dumps({"id": 7, "username": "user_%", "state": "active"}),
+            content_type="application/json",
+        )
+
+        response = active_sessions(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(fetch_rows.call_args.args[2], ["user_%", "%user!_!%%", "active", "active"])
 
 
 class TerminateActiveQueryTests(SimpleTestCase):
