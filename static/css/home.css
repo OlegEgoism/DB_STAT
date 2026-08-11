@@ -2533,7 +2533,7 @@ body {
 }
 
 .active-sessions-table {
-    min-width: 1190px;
+    min-width: 1320px;
     table-layout: fixed;
 }
 
@@ -2554,6 +2554,20 @@ body {
 .active-sessions-col-type { width: 160px; }
 .active-sessions-col-session-duration { width: 130px; }
 .active-sessions-col-sql { width: 300px; }
+.active-sessions-col-actions { width: 130px; }
+
+.active-session-terminate-btn {
+    white-space: nowrap;
+    padding: 6px 10px;
+    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--accent-red);
+    font-size: 12px;
+}
+
+.active-session-terminate-btn:hover {
+    border-color: var(--accent-red);
+    background: rgba(239, 68, 68, 0.08);
+}
 
 .views-table-scroll thead th {
     position: sticky;

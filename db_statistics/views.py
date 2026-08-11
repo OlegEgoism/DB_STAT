@@ -912,6 +912,39 @@ def active_sessions(request):
 
 
 @require_http_methods(["POST"])
+def terminate_active_session(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    try:
+        pid = int(payload.get("pid"))
+        if pid <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "message": "Указан некорректный PID сессии"}, status=400)
+
+    terminate_query = """
+        SELECT pg_catalog.pg_terminate_backend(pid)
+        FROM pg_catalog.pg_stat_activity
+        WHERE pid = %s
+          AND pid <> pg_backend_pid();
+    """
+    try:
+        row = _fetch_db_row(db_connection, terminate_query, [pid])
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить сессию с PID {pid}: {exc}"}, status=400)
+
+    if not row:
+        return JsonResponse({"ok": False, "message": f"Сессия с PID {pid} не найдена"}, status=404)
+    if not row[0]:
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить сессию с PID {pid}"}, status=409)
+
+    return JsonResponse({"ok": True, "message": f"Сессия с PID {pid} завершена", "pid": pid})
+
+
+@require_http_methods(["POST"])
 def blocking_locks(request):
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
