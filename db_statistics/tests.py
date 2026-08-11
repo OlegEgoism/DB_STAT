@@ -7,10 +7,13 @@ class SidebarTabNormalizationTests(SimpleTestCase):
     def test_preserves_custom_order_and_removes_duplicates(self):
         tabs = ["tables", "databases", "tables", "audit"]
 
-        self.assertEqual(_normalize_sidebar_tabs(tabs), ["tables", "databases", "audit"])
+        self.assertEqual(_normalize_sidebar_tabs(tabs), ["tables", "databases", "audit", "settings"])
 
     def test_ignores_unknown_tabs(self):
-        self.assertEqual(_normalize_sidebar_tabs(["tables", "unknown", "users"]), ["tables", "users"])
+        self.assertEqual(_normalize_sidebar_tabs(["tables", "unknown", "users"]), ["tables", "users", "settings"])
+
+    def test_keeps_settings_visible_without_changing_its_order(self):
+        self.assertEqual(_normalize_sidebar_tabs(["settings", "audit", "favorites"]), ["settings", "audit", "favorites"])
 
     def test_uses_default_order_when_selection_is_empty(self):
         self.assertEqual(_normalize_sidebar_tabs([]), SIDEBAR_TAB_IDS)
