@@ -2990,9 +2990,8 @@ body.sidebar-collapsed .nav-item .nav-icon {
     line-height: 1;
 }
 
-.sidebar-settings-modal-dialog {
-    max-width: 520px;
-    width: calc(100% - 24px);
+.sidebar-settings-card {
+    max-width: 760px;
 }
 
 .sidebar-settings-help {
@@ -3004,9 +3003,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .sidebar-settings-list {
     display: grid;
     gap: 10px;
-    max-height: 420px;
-    overflow: auto;
-    padding-right: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .sidebar-settings-item {
@@ -3035,5 +3032,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 .sidebar-settings-footer {
+    display: flex;
     justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+@media (max-width: 768px) {
+    .sidebar-settings-list {
+        grid-template-columns: 1fr;
+    }
 }
