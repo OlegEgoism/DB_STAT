@@ -1,4 +1,5 @@
 import json
+from decimal import Decimal, InvalidOperation
 
 import psycopg2
 from django.conf import settings
@@ -16,11 +17,15 @@ CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 SESSION_USER_ID_KEY = "db_user_id"
 DEFAULT_SESSION_DURATION_HOURS = 8
-MIN_SESSION_DURATION_HOURS = 1
+MIN_SESSION_DURATION_MINUTES = 10
 MAX_SESSION_DURATION_HOURS = 24
+MIN_SESSION_DURATION_SECONDS = MIN_SESSION_DURATION_MINUTES * 60
+MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
+SESSION_EXPIRES_AT_KEY = "session_expires_at"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+FIXED_SIDEBAR_TAB_IDS = {"settings"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -39,6 +44,7 @@ SIDEBAR_TAB_LABELS = {
     "maintenance": "Обслуживание",
     "favorites": "Избранное",
     "audit": "Аудит",
+    "settings": "Настройки",
 }
 SUPPORTED_LANGUAGES = {"ru", "en"}
 
@@ -56,6 +62,9 @@ def _normalize_database_host(host):
 
 
 def _current_db_user(request):
+    if _session_has_expired(request.session):
+        request.session.flush()
+        return None
     user_id = request.session.get(SESSION_USER_ID_KEY)
     if not user_id:
         return None
@@ -69,8 +78,33 @@ def _current_db_user(request):
 def _normalize_sidebar_tabs(tabs):
     if not isinstance(tabs, list):
         return SIDEBAR_TAB_IDS.copy()
-    normalized_tabs = [tab for tab in tabs if tab in SIDEBAR_TAB_IDS]
-    return normalized_tabs or SIDEBAR_TAB_IDS.copy()
+    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in SIDEBAR_TAB_IDS))
+    if not any(tab not in FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
+        return SIDEBAR_TAB_IDS.copy()
+    normalized_tabs.extend(tab for tab in SIDEBAR_TAB_IDS if tab in FIXED_SIDEBAR_TAB_IDS and tab not in normalized_tabs)
+    return normalized_tabs
+
+
+def _session_duration_seconds(value):
+    try:
+        seconds = int(Decimal(str(value)) * 60 * 60)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if not MIN_SESSION_DURATION_SECONDS <= seconds <= MAX_SESSION_DURATION_SECONDS:
+        return None
+    return seconds
+
+
+def _session_has_expired(session, now_timestamp=None):
+    expires_at = session.get(SESSION_EXPIRES_AT_KEY)
+    if not expires_at:
+        return False
+    try:
+        expires_at = int(expires_at)
+    except (TypeError, ValueError):
+        return True
+    current_timestamp = int(timezone.now().timestamp()) if now_timestamp is None else int(now_timestamp)
+    return expires_at <= current_timestamp
 
 
 def _sidebar_tab_labels(tab_ids):
@@ -161,7 +195,7 @@ def home(request):
     db_user = _current_db_user(request)
     if not db_user:
         return redirect("login")
-    return render(request, "home.html", {"db_user": db_user, "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False), "user_can_manage_connections": db_user.role == ADMIN_ROLE})
+    return render(request, "home.html", {"db_user": db_user, "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False), "user_can_manage_connections": db_user.role == ADMIN_ROLE, "session_expires_at_ms": request.session.get(SESSION_EXPIRES_AT_KEY, 0) * 1000})
 
 
 @ensure_csrf_cookie
@@ -180,29 +214,27 @@ def login(request):
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
         session_duration_value = (request.POST.get("session_duration") or str(DEFAULT_SESSION_DURATION_HOURS)).strip()
-        try:
-            session_duration_hours = int(session_duration_value)
-        except ValueError:
-            session_duration_hours = None
+        session_duration_seconds = _session_duration_seconds(session_duration_value)
 
-        if session_duration_hours is None or not MIN_SESSION_DURATION_HOURS <= session_duration_hours <= MAX_SESSION_DURATION_HOURS:
+        if session_duration_seconds is None:
             if is_english:
-                error = f"Session duration must be between {MIN_SESSION_DURATION_HOURS} and {MAX_SESSION_DURATION_HOURS} hours"
+                error = f"Session duration must be between {MIN_SESSION_DURATION_MINUTES} minutes and {MAX_SESSION_DURATION_HOURS} hours"
             else:
-                error = f"Время сессии должно быть от {MIN_SESSION_DURATION_HOURS} до {MAX_SESSION_DURATION_HOURS} часов"
+                error = f"Время сессии должно быть от {MIN_SESSION_DURATION_MINUTES} минут до {MAX_SESSION_DURATION_HOURS} часов"
         else:
             db_user = DBUser.objects.filter(login=login_value, email=email_value, is_active=True).first()
 
         if not error and db_user:
             request.session.cycle_key()
             request.session[SESSION_USER_ID_KEY] = db_user.pk
-            request.session.set_expiry(session_duration_hours * 60 * 60)
-            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_hours}h", db_user=db_user)
+            request.session[SESSION_EXPIRES_AT_KEY] = int(timezone.now().timestamp()) + session_duration_seconds
+            request.session.set_expiry(session_duration_seconds)
+            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_seconds}s", db_user=db_user)
             return redirect("home")
         if not error:
             error = "No active user with the specified login and email was found" if is_english else "Пользователь с указанными логином и электронной почтой не найден или отключён"
 
-    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": MIN_SESSION_DURATION_HOURS, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
+    return render(request, "login.html", {"error": error, "login_value": login_value, "email_value": email_value, "session_duration_value": session_duration_value, "min_session_duration_hours": "0.1667", "min_session_duration_minutes": MIN_SESSION_DURATION_MINUTES, "max_session_duration_hours": MAX_SESSION_DURATION_HOURS})
 
 
 @require_http_methods(["POST"])
