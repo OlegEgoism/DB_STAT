@@ -777,6 +777,7 @@ def active_queries(request):
     if error_response:
         return error_response
     username = (payload.get("username") or "").strip()
+    username_pattern = f"%{_escape_like_pattern(username)}%" if username else ""
     active_queries_query = """
         WITH locked_relations AS (
             SELECT
@@ -805,12 +806,12 @@ def active_queries(request):
             ON locked_relations.pid = activity.pid
         WHERE activity.state = 'active'
           AND activity.pid <> pg_backend_pid()
-          AND (%s = '' OR activity.usename = %s)
+          AND (%s = '' OR activity.usename ILIKE %s ESCAPE '!')
         ORDER BY duration DESC;
     """
 
     try:
-        rows = _fetch_db_rows(db_connection, active_queries_query, [username, username])
+        rows = _fetch_db_rows(db_connection, active_queries_query, [username, username_pattern])
     except Exception as exc:
         return JsonResponse({"ok": False, "message": f"Не удалось получить активные запросы: {exc}"}, status=400)
 
