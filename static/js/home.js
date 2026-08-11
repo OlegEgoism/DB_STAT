@@ -1270,7 +1270,7 @@
         const confirmButton = document.getElementById('backendTerminationConfirmBtn');
         if (!modalElement || !messageElement || !confirmButton) return Promise.resolve(false);
 
-        messageElement.textContent = message;
+        messageElement.textContent = translateInterfaceText(message);
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
         return new Promise(resolve => {
             let resolved = false;
