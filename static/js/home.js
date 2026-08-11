@@ -357,6 +357,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
         initCharts();
         initNavigation();
@@ -382,6 +383,7 @@
         initAuditControls();
         initSidebarSettings();
         initLogoutForm();
+        initSessionCountdown();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
         initConnectionDbTypeSelect();
         updateConnectionDbTypeIcon();
@@ -560,7 +562,7 @@
 
 
     function getAllSidebarPages() {
-        return Array.from(document.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])')).map(item => item.dataset.page);
+        return Array.from(document.querySelectorAll('.nav-item[data-page]')).map(item => item.dataset.page);
     }
 
     function normalizeSidebarPages(pageIds) {
@@ -571,6 +573,19 @@
 
     function getVisibleSidebarPages() {
         return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
+    }
+
+    function applySidebarPageOrder(pageIds) {
+        const order = new Map(normalizeSidebarPages(pageIds).map((pageId, index) => [pageId, index]));
+        document.querySelectorAll('.sidebar-nav .nav-section, .sidebar-bottom').forEach(container => {
+            const items = Array.from(container.querySelectorAll(':scope > .nav-item[data-page]'));
+            items.sort((first, second) => {
+                const firstOrder = order.has(first.dataset.page) ? order.get(first.dataset.page) : Number.MAX_SAFE_INTEGER;
+                const secondOrder = order.has(second.dataset.page) ? order.get(second.dataset.page) : Number.MAX_SAFE_INTEGER;
+                return firstOrder - secondOrder;
+            });
+            items.forEach(item => container.appendChild(item));
+        });
     }
 
     function saveVisibleSidebarPages(pageIds) {
@@ -589,20 +604,42 @@
 
         const visiblePages = new Set(getVisibleSidebarPages());
         list.innerHTML = '';
-        document.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])').forEach(item => {
+        const appendSettingsItem = (item, groupItems) => {
             const pageId = item.dataset.page;
             const label = item.getAttribute('title') || item.textContent.trim() || pageId;
             const icon = item.querySelector('.nav-icon')?.cloneNode(true);
-            const row = document.createElement('label');
+            const inputId = `sidebar-setting-${pageId}`;
+            const isFixed = item.hasAttribute('data-fixed-page');
+            const row = document.createElement('div');
             row.className = 'sidebar-settings-item';
+            row.dataset.sidebarPage = pageId;
+            row.dataset.fixedPage = String(isFixed);
             row.innerHTML = `
-                <input class="form-check-input" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
+                ${isFixed ? '<span class="sidebar-settings-item__fixed-space" aria-hidden="true"></span>' : `<input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>`}
                 <span class="sidebar-settings-item__icon"></span>
-                <span>${escapeHtml(label)}</span>
+                ${isFixed ? `<span>${escapeHtml(label)}</span>` : `<label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>`}
+                <span class="sidebar-settings-item__drag-handle" draggable="true" data-sidebar-drag-handle title="Перетащить вкладку" aria-label="Перетащить вкладку" role="button" tabindex="0"><i class="fas fa-grip-vertical" aria-hidden="true"></i></span>
             `;
             if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
-            list.appendChild(row);
+            groupItems.appendChild(row);
+        };
+        const appendSettingsGroup = (label, items) => {
+            if (!items.length) return;
+            const group = document.createElement('section');
+            group.className = 'sidebar-settings-group';
+            group.innerHTML = `<h6 class="sidebar-settings-group__title">${escapeHtml(label)}</h6><div class="sidebar-settings-group__items"></div>`;
+            const groupItems = group.querySelector('.sidebar-settings-group__items');
+            items.forEach(item => appendSettingsItem(item, groupItems));
+            list.appendChild(group);
+        };
+
+        document.querySelectorAll('.sidebar-nav .nav-section').forEach(section => {
+            const label = section.querySelector('.nav-section-title span')?.textContent.trim() || '';
+            const items = Array.from(section.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])'));
+            appendSettingsGroup(label, items);
         });
+        const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]'));
+        appendSettingsGroup('Дополнительно', bottomItems);
     }
 
     function initSidebarSettings() {
@@ -613,6 +650,46 @@
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         renderSidebarSettingsList();
 
+        let draggedItem = null;
+        settingsList.addEventListener('dragstart', function (event) {
+            const handle = event.target.closest('[data-sidebar-drag-handle]');
+            draggedItem = handle?.closest('.sidebar-settings-item') || null;
+            if (!draggedItem) return;
+            draggedItem.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedItem.querySelector('input')?.value || '');
+        });
+        settingsList.addEventListener('dragover', function (event) {
+            const targetItem = event.target.closest('.sidebar-settings-item');
+            if (!draggedItem || !targetItem || targetItem === draggedItem || targetItem.parentElement !== draggedItem.parentElement) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const targetBox = targetItem.getBoundingClientRect();
+            const insertAfter = event.clientY > targetBox.top + targetBox.height / 2;
+            targetItem.parentElement.insertBefore(draggedItem, insertAfter ? targetItem.nextElementSibling : targetItem);
+        });
+        settingsList.addEventListener('drop', function (event) {
+            if (draggedItem) event.preventDefault();
+        });
+        settingsList.addEventListener('dragend', function () {
+            draggedItem?.classList.remove('dragging');
+            draggedItem = null;
+        });
+        settingsList.addEventListener('keydown', function (event) {
+            const handle = event.target.closest('[data-sidebar-drag-handle]');
+            if (!handle || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+            const item = handle.closest('.sidebar-settings-item');
+            const sibling = event.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
+            if (!sibling) return;
+            event.preventDefault();
+            if (event.key === 'ArrowUp') {
+                item.parentElement.insertBefore(item, sibling);
+            } else {
+                item.parentElement.insertBefore(sibling, item);
+            }
+            handle.focus();
+        });
+
         document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {
             document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]').forEach(input => {
                 input.checked = true;
@@ -620,8 +697,10 @@
         });
 
         document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
-            const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
-            if (!selectedPages.length) {
+            const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList .sidebar-settings-item'))
+                .filter(item => item.dataset.fixedPage === 'true' || item.querySelector('input[type="checkbox"]:checked'))
+                .map(item => item.dataset.sidebarPage);
+            if (!selectedPages.some(pageId => pageId !== 'settings')) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
             }
@@ -638,6 +717,7 @@
                         window.location.reload();
                         return;
                     }
+                    applySidebarPageOrder(currentDbUser.sidebar_visible_tabs);
                     updateSidebarForConnection();
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());
@@ -660,6 +740,39 @@
                 csrfInput.value = csrfToken;
             }
         });
+    }
+
+    function initSessionCountdown() {
+        const countdown = document.getElementById('sessionCountdown');
+        const value = document.getElementById('sessionCountdownValue');
+        const expiresAt = Number(countdown?.dataset.expiresAt || 0);
+        if (!countdown || !value || !expiresAt) return;
+
+        let logoutStarted = false;
+        const finishSession = () => {
+            if (logoutStarted) return;
+            logoutStarted = true;
+            window.clearInterval(timerId);
+            countdown.classList.add('expired');
+            const logoutForm = document.getElementById('logoutForm');
+            if (logoutForm) {
+                logoutForm.requestSubmit();
+                return;
+            }
+            window.location.replace('/login/');
+        };
+        const updateCountdown = () => {
+            const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+            value.textContent = [hours, minutes, seconds].map(part => String(part).padStart(2, '0')).join(':');
+            if (remainingSeconds === 0) {
+                finishSession();
+            }
+        };
+        const timerId = window.setInterval(updateCountdown, 1000);
+        updateCountdown();
     }
 
     function getConnectionFormData() {
