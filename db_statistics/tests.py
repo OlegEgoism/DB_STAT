@@ -1,6 +1,9 @@
-from django.test import SimpleTestCase
+import json
+from unittest.mock import Mock, patch
 
-from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired
+from django.test import RequestFactory, SimpleTestCase
+
+from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, terminate_active_query
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -44,3 +47,48 @@ class SessionExpirationTests(SimpleTestCase):
 
     def test_rejects_invalid_expiration_timestamp(self):
         self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: "invalid"}, now_timestamp=100))
+
+
+class TerminateActiveQueryTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.connection = Mock(name="saved_connection")
+
+    def request(self, pid):
+        return self.factory.post(
+            "/queries/terminate/",
+            data=json.dumps({"id": 7, "pid": pid}),
+            content_type="application/json",
+        )
+
+    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
+    @patch("db_statistics.views._require_payload_connection")
+    def test_terminates_active_backend_by_pid(self, require_connection, fetch_row):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_query(self.request(1234))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), {"ok": True, "message": "Запрос с PID 1234 завершён", "pid": 1234})
+        connection, query, params = fetch_row.call_args.args
+        self.assertIs(connection, self.connection)
+        self.assertIn("pg_terminate_backend", query)
+        self.assertEqual(params, [1234])
+
+    @patch("db_statistics.views._require_payload_connection")
+    def test_rejects_invalid_pid(self, require_connection):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_query(self.request("not-a-pid"))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("некорректный PID", json.loads(response.content)["message"])
+
+    @patch("db_statistics.views._fetch_db_row", return_value=None)
+    @patch("db_statistics.views._require_payload_connection")
+    def test_returns_not_found_when_query_is_no_longer_active(self, require_connection, _fetch_row):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_query(self.request(1234))
+
+        self.assertEqual(response.status_code, 404)

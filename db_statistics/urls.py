@@ -21,6 +21,7 @@ urlpatterns = [
     path("distribution/info/", views.distribution_info, name="distribution_info"),
     path("temp-tables/sizes/", views.database_temp_table_sizes, name="database_temp_table_sizes"),
     path("queries/active/", views.active_queries, name="active_queries"),
+    path("queries/terminate/", views.terminate_active_query, name="terminate_active_query"),
     path("sessions/active/", views.active_sessions, name="active_sessions"),
     path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
