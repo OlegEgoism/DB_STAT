@@ -31,8 +31,8 @@
             </div>
             <div class="form-field">
                 <label class="form-label" for="sessionDurationInput">{% if LANGUAGE_CODE == 'en' %}Session duration (hours){% else %}Время сессии (часы){% endif %}</label>
-                <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="1" inputmode="numeric" required aria-describedby="sessionDurationHelp">
-                <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_hours }} to {{ max_session_duration_hours }} hours.{% else %}От {{ min_session_duration_hours }} до {{ max_session_duration_hours }} часов.{% endif %}</div>
+                <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="any" inputmode="decimal" required aria-describedby="sessionDurationHelp">
+                <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_minutes }} minutes to {{ max_session_duration_hours }} hours. Fractions are allowed, for example 0.5 = 30 minutes.{% else %}От {{ min_session_duration_minutes }} минут до {{ max_session_duration_hours }} часов. Можно использовать дробные значения, например 0,5 = 30 минут.{% endif %}</div>
             </div>
             <button class="btn btn-primary w-100" type="submit">
                 <i class="fas fa-sign-in-alt"></i> {% if LANGUAGE_CODE == 'en' %}Sign in{% else %}Войти{% endif %}

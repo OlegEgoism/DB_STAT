@@ -580,6 +580,34 @@ body {
     flex-wrap: wrap;
 }
 
+.session-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.session-countdown i {
+    color: var(--accent-blue);
+}
+
+.session-countdown strong {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.session-countdown.expired {
+    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--accent-red);
+}
+
 .connection-manager {
     position: relative;
     display: flex;
@@ -3002,13 +3030,34 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .sidebar-settings-list {
     display: grid;
-    gap: 10px;
+    gap: 16px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sidebar-settings-group {
+    padding: 16px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.sidebar-settings-group__title {
+    margin: 0 0 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.sidebar-settings-group__items {
+    display: grid;
+    gap: 10px;
 }
 
 .sidebar-settings-item {
     display: grid;
-    grid-template-columns: auto 24px 1fr;
+    grid-template-columns: auto 24px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
@@ -3016,8 +3065,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
     border-radius: var(--radius-sm);
     background: var(--bg-primary);
     color: var(--text-primary);
-    cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.sidebar-settings-item label {
+    cursor: pointer;
+}
+
+.sidebar-settings-item__fixed-space {
+    width: 16px;
+    height: 16px;
 }
 
 .sidebar-settings-item:hover {
@@ -3029,6 +3086,31 @@ body.sidebar-collapsed .nav-item .nav-icon {
     display: inline-flex;
     justify-content: center;
     color: var(--accent-blue);
+}
+
+.sidebar-settings-item__drag-handle {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: grab;
+    touch-action: none;
+}
+
+.sidebar-settings-item__drag-handle:hover,
+.sidebar-settings-item__drag-handle:focus-visible {
+    background: rgba(79, 140, 255, 0.1);
+    color: var(--accent-blue);
+    outline: none;
+}
+
+.sidebar-settings-item.dragging {
+    border-color: var(--accent-blue);
+    box-shadow: 0 8px 20px rgba(79, 140, 255, 0.18);
+    cursor: grabbing;
+    opacity: 0.65;
 }
 
 .sidebar-settings-footer {
