@@ -7,17 +7,20 @@
         'Логин/Login': 'Login', 'Почта/Email': 'Email', 'Время сессии, часов': 'Session duration (hours)', 'Время сессии (часы)': 'Session duration (hours)', 'Ошибка 404': 'Error 404',
         'Страница не найдена': 'Page not found', 'Запрошенная страница не существует или была удалена.': 'The requested page does not exist or has been removed.',
         'Запрошенный адрес': 'Requested address', 'На главную': 'Home', 'Главная': 'Home', 'Главная страница': 'Home page',
-        'Инфраструктура': 'Infrastructure', 'Данные': 'Data', 'Производительность': 'Performance', 'Администрирование': 'Administration',
+        'Инфраструктура': 'Infrastructure', 'Данные': 'Data', 'Производительность': 'Performance', 'Администрирование': 'Administration', 'Дополнительно': 'Additional',
         'База данных': 'Database', 'Сегменты': 'Segments', 'Схемы': 'Schemas', 'Таблицы': 'Tables', 'Представления': 'Views',
         'Временные таблицы': 'Temporary tables', 'Распределение': 'Distribution', 'Запросы': 'Queries', 'Активные запросы': 'Active queries',
         'Сессии': 'Sessions', 'Блокировки': 'Locks', 'Транзакции': 'Transactions', 'Память': 'Memory', 'Пользователи': 'Users',
         'Группы': 'Groups', 'Обслуживание': 'Maintenance', 'Аудит': 'Audit', 'Избранные': 'Favorites', 'Избранное': 'Favorites', 'Настройки': 'Settings', 'Видео': 'Video',
         'Настройки сайдбара': 'Interface settings', 'Свернуть сайдбар': 'Collapse sidebar', 'Свернуть/развернуть сайдбар': 'Collapse/expand sidebar',
         'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Сессии и подключения': 'Sessions and connections',
+        'До завершения сессии': 'Session time remaining',
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.': 'The language applies to the entire interface and is saved for future visits.',
         'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.': 'Select the tabs to show in the sidebar for the current user.',
+        'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя. Перетаскивайте вкладки мышкой, чтобы изменить их порядок внутри каждого блока.': 'Select the tabs to show in the sidebar for the current user. Drag tabs to reorder them within each section.',
         'Выбрать все': 'Select all', 'Сохранить': 'Save', 'Уведомление': 'Notification', 'Новое подключение': 'New connection',
+        'Перетащить вкладку': 'Drag tab',
         'Название': 'Name', 'Хост': 'Host', 'Порт': 'Port', 'Тип БД': 'Database type', 'Пароль': 'Password', 'Пользователь': 'User',
         'Пользователь БД': 'Database user', 'Владелец': 'Owner', 'Информация о подключении': 'Connection information',
         'Информация о пользователе': 'User information', 'Почта': 'Email', 'Роль': 'Role', 'Новое подключение': 'New connection',
@@ -92,7 +95,8 @@
         'DB STAT — веб-панель для оперативного мониторинга и диагностики баз данных PostgreSQL и Greenplum. Она собирает ключевые технические показатели выбранного подключения и представляет их в едином, понятном интерфейсе.': 'DB STAT is a web dashboard for real-time monitoring and diagnostics of PostgreSQL and Greenplum databases. It collects key technical metrics for the selected connection and presents them in one clear interface.',
         'На панели можно оценить размеры баз, схем, таблиц и индексов, проверить активность пользователей и сессий, найти длительные или проблемные запросы, а также увидеть блокировки и простаивающие транзакции.': 'Use the dashboard to review database, schema, table, and index sizes; inspect user and session activity; find long-running or problematic queries; and identify locks and idle transactions.',
         'Для Greenplum доступны сведения о состоянии сегментов и распределении строк, помогающие обнаружить перекос данных. Раздел обслуживания показывает статистику VACUUM и ANALYZE, количество живых и мёртвых строк и время последних операций.': 'For Greenplum, segment health and row distribution data help reveal skew. The maintenance section shows VACUUM and ANALYZE statistics, live and dead row counts, and the latest operation times.',
-        'DB STAT подходит для ежедневного контроля, первичной диагностики снижения производительности и административной проверки. Переключайтесь между сохранёнными подключениями, сравнивайте показатели и быстрее находите участки, которым требуется внимание.': 'DB STAT is designed for daily checks, initial performance diagnostics, and administrative review. Switch between saved connections, compare metrics, and quickly find areas that need attention.'
+        'DB STAT подходит для ежедневного контроля, первичной диагностики снижения производительности и административной проверки. Переключайтесь между сохранёнными подключениями, сравнивайте показатели и быстрее находите участки, которым требуется внимание.': 'DB STAT is designed for daily checks, initial performance diagnostics, and administrative review. Switch between saved connections, compare metrics, and quickly find areas that need attention.',
+        'Сохранённые схемы, таблицы, представления, пользователи и группы для быстрого доступа.': 'Saved schemas, tables, views, users, and groups for quick access.'
     };
 
     Object.assign(translations, {
