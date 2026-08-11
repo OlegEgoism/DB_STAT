@@ -4310,7 +4310,7 @@
     // TOAST
     // ============================
     function showToast(message) {
-        document.getElementById('toastMessage').textContent = message;
+        document.getElementById('toastMessage').textContent = translateInterfaceText(message);
         const toast = new bootstrap.Toast(document.getElementById('liveToast'));
         toast.show();
     }
