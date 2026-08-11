@@ -1319,7 +1319,7 @@
                 <td><span class="status-badge up">${escapeHtml(query.state)}</span></td>
                 <td>${escapeHtml(query.duration)}</td>
                 <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(query.sql)}">${escapeHtml(query.sql)}</td>
-                <td><button type="button" class="btn-conn danger active-query-terminate-btn" data-active-query-pid="${escapeHtml(query.pid)}" title="Завершить запрос PID ${escapeHtml(query.pid)}" aria-label="Завершить запрос PID ${escapeHtml(query.pid)}"><i aria-hidden="true"></i> Завершить</button></td>
+                <td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-query-terminate-btn" data-active-query-pid="${escapeHtml(query.pid)}" title="Завершить запрос PID ${escapeHtml(query.pid)}" aria-label="Завершить запрос PID ${escapeHtml(query.pid)}">Завершить</button></td>
             </tr>
         `).join('');
     }
@@ -1504,7 +1504,7 @@
                     <td>${escapeHtml(session.backend_type)}</td>
                     <td>${escapeHtml(session.session_duration)}</td>
                     <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(session.sql)}">${escapeHtml(session.sql)}</td>
-                    <td><button type="button" class="btn-conn active-session-terminate-btn" data-active-session-pid="${escapeHtml(session.pid)}" title="Завершить сессию PID ${escapeHtml(session.pid)}" aria-label="Завершить сессию PID ${escapeHtml(session.pid)}"><i aria-hidden="true"></i> Завершить</button></td>
+                    <td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-session-terminate-btn" data-active-session-pid="${escapeHtml(session.pid)}" title="Завершить сессию PID ${escapeHtml(session.pid)}" aria-label="Завершить сессию PID ${escapeHtml(session.pid)}">Завершить</button></td>
                 </tr>
             `;
         }).join('');

@@ -1439,6 +1439,11 @@ body {
     white-space: nowrap;
 }
 
+.backend-terminate-actions {
+    min-width: 105px;
+    white-space: nowrap;
+}
+
 .maintenance-actions .btn + .btn {
     margin-left: 6px;
 }
