@@ -26,7 +26,10 @@
     --audit-action-connection-delete-color: #b91c1c;
     --audit-action-connection-test-color: #0369a1;
     --audit-action-sidebar-settings-color: #6d28d9;
-    --audit-action-favorite-color: #9333ea;
+    --audit-action-favorite-add-color: #be185d;
+    --audit-action-favorite-remove-color: #a21caf;
+    --audit-action-query-terminate-color: #c2410c;
+    --audit-action-session-terminate-color: #0f766e;
 
     --glow-blue: rgba(79, 140, 255, 0.12);
     --glow-purple: rgba(139, 92, 246, 0.12);
@@ -2224,16 +2227,28 @@ body {
     color: var(--audit-action-sidebar-settings-color);
 }
 
-.audit-action-badge--favorite {
-    background: rgba(168, 85, 247, 0.10);
-    border-color: rgba(168, 85, 247, 0.25);
-    color: var(--audit-action-favorite-color);
+.audit-action-badge--favorite-add {
+    background: rgba(190, 24, 93, 0.10);
+    border-color: rgba(190, 24, 93, 0.25);
+    color: var(--audit-action-favorite-add-color);
 }
 
-.audit-action-badge--terminate {
-    color: #991b1b;
-    border-color: rgba(239, 68, 68, 0.32);
-    background: rgba(239, 68, 68, 0.12);
+.audit-action-badge--favorite-remove {
+    background: rgba(162, 28, 175, 0.10);
+    border-color: rgba(162, 28, 175, 0.25);
+    color: var(--audit-action-favorite-remove-color);
+}
+
+.audit-action-badge--query-terminate {
+    background: rgba(194, 65, 12, 0.11);
+    border-color: rgba(194, 65, 12, 0.28);
+    color: var(--audit-action-query-terminate-color);
+}
+
+.audit-action-badge--session-terminate {
+    background: rgba(15, 118, 110, 0.11);
+    border-color: rgba(15, 118, 110, 0.28);
+    color: var(--audit-action-session-terminate-color);
 }
 
 .audit-filter-box select option.audit-action-filter-option--login,
@@ -2272,17 +2287,23 @@ body {
 }
 
 .audit-filter-box select option.audit-action-filter-option--favorite-add,
+.audit-filter-box select.audit-action-filter--favorite-add {
+    color: var(--audit-action-favorite-add-color);
+}
+
 .audit-filter-box select option.audit-action-filter-option--favorite-remove,
-.audit-filter-box select.audit-action-filter--favorite-add,
 .audit-filter-box select.audit-action-filter--favorite-remove {
-    color: var(--audit-action-favorite-color);
+    color: var(--audit-action-favorite-remove-color);
 }
 
 .audit-filter-box select option.audit-action-filter-option--query-terminate,
+.audit-filter-box select.audit-action-filter--query-terminate {
+    color: var(--audit-action-query-terminate-color);
+}
+
 .audit-filter-box select option.audit-action-filter-option--session-terminate,
-.audit-filter-box select.audit-action-filter--query-terminate,
 .audit-filter-box select.audit-action-filter--session-terminate {
-    color: #991b1b;
+    color: var(--audit-action-session-terminate-color);
 }
 
 .audit-action-badge--default {

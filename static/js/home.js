@@ -3374,10 +3374,10 @@
             connection_delete: 'audit-action-badge--connection-delete',
             connection_test: 'audit-action-badge--connection-test',
             sidebar_settings: 'audit-action-badge--sidebar-settings',
-            favorite_add: 'audit-action-badge--favorite',
-            favorite_remove: 'audit-action-badge--favorite',
-            query_terminate: 'audit-action-badge--terminate',
-            session_terminate: 'audit-action-badge--terminate'
+            favorite_add: 'audit-action-badge--favorite-add',
+            favorite_remove: 'audit-action-badge--favorite-remove',
+            query_terminate: 'audit-action-badge--query-terminate',
+            session_terminate: 'audit-action-badge--session-terminate'
         };
         return classes[actionType] || 'audit-action-badge--default';
     }
