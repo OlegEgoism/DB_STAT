@@ -3029,7 +3029,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .sidebar-settings-item {
     display: grid;
-    grid-template-columns: auto 24px 1fr;
+    grid-template-columns: auto 24px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
@@ -3037,8 +3037,11 @@ body.sidebar-collapsed .nav-item .nav-icon {
     border-radius: var(--radius-sm);
     background: var(--bg-primary);
     color: var(--text-primary);
-    cursor: pointer;
     transition: all 0.2s ease;
+}
+
+.sidebar-settings-item label {
+    cursor: pointer;
 }
 
 .sidebar-settings-item:hover {
@@ -3050,6 +3053,33 @@ body.sidebar-collapsed .nav-item .nav-icon {
     display: inline-flex;
     justify-content: center;
     color: var(--accent-blue);
+}
+
+.sidebar-settings-item__order {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.sidebar-settings-item__order button {
+    display: inline-grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.sidebar-settings-item__order button:hover:not(:disabled) {
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+.sidebar-settings-item__order button:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
 }
 
 .sidebar-settings-footer {

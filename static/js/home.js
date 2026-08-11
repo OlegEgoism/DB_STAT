@@ -357,6 +357,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
         initCharts();
         initNavigation();
@@ -573,6 +574,19 @@
         return normalizeSidebarPages(currentDbUser?.sidebar_visible_tabs);
     }
 
+    function applySidebarPageOrder(pageIds) {
+        const order = new Map(normalizeSidebarPages(pageIds).map((pageId, index) => [pageId, index]));
+        document.querySelectorAll('.sidebar-nav .nav-section, .sidebar-bottom').forEach(container => {
+            const items = Array.from(container.querySelectorAll(':scope > .nav-item[data-page]:not([data-fixed-page])'));
+            items.sort((first, second) => {
+                const firstOrder = order.has(first.dataset.page) ? order.get(first.dataset.page) : Number.MAX_SAFE_INTEGER;
+                const secondOrder = order.has(second.dataset.page) ? order.get(second.dataset.page) : Number.MAX_SAFE_INTEGER;
+                return firstOrder - secondOrder;
+            });
+            items.forEach(item => container.appendChild(item));
+        });
+    }
+
     function saveVisibleSidebarPages(pageIds) {
         const visiblePages = normalizeSidebarPages(pageIds);
         if (!visiblePages.length) return Promise.reject(new Error('Выберите хотя бы одну вкладку для сайдбара'));
@@ -593,12 +607,17 @@
             const pageId = item.dataset.page;
             const label = item.getAttribute('title') || item.textContent.trim() || pageId;
             const icon = item.querySelector('.nav-icon')?.cloneNode(true);
-            const row = document.createElement('label');
+            const inputId = `sidebar-setting-${pageId}`;
+            const row = document.createElement('div');
             row.className = 'sidebar-settings-item';
             row.innerHTML = `
-                <input class="form-check-input" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
+                <input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
                 <span class="sidebar-settings-item__icon"></span>
-                <span>${escapeHtml(label)}</span>
+                <label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>
+                <span class="sidebar-settings-item__order">
+                    <button type="button" data-sidebar-move="up" title="Переместить выше" aria-label="Переместить выше"><i class="fas fa-chevron-up" aria-hidden="true"></i></button>
+                    <button type="button" data-sidebar-move="down" title="Переместить ниже" aria-label="Переместить ниже"><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+                </span>
             `;
             if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
             groupItems.appendChild(row);
@@ -620,6 +639,19 @@
         });
         const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]:not([data-fixed-page])'));
         appendSettingsGroup('Дополнительно', bottomItems);
+        updateSidebarOrderButtons();
+    }
+
+    function updateSidebarOrderButtons() {
+        document.querySelectorAll('.sidebar-settings-group__items').forEach(group => {
+            const items = Array.from(group.querySelectorAll('.sidebar-settings-item'));
+            items.forEach((item, index) => {
+                const upButton = item.querySelector('[data-sidebar-move="up"]');
+                const downButton = item.querySelector('[data-sidebar-move="down"]');
+                if (upButton) upButton.disabled = index === 0;
+                if (downButton) downButton.disabled = index === items.length - 1;
+            });
+        });
     }
 
     function initSidebarSettings() {
@@ -629,6 +661,20 @@
         const languageSelect = document.getElementById('interfaceLanguage');
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         renderSidebarSettingsList();
+
+        settingsList.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-sidebar-move]');
+            const item = button?.closest('.sidebar-settings-item');
+            if (!button || !item) return;
+            const sibling = button.dataset.sidebarMove === 'up' ? item.previousElementSibling : item.nextElementSibling;
+            if (!sibling) return;
+            if (button.dataset.sidebarMove === 'up') {
+                item.parentElement.insertBefore(item, sibling);
+            } else {
+                item.parentElement.insertBefore(sibling, item);
+            }
+            updateSidebarOrderButtons();
+        });
 
         document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {
             document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]').forEach(input => {
@@ -655,6 +701,7 @@
                         window.location.reload();
                         return;
                     }
+                    applySidebarPageOrder(currentDbUser.sidebar_visible_tabs);
                     updateSidebarForConnection();
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());

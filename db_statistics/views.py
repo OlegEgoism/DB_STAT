@@ -69,7 +69,7 @@ def _current_db_user(request):
 def _normalize_sidebar_tabs(tabs):
     if not isinstance(tabs, list):
         return SIDEBAR_TAB_IDS.copy()
-    normalized_tabs = [tab for tab in tabs if tab in SIDEBAR_TAB_IDS]
+    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in SIDEBAR_TAB_IDS))
     return normalized_tabs or SIDEBAR_TAB_IDS.copy()
 
 
