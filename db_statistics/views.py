@@ -24,7 +24,8 @@ MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+FIXED_SIDEBAR_TAB_IDS = {"settings"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -43,6 +44,7 @@ SIDEBAR_TAB_LABELS = {
     "maintenance": "Обслуживание",
     "favorites": "Избранное",
     "audit": "Аудит",
+    "settings": "Настройки",
 }
 SUPPORTED_LANGUAGES = {"ru", "en"}
 
@@ -77,7 +79,10 @@ def _normalize_sidebar_tabs(tabs):
     if not isinstance(tabs, list):
         return SIDEBAR_TAB_IDS.copy()
     normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in SIDEBAR_TAB_IDS))
-    return normalized_tabs or SIDEBAR_TAB_IDS.copy()
+    if not any(tab not in FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
+        return SIDEBAR_TAB_IDS.copy()
+    normalized_tabs.extend(tab for tab in SIDEBAR_TAB_IDS if tab in FIXED_SIDEBAR_TAB_IDS and tab not in normalized_tabs)
+    return normalized_tabs
 
 
 def _session_duration_seconds(value):

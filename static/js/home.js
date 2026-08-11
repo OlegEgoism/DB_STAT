@@ -562,7 +562,7 @@
 
 
     function getAllSidebarPages() {
-        return Array.from(document.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])')).map(item => item.dataset.page);
+        return Array.from(document.querySelectorAll('.nav-item[data-page]')).map(item => item.dataset.page);
     }
 
     function normalizeSidebarPages(pageIds) {
@@ -578,7 +578,7 @@
     function applySidebarPageOrder(pageIds) {
         const order = new Map(normalizeSidebarPages(pageIds).map((pageId, index) => [pageId, index]));
         document.querySelectorAll('.sidebar-nav .nav-section, .sidebar-bottom').forEach(container => {
-            const items = Array.from(container.querySelectorAll(':scope > .nav-item[data-page]:not([data-fixed-page])'));
+            const items = Array.from(container.querySelectorAll(':scope > .nav-item[data-page]'));
             items.sort((first, second) => {
                 const firstOrder = order.has(first.dataset.page) ? order.get(first.dataset.page) : Number.MAX_SAFE_INTEGER;
                 const secondOrder = order.has(second.dataset.page) ? order.get(second.dataset.page) : Number.MAX_SAFE_INTEGER;
@@ -609,12 +609,15 @@
             const label = item.getAttribute('title') || item.textContent.trim() || pageId;
             const icon = item.querySelector('.nav-icon')?.cloneNode(true);
             const inputId = `sidebar-setting-${pageId}`;
+            const isFixed = item.hasAttribute('data-fixed-page');
             const row = document.createElement('div');
             row.className = 'sidebar-settings-item';
+            row.dataset.sidebarPage = pageId;
+            row.dataset.fixedPage = String(isFixed);
             row.innerHTML = `
-                <input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
+                ${isFixed ? '<span class="sidebar-settings-item__fixed-space" aria-hidden="true"></span>' : `<input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>`}
                 <span class="sidebar-settings-item__icon"></span>
-                <label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>
+                ${isFixed ? `<span>${escapeHtml(label)}</span>` : `<label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>`}
                 <span class="sidebar-settings-item__drag-handle" draggable="true" data-sidebar-drag-handle title="Перетащить вкладку" aria-label="Перетащить вкладку" role="button" tabindex="0"><i class="fas fa-grip-vertical" aria-hidden="true"></i></span>
             `;
             if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
@@ -635,7 +638,7 @@
             const items = Array.from(section.querySelectorAll('.nav-item[data-page]:not([data-fixed-page])'));
             appendSettingsGroup(label, items);
         });
-        const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]:not([data-fixed-page])'));
+        const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]'));
         appendSettingsGroup('Дополнительно', bottomItems);
     }
 
@@ -694,8 +697,10 @@
         });
 
         document.getElementById('sidebarSettingsSaveBtn')?.addEventListener('click', function () {
-            const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]:checked')).map(input => input.value);
-            if (!selectedPages.length) {
+            const selectedPages = Array.from(document.querySelectorAll('#sidebarSettingsList .sidebar-settings-item'))
+                .filter(item => item.dataset.fixedPage === 'true' || item.querySelector('input[type="checkbox"]:checked'))
+                .map(item => item.dataset.sidebarPage);
+            if (!selectedPages.some(pageId => pageId !== 'settings')) {
                 showToast('⚠️ Выберите хотя бы одну вкладку для сайдбара');
                 return;
             }

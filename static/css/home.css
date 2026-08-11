@@ -3072,6 +3072,11 @@ body.sidebar-collapsed .nav-item .nav-icon {
     cursor: pointer;
 }
 
+.sidebar-settings-item__fixed-space {
+    width: 16px;
+    height: 16px;
+}
+
 .sidebar-settings-item:hover {
     border-color: var(--accent-blue);
     box-shadow: 0 0 0 3px rgba(79, 140, 255, 0.12);
