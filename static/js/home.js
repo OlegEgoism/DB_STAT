@@ -3573,7 +3573,9 @@
             favorite_add: 'audit-action-badge--favorite-add',
             favorite_remove: 'audit-action-badge--favorite-remove',
             query_terminate: 'audit-action-badge--query-terminate',
-            session_terminate: 'audit-action-badge--session-terminate'
+            session_terminate: 'audit-action-badge--session-terminate',
+            vacuum: 'audit-action-badge--vacuum',
+            vacuum_full: 'audit-action-badge--vacuum-full'
         };
         return classes[actionType] || 'audit-action-badge--default';
     }

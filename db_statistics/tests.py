@@ -75,14 +75,15 @@ class SessionExpirationTests(SimpleTestCase):
 class MaintenanceVacuumTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
-        self.user = SimpleNamespace(pk=11)
-        self.connection = SimpleNamespace(pk=7)
+        self.user = SimpleNamespace(pk=11, login="analyst")
+        self.connection = SimpleNamespace(pk=7, name="Production", db_type="PostgreSQL", host="db.local", port=5432, database="analytics", username="db_user")
         MAINTENANCE_JOBS.clear()
 
+    @patch("db_statistics.views._write_audit")
     @patch("db_statistics.views._open_database_connection")
     @patch("db_statistics.views.DBConnection.objects.get")
-    def test_executes_vacuum_in_autocommit_without_connection_context(self, get_connection, open_connection):
-        saved_connection = Mock()
+    def test_executes_vacuum_in_autocommit_without_connection_context(self, get_connection, open_connection, write_audit):
+        saved_connection = self.connection
         database_connection = MagicMock()
         cursor = Mock()
         database_connection.cursor.return_value.__enter__.return_value = cursor
@@ -90,18 +91,22 @@ class MaintenanceVacuumTests(SimpleTestCase):
         open_connection.return_value = database_connection
         MAINTENANCE_JOBS["job-1"] = {"id": "job-1", "status": "running"}
 
-        _run_maintenance_vacuum("job-1", 7, "public", "orders", False)
+        _run_maintenance_vacuum("job-1", 7, "public", "orders", "vacuum", "analyst")
 
         self.assertTrue(database_connection.autocommit)
         database_connection.__enter__.assert_not_called()
         cursor.execute.assert_called_once()
         database_connection.close.assert_called_once()
         self.assertEqual(MAINTENANCE_JOBS["job-1"]["status"], "completed")
+        write_audit.assert_called_once()
+        self.assertEqual(write_audit.call_args.args[0], "vacuum")
+        self.assertIn("Результат: успешно завершено", write_audit.call_args.args[1])
 
+    @patch("db_statistics.views._write_audit")
     @patch("db_statistics.views.MAINTENANCE_JOB_EXECUTOR.submit")
     @patch("db_statistics.views._require_payload_connection")
     @patch("db_statistics.views._current_db_user")
-    def test_starts_vacuum_full_in_background(self, current_user, require_connection, submit):
+    def test_starts_vacuum_full_in_background(self, current_user, require_connection, submit, write_audit):
         current_user.return_value = self.user
         require_connection.return_value = (self.connection, None)
         request = self.factory.post(
@@ -117,6 +122,9 @@ class MaintenanceVacuumTests(SimpleTestCase):
         self.assertEqual(payload["job"]["status"], "running")
         self.assertEqual(payload["job"]["operation"], "vacuum_full")
         submit.assert_called_once()
+        write_audit.assert_called_once()
+        self.assertEqual(write_audit.call_args.args[0], "vacuum_full")
+        self.assertIn("Результат: запущено в фоновом режиме", write_audit.call_args.args[1])
 
     @patch("db_statistics.views._current_db_user")
     def test_returns_owned_job_status(self, current_user):
