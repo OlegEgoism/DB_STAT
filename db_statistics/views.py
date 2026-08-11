@@ -173,6 +173,37 @@ def _favorite_audit_info(action, connection, object_type, object_key):
     return "; ".join([action, f"Подключение: {connection.name}", f"Тип объекта: {object_type_label}", f"Идентификатор объекта: {object_key}"])
 
 
+def _backend_termination_audit_info(action, connection, row):
+    client_address = str(row[5]) if row[5] else "local"
+    client = f"{client_address}:{row[6]}" if row[6] is not None else client_address
+    return "; ".join(
+        [
+            f"Действие: {action}",
+            f"Подключение: {connection.name}",
+            f"Тип БД: {connection.db_type}",
+            f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
+            f"База подключения: {connection.database}",
+            f"Пользователь подключения: {connection.username}",
+            f"PID: {row[1]}",
+            f"Пользователь сессии: {row[2] or '—'}",
+            f"База сессии: {row[3] or '—'}",
+            f"Приложение: {row[4] or '—'}",
+            f"Клиент: {client}",
+            f"Состояние: {row[7] or '—'}",
+            f"Тип backend: {row[8] or '—'}",
+            f"Начало сессии: {row[9] or '—'}",
+            f"Начало транзакции: {row[10] or '—'}",
+            f"Начало запроса: {row[11] or '—'}",
+            f"Последнее изменение состояния: {row[12] or '—'}",
+            f"Ожидание: {' / '.join(part for part in [row[13], row[14]] if part) or '—'}",
+            f"Длительность сессии: {row[15] or '—'}",
+            f"Длительность запроса: {row[16] or '—'}",
+            f"SQL: {row[17] or '—'}",
+            "Результат: успешно завершено",
+        ]
+    )
+
+
 def _can_manage_connections(request):
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == ADMIN_ROLE)
@@ -807,11 +838,29 @@ def terminate_active_query(request):
         return JsonResponse({"ok": False, "message": "Указан некорректный PID запроса"}, status=400)
 
     terminate_query = """
-        SELECT pg_catalog.pg_terminate_backend(pid)
-        FROM pg_catalog.pg_stat_activity
-        WHERE pid = %s
-          AND state = 'active'
-          AND pid <> pg_backend_pid();
+        SELECT
+            pg_catalog.pg_terminate_backend(activity.pid),
+            activity.pid,
+            activity.usename,
+            activity.datname,
+            activity.application_name,
+            activity.client_addr,
+            activity.client_port,
+            activity.state,
+            activity.backend_type,
+            activity.backend_start,
+            activity.xact_start,
+            activity.query_start,
+            activity.state_change,
+            activity.wait_event_type,
+            activity.wait_event,
+            now() - activity.backend_start AS session_duration,
+            CASE WHEN activity.query_start IS NULL THEN NULL ELSE now() - activity.query_start END AS query_duration,
+            activity.query
+        FROM pg_catalog.pg_stat_activity AS activity
+        WHERE activity.pid = %s
+          AND activity.state = 'active'
+          AND activity.pid <> pg_backend_pid();
     """
     try:
         row = _fetch_db_row(db_connection, terminate_query, [pid])
@@ -823,6 +872,7 @@ def terminate_active_query(request):
     if not row[0]:
         return JsonResponse({"ok": False, "message": f"Не удалось завершить запрос с PID {pid}"}, status=409)
 
+    _write_audit("query_terminate", _backend_termination_audit_info("Завершение активного запроса", db_connection, row), db_user=_current_db_user(request))
     return JsonResponse({"ok": True, "message": f"Запрос с PID {pid} завершён", "pid": pid})
 
 
@@ -926,10 +976,28 @@ def terminate_active_session(request):
         return JsonResponse({"ok": False, "message": "Указан некорректный PID сессии"}, status=400)
 
     terminate_query = """
-        SELECT pg_catalog.pg_terminate_backend(pid)
-        FROM pg_catalog.pg_stat_activity
-        WHERE pid = %s
-          AND pid <> pg_backend_pid();
+        SELECT
+            pg_catalog.pg_terminate_backend(activity.pid),
+            activity.pid,
+            activity.usename,
+            activity.datname,
+            activity.application_name,
+            activity.client_addr,
+            activity.client_port,
+            activity.state,
+            activity.backend_type,
+            activity.backend_start,
+            activity.xact_start,
+            activity.query_start,
+            activity.state_change,
+            activity.wait_event_type,
+            activity.wait_event,
+            now() - activity.backend_start AS session_duration,
+            CASE WHEN activity.query_start IS NULL THEN NULL ELSE now() - activity.query_start END AS query_duration,
+            activity.query
+        FROM pg_catalog.pg_stat_activity AS activity
+        WHERE activity.pid = %s
+          AND activity.pid <> pg_backend_pid();
     """
     try:
         row = _fetch_db_row(db_connection, terminate_query, [pid])
@@ -941,6 +1009,7 @@ def terminate_active_session(request):
     if not row[0]:
         return JsonResponse({"ok": False, "message": f"Не удалось завершить сессию с PID {pid}"}, status=409)
 
+    _write_audit("session_terminate", _backend_termination_audit_info("Завершение активной сессии", db_connection, row), db_user=_current_db_user(request))
     return JsonResponse({"ok": True, "message": f"Сессия с PID {pid} завершена", "pid": pid})
 
 

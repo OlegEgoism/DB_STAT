@@ -2230,6 +2230,12 @@ body {
     color: var(--audit-action-favorite-color);
 }
 
+.audit-action-badge--terminate {
+    color: #991b1b;
+    border-color: rgba(239, 68, 68, 0.32);
+    background: rgba(239, 68, 68, 0.12);
+}
+
 .audit-filter-box select option.audit-action-filter-option--login,
 .audit-filter-box select.audit-action-filter--login {
     color: var(--audit-action-login-color);
@@ -2270,6 +2276,13 @@ body {
 .audit-filter-box select.audit-action-filter--favorite-add,
 .audit-filter-box select.audit-action-filter--favorite-remove {
     color: var(--audit-action-favorite-color);
+}
+
+.audit-filter-box select option.audit-action-filter-option--query-terminate,
+.audit-filter-box select option.audit-action-filter-option--session-terminate,
+.audit-filter-box select.audit-action-filter--query-terminate,
+.audit-filter-box select.audit-action-filter--session-terminate {
+    color: #991b1b;
 }
 
 .audit-action-badge--default {

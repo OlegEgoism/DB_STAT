@@ -105,6 +105,7 @@
         '10 сек': '10 sec', '30 сек': '30 sec', '5 сек': '5 sec', '60 сек': '60 sec',
         'Активные запросы не найдены': 'No active queries found', 'Активные сессии и подключения не найдены': 'No active sessions or connections found',
         'Действие': 'Action', 'Завершить': 'Terminate',
+        'Завершение активного запроса': 'Active query termination', 'Завершение активной сессии': 'Active session termination',
         'Детализация размеров не найдена': 'No size breakdown found', 'Использование памяти не найдено': 'No memory usage data found',
         'Параметры памяти не найдены': 'No memory settings found', 'Статистика обслуживания не найдена': 'No maintenance statistics found',
         'Нет данных о распределении строк': 'No row distribution data', 'Нет данных о распределении данных по схемам': 'No schema distribution data',

@@ -53,17 +53,26 @@ class TerminateActiveQueryTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.connection = Mock(name="saved_connection")
+        self.connection.name = "Основная БД"
+        self.connection.db_type = "PostgreSQL"
+        self.connection.host = "db.example.test"
+        self.connection.port = 5432
+        self.connection.database = "analytics"
+        self.connection.username = "monitor"
 
     def request(self, pid):
-        return self.factory.post(
+        request = self.factory.post(
             "/queries/terminate/",
             data=json.dumps({"id": 7, "pid": pid}),
             content_type="application/json",
         )
+        request.session = {}
+        return request
 
-    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
+    @patch("db_statistics.views._write_audit")
+    @patch("db_statistics.views._fetch_db_row", return_value=(True, 1234, "analyst", "analytics", "psql", "10.0.0.5", 55123, "active", "client backend", "2026-08-11 10:00:00", "2026-08-11 10:04:00", "2026-08-11 10:05:00", "2026-08-11 10:05:00", "Lock", "relation", "0:10:00", "0:05:00", "SELECT * FROM sales"))
     @patch("db_statistics.views._require_payload_connection")
-    def test_terminates_active_backend_by_pid(self, require_connection, fetch_row):
+    def test_terminates_active_backend_by_pid(self, require_connection, fetch_row, write_audit):
         require_connection.return_value = (self.connection, None)
 
         response = terminate_active_query(self.request(1234))
@@ -74,6 +83,13 @@ class TerminateActiveQueryTests(SimpleTestCase):
         self.assertIs(connection, self.connection)
         self.assertIn("pg_terminate_backend", query)
         self.assertEqual(params, [1234])
+        action_type, info = write_audit.call_args.args
+        self.assertEqual(action_type, "query_terminate")
+        self.assertIn("PID: 1234", info)
+        self.assertIn("Пользователь сессии: analyst", info)
+        self.assertIn("Ожидание: Lock / relation", info)
+        self.assertIn("Длительность запроса: 0:05:00", info)
+        self.assertIn("SQL: SELECT * FROM sales", info)
 
     @patch("db_statistics.views._require_payload_connection")
     def test_rejects_invalid_pid(self, require_connection):
@@ -98,17 +114,26 @@ class TerminateActiveSessionTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.connection = Mock(name="saved_connection")
+        self.connection.name = "Основная БД"
+        self.connection.db_type = "PostgreSQL"
+        self.connection.host = "db.example.test"
+        self.connection.port = 5432
+        self.connection.database = "analytics"
+        self.connection.username = "monitor"
 
     def request(self, pid):
-        return self.factory.post(
+        request = self.factory.post(
             "/sessions/terminate/",
             data=json.dumps({"id": 7, "pid": pid}),
             content_type="application/json",
         )
+        request.session = {}
+        return request
 
-    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
+    @patch("db_statistics.views._write_audit")
+    @patch("db_statistics.views._fetch_db_row", return_value=(True, 4321, "reporter", "analytics", "DBeaver", "10.0.0.8", 60200, "idle", "client backend", "2026-08-11 09:00:00", None, "2026-08-11 09:30:00", "2026-08-11 09:30:01", "Client", "ClientRead", "1:30:00", "1:00:00", "SELECT 1"))
     @patch("db_statistics.views._require_payload_connection")
-    def test_terminates_session_by_pid(self, require_connection, fetch_row):
+    def test_terminates_session_by_pid(self, require_connection, fetch_row, write_audit):
         require_connection.return_value = (self.connection, None)
 
         response = terminate_active_session(self.request(4321))
@@ -120,6 +145,11 @@ class TerminateActiveSessionTests(SimpleTestCase):
         self.assertIn("pg_terminate_backend", query)
         self.assertNotIn("state = 'active'", query)
         self.assertEqual(params, [4321])
+        action_type, info = write_audit.call_args.args
+        self.assertEqual(action_type, "session_terminate")
+        self.assertIn("PID: 4321", info)
+        self.assertIn("Приложение: DBeaver", info)
+        self.assertIn("Клиент: 10.0.0.8:60200", info)
 
     @patch("db_statistics.views._require_payload_connection")
     def test_rejects_invalid_session_pid(self, require_connection):
