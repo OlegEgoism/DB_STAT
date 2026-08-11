@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, SimpleTestCase
 
-from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_SECTION_IDS, SIDEBAR_TAB_IDS, _normalize_sidebar_sections, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, _sidebar_settings_values, active_queries, active_sessions, terminate_active_query, terminate_active_session
+from db_statistics.views import MAINTENANCE_JOBS, SESSION_EXPIRES_AT_KEY, SIDEBAR_SECTION_IDS, SIDEBAR_TAB_IDS, _normalize_sidebar_sections, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, _sidebar_settings_values, active_queries, active_sessions, maintenance_vacuum, terminate_active_query, terminate_active_session
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -70,6 +70,51 @@ class SessionExpirationTests(SimpleTestCase):
 
     def test_rejects_invalid_expiration_timestamp(self):
         self.assertTrue(_session_has_expired({SESSION_EXPIRES_AT_KEY: "invalid"}, now_timestamp=100))
+
+
+class MaintenanceVacuumTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.user = SimpleNamespace(pk=11)
+        self.connection = SimpleNamespace(pk=7)
+        MAINTENANCE_JOBS.clear()
+
+    @patch("db_statistics.views.MAINTENANCE_JOB_EXECUTOR.submit")
+    @patch("db_statistics.views._require_payload_connection")
+    @patch("db_statistics.views._current_db_user")
+    def test_starts_vacuum_full_in_background(self, current_user, require_connection, submit):
+        current_user.return_value = self.user
+        require_connection.return_value = (self.connection, None)
+        request = self.factory.post(
+            "/maintenance/vacuum/",
+            data=json.dumps({"id": 7, "schema_name": "public", "table_name": "orders", "operation": "vacuum_full"}),
+            content_type="application/json",
+        )
+
+        response = maintenance_vacuum(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(payload["job"]["status"], "running")
+        self.assertEqual(payload["job"]["operation"], "vacuum_full")
+        submit.assert_called_once()
+
+    @patch("db_statistics.views._current_db_user")
+    def test_returns_owned_job_status(self, current_user):
+        current_user.return_value = self.user
+        MAINTENANCE_JOBS["job-1"] = {"id": "job-1", "user_id": 11, "status": "completed", "operation": "vacuum"}
+        request = self.factory.post(
+            "/maintenance/vacuum/",
+            data=json.dumps({"job_id": "job-1"}),
+            content_type="application/json",
+        )
+
+        response = maintenance_vacuum(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["job"]["status"], "completed")
+        self.assertNotIn("user_id", payload["job"])
 
 
 class ActiveSessionsFilterTests(SimpleTestCase):

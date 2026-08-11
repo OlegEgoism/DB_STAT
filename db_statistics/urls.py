@@ -28,6 +28,7 @@ urlpatterns = [
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
     path("memory/overview/", views.memory_overview, name="memory_overview"),
     path("maintenance/stats/", views.maintenance_stats, name="maintenance_stats"),
+    path("maintenance/vacuum/", views.maintenance_vacuum, name="maintenance_vacuum"),
     path("users/list/", views.database_users_list, name="database_users_list"),
     path("groups/list/", views.database_groups_list, name="database_groups_list"),
     path("segments/info/", views.segments_info, name="segments_info"),

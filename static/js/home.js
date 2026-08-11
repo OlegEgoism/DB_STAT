@@ -35,6 +35,7 @@
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
     let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
+    const maintenanceJobs = new Map();
     let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
     let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
@@ -67,6 +68,7 @@
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
+    const maintenanceVacuumApiUrl = '/maintenance/vacuum/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
@@ -2280,7 +2282,7 @@
         resetMaintenanceVisuals();
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateMaintenancePaginationControls();
     }
 
@@ -2319,7 +2321,7 @@
         updateMaintenanceVisuals(tables);
         if (!tbody) return;
         if (!tables.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Статистика обслуживания не найдена</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Статистика обслуживания не найдена</td></tr>';
             return;
         }
         tbody.innerHTML = tables.map(table => {
@@ -2327,6 +2329,7 @@
             const deadClass = deadPercent >= 10 ? 'text-danger' : (deadPercent >= 1 ? 'text-warning' : 'text-success');
             const tableKey = getMaintenanceTableKey(table);
             const activeClass = tableKey === maintenanceStatsState.selectedTableKey ? ' active' : '';
+            const runningJob = Array.from(maintenanceJobs.values()).find(job => job.tableKey === tableKey && job.status === 'running');
             return `
                 <tr class="maintenance-row-selectable${activeClass}" data-maintenance-table-key="${escapeHtml(tableKey)}">
                     <td>${escapeHtml(table.schema_name)}</td>
@@ -2336,6 +2339,11 @@
                     <td><span class="${deadClass}">${deadPercent}%</span></td>
                     <td>${escapeHtml(table.last_vacuum)}</td>
                     <td>${escapeHtml(table.last_analyze)}</td>
+                    <td class="maintenance-actions">
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-maintenance-operation="vacuum" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-maintenance-operation="vacuum_full" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM FULL</button>
+                        ${runningJob ? '<span class="maintenance-job-running"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Выполняется</span>' : ''}
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -2347,6 +2355,64 @@
                 this.classList.add('active');
             });
         });
+        tbody.querySelectorAll('[data-maintenance-operation]').forEach(button => {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                startMaintenanceVacuum(this.dataset.schemaName, this.dataset.tableName, this.dataset.maintenanceOperation);
+            });
+        });
+    }
+
+    function pollMaintenanceJob(jobId) {
+        window.setTimeout(() => {
+            connectionRequest(maintenanceVacuumApiUrl, {job_id: jobId})
+                .then(data => {
+                    const job = data.job;
+                    const trackedJob = maintenanceJobs.get(jobId);
+                    if (!trackedJob) return;
+                    trackedJob.status = job.status;
+                    if (job.status === 'running') {
+                        pollMaintenanceJob(jobId);
+                        return;
+                    }
+                    maintenanceJobs.delete(jobId);
+                    const operationLabel = job.operation === 'vacuum_full' ? 'VACUUM FULL' : 'VACUUM';
+                    const tableLabel = `${job.schema_name}.${job.table_name}`;
+                    if (job.status === 'completed') {
+                        showToast(`✅ ${operationLabel} для ${tableLabel} завершён`);
+                        refreshMaintenanceStatsForConnection();
+                    } else {
+                        showToast(`❌ ${operationLabel} для ${tableLabel}: ${job.message || 'операция завершилась с ошибкой'}`);
+                    }
+                })
+                .catch(error => {
+                    maintenanceJobs.delete(jobId);
+                    showToast(`❌ Не удалось получить статус обслуживания: ${error.message}`);
+                    refreshMaintenanceStatsForConnection();
+                });
+        }, 1500);
+    }
+
+    function startMaintenanceVacuum(schemaName, tableName, operation) {
+        const conn = connections.find(c => String(c.id) === String(activeConnectionId));
+        if (!conn) {
+            showToast('⚠️ Выберите подключение');
+            return;
+        }
+        const tableKey = `${schemaName}.${tableName}`;
+        connectionRequest(maintenanceVacuumApiUrl, {
+            id: conn.id,
+            schema_name: schemaName,
+            table_name: tableName,
+            operation
+        })
+            .then(data => {
+                maintenanceJobs.set(data.job.id, {...data.job, tableKey});
+                showToast(`⏳ ${operation === 'vacuum_full' ? 'VACUUM FULL' : 'VACUUM'} для ${tableKey} запущен в фоне`);
+                refreshMaintenanceStatsForConnection();
+                pollMaintenanceJob(data.job.id);
+            })
+            .catch(error => showToast(`❌ Не удалось запустить обслуживание: ${error.message}`));
     }
 
     function refreshMaintenanceStatsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {

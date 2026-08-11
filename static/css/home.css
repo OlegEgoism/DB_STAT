@@ -1432,6 +1432,24 @@ body {
     background: rgba(79, 140, 255, 0.08);
 }
 
+.maintenance-actions {
+    min-width: 270px;
+    white-space: nowrap;
+}
+
+.maintenance-actions .btn + .btn {
+    margin-left: 6px;
+}
+
+.maintenance-job-running {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 @media (max-width: 992px) {
     .maintenance-visuals-grid {
         grid-template-columns: 1fr;
