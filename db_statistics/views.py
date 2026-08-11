@@ -1,4 +1,7 @@
 import json
+import threading
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal, InvalidOperation
 
 import psycopg2
@@ -48,6 +51,9 @@ SIDEBAR_TAB_LABELS = {
     "settings": "Настройки",
 }
 SUPPORTED_LANGUAGES = {"ru", "en"}
+MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="db-stat-vacuum")
+MAINTENANCE_JOBS = {}
+MAINTENANCE_JOBS_LOCK = threading.Lock()
 
 
 def page_not_found(request, exception=None):
@@ -514,6 +520,28 @@ def _fetch_db_resultsets(db_connection, *queries):
                 cursor.execute(query, params or [])
                 resultsets.append(cursor.fetchall())
     return resultsets
+
+
+def _run_maintenance_vacuum(job_id, connection_id, schema_name, table_name, full):
+    try:
+        db_connection = DBConnection.objects.get(pk=connection_id)
+        statement = sql.SQL("VACUUM {mode} {table}").format(
+            mode=sql.SQL("FULL") if full else sql.SQL(""),
+            table=sql.Identifier(schema_name, table_name),
+        )
+        with _open_database_connection(db_connection) as connection:
+            connection.autocommit = True
+            with connection.cursor() as cursor:
+                cursor.execute(statement)
+    except Exception as exc:
+        result = {"status": "failed", "message": str(exc)}
+    else:
+        result = {"status": "completed", "message": "Операция успешно завершена"}
+
+    with MAINTENANCE_JOBS_LOCK:
+        job = MAINTENANCE_JOBS.get(job_id)
+        if job:
+            job.update(result)
 
 
 def _require_payload_connection(request, payload):
@@ -1438,6 +1466,58 @@ def maintenance_stats(request):
     tables = [{"schema_name": row[0], "table_name": row[1], "live_rows": int(row[2] or 0), "dead_rows": int(row[3] or 0), "dead_percent": float(row[4] or 0), "last_vacuum": format_datetime(row[5]), "last_analyze": format_datetime(row[6])} for row in rows]
     total_count = int(rows[0][7]) if rows else 0
     return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
+
+
+@require_http_methods(["POST"])
+def maintenance_vacuum(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+
+    payload = _read_json_body(request)
+    if payload.get("job_id"):
+        with MAINTENANCE_JOBS_LOCK:
+            job_id = str(payload["job_id"])
+            job = MAINTENANCE_JOBS.get(job_id)
+            if not job or job["user_id"] != db_user.pk:
+                return JsonResponse({"ok": False, "message": "Задача обслуживания не найдена"}, status=404)
+            response_job = {key: value for key, value in job.items() if key != "user_id"}
+            if job["status"] != "running":
+                MAINTENANCE_JOBS.pop(job_id, None)
+            return JsonResponse({"ok": True, "job": response_job})
+
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    schema_name = str(payload.get("schema_name") or "").strip()
+    table_name = str(payload.get("table_name") or "").strip()
+    operation = str(payload.get("operation") or "vacuum").lower()
+    if not schema_name or not table_name:
+        return JsonResponse({"ok": False, "message": "Не выбрана таблица для обслуживания"}, status=400)
+    if operation not in {"vacuum", "vacuum_full"}:
+        return JsonResponse({"ok": False, "message": "Неизвестная операция обслуживания"}, status=400)
+
+    job_id = uuid.uuid4().hex
+    job = {
+        "id": job_id,
+        "user_id": db_user.pk,
+        "status": "running",
+        "operation": operation,
+        "schema_name": schema_name,
+        "table_name": table_name,
+        "message": "Операция выполняется",
+    }
+    with MAINTENANCE_JOBS_LOCK:
+        MAINTENANCE_JOBS[job_id] = job
+    MAINTENANCE_JOB_EXECUTOR.submit(
+        _run_maintenance_vacuum,
+        job_id,
+        db_connection.pk,
+        schema_name,
+        table_name,
+        operation == "vacuum_full",
+    )
+    return JsonResponse({"ok": True, "job": {key: value for key, value in job.items() if key != "user_id"}}, status=202)
 
 
 @require_http_methods(["POST"])
