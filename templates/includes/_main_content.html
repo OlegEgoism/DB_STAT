@@ -143,6 +143,34 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- PAGE: SETTINGS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-settings">
+        <div class="glass-card sidebar-settings-card">
+            <div class="card-header">
+                <span><i class="fas fa-cog"></i> Настройки</span>
+                <span class="card-meta">Настройки сайдбара</span>
+            </div>
+            <div class="card-body">
+                <div class="sidebar-language-setting">
+                    <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
+                    <select class="form-select" id="interfaceLanguage">
+                        <option value="ru">Русский (RU)</option>
+                        <option value="en">English (EN)</option>
+                    </select>
+                    <div class="form-text">Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</div>
+                </div>
+                <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.</p>
+                <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
+                <div class="sidebar-settings-footer">
+                    <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
+                    <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- PAGE: FAVORITES -->
     <!-- ============================================================ -->
     <div class="page" id="page-favorites">

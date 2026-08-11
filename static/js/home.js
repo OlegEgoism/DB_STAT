@@ -91,7 +91,8 @@
         'groups': 'Группы <small>Список групп</small>',
         'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
         'audit': 'Аудит <small>Действия пользователя</small>',
-        'favorites': 'Избранные объекты <small>Сохранённые объекты подключения</small>'
+        'favorites': 'Избранные объекты <small>Сохранённые объекты подключения</small>',
+        'settings': 'Настройки <small>Настройки сайдбара</small>'
     };
 
 
@@ -102,13 +103,13 @@
     }
 
     function isSidebarPageEnabled(pageId) {
-        if (!pageId || pageId === 'home' || pageId === 'favorites') return true;
+        if (!pageId || pageId === 'home' || pageId === 'favorites' || pageId === 'settings') return true;
         return getVisibleSidebarPages().includes(pageId);
     }
 
     function isPageAvailableForConnection(pageId, conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!isSidebarPageEnabled(pageId)) return false;
-        if (pageId === 'home' || pageId === 'audit') return true;
+        if (pageId === 'home' || pageId === 'audit' || pageId === 'settings') return true;
         if (pageId === 'favorites') return Boolean(conn);
         if (!pageId || !conn) return false;
         if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
@@ -605,17 +606,12 @@
     }
 
     function initSidebarSettings() {
-        const settingsButton = document.getElementById('sidebarSettingsBtn');
-        const modalElement = document.getElementById('sidebarSettingsModal');
-        if (!settingsButton || !modalElement) return;
+        const settingsList = document.getElementById('sidebarSettingsList');
+        if (!settingsList) return;
 
-        const settingsModal = new bootstrap.Modal(modalElement);
         const languageSelect = document.getElementById('interfaceLanguage');
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
-        settingsButton.addEventListener('click', function () {
-            renderSidebarSettingsList();
-            settingsModal.show();
-        });
+        renderSidebarSettingsList();
 
         document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {
             document.querySelectorAll('#sidebarSettingsList input[type="checkbox"]').forEach(input => {
@@ -646,7 +642,7 @@
                     if (!isKnownPage(getCurrentActivePageId())) {
                         activatePage(getDefaultPageForConnection());
                     }
-                    settingsModal.hide();
+                    renderSidebarSettingsList();
                     showToast('✅ Настройки сайдбара сохранены');
                 })
                 .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить настройки сайдбара'}`));
