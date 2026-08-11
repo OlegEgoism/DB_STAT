@@ -249,6 +249,8 @@
         [/^Удалить подключение "(.+)"\?$/, 'Delete connection "$1"?'],
         [/^Завершить активный запрос с PID (\d+)\?$/, 'Terminate active query with PID $1?'],
         [/^Завершить сессию пользователя с PID (\d+)\?$/, 'Terminate user session with PID $1?'],
+        [/^Завершить запрос PID (\d+)$/, 'Terminate query PID $1'],
+        [/^Завершить сессию PID (\d+)$/, 'Terminate session PID $1'],
         [/^Запрос с PID (\d+) завершён$/, 'Query with PID $1 was terminated'],
         [/^Сессия с PID (\d+) завершена$/, 'Session with PID $1 was terminated'],
         [/^Активный запрос с PID (\d+) не найден$/, 'Active query with PID $1 was not found'],
