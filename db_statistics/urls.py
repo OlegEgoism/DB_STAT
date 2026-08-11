@@ -23,6 +23,7 @@ urlpatterns = [
     path("queries/active/", views.active_queries, name="active_queries"),
     path("queries/terminate/", views.terminate_active_query, name="terminate_active_query"),
     path("sessions/active/", views.active_sessions, name="active_sessions"),
+    path("sessions/terminate/", views.terminate_active_session, name="terminate_active_session"),
     path("locks/blocking/", views.blocking_locks, name="blocking_locks"),
     path("transactions/idle/", views.idle_transactions, name="idle_transactions"),
     path("memory/overview/", views.memory_overview, name="memory_overview"),

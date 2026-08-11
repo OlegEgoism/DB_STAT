@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, SimpleTestCase
 
-from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, terminate_active_query
+from db_statistics.views import SESSION_EXPIRES_AT_KEY, SIDEBAR_TAB_IDS, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, terminate_active_query, terminate_active_session
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -90,5 +90,51 @@ class TerminateActiveQueryTests(SimpleTestCase):
         require_connection.return_value = (self.connection, None)
 
         response = terminate_active_query(self.request(1234))
+
+        self.assertEqual(response.status_code, 404)
+
+
+class TerminateActiveSessionTests(SimpleTestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+        self.connection = Mock(name="saved_connection")
+
+    def request(self, pid):
+        return self.factory.post(
+            "/sessions/terminate/",
+            data=json.dumps({"id": 7, "pid": pid}),
+            content_type="application/json",
+        )
+
+    @patch("db_statistics.views._fetch_db_row", return_value=(True,))
+    @patch("db_statistics.views._require_payload_connection")
+    def test_terminates_session_by_pid(self, require_connection, fetch_row):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_session(self.request(4321))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content), {"ok": True, "message": "Сессия с PID 4321 завершена", "pid": 4321})
+        connection, query, params = fetch_row.call_args.args
+        self.assertIs(connection, self.connection)
+        self.assertIn("pg_terminate_backend", query)
+        self.assertNotIn("state = 'active'", query)
+        self.assertEqual(params, [4321])
+
+    @patch("db_statistics.views._require_payload_connection")
+    def test_rejects_invalid_session_pid(self, require_connection):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_session(self.request(0))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("некорректный PID", json.loads(response.content)["message"])
+
+    @patch("db_statistics.views._fetch_db_row", return_value=None)
+    @patch("db_statistics.views._require_payload_connection")
+    def test_returns_not_found_when_session_has_ended(self, require_connection, _fetch_row):
+        require_connection.return_value = (self.connection, None)
+
+        response = terminate_active_session(self.request(4321))
 
         self.assertEqual(response.status_code, 404)

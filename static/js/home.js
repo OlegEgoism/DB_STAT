@@ -60,6 +60,7 @@
     const activeQueriesApiUrl = '/queries/active/';
     const terminateActiveQueryApiUrl = '/queries/terminate/';
     const activeSessionsApiUrl = '/sessions/active/';
+    const terminateActiveSessionApiUrl = '/sessions/terminate/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
@@ -1347,7 +1348,7 @@
             const item = document.getElementById(`activeSessionsSummary${key}`);
             if (item) item.textContent = '—';
         });
-        if (tbody) tbody.innerHTML = `<tr><td colspan="10" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderActiveSessions(data) {
@@ -1366,7 +1367,7 @@
         });
         if (!tbody) return;
         if (!sessions.length) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
             return;
         }
         tbody.innerHTML = sessions.map(session => {
@@ -1384,6 +1385,7 @@
                     <td>${escapeHtml(session.backend_type)}</td>
                     <td>${escapeHtml(session.session_duration)}</td>
                     <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(session.sql)}">${escapeHtml(session.sql)}</td>
+                    <td><button type="button" class="btn-conn active-session-terminate-btn" data-active-session-pid="${escapeHtml(session.pid)}" title="Завершить сессию PID ${escapeHtml(session.pid)}" aria-label="Завершить сессию PID ${escapeHtml(session.pid)}"><i class="fas fa-sign-out-alt" aria-hidden="true"></i> Завершить</button></td>
                 </tr>
             `;
         }).join('');
@@ -1403,6 +1405,10 @@
     }
 
     function initActiveSessionsControls() {
+        document.getElementById('activeSessionsTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-active-session-pid]');
+            if (button) terminateActiveSession(button);
+        });
         document.querySelectorAll('[data-active-session-sort]').forEach(button => {
             button.addEventListener('click', function () {
                 const sort = this.dataset.activeSessionSort;
@@ -1436,6 +1442,24 @@
         document.getElementById('activeSessionsRefreshBtn')?.addEventListener('click', function () {
             refreshActiveSessionsForConnection(undefined, {silent: false});
         });
+    }
+
+    function terminateActiveSession(button) {
+        const pid = button.dataset.activeSessionPid;
+        const conn = connections.find(item => String(item.id) === String(activeConnectionId));
+        if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
+        if (!window.confirm(`Завершить сессию пользователя с PID ${pid}?`)) return;
+
+        button.disabled = true;
+        connectionRequest(terminateActiveSessionApiUrl, {id: conn.id, pid: Number(pid)})
+            .then(data => {
+                showToast(`✅ ${data.message}`);
+                refreshActiveSessionsForConnection(conn, {silent: true});
+            })
+            .catch(error => {
+                button.disabled = false;
+                showToast(`❌ ${error.message || 'Не удалось завершить сессию пользователя'}`);
+            });
     }
 
     function refreshActiveSessionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
