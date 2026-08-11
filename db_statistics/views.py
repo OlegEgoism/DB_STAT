@@ -793,6 +793,40 @@ def active_queries(request):
 
 
 @require_http_methods(["POST"])
+def terminate_active_query(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    try:
+        pid = int(payload.get("pid"))
+        if pid <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return JsonResponse({"ok": False, "message": "Указан некорректный PID запроса"}, status=400)
+
+    terminate_query = """
+        SELECT pg_catalog.pg_terminate_backend(pid)
+        FROM pg_catalog.pg_stat_activity
+        WHERE pid = %s
+          AND state = 'active'
+          AND pid <> pg_backend_pid();
+    """
+    try:
+        row = _fetch_db_row(db_connection, terminate_query, [pid])
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить запрос с PID {pid}: {exc}"}, status=400)
+
+    if not row:
+        return JsonResponse({"ok": False, "message": f"Активный запрос с PID {pid} не найден"}, status=404)
+    if not row[0]:
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить запрос с PID {pid}"}, status=409)
+
+    return JsonResponse({"ok": True, "message": f"Запрос с PID {pid} завершён", "pid": pid})
+
+
+@require_http_methods(["POST"])
 def active_sessions(request):
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)

@@ -58,6 +58,7 @@
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
+    const terminateActiveQueryApiUrl = '/queries/terminate/';
     const activeSessionsApiUrl = '/sessions/active/';
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
@@ -1183,6 +1184,10 @@
     }
 
     function initActiveQueriesControls() {
+        document.getElementById('activeQueriesTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-active-query-pid]');
+            if (button) terminateActiveQuery(button);
+        });
         document.querySelectorAll('[data-active-query-sort]').forEach(button => {
             button.addEventListener('click', function () {
                 const sort = this.dataset.activeQuerySort;
@@ -1218,7 +1223,7 @@
         const tbody = document.getElementById('activeQueriesTableBody');
         const count = document.getElementById('activeQueriesCount');
         if (count) count.textContent = 'Нет данных';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderActiveQueries(data) {
@@ -1231,7 +1236,7 @@
             : `${queries.length} активных запросов`;
         if (!tbody) return;
         if (!queries.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-muted">Активные запросы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Активные запросы не найдены</td></tr>';
             return;
         }
         tbody.innerHTML = queries.map(query => `
@@ -1242,8 +1247,27 @@
                 <td><span class="status-badge up">${escapeHtml(query.state)}</span></td>
                 <td>${escapeHtml(query.duration)}</td>
                 <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(query.sql)}">${escapeHtml(query.sql)}</td>
+                <td><button type="button" class="btn-conn danger active-query-terminate-btn" data-active-query-pid="${escapeHtml(query.pid)}" title="Завершить запрос PID ${escapeHtml(query.pid)}" aria-label="Завершить запрос PID ${escapeHtml(query.pid)}"><i class="fas fa-stop-circle" aria-hidden="true"></i> Завершить</button></td>
             </tr>
         `).join('');
+    }
+
+    function terminateActiveQuery(button) {
+        const pid = button.dataset.activeQueryPid;
+        const conn = connections.find(item => String(item.id) === String(activeConnectionId));
+        if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
+        if (!window.confirm(`Завершить активный запрос с PID ${pid}?`)) return;
+
+        button.disabled = true;
+        connectionRequest(terminateActiveQueryApiUrl, {id: conn.id, pid: Number(pid)})
+            .then(data => {
+                showToast(`✅ ${data.message}`);
+                refreshActiveQueriesForConnection(conn, {silent: true});
+            })
+            .catch(error => {
+                button.disabled = false;
+                showToast(`❌ ${error.message || 'Не удалось завершить активный запрос'}`);
+            });
     }
 
     function refreshActiveQueriesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
