@@ -614,10 +614,7 @@
                 <input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>
                 <span class="sidebar-settings-item__icon"></span>
                 <label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>
-                <span class="sidebar-settings-item__order">
-                    <button type="button" data-sidebar-move="up" title="Переместить выше" aria-label="Переместить выше"><i class="fas fa-chevron-up" aria-hidden="true"></i></button>
-                    <button type="button" data-sidebar-move="down" title="Переместить ниже" aria-label="Переместить ниже"><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
-                </span>
+                <span class="sidebar-settings-item__drag-handle" draggable="true" data-sidebar-drag-handle title="Перетащить вкладку" aria-label="Перетащить вкладку" role="button" tabindex="0"><i class="fas fa-grip-vertical" aria-hidden="true"></i></span>
             `;
             if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
             groupItems.appendChild(row);
@@ -639,19 +636,6 @@
         });
         const bottomItems = Array.from(document.querySelectorAll('.sidebar-bottom .nav-item[data-page]:not([data-fixed-page])'));
         appendSettingsGroup('Дополнительно', bottomItems);
-        updateSidebarOrderButtons();
-    }
-
-    function updateSidebarOrderButtons() {
-        document.querySelectorAll('.sidebar-settings-group__items').forEach(group => {
-            const items = Array.from(group.querySelectorAll('.sidebar-settings-item'));
-            items.forEach((item, index) => {
-                const upButton = item.querySelector('[data-sidebar-move="up"]');
-                const downButton = item.querySelector('[data-sidebar-move="down"]');
-                if (upButton) upButton.disabled = index === 0;
-                if (downButton) downButton.disabled = index === items.length - 1;
-            });
-        });
     }
 
     function initSidebarSettings() {
@@ -662,18 +646,44 @@
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         renderSidebarSettingsList();
 
-        settingsList.addEventListener('click', function (event) {
-            const button = event.target.closest('[data-sidebar-move]');
-            const item = button?.closest('.sidebar-settings-item');
-            if (!button || !item) return;
-            const sibling = button.dataset.sidebarMove === 'up' ? item.previousElementSibling : item.nextElementSibling;
+        let draggedItem = null;
+        settingsList.addEventListener('dragstart', function (event) {
+            const handle = event.target.closest('[data-sidebar-drag-handle]');
+            draggedItem = handle?.closest('.sidebar-settings-item') || null;
+            if (!draggedItem) return;
+            draggedItem.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', draggedItem.querySelector('input')?.value || '');
+        });
+        settingsList.addEventListener('dragover', function (event) {
+            const targetItem = event.target.closest('.sidebar-settings-item');
+            if (!draggedItem || !targetItem || targetItem === draggedItem || targetItem.parentElement !== draggedItem.parentElement) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            const targetBox = targetItem.getBoundingClientRect();
+            const insertAfter = event.clientY > targetBox.top + targetBox.height / 2;
+            targetItem.parentElement.insertBefore(draggedItem, insertAfter ? targetItem.nextElementSibling : targetItem);
+        });
+        settingsList.addEventListener('drop', function (event) {
+            if (draggedItem) event.preventDefault();
+        });
+        settingsList.addEventListener('dragend', function () {
+            draggedItem?.classList.remove('dragging');
+            draggedItem = null;
+        });
+        settingsList.addEventListener('keydown', function (event) {
+            const handle = event.target.closest('[data-sidebar-drag-handle]');
+            if (!handle || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+            const item = handle.closest('.sidebar-settings-item');
+            const sibling = event.key === 'ArrowUp' ? item.previousElementSibling : item.nextElementSibling;
             if (!sibling) return;
-            if (button.dataset.sidebarMove === 'up') {
+            event.preventDefault();
+            if (event.key === 'ArrowUp') {
                 item.parentElement.insertBefore(item, sibling);
             } else {
                 item.parentElement.insertBefore(sibling, item);
             }
-            updateSidebarOrderButtons();
+            handle.focus();
         });
 
         document.getElementById('sidebarSettingsSelectAllBtn')?.addEventListener('click', function () {

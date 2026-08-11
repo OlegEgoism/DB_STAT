@@ -3055,31 +3055,29 @@ body.sidebar-collapsed .nav-item .nav-icon {
     color: var(--accent-blue);
 }
 
-.sidebar-settings-item__order {
-    display: inline-flex;
-    gap: 4px;
-}
-
-.sidebar-settings-item__order button {
+.sidebar-settings-item__drag-handle {
     display: inline-grid;
     width: 28px;
     height: 28px;
     place-items: center;
-    border: 1px solid var(--sidebar-border);
     border-radius: 6px;
-    background: var(--bg-secondary);
     color: var(--text-secondary);
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
 }
 
-.sidebar-settings-item__order button:hover:not(:disabled) {
-    border-color: var(--accent-blue);
+.sidebar-settings-item__drag-handle:hover,
+.sidebar-settings-item__drag-handle:focus-visible {
+    background: rgba(79, 140, 255, 0.1);
     color: var(--accent-blue);
+    outline: none;
 }
 
-.sidebar-settings-item__order button:disabled {
-    cursor: not-allowed;
-    opacity: 0.35;
+.sidebar-settings-item.dragging {
+    border-color: var(--accent-blue);
+    box-shadow: 0 8px 20px rgba(79, 140, 255, 0.18);
+    cursor: grabbing;
+    opacity: 0.65;
 }
 
 .sidebar-settings-footer {
