@@ -3035,7 +3035,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .sidebar-settings-list {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .sidebar-settings-group {
