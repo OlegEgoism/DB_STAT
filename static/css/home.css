@@ -580,6 +580,29 @@ body {
     flex-wrap: wrap;
 }
 
+.session-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.session-countdown i {
+    color: var(--accent-blue);
+}
+
+.session-countdown strong {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
 .connection-manager {
     position: relative;
     display: flex;
