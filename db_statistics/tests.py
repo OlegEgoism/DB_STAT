@@ -1,10 +1,10 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from django.test import RequestFactory, SimpleTestCase
 
-from db_statistics.views import MAINTENANCE_JOBS, SESSION_EXPIRES_AT_KEY, SIDEBAR_SECTION_IDS, SIDEBAR_TAB_IDS, _normalize_sidebar_sections, _normalize_sidebar_tabs, _session_duration_seconds, _session_has_expired, _sidebar_settings_values, active_queries, active_sessions, maintenance_vacuum, terminate_active_query, terminate_active_session
+from db_statistics.views import MAINTENANCE_JOBS, SESSION_EXPIRES_AT_KEY, SIDEBAR_SECTION_IDS, SIDEBAR_TAB_IDS, _normalize_sidebar_sections, _normalize_sidebar_tabs, _run_maintenance_vacuum, _session_duration_seconds, _session_has_expired, _sidebar_settings_values, active_queries, active_sessions, maintenance_vacuum, terminate_active_query, terminate_active_session
 
 
 class SidebarTabNormalizationTests(SimpleTestCase):
@@ -78,6 +78,25 @@ class MaintenanceVacuumTests(SimpleTestCase):
         self.user = SimpleNamespace(pk=11)
         self.connection = SimpleNamespace(pk=7)
         MAINTENANCE_JOBS.clear()
+
+    @patch("db_statistics.views._open_database_connection")
+    @patch("db_statistics.views.DBConnection.objects.get")
+    def test_executes_vacuum_in_autocommit_without_connection_context(self, get_connection, open_connection):
+        saved_connection = Mock()
+        database_connection = MagicMock()
+        cursor = Mock()
+        database_connection.cursor.return_value.__enter__.return_value = cursor
+        get_connection.return_value = saved_connection
+        open_connection.return_value = database_connection
+        MAINTENANCE_JOBS["job-1"] = {"id": "job-1", "status": "running"}
+
+        _run_maintenance_vacuum("job-1", 7, "public", "orders", False)
+
+        self.assertTrue(database_connection.autocommit)
+        database_connection.__enter__.assert_not_called()
+        cursor.execute.assert_called_once()
+        database_connection.close.assert_called_once()
+        self.assertEqual(MAINTENANCE_JOBS["job-1"]["status"], "completed")
 
     @patch("db_statistics.views.MAINTENANCE_JOB_EXECUTOR.submit")
     @patch("db_statistics.views._require_payload_connection")

@@ -523,20 +523,27 @@ def _fetch_db_resultsets(db_connection, *queries):
 
 
 def _run_maintenance_vacuum(job_id, connection_id, schema_name, table_name, full):
+    connection = None
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
         statement = sql.SQL("VACUUM {mode} {table}").format(
             mode=sql.SQL("FULL") if full else sql.SQL(""),
             table=sql.Identifier(schema_name, table_name),
         )
-        with _open_database_connection(db_connection) as connection:
-            connection.autocommit = True
-            with connection.cursor() as cursor:
-                cursor.execute(statement)
+        # VACUUM запрещён внутри транзакции. Контекстный менеджер psycopg2
+        # открывает транзакцию даже при установке autocommit внутри блока,
+        # поэтому соединением для обслуживания управляем явно.
+        connection = _open_database_connection(db_connection)
+        connection.autocommit = True
+        with connection.cursor() as cursor:
+            cursor.execute(statement)
     except Exception as exc:
         result = {"status": "failed", "message": str(exc)}
     else:
         result = {"status": "completed", "message": "Операция успешно завершена"}
+    finally:
+        if connection is not None:
+            connection.close()
 
     with MAINTENANCE_JOBS_LOCK:
         job = MAINTENANCE_JOBS.get(job_id)
