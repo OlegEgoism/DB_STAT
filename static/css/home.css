@@ -1810,6 +1810,45 @@ body {
     opacity: 1;
 }
 
+.backend-termination-modal {
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.backend-termination-modal .modal-title {
+    color: #b91c1c;
+}
+
+.backend-termination-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-md);
+    background: rgba(239, 68, 68, 0.07);
+    color: var(--text-secondary);
+}
+
+.backend-termination-warning > i {
+    margin-top: 2px;
+    color: var(--accent-red);
+    font-size: 20px;
+}
+
+.backend-termination-warning strong,
+.backend-termination-warning span {
+    display: block;
+}
+
+.backend-termination-warning strong {
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.backend-termination-warning span {
+    font-size: 13px;
+}
+
 .form-control, .form-select {
     background: var(--bg-primary);
     border: 1px solid var(--sidebar-border);

@@ -90,6 +90,38 @@
 </div>
 
 
+<!-- ========== BACKEND TERMINATION CONFIRMATION MODAL ========== -->
+<div class="modal fade" id="backendTerminationModal" tabindex="-1" aria-labelledby="backendTerminationModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content backend-termination-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="backendTerminationModalTitle">
+                    <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
+                    Подтверждение завершения
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="backend-termination-warning" role="alert">
+                    <i class="fas fa-power-off" aria-hidden="true"></i>
+                    <div>
+                        <strong id="backendTerminationModalMessage">Подтвердите завершение процесса.</strong>
+                        <span>Операция может прервать выполняющуюся работу пользователя.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="backendTerminationConfirmBtn">
+                    <i class="fas fa-stop-circle me-1" aria-hidden="true"></i>
+                    Завершить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- ========== TOAST ========== -->
 <div class="toast-container">
     <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">

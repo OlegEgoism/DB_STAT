@@ -1253,22 +1253,51 @@
         `).join('');
     }
 
+    function confirmBackendTermination(message) {
+        const modalElement = document.getElementById('backendTerminationModal');
+        const messageElement = document.getElementById('backendTerminationModalMessage');
+        const confirmButton = document.getElementById('backendTerminationConfirmBtn');
+        if (!modalElement || !messageElement || !confirmButton) return Promise.resolve(false);
+
+        messageElement.textContent = message;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+        return new Promise(resolve => {
+            let resolved = false;
+            const finish = result => {
+                if (resolved) return;
+                resolved = true;
+                confirmButton.removeEventListener('click', confirm);
+                modalElement.removeEventListener('hidden.bs.modal', cancel);
+                resolve(result);
+            };
+            const confirm = () => {
+                finish(true);
+                modal.hide();
+            };
+            const cancel = () => finish(false);
+            confirmButton.addEventListener('click', confirm);
+            modalElement.addEventListener('hidden.bs.modal', cancel);
+            modal.show();
+        });
+    }
+
     function terminateActiveQuery(button) {
         const pid = button.dataset.activeQueryPid;
         const conn = connections.find(item => String(item.id) === String(activeConnectionId));
         if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
-        if (!window.confirm(`Завершить активный запрос с PID ${pid}?`)) return;
-
-        button.disabled = true;
-        connectionRequest(terminateActiveQueryApiUrl, {id: conn.id, pid: Number(pid)})
-            .then(data => {
-                showToast(`✅ ${data.message}`);
-                refreshActiveQueriesForConnection(conn, {silent: true});
-            })
-            .catch(error => {
-                button.disabled = false;
-                showToast(`❌ ${error.message || 'Не удалось завершить активный запрос'}`);
-            });
+        confirmBackendTermination(`Завершить активный запрос с PID ${pid}?`).then(confirmed => {
+            if (!confirmed) return;
+            button.disabled = true;
+            connectionRequest(terminateActiveQueryApiUrl, {id: conn.id, pid: Number(pid)})
+                .then(data => {
+                    showToast(`✅ ${data.message}`);
+                    refreshActiveQueriesForConnection(conn, {silent: true});
+                })
+                .catch(error => {
+                    button.disabled = false;
+                    showToast(`❌ ${error.message || 'Не удалось завершить активный запрос'}`);
+                });
+        });
     }
 
     function refreshActiveQueriesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
@@ -1448,18 +1477,19 @@
         const pid = button.dataset.activeSessionPid;
         const conn = connections.find(item => String(item.id) === String(activeConnectionId));
         if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
-        if (!window.confirm(`Завершить сессию пользователя с PID ${pid}?`)) return;
-
-        button.disabled = true;
-        connectionRequest(terminateActiveSessionApiUrl, {id: conn.id, pid: Number(pid)})
-            .then(data => {
-                showToast(`✅ ${data.message}`);
-                refreshActiveSessionsForConnection(conn, {silent: true});
-            })
-            .catch(error => {
-                button.disabled = false;
-                showToast(`❌ ${error.message || 'Не удалось завершить сессию пользователя'}`);
-            });
+        confirmBackendTermination(`Завершить сессию пользователя с PID ${pid}?`).then(confirmed => {
+            if (!confirmed) return;
+            button.disabled = true;
+            connectionRequest(terminateActiveSessionApiUrl, {id: conn.id, pid: Number(pid)})
+                .then(data => {
+                    showToast(`✅ ${data.message}`);
+                    refreshActiveSessionsForConnection(conn, {silent: true});
+                })
+                .catch(error => {
+                    button.disabled = false;
+                    showToast(`❌ ${error.message || 'Не удалось завершить сессию пользователя'}`);
+                });
+        });
     }
 
     function refreshActiveSessionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
