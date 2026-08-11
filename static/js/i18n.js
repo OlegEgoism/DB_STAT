@@ -14,6 +14,7 @@
         'Группы': 'Groups', 'Обслуживание': 'Maintenance', 'Аудит': 'Audit', 'Избранные': 'Favorites', 'Избранное': 'Favorites', 'Настройки': 'Settings', 'Видео': 'Video',
         'Настройки сайдбара': 'Interface settings', 'Свернуть сайдбар': 'Collapse sidebar', 'Свернуть/развернуть сайдбар': 'Collapse/expand sidebar',
         'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Сессии и подключения': 'Sessions and connections',
+        'До завершения сессии': 'Session time remaining',
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.': 'The language applies to the entire interface and is saved for future visits.',
         'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.': 'Select the tabs to show in the sidebar for the current user.',

@@ -383,6 +383,7 @@
         initAuditControls();
         initSidebarSettings();
         initLogoutForm();
+        initSessionCountdown();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
         initConnectionDbTypeSelect();
         updateConnectionDbTypeIcon();
@@ -734,6 +735,27 @@
                 csrfInput.value = csrfToken;
             }
         });
+    }
+
+    function initSessionCountdown() {
+        const countdown = document.getElementById('sessionCountdown');
+        const value = document.getElementById('sessionCountdownValue');
+        const expiresAt = Number(countdown?.dataset.expiresAt || 0);
+        if (!countdown || !value || !expiresAt) return;
+
+        const updateCountdown = () => {
+            const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+            value.textContent = [hours, minutes, seconds].map(part => String(part).padStart(2, '0')).join(':');
+            if (remainingSeconds === 0) {
+                window.clearInterval(timerId);
+                window.location.reload();
+            }
+        };
+        const timerId = window.setInterval(updateCountdown, 1000);
+        updateCountdown();
     }
 
     function getConnectionFormData() {
