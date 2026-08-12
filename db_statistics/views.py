@@ -136,6 +136,18 @@ def _sidebar_tab_labels(tab_ids):
     return [SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
 
 
+def _available_sidebar_tabs_for_user(db_user):
+    if db_user.role == ADMIN_ROLE:
+        return SIDEBAR_TAB_IDS.copy()
+    return [tab_id for tab_id in SIDEBAR_TAB_IDS if tab_id != "audit"]
+
+
+def _sidebar_settings_values_for_user(settings, db_user):
+    visible_tabs, section_order = _sidebar_settings_values(settings)
+    available_tabs = set(_available_sidebar_tabs_for_user(db_user))
+    return [tab_id for tab_id in visible_tabs if tab_id in available_tabs], section_order
+
+
 def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
@@ -159,8 +171,8 @@ def _user_payload(db_user):
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
-    visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": visible_tabs, "sidebar_section_order": section_order}
+    visible_tabs, section_order = _sidebar_settings_values_for_user(sidebar_settings, db_user)
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "can_run_destructive_actions": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": visible_tabs, "sidebar_section_order": section_order}
 
 
 def _connection_permission_error():
@@ -257,6 +269,15 @@ def _can_manage_connections(request):
     return bool(db_user and db_user.role == ADMIN_ROLE)
 
 
+def _destructive_action_permission_error(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse({"ok": False, "message": "Действие доступно только Администратору"}, status=403)
+    return None
+
+
 def _available_connections(request):
     db_user = _current_db_user(request)
     if not db_user:
@@ -336,9 +357,10 @@ def sidebar_settings(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     settings = _sidebar_settings_for_user(db_user)
-    current_tabs, current_section_order = _sidebar_settings_values(settings)
+    current_tabs, current_section_order = _sidebar_settings_values_for_user(settings, db_user)
+    available_tabs = _available_sidebar_tabs_for_user(db_user)
     if request.method == "GET":
-        return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": current_tabs, "section_order": current_section_order})
+        return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": current_tabs, "section_order": current_section_order})
 
     try:
         payload = json.loads(request.body or "{}")
@@ -347,11 +369,12 @@ def sidebar_settings(request):
 
     previous_tabs = current_tabs
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
+    visible_tabs = [tab_id for tab_id in visible_tabs if tab_id in available_tabs]
     section_order = _normalize_sidebar_sections(payload.get("section_order"))
     settings.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
-    return JsonResponse({"ok": True, "available_tabs": SIDEBAR_TAB_IDS, "visible_tabs": visible_tabs, "section_order": section_order})
+    return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": visible_tabs, "section_order": section_order})
 
 
 @require_http_methods(["GET", "POST"])
@@ -406,6 +429,8 @@ def audit_events(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse({"ok": False, "message": "Аудит доступен только Администратору"}, status=403)
 
     action_type = (request.GET.get("action_type") or "").strip()
     username = (request.GET.get("username") or "").strip()
@@ -416,7 +441,7 @@ def audit_events(request):
     if sort not in available_sorts or direction not in {"asc", "desc"}:
         return JsonResponse({"ok": False, "message": "Некорректные параметры сортировки"}, status=400)
 
-    audit_queryset = DBAudit.objects.all() if db_user.role == ADMIN_ROLE else DBAudit.objects.filter(username=db_user.login)
+    audit_queryset = DBAudit.objects.all()
     available_users = list(audit_queryset.order_by("username").values_list("username", flat=True).distinct())
     if username:
         audit_queryset = audit_queryset.filter(username=username)
@@ -928,6 +953,9 @@ def active_queries(request):
 
 @require_http_methods(["POST"])
 def terminate_active_query(request):
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -1067,6 +1095,9 @@ def active_sessions(request):
 
 @require_http_methods(["POST"])
 def terminate_active_session(request):
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -1521,6 +1552,8 @@ def maintenance_vacuum(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse({"ok": False, "message": "Действие доступно только Администратору"}, status=403)
 
     payload = _read_json_body(request)
     if payload.get("job_id"):

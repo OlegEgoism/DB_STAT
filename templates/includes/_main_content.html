@@ -905,12 +905,12 @@
                             <th>
                                 <button class="table-sort-btn" type="button" data-active-query-sort="sql">SQL <i class="fas fa-sort"></i></button>
                             </th>
-                            <th class="active-queries-col-actions">Действие</th>
+                            {% if db_user.role == 'Администратор' %}<th class="active-queries-col-actions">Действие</th>{% endif %}
                         </tr>
                         </thead>
                         <tbody id="activeQueriesTableBody">
                         <tr>
-                            <td colspan="7" class="text-muted">Выберите сохранённое подключение для загрузки активных запросов</td>
+                            <td colspan="{% if db_user.role == 'Администратор' %}7{% else %}6{% endif %}" class="text-muted">Выберите сохранённое подключение для загрузки активных запросов</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1013,12 +1013,12 @@
                             <th class="active-sessions-col-sql">
                                 <button class="table-sort-btn" type="button" data-active-session-sort="sql">SQL <i class="fas fa-sort"></i></button>
                             </th>
-                            <th class="active-sessions-col-actions">Действие</th>
+                            {% if db_user.role == 'Администратор' %}<th class="active-sessions-col-actions">Действие</th>{% endif %}
                         </tr>
                         </thead>
                         <tbody id="activeSessionsTableBody">
                         <tr>
-                            <td colspan="11" class="text-muted">Выберите сохранённое подключение для загрузки активных сессий</td>
+                            <td colspan="{% if db_user.role == 'Администратор' %}11{% else %}10{% endif %}" class="text-muted">Выберите сохранённое подключение для загрузки активных сессий</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1474,12 +1474,12 @@
                             <th>
                                 <button class="table-sort-btn" type="button" data-maintenance-sort="last_analyze">Последний анализ (ANALYZE) <i class="fas fa-sort"></i></button>
                             </th>
-                            <th>Действия</th>
+                            {% if db_user.role == 'Администратор' %}<th>Действия</th>{% endif %}
                         </tr>
                         </thead>
                         <tbody id="maintenanceStatsTableBody">
                         <tr>
-                            <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки статистики обслуживания</td>
+                            <td colspan="{% if db_user.role == 'Администратор' %}8{% else %}7{% endif %}" class="text-muted">Выберите сохранённое подключение для загрузки статистики обслуживания</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1500,6 +1500,7 @@
     <!-- ============================================================ -->
     <!-- PAGE: AUDIT -->
     <!-- ============================================================ -->
+    {% if db_user.role == 'Администратор' %}
     <div class="page" id="page-audit">
         <div class="glass-card">
             <div class="card-header">
@@ -1555,5 +1556,6 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
 </div>

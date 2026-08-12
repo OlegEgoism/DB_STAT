@@ -18,7 +18,9 @@ SIDEBAR_TAB_LABELS = {
     "users": "Пользователи",
     "groups": "Группы",
     "maintenance": "Обслуживание",
+    "favorites": "Избранное",
     "audit": "Аудит",
+    "settings": "Настройки",
 }
 
 
