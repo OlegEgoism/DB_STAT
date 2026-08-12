@@ -160,7 +160,7 @@ def _user_payload(db_user):
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
     visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
-    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": visible_tabs, "sidebar_section_order": section_order}
+    return {"id": db_user.pk, "login": db_user.login, "email": db_user.email, "role": db_user.role, "can_manage_connections": db_user.role == ADMIN_ROLE, "can_run_destructive_actions": db_user.role == ADMIN_ROLE, "sidebar_visible_tabs": visible_tabs, "sidebar_section_order": section_order}
 
 
 def _connection_permission_error():
@@ -255,6 +255,15 @@ def _maintenance_vacuum_audit_info(operation, connection, schema_name, table_nam
 def _can_manage_connections(request):
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == ADMIN_ROLE)
+
+
+def _destructive_action_permission_error(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse({"ok": False, "message": "Действие доступно только Администратору"}, status=403)
+    return None
 
 
 def _available_connections(request):
@@ -928,6 +937,9 @@ def active_queries(request):
 
 @require_http_methods(["POST"])
 def terminate_active_query(request):
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -1067,6 +1079,9 @@ def active_sessions(request):
 
 @require_http_methods(["POST"])
 def terminate_active_session(request):
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -1521,6 +1536,8 @@ def maintenance_vacuum(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse({"ok": False, "message": "Действие доступно только Администратору"}, status=403)
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
