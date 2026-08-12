@@ -1,6 +1,7 @@
 import base64
 import json
 import time
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from urllib import parse, request
 
@@ -11,6 +12,15 @@ from django.conf import settings
 GOOGLE_OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_DOCS_API_URL = "https://docs.googleapis.com/v1/documents"
 GOOGLE_DOCS_SCOPE = "https://www.googleapis.com/auth/documents"
+
+
+@dataclass(frozen=True)
+class GoogleDocsExportResult:
+    exported: bool
+    message: str
+
+    def as_dict(self):
+        return asdict(self)
 
 
 def _base64url(value):
@@ -58,10 +68,18 @@ def _connection_text(connection, db_user):
 def export_connection_to_google_doc(connection, db_user=None):
     """Добавляет параметры подключения в Google Doc, не экспортируя секреты."""
     if not settings.GOOGLE_DOCS_EXPORT_ENABLED:
-        return False
+        return GoogleDocsExportResult(False, "Экспорт в Google Docs отключён: установите GOOGLE_DOCS_EXPORT_ENABLED=True")
 
-    with open(settings.GOOGLE_SERVICE_ACCOUNT_FILE, encoding="utf-8") as credentials_file:
-        service_account = json.load(credentials_file)
+    if not settings.GOOGLE_DOCS_DOCUMENT_ID:
+        return GoogleDocsExportResult(False, "Не задан GOOGLE_DOCS_DOCUMENT_ID")
+    if not settings.GOOGLE_SERVICE_ACCOUNT_JSON and not settings.GOOGLE_SERVICE_ACCOUNT_FILE:
+        return GoogleDocsExportResult(False, "Не заданы учётные данные Google: укажите GOOGLE_SERVICE_ACCOUNT_JSON или GOOGLE_SERVICE_ACCOUNT_FILE")
+
+    if settings.GOOGLE_SERVICE_ACCOUNT_JSON:
+        service_account = json.loads(settings.GOOGLE_SERVICE_ACCOUNT_JSON)
+    else:
+        with open(settings.GOOGLE_SERVICE_ACCOUNT_FILE, encoding="utf-8") as credentials_file:
+            service_account = json.load(credentials_file)
     token = _service_account_token(service_account)
     document_url = f"{GOOGLE_DOCS_API_URL}/{settings.GOOGLE_DOCS_DOCUMENT_ID}"
     document = _authorized_json(document_url, token)
@@ -69,4 +87,4 @@ def export_connection_to_google_doc(connection, db_user=None):
     end_index = max((item.get("endIndex", 1) for item in content), default=1)
     payload = {"requests": [{"insertText": {"location": {"index": max(1, end_index - 1)}, "text": _connection_text(connection, db_user)}}]}
     _authorized_json(f"{document_url}:batchUpdate", token, payload=payload)
-    return True
+    return GoogleDocsExportResult(True, "Данные подключения записаны в Google Docs")

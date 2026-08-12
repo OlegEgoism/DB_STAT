@@ -48,6 +48,8 @@ DB_CONNECTION_ENCRYPTION_KEY=
 GOOGLE_DOCS_EXPORT_ENABLED=False
 GOOGLE_DOCS_DOCUMENT_ID=1TjXtsmYzJSrkRVHpG3PTSbHFlpNFK4WJEnKGRP-eNyM
 GOOGLE_SERVICE_ACCOUNT_FILE=/run/secrets/google-service-account.json
+# Вместо файла можно передать полный JSON сервисного аккаунта одной строкой:
+GOOGLE_SERVICE_ACCOUNT_JSON=
 GOOGLE_DOCS_TIMEOUT_SECONDS=10
 
 DB_ENGINE=sqlite
@@ -66,6 +68,9 @@ STATIC_URL=static/
 целевого документа и включите Google Docs API в его Google Cloud project. Экспорт
 выполняется только при создании подключения; пароль намеренно не передаётся во
 внешний документ. Ошибка Google Docs не отменяет сохранение подключения.
+Результат записи показывается пользователю сразу после сохранения. Если файл с
+ключом невозможно смонтировать в контейнер, передайте его содержимое через
+`GOOGLE_SERVICE_ACCOUNT_JSON` и не задавайте `GOOGLE_SERVICE_ACCOUNT_FILE`.
 
 ## Запуск проекта в режиме разаработки
 

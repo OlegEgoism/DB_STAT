@@ -4248,7 +4248,14 @@
                     refreshSegmentsForConnection(savedConnection);
                 }
                 modalInstance.hide();
-                showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
+                const exportStatus = data.google_docs_export;
+                if (connectionModalMode === 'create' && exportStatus && !exportStatus.exported) {
+                    showToast(`⚠️ Подключение сохранено, но Google Docs не обновлён: ${exportStatus.message}`);
+                } else if (connectionModalMode === 'create' && exportStatus?.exported) {
+                    showToast(`✅ Подключение "${savedConnection.name}" сохранено и записано в Google Docs`);
+                } else {
+                    showToast(`✅ Подключение "${savedConnection.name}" проверено и сохранено`);
+                }
                 refreshAll();
             })
             .catch(error => showToast(`❌ ${error.message}`));

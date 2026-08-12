@@ -669,12 +669,13 @@ def connections(request):
             connection.save(update_fields=["created_user", "updated"])
         db_user.connections.add(connection)
     _write_audit("connection_create" if created else "connection_update", _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection), db_user=db_user)
-    exported = False
+    export_status = {"exported": False, "message": "Экспорт в Google Docs не выполнен"}
     try:
-        exported = export_connection_to_google_doc(connection, db_user)
-    except Exception:
+        export_status = export_connection_to_google_doc(connection, db_user).as_dict()
+    except Exception as exc:
         logger.exception("Не удалось экспортировать новое подключение в Google Docs")
-    return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection), "google_docs_exported": exported}, status=201 if created else 200)
+        export_status["message"] = f"Ошибка записи в Google Docs: {exc}"
+    return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection), "google_docs_export": export_status}, status=201 if created else 200)
 
 
 @require_http_methods(["POST"])
