@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -14,7 +15,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
+from db_statistics.google_docs import export_connection_to_google_doc
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
+
+logger = logging.getLogger(__name__)
 
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
@@ -665,7 +669,12 @@ def connections(request):
             connection.save(update_fields=["created_user", "updated"])
         db_user.connections.add(connection)
     _write_audit("connection_create" if created else "connection_update", _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection), db_user=db_user)
-    return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
+    exported = False
+    try:
+        exported = export_connection_to_google_doc(connection, db_user)
+    except Exception:
+        logger.exception("Не удалось экспортировать новое подключение в Google Docs")
+    return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection), "google_docs_exported": exported}, status=201 if created else 200)
 
 
 @require_http_methods(["POST"])

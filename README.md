@@ -44,6 +44,12 @@ LANGUAGE_CODE=ru
 
 DB_CONNECTION_ENCRYPTION_KEY=
 
+# Экспорт новых подключений в Google Docs (пароль и другие секреты не экспортируются)
+GOOGLE_DOCS_EXPORT_ENABLED=False
+GOOGLE_DOCS_DOCUMENT_ID=1TjXtsmYzJSrkRVHpG3PTSbHFlpNFK4WJEnKGRP-eNyM
+GOOGLE_SERVICE_ACCOUNT_FILE=/run/secrets/google-service-account.json
+GOOGLE_DOCS_TIMEOUT_SECONDS=10
+
 DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
 
@@ -55,6 +61,11 @@ DB_PORT=5432
 
 STATIC_URL=static/
 ```
+
+Для экспорта предоставьте адресу `client_email` сервисного аккаунта право редактора
+целевого документа и включите Google Docs API в его Google Cloud project. Экспорт
+выполняется только при создании подключения; пароль намеренно не передаётся во
+внешний документ. Ошибка Google Docs не отменяет сохранение подключения.
 
 ## Запуск проекта в режиме разаработки
 
