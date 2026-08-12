@@ -110,10 +110,12 @@
                 <i class="fas fa-star nav-icon"></i>
                 <span>Избранное</span>
             </a>
+            {% if db_user.role == 'Администратор' %}
             <a class="nav-item sidebar-audit-link" data-page="audit" title="Аудит" aria-label="Аудит">
                 <i class="fas fa-clipboard-list nav-icon"></i>
                 <span>Аудит</span>
             </a>
+            {% endif %}
             <a class="nav-item sidebar-settings-link" data-page="settings" data-fixed-page title="Настройки" aria-label="Настройки">
                 <i class="fas fa-cog nav-icon"></i>
                 <span>Настройки</span>

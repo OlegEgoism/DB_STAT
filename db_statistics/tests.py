@@ -42,3 +42,25 @@ class AnalystDestructiveActionsTests(SimpleTestCase):
             payload = views._user_payload(self.analyst)
 
         self.assertFalse(payload["can_run_destructive_actions"])
+        self.assertNotIn("audit", payload["sidebar_visible_tabs"])
+
+    def test_audit_api_is_forbidden_for_analyst(self):
+        request = RequestFactory().get("/audit/events/")
+        with patch.object(views, "_current_db_user", return_value=self.analyst):
+            response = views.audit_events(request)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(json.loads(response.content)["ok"])
+
+    def test_sidebar_settings_exclude_audit_for_analyst(self):
+        settings = SimpleNamespace(visible_tabs=None)
+        request = RequestFactory().get("/settings/sidebar/")
+        with (
+            patch.object(views, "_current_db_user", return_value=self.analyst),
+            patch.object(views, "_sidebar_settings_for_user", return_value=settings),
+        ):
+            response = views.sidebar_settings(request)
+
+        payload = json.loads(response.content)
+        self.assertNotIn("audit", payload["available_tabs"])
+        self.assertNotIn("audit", payload["visible_tabs"])
