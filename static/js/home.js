@@ -151,6 +151,10 @@
         return currentDbUser?.can_manage_connections === true;
     }
 
+    function canRunDestructiveActions() {
+        return currentDbUser?.can_run_destructive_actions === true;
+    }
+
     function canEditConnection(conn) {
         return canManageConnections() && conn?.created_by_id != null && String(conn.created_by_id) === String(currentDbUser?.id);
     }
@@ -1308,7 +1312,7 @@
             : `${queries.length} активных запросов`;
         if (!tbody) return;
         if (!queries.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">Активные запросы не найдены</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 7 : 6}" class="text-muted">Активные запросы не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = queries.map(query => `
@@ -1319,7 +1323,7 @@
                 <td><span class="status-badge up">${escapeHtml(query.state)}</span></td>
                 <td>${escapeHtml(query.duration)}</td>
                 <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(query.sql)}">${escapeHtml(query.sql)}</td>
-                <td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-query-terminate-btn" data-active-query-pid="${escapeHtml(query.pid)}" title="Завершить запрос PID ${escapeHtml(query.pid)}" aria-label="Завершить запрос PID ${escapeHtml(query.pid)}">Завершить</button></td>
+                ${canRunDestructiveActions() ? `<td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-query-terminate-btn" data-active-query-pid="${escapeHtml(query.pid)}" title="Завершить запрос PID ${escapeHtml(query.pid)}" aria-label="Завершить запрос PID ${escapeHtml(query.pid)}">Завершить</button></td>` : ''}
             </tr>
         `).join('');
     }
@@ -1486,7 +1490,7 @@
         });
         if (!tbody) return;
         if (!sessions.length) {
-            tbody.innerHTML = '<tr><td colspan="11" class="text-muted">Активные сессии и подключения не найдены</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 11 : 10}" class="text-muted">Активные сессии и подключения не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = sessions.map(session => {
@@ -1504,7 +1508,7 @@
                     <td>${escapeHtml(session.backend_type)}</td>
                     <td>${escapeHtml(session.session_duration)}</td>
                     <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(session.sql)}">${escapeHtml(session.sql)}</td>
-                    <td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-session-terminate-btn" data-active-session-pid="${escapeHtml(session.pid)}" title="Завершить сессию PID ${escapeHtml(session.pid)}" aria-label="Завершить сессию PID ${escapeHtml(session.pid)}">Завершить</button></td>
+                    ${canRunDestructiveActions() ? `<td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger active-session-terminate-btn" data-active-session-pid="${escapeHtml(session.pid)}" title="Завершить сессию PID ${escapeHtml(session.pid)}" aria-label="Завершить сессию PID ${escapeHtml(session.pid)}">Завершить</button></td>` : ''}
                 </tr>
             `;
         }).join('');
@@ -2321,7 +2325,7 @@
         updateMaintenanceVisuals(tables);
         if (!tbody) return;
         if (!tables.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Статистика обслуживания не найдена</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 8 : 7}" class="text-muted">Статистика обслуживания не найдена</td></tr>`;
             return;
         }
         tbody.innerHTML = tables.map(table => {
@@ -2339,11 +2343,11 @@
                     <td><span class="${deadClass}">${deadPercent}%</span></td>
                     <td>${escapeHtml(table.last_vacuum)}</td>
                     <td>${escapeHtml(table.last_analyze)}</td>
-                    <td class="maintenance-actions">
+                    ${canRunDestructiveActions() ? `<td class="maintenance-actions">
                         <button class="btn btn-sm btn-outline-primary" type="button" data-maintenance-operation="vacuum" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM</button>
                         <button class="btn btn-sm btn-outline-danger" type="button" data-maintenance-operation="vacuum_full" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM FULL</button>
                         ${runningJob ? '<span class="maintenance-job-running"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Выполняется</span>' : ''}
-                    </td>
+                    </td>` : ''}
                 </tr>
             `;
         }).join('');
