@@ -129,6 +129,7 @@
                     <div class="home-tab-card"><i class="fas fa-database"></i><strong>Схемы</strong><span>Список схем, владельцы, количество таблиц и распределение размера.</span></div>
                     <div class="home-tab-card"><i class="fas fa-table"></i><strong>Таблицы</strong><span>Размеры таблиц, индексы, количество строк и сортировка по метрикам.</span></div>
                     <div class="home-tab-card"><i class="fas fa-eye"></i><strong>Представления</strong><span>Обычные и материализованные представления, их размеры и строки.</span></div>
+                    <div class="home-tab-card"><i class="fas fa-code"></i><strong>Функции</strong><span>Список функций базы данных, возвращаемые типы и аргументы.</span></div>
                     <div class="home-tab-card"><i class="fas fa-clock"></i><strong>Временные таблицы</strong><span>Активные временные таблицы и занимаемый ими объём.</span></div>
                     <div class="home-tab-card"><i class="fas fa-arrows-alt-h"></i><strong>Распределение</strong><span>Анализ распределения строк по сегментам и перекоса данных.</span></div>
                     <div class="home-tab-card"><i class="fas fa-bolt"></i><strong>Запросы</strong><span>Активные запросы с длительностью, SQL и ручным/автообновлением.</span></div>
@@ -674,6 +675,46 @@
                 <button class="btn-conn secondary" type="button" id="viewNextPageBtn">
                     Далее <i class="fas fa-chevron-right"></i>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAGE: FUNCTIONS -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-functions">
+        <div class="glass-card">
+            <div class="card-header">
+                <span><i class="fas fa-code"></i> Функции</span>
+                <span class="card-meta" id="functionsCount">Нет данных</span>
+            </div>
+            <div class="database-table-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="search" id="functionSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by function name...{% else %}Поиск по названию функции...{% endif %}" autocomplete="off">
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive table-scroll-lg">
+                    <table class="table table-sm">
+                        <thead>
+                        <tr>
+                            <th><button class="table-sort-btn active" type="button" data-function-sort="schema_name">Схема <i class="fas fa-sort-up"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-function-sort="function_name">Функция <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-function-sort="return_type">Возвращаемый тип <i class="fas fa-sort"></i></button></th>
+                            <th><button class="table-sort-btn" type="button" data-function-sort="arguments">Аргументы <i class="fas fa-sort"></i></button></th>
+                        </tr>
+                        </thead>
+                        <tbody id="functionsTableBody">
+                        <tr><td colspan="4" class="text-muted">Выберите сохранённое подключение для загрузки функций</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="table-pagination">
+                <button class="btn-conn secondary" type="button" id="functionPrevPageBtn"><i class="fas fa-chevron-left"></i> Назад</button>
+                <span id="functionPaginationInfo">Страница 1 из 1</span>
+                <button class="btn-conn secondary" type="button" id="functionNextPageBtn">Далее <i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
