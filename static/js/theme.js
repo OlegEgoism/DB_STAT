@@ -2,7 +2,7 @@
     'use strict';
 
     const storageKey = 'db_stat_theme';
-    const themes = new Set(['default', 'dark', 'gray']);
+    const themes = new Set(['default', 'dark', 'gray', 'blue', 'brown', 'green']);
 
     function getSavedTheme() {
         try {

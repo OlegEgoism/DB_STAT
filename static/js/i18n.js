@@ -17,6 +17,8 @@
         'До завершения сессии': 'Session time remaining',
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Тема оформления': 'Appearance theme', 'Белая': 'White', 'Тёмная': 'Dark', 'Светло-серая': 'Light gray',
+        'Светло-синяя': 'Light blue', 'Светло-коричневая': 'Light brown', 'Светло-зелёная': 'Light green',
+        'Спокойная прохладная палитра': 'Calm cool palette', 'Тёплая естественная палитра': 'Warm natural palette', 'Свежая природная палитра': 'Fresh natural palette',
         'Стандартная светлая тема': 'Standard light theme', 'Комфортная работа при слабом освещении': 'Comfortable in low light', 'Мягкий нейтральный фон': 'Soft neutral background',
         'Выберите цветовую схему интерфейса. Тема применяется сразу и сохраняется для следующих посещений.': 'Choose the interface color scheme. The theme is applied immediately and saved for future visits.',
         'Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.': 'The language applies to the entire interface and is saved for future visits.',
