@@ -140,7 +140,7 @@
                     <div class="home-tab-card"><i class="fas fa-user"></i><strong>Пользователи</strong><span>Пользователи, права, лимиты подключений и срок действия ролей.</span></div>
                     <div class="home-tab-card"><i class="fas fa-users"></i><strong>Группы</strong><span>Группы ролей, привилегии и количество участников.</span></div>
                     <div class="home-tab-card"><i class="fas fa-tools"></i><strong>Обслуживание</strong><span>Статистика VACUUM/ANALYZE, живые и мёртвые строки.</span></div>
-                    <div class="home-tab-card"><i class="fas fa-star"></i><strong>Избранное</strong><span>Сохранённые схемы, таблицы, представления, пользователи и группы для быстрого доступа.</span></div>
+                    <div class="home-tab-card"><i class="fas fa-star"></i><strong>Избранное</strong><span>Сохранённые схемы, таблицы, представления, функции, пользователи и группы для быстрого доступа.</span></div>
                     <div class="home-tab-card"><i class="fas fa-clipboard-list"></i><strong>Аудит</strong><span>История действий пользователя с фильтром по типу события.</span></div>
                     <div class="home-tab-card"><i class="fas fa-cog"></i><strong>Настройки</strong><span>Персональная настройка бокового меню.</span></div>
                 </div>
@@ -693,12 +693,14 @@
                     <i class="fas fa-search"></i>
                     <input type="search" id="functionSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by function name...{% else %}Поиск по названию функции...{% endif %}" autocomplete="off">
                 </div>
+                <div class="toolbar-filter"><select id="functionFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive table-scroll-lg">
                     <table class="table table-sm">
                         <thead>
                         <tr>
+                            <th class="favorite-column" title="Избранное"><i class="far fa-star" aria-hidden="true"></i><span class="visually-hidden">Избранное</span></th>
                             <th><button class="table-sort-btn active" type="button" data-function-sort="schema_name">Схема <i class="fas fa-sort-up"></i></button></th>
                             <th><button class="table-sort-btn" type="button" data-function-sort="function_name">Функция <i class="fas fa-sort"></i></button></th>
                             <th><button class="table-sort-btn" type="button" data-function-sort="return_type">Возвращаемый тип <i class="fas fa-sort"></i></button></th>
@@ -706,7 +708,7 @@
                         </tr>
                         </thead>
                         <tbody id="functionsTableBody">
-                        <tr><td colspan="4" class="text-muted">Выберите сохранённое подключение для загрузки функций</td></tr>
+                        <tr><td colspan="5" class="text-muted">Выберите сохранённое подключение для загрузки функций</td></tr>
                         </tbody>
                     </table>
                 </div>

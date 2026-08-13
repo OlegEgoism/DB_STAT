@@ -1363,7 +1363,7 @@ def _favorite_filter(payload, db_user, db_connection, object_type, columns):
     if not payload.get("favorites_only"):
         return "", []
     keys = list(DBFavorite.objects.filter(user=db_user, connection=db_connection, object_type=object_type).values_list("object_key", flat=True))
-    values = [tuple(key.split("\x1f", 1)) if len(columns) == 2 else (key,) for key in keys]
+    values = [tuple(key.split("\x1f", len(columns) - 1)) if len(columns) > 1 else (key,) for key in keys]
     values = [value for value in values if len(value) == len(columns)]
     if not values:
         return "AND FALSE", []
@@ -1923,6 +1923,19 @@ def database_functions_list(request):
     if search:
         where_sql = "AND procedure.proname ILIKE %s ESCAPE '!'"
         params.append(f"%{_escape_like_pattern(search)}%")
+    favorite_sql, favorite_params = _favorite_filter(
+        payload,
+        _current_db_user(request),
+        db_connection,
+        "function",
+        (
+            "namespace.nspname",
+            "procedure.proname",
+            "pg_catalog.pg_get_function_arguments(procedure.oid)",
+        ),
+    )
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     functions_query = f"""
         WITH database_functions AS (

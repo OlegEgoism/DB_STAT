@@ -14,7 +14,7 @@
     let tableSizesRequestId = 0;
     let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
-    let functionsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: ''};
+    let functionsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
     let functionsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
@@ -243,6 +243,7 @@
             schema: {page: 'databases', state: schemaSizesState, refresh: refreshSchemaSizesForConnection},
             table: {page: 'tables', state: tableSizesState, refresh: refreshTableSizesForConnection},
             view: {page: 'views', state: viewsState, refresh: refreshViewsForConnection},
+            function: {page: 'functions', state: functionsState, refresh: refreshFunctionsForConnection},
             user: {page: 'users', state: usersState, refresh: refreshUsersForConnection},
             group: {page: 'groups', state: groupsState, refresh: refreshGroupsForConnection}
         };
@@ -283,7 +284,7 @@
             tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Для выбранного подключения нет избранных объектов</td></tr>';
             return;
         }
-        const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', user: 'Пользователь', group: 'Группа'};
+        const typeLabels = {schema: 'Схема', table: 'Таблица', view: 'Представление', function: 'Функция', user: 'Пользователь', group: 'Группа'};
         const sortedItems = [...favoriteItems].sort((first, second) => {
             const value = item => favoritesSortState.column === 'type'
                 ? (typeLabels[item.object_type] || item.object_type)
@@ -294,7 +295,10 @@
         });
         updateFavoritesSortIndicators();
         tbody.innerHTML = sortedItems.map(item => {
-            const label = String(item.object_key || '').split('\u001f').join('.');
+            const keyParts = String(item.object_key || '').split('\u001f');
+            const label = item.object_type === 'function'
+                ? `${keyParts[0] || ''}.${keyParts[1] || ''}(${keyParts[2] || ''})`
+                : keyParts.join('.');
             const targetAttributes = `data-favorite-target-type="${escapeHtml(item.object_type)}" data-favorite-target-key="${escapeHtml(item.object_key)}"`;
             return `<tr><td class="favorite-column">${favoriteButton(item.object_type, item.object_key, label)}</td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(typeLabels[item.object_type] || item.object_type)}</button></td><td><button type="button" class="favorite-object-link" ${targetAttributes}>${escapeHtml(label)}</button></td></tr>`;
         }).join('');
@@ -316,13 +320,16 @@
             schema: {page: 'databases', state: schemaSizesState, input: 'schemaSearchInput', filter: 'schemaFavoritesFilter'},
             table: {page: 'tables', state: tableSizesState, input: 'tableSearchInput', filter: 'tableFavoritesFilter'},
             view: {page: 'views', state: viewsState, input: 'viewSearchInput', filter: 'viewFavoritesFilter'},
+            function: {page: 'functions', state: functionsState, input: 'functionSearchInput', filter: 'functionFavoritesFilter'},
             user: {page: 'users', state: usersState, input: 'usersSearchInput', filter: 'usersFavoritesFilter'},
             group: {page: 'groups', state: groupsState, input: 'groupsSearchInput', filter: 'groupsFavoritesFilter'}
         };
         const target = targets[objectType];
         if (!target) return;
         const keyParts = String(objectKey || '').split('\u001f');
-        const search = objectType === 'schema' ? keyParts[0] : keyParts[keyParts.length - 1];
+        const search = objectType === 'schema'
+            ? keyParts[0]
+            : (objectType === 'function' ? keyParts[1] : keyParts[keyParts.length - 1]);
         target.state.search = search;
         target.state.favoritesOnly = true;
         if ('page' in target.state) target.state.page = 1;
@@ -3018,7 +3025,7 @@
         const info = document.getElementById('functionPaginationInfo');
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateFunctionPaginationButtons();
     }
 
@@ -3050,9 +3057,10 @@
         document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
         updateFunctionSortIndicators();
         if (!data.functions?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Функции не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Функции не найдены</td></tr>';
         } else {
             tbody.innerHTML = data.functions.map(item => `<tr>
+                <td class="favorite-column">${favoriteButton('function', `${item.schema_name}\u001f${item.function_name}\u001f${item.arguments || ''}`, `${item.schema_name}.${item.function_name}(${item.arguments || ''})`)}</td>
                 <td>${escapeHtml(item.schema_name || '—')}</td>
                 <td><strong>${escapeHtml(item.function_name || '—')}</strong></td>
                 <td><code>${escapeHtml(item.return_type || '—')}</code></td>
@@ -3069,7 +3077,7 @@
             return;
         }
         renderFunctionsWarning('Загрузка функций...');
-        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction})
+        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
             .then(data => { if (requestId === functionsRequestId) renderFunctions(data); })
             .catch(error => { if (requestId === functionsRequestId) renderFunctionsWarning(error.message || 'Не удалось получить функции'); });
     }
@@ -3091,6 +3099,11 @@
             functionsState.page = 1;
             refreshFunctionsForConnection();
         }));
+        document.getElementById('functionFavoritesFilter')?.addEventListener('change', function () {
+            functionsState.favoritesOnly = this.value === 'favorites';
+            functionsState.page = 1;
+            refreshFunctionsForConnection();
+        });
         document.getElementById('functionPrevPageBtn')?.addEventListener('click', () => {
             if (functionsState.page > 1) { functionsState.page -= 1; refreshFunctionsForConnection(); }
         });

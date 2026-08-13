@@ -104,7 +104,7 @@
         'На панели можно оценить размеры баз, схем, таблиц и индексов, проверить активность пользователей и сессий, найти длительные или проблемные запросы, а также увидеть блокировки и простаивающие транзакции.': 'Use the dashboard to review database, schema, table, and index sizes; inspect user and session activity; find long-running or problematic queries; and identify locks and idle transactions.',
         'Для Greenplum доступны сведения о состоянии сегментов и распределении строк, помогающие обнаружить перекос данных. Раздел обслуживания показывает статистику VACUUM и ANALYZE, количество живых и мёртвых строк и время последних операций.': 'For Greenplum, segment health and row distribution data help reveal skew. The maintenance section shows VACUUM and ANALYZE statistics, live and dead row counts, and the latest operation times.',
         'DB STAT подходит для ежедневного контроля, первичной диагностики снижения производительности и административной проверки. Переключайтесь между сохранёнными подключениями, сравнивайте показатели и быстрее находите участки, которым требуется внимание.': 'DB STAT is designed for daily checks, initial performance diagnostics, and administrative review. Switch between saved connections, compare metrics, and quickly find areas that need attention.',
-        'Сохранённые схемы, таблицы, представления, пользователи и группы для быстрого доступа.': 'Saved schemas, tables, views, users, and groups for quick access.'
+        'Сохранённые схемы, таблицы, представления, функции, пользователи и группы для быстрого доступа.': 'Saved schemas, tables, views, functions, users, and groups for quick access.'
     };
 
     Object.assign(translations, {

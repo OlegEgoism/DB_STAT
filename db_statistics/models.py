@@ -114,6 +114,7 @@ class DBFavorite(DateStamp):
         ("schema", "Схема"),
         ("table", "Таблица"),
         ("view", "Представление"),
+        ("function", "Функция"),
         ("user", "Пользователь"),
         ("group", "Группа")
     ]]
