@@ -87,6 +87,86 @@ html[data-theme="gray"] {
     --shadow-glow: 0 8px 32px rgba(30, 41, 59, 0.08);
 }
 
+html[data-theme="blue"] {
+    color-scheme: light;
+    --bg-primary: #eaf4fb;
+    --bg-secondary: #f7fbfe;
+    --sidebar-bg: #f1f8fd;
+    --sidebar-border: #c9deec;
+    --border-color: #c9deec;
+    --surface-raised: #ffffff;
+    --surface-soft: #e1f0f9;
+    --surface-hover: #d7eaf6;
+    --surface-overlay: rgba(247, 251, 254, 0.97);
+    --toolbar-bg: rgba(220, 237, 247, 0.78);
+    --sidebar-footer-bg: linear-gradient(180deg, rgba(241, 248, 253, 0.9), #e8f3fa);
+    --chart-empty-bg: rgba(247, 251, 254, 0.92);
+    --chart-track: #d4e6f1;
+    --control-border: #b8d3e4;
+    --text-primary: #173247;
+    --text-secondary: #3e6077;
+    --text-muted: #718da1;
+    --accent-blue: #287fbd;
+    --glow-blue: rgba(40, 127, 189, 0.14);
+    --shadow-card: 0 2px 12px rgba(28, 83, 120, 0.07);
+    --shadow-card-hover: 0 4px 24px rgba(28, 83, 120, 0.12);
+    --shadow-glow: 0 8px 32px rgba(28, 83, 120, 0.09);
+}
+
+html[data-theme="brown"] {
+    color-scheme: light;
+    --bg-primary: #f4eee7;
+    --bg-secondary: #fcf9f5;
+    --sidebar-bg: #f8f3ed;
+    --sidebar-border: #dfd0c1;
+    --border-color: #dfd0c1;
+    --surface-raised: #fffdf9;
+    --surface-soft: #eee3d8;
+    --surface-hover: #e7d9cb;
+    --surface-overlay: rgba(252, 249, 245, 0.97);
+    --toolbar-bg: rgba(235, 222, 209, 0.78);
+    --sidebar-footer-bg: linear-gradient(180deg, rgba(248, 243, 237, 0.9), #f1e8df);
+    --chart-empty-bg: rgba(252, 249, 245, 0.92);
+    --chart-track: #e5d8cc;
+    --control-border: #d2beaa;
+    --text-primary: #402f25;
+    --text-secondary: #6b5040;
+    --text-muted: #927869;
+    --accent-blue: #9a6542;
+    --accent-purple: #8c617c;
+    --glow-blue: rgba(154, 101, 66, 0.14);
+    --shadow-card: 0 2px 12px rgba(91, 58, 37, 0.07);
+    --shadow-card-hover: 0 4px 24px rgba(91, 58, 37, 0.12);
+    --shadow-glow: 0 8px 32px rgba(91, 58, 37, 0.09);
+}
+
+html[data-theme="green"] {
+    color-scheme: light;
+    --bg-primary: #eaf5ee;
+    --bg-secondary: #f7fcf9;
+    --sidebar-bg: #f0f8f3;
+    --sidebar-border: #c9dfd1;
+    --border-color: #c9dfd1;
+    --surface-raised: #ffffff;
+    --surface-soft: #dfefe5;
+    --surface-hover: #d5e9dd;
+    --surface-overlay: rgba(247, 252, 249, 0.97);
+    --toolbar-bg: rgba(218, 236, 225, 0.8);
+    --sidebar-footer-bg: linear-gradient(180deg, rgba(240, 248, 243, 0.9), #e7f3eb);
+    --chart-empty-bg: rgba(247, 252, 249, 0.92);
+    --chart-track: #d3e6da;
+    --control-border: #b8d4c2;
+    --text-primary: #193b29;
+    --text-secondary: #426753;
+    --text-muted: #73917f;
+    --accent-blue: #27865a;
+    --accent-purple: #7471a8;
+    --glow-blue: rgba(39, 134, 90, 0.14);
+    --shadow-card: 0 2px 12px rgba(31, 94, 61, 0.07);
+    --shadow-card-hover: 0 4px 24px rgba(31, 94, 61, 0.12);
+    --shadow-glow: 0 8px 32px rgba(31, 94, 61, 0.09);
+}
+
 html[data-theme="dark"] {
     color-scheme: dark;
     --bg-primary: #0b1120;
@@ -3457,6 +3537,18 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .theme-option__preview--dark i { background: #162136; }
 .theme-option__preview--dark b { background: #111a2b; border-color: #26334a; }
 .theme-option__preview--dark em { background: #1d2a42; }
+.theme-option__preview--blue { border-color: #b8d3e4; background: #eaf4fb; }
+.theme-option__preview--blue i { background: #d7eaf6; }
+.theme-option__preview--blue b { background: #f7fbfe; border-color: #c9deec; }
+.theme-option__preview--blue em { background: #ffffff; }
+.theme-option__preview--brown { border-color: #d2beaa; background: #f4eee7; }
+.theme-option__preview--brown i { background: #e7d9cb; }
+.theme-option__preview--brown b { background: #fcf9f5; border-color: #dfd0c1; }
+.theme-option__preview--brown em { background: #fffdf9; }
+.theme-option__preview--green { border-color: #b8d4c2; background: #eaf5ee; }
+.theme-option__preview--green i { background: #d5e9dd; }
+.theme-option__preview--green b { background: #f7fcf9; border-color: #c9dfd1; }
+.theme-option__preview--green em { background: #ffffff; }
 
 .theme-option__copy strong,
 .theme-option__copy small {
