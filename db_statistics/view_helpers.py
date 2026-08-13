@@ -1,0 +1,771 @@
+"""Shared constants and helper functions for DB STAT views.
+
+Keeping infrastructure, session, audit, connection and query helpers here makes
+``views.py`` focus on HTTP endpoints and their response payloads.
+"""
+
+import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal, InvalidOperation
+
+import psycopg2
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from psycopg2 import sql
+
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
+
+CONNECTION_TIMEOUT_SECONDS = 5
+
+ADMIN_ROLE = "Администратор"
+
+SESSION_USER_ID_KEY = "db_user_id"
+
+DEFAULT_SESSION_DURATION_HOURS = 8
+
+MIN_SESSION_DURATION_MINUTES = 10
+
+MAX_SESSION_DURATION_HOURS = 24
+
+MIN_SESSION_DURATION_SECONDS = MIN_SESSION_DURATION_MINUTES * 60
+
+MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
+
+SESSION_EXPIRES_AT_KEY = "session_expires_at"
+
+LOCALHOST_NAMES = {"localhost", "::1"}
+
+LOOPBACK_HOST = "127.0.0.1"
+
+SIDEBAR_TAB_IDS = [
+    "database-overview",
+    "segments",
+    "databases",
+    "tables",
+    "views",
+    "functions",
+    "temp-tables",
+    "distribution",
+    "queries",
+    "sessions",
+    "locks",
+    "transactions",
+    "memory",
+    "users",
+    "groups",
+    "maintenance",
+    "favorites",
+    "audit",
+    "settings",
+]
+
+SIDEBAR_SECTION_IDS = [
+    "infrastructure",
+    "data",
+    "performance",
+    "administration",
+    "additional",
+]
+
+FIXED_SIDEBAR_TAB_IDS = {"settings"}
+
+SIDEBAR_TAB_LABELS = {
+    "database-overview": "База данных",
+    "segments": "Сегменты",
+    "databases": "Схемы",
+    "tables": "Таблицы",
+    "views": "Представления",
+    "functions": "Функции",
+    "temp-tables": "Временные таблицы",
+    "distribution": "Распределение",
+    "queries": "Активные запросы",
+    "sessions": "Сессии",
+    "locks": "Блокировки",
+    "transactions": "Транзакции",
+    "memory": "Память",
+    "users": "Пользователи",
+    "groups": "Группы",
+    "maintenance": "Обслуживание",
+    "favorites": "Избранное",
+    "audit": "Аудит",
+    "settings": "Настройки",
+}
+
+SUPPORTED_LANGUAGES = {"ru", "en"}
+
+MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
+    max_workers=4, thread_name_prefix="db-stat-vacuum"
+)
+
+MAINTENANCE_JOBS = {}
+
+MAINTENANCE_JOBS_LOCK = threading.Lock()
+
+
+def _normalize_database_host(host):
+    normalized_host = (host or "").strip().lower()
+    if normalized_host in LOCALHOST_NAMES:
+        return LOOPBACK_HOST
+    return host
+
+
+def _current_db_user(request):
+    if _session_has_expired(request.session):
+        request.session.flush()
+        return None
+    user_id = request.session.get(SESSION_USER_ID_KEY)
+    if not user_id:
+        return None
+    try:
+        return DBUser.objects.get(pk=user_id, is_active=True)
+    except DBUser.DoesNotExist:
+        request.session.pop(SESSION_USER_ID_KEY, None)
+        return None
+
+
+def _normalize_sidebar_tabs(tabs):
+    if not isinstance(tabs, list):
+        return SIDEBAR_TAB_IDS.copy()
+    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in SIDEBAR_TAB_IDS))
+    if not any(tab not in FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
+        return SIDEBAR_TAB_IDS.copy()
+    normalized_tabs.extend(
+        tab
+        for tab in SIDEBAR_TAB_IDS
+        if tab in FIXED_SIDEBAR_TAB_IDS and tab not in normalized_tabs
+    )
+    return normalized_tabs
+
+
+def _normalize_sidebar_sections(sections):
+    if not isinstance(sections, list):
+        return SIDEBAR_SECTION_IDS.copy()
+    normalized_sections = list(
+        dict.fromkeys(section for section in sections if section in SIDEBAR_SECTION_IDS)
+    )
+    normalized_sections.extend(
+        section for section in SIDEBAR_SECTION_IDS if section not in normalized_sections
+    )
+    return normalized_sections
+
+
+def _sidebar_settings_values(settings):
+    stored_value = settings.visible_tabs
+    if isinstance(stored_value, dict):
+        return (
+            _normalize_sidebar_tabs(stored_value.get("visible_tabs")),
+            _normalize_sidebar_sections(stored_value.get("section_order")),
+        )
+    return _normalize_sidebar_tabs(stored_value), SIDEBAR_SECTION_IDS.copy()
+
+
+def _session_duration_seconds(value):
+    try:
+        seconds = int(Decimal(str(value)) * 60 * 60)
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+    if not MIN_SESSION_DURATION_SECONDS <= seconds <= MAX_SESSION_DURATION_SECONDS:
+        return None
+    return seconds
+
+
+def _session_has_expired(session, now_timestamp=None):
+    expires_at = session.get(SESSION_EXPIRES_AT_KEY)
+    if not expires_at:
+        return False
+    try:
+        expires_at = int(expires_at)
+    except (TypeError, ValueError):
+        return True
+    current_timestamp = (
+        int(timezone.now().timestamp()) if now_timestamp is None else int(now_timestamp)
+    )
+    return expires_at <= current_timestamp
+
+
+def _sidebar_tab_labels(tab_ids):
+    return [SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
+
+
+def _available_sidebar_tabs_for_user(db_user):
+    if db_user.role == ADMIN_ROLE:
+        return SIDEBAR_TAB_IDS.copy()
+    return [tab_id for tab_id in SIDEBAR_TAB_IDS if tab_id != "audit"]
+
+
+def _sidebar_settings_values_for_user(settings, db_user):
+    visible_tabs, section_order = _sidebar_settings_values(settings)
+    available_tabs = set(_available_sidebar_tabs_for_user(db_user))
+    return [
+        tab_id for tab_id in visible_tabs if tab_id in available_tabs
+    ], section_order
+
+
+def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
+    visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
+    previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
+    return (
+        "Настройки сайдбара пользователя изменены: "
+        f"Пользователь: {db_user.login}; "
+        f"Отображаемые вкладки: {visible_labels}; "
+        f"Предыдущие вкладки: {previous_labels}"
+    )
+
+
+def _sidebar_settings_for_user(db_user):
+    settings, _created = DBUserSidebarSettings.objects.get_or_create(
+        user=db_user,
+        defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()},
+    )
+    normalized_tabs, normalized_sections = _sidebar_settings_values(settings)
+    normalized_value = {
+        "visible_tabs": normalized_tabs,
+        "section_order": normalized_sections,
+    }
+    if settings.visible_tabs != normalized_value:
+        settings.visible_tabs = normalized_value
+        settings.save(update_fields=["visible_tabs", "updated"])
+    return settings
+
+
+def _user_payload(db_user):
+    if not db_user:
+        return None
+    sidebar_settings = _sidebar_settings_for_user(db_user)
+    visible_tabs, section_order = _sidebar_settings_values_for_user(
+        sidebar_settings, db_user
+    )
+    return {
+        "id": db_user.pk,
+        "login": db_user.login,
+        "email": db_user.email,
+        "role": db_user.role,
+        "can_manage_connections": db_user.role == ADMIN_ROLE,
+        "can_run_destructive_actions": db_user.role == ADMIN_ROLE,
+        "sidebar_visible_tabs": visible_tabs,
+        "sidebar_section_order": section_order,
+    }
+
+
+def _connection_permission_error():
+    return JsonResponse(
+        {
+            "ok": False,
+            "message": "Создавать и редактировать подключения может только Администратор",
+        },
+        status=403,
+    )
+
+
+def _connection_delete_permission_error():
+    return JsonResponse(
+        {"ok": False, "message": "Удалять подключение может только его создатель"},
+        status=403,
+    )
+
+
+def _connection_edit_permission_error():
+    return JsonResponse(
+        {
+            "ok": False,
+            "message": "Редактировать подключение может только его создатель",
+        },
+        status=403,
+    )
+
+
+def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
+    if db_user:
+        return db_user.login
+    return fallback
+
+
+def _write_audit(action_type, info, db_user=None, username=None):
+    DBAudit.objects.create(
+        username=username or _audit_username(db_user),
+        action_type=action_type,
+        info=info,
+        created=timezone.now(),
+    )
+
+
+def _audit_action_label(action_type):
+    return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
+
+
+def _connection_audit_info(action, connection, *, result=None, error=None):
+    details = [
+        f"Действие: {action}",
+        f"Подключение: {connection.name}",
+        f"Тип БД: {connection.db_type}",
+        f"Хост: {connection.host}",
+        f"Порт: {connection.port}",
+        f"База данных: {connection.database}",
+        f"Пользователь БД: {connection.username}",
+    ]
+    if result:
+        details.append(f"Результат: {result}")
+    if error:
+        details.append(f"Ошибка: {error}")
+    return "; ".join(details)
+
+
+def _favorite_audit_info(action, connection, object_type, object_key):
+    object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
+    return "; ".join(
+        [
+            action,
+            f"Подключение: {connection.name}",
+            f"Тип объекта: {object_type_label}",
+            f"Идентификатор объекта: {object_key}",
+        ]
+    )
+
+
+def _backend_termination_audit_info(action, connection, row):
+    client_address = str(row[5]) if row[5] else "local"
+    client = f"{client_address}:{row[6]}" if row[6] is not None else client_address
+    return "; ".join(
+        [
+            f"Действие: {action}",
+            f"Подключение: {connection.name}",
+            f"Тип БД: {connection.db_type}",
+            f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
+            f"База подключения: {connection.database}",
+            f"Пользователь подключения: {connection.username}",
+            f"PID: {row[1]}",
+            f"Пользователь сессии: {row[2] or '—'}",
+            f"База сессии: {row[3] or '—'}",
+            f"Приложение: {row[4] or '—'}",
+            f"Клиент: {client}",
+            f"Состояние: {row[7] or '—'}",
+            f"Тип backend: {row[8] or '—'}",
+            f"Начало сессии: {row[9] or '—'}",
+            f"Начало транзакции: {row[10] or '—'}",
+            f"Начало запроса: {row[11] or '—'}",
+            f"Последнее изменение состояния: {row[12] or '—'}",
+            f"Ожидание: {' / '.join(part for part in [row[13], row[14]] if part) or '—'}",
+            f"Длительность сессии: {row[15] or '—'}",
+            f"Длительность запроса: {row[16] or '—'}",
+            f"SQL: {row[17] or '—'}",
+            "Результат: успешно завершено",
+        ]
+    )
+
+
+def _maintenance_vacuum_audit_info(
+    operation, connection, schema_name, table_name, result, error=None
+):
+    operation_label = "VACUUM FULL" if operation == "vacuum_full" else "VACUUM"
+    details = [
+        f"Действие: {operation_label}",
+        f"Подключение: {connection.name}",
+        f"Тип БД: {connection.db_type}",
+        f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
+        f"База данных: {connection.database}",
+        f"Пользователь БД: {connection.username}",
+        f"Схема: {schema_name}",
+        f"Таблица: {table_name}",
+        f"Результат: {result}",
+    ]
+    if error:
+        details.append(f"Ошибка: {error}")
+    return "; ".join(details)
+
+
+def _can_manage_connections(request):
+    db_user = _current_db_user(request)
+    return bool(db_user and db_user.role == ADMIN_ROLE)
+
+
+def _destructive_action_permission_error(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse(
+            {"ok": False, "message": "Требуется вход в приложение"}, status=401
+        )
+    if db_user.role != ADMIN_ROLE:
+        return JsonResponse(
+            {"ok": False, "message": "Действие доступно только Администратору"},
+            status=403,
+        )
+    return None
+
+
+def _available_connections(request):
+    db_user = _current_db_user(request)
+    if not db_user:
+        return DBConnection.objects.none()
+    return db_user.connections.filter(is_active=True).select_related("created_user")
+
+
+def _get_connection_for_request(request, connection_id):
+    return get_object_or_404(_available_connections(request), pk=connection_id)
+
+
+def _connection_to_dict(connection):
+    return {
+        "id": str(connection.pk),
+        "name": connection.name,
+        "host": connection.host,
+        "port": connection.port,
+        "database": connection.database,
+        "user": connection.username,
+        "db_type": connection.db_type,
+        "created_by": (
+            connection.created_user.login if connection.created_user else None
+        ),
+        "created_by_id": connection.created_user_id,
+        "status": "offline",
+    }
+
+
+def _read_json_body(request):
+    try:
+        return json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return {}
+
+
+def _parse_pg_size_to_bytes(value, default_unit="B"):
+    if value in (None, ""):
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    parts = text.split()
+    if len(parts) == 1:
+        number_part = "".join(ch for ch in text if ch.isdigit() or ch in ".,-")
+        unit_part = text[len(number_part) :].strip() or default_unit
+    else:
+        number_part, unit_part = parts[0], parts[1]
+    try:
+        number = float(number_part.replace(",", "."))
+    except ValueError:
+        return None
+    unit = unit_part.lower()
+    multipliers = {
+        "b": 1,
+        "byte": 1,
+        "bytes": 1,
+        "kb": 1024,
+        "kib": 1024,
+        "mb": 1024**2,
+        "mib": 1024**2,
+        "gb": 1024**3,
+        "gib": 1024**3,
+        "tb": 1024**4,
+        "tib": 1024**4,
+    }
+    return int(number * multipliers.get(unit, 1))
+
+
+def _format_bytes(size_bytes):
+    if size_bytes is None:
+        return "—"
+    value = float(size_bytes)
+    for unit in ["Б", "КБ", "МБ", "ГБ"]:
+        if value < 1024:
+            return f"{value:.2f} {unit}"
+        value /= 1024
+    return f"{value:.2f} ТБ"
+
+
+def _escape_like_pattern(value):
+    return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+
+
+def _connection_kwargs(host, port, database, username, password, ssl=True):
+    return {
+        "host": _normalize_database_host(host),
+        "port": port,
+        "dbname": database,
+        "user": username,
+        "password": password,
+        "connect_timeout": CONNECTION_TIMEOUT_SECONDS,
+        "sslmode": "prefer" if ssl else "disable",
+    }
+
+
+def _test_connection_params(host, port, database, username, password, ssl):
+    with psycopg2.connect(
+        **_connection_kwargs(host, port, database, username, password, ssl)
+    ) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+
+
+def _open_database_connection(db_connection, ssl=True):
+    return psycopg2.connect(
+        **_connection_kwargs(
+            db_connection.host,
+            db_connection.port,
+            db_connection.database,
+            db_connection.username,
+            db_connection.get_password(),
+            ssl,
+        )
+    )
+
+
+def _fetch_db_rows(db_connection, query, params=None):
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or [])
+            return cursor.fetchall()
+
+
+def _fetch_db_row(db_connection, query, params=None):
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or [])
+            return cursor.fetchone()
+
+
+def _fetch_db_resultsets(db_connection, *queries):
+    resultsets = []
+    with _open_database_connection(db_connection) as connection:
+        with connection.cursor() as cursor:
+            for query, params in queries:
+                cursor.execute(query, params or [])
+                resultsets.append(cursor.fetchall())
+    return resultsets
+
+
+def _run_maintenance_vacuum(
+    job_id, connection_id, schema_name, table_name, operation, username
+):
+    connection = None
+    db_connection = None
+    try:
+        db_connection = DBConnection.objects.get(pk=connection_id)
+        statement = sql.SQL("VACUUM {mode} {table}").format(
+            mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""),
+            table=sql.Identifier(schema_name, table_name),
+        )
+        # VACUUM запрещён внутри транзакции. Контекстный менеджер psycopg2
+        # открывает транзакцию даже при установке autocommit внутри блока,
+        # поэтому соединением для обслуживания управляем явно.
+        connection = _open_database_connection(db_connection)
+        connection.autocommit = True
+        with connection.cursor() as cursor:
+            cursor.execute(statement)
+    except Exception as exc:
+        result = {"status": "failed", "message": str(exc)}
+    else:
+        result = {"status": "completed", "message": "Операция успешно завершена"}
+    finally:
+        if connection is not None:
+            connection.close()
+
+    with MAINTENANCE_JOBS_LOCK:
+        job = MAINTENANCE_JOBS.get(job_id)
+        if job:
+            job.update(result)
+
+    if db_connection is not None:
+        audit_info = _maintenance_vacuum_audit_info(
+            operation,
+            db_connection,
+            schema_name,
+            table_name,
+            (
+                "успешно завершено"
+                if result["status"] == "completed"
+                else "ошибка выполнения"
+            ),
+            result.get("message") if result["status"] == "failed" else None,
+        )
+    else:
+        audit_info = "; ".join(
+            [
+                f"Действие: {'VACUUM FULL' if operation == 'vacuum_full' else 'VACUUM'}",
+                f"ID подключения: {connection_id}",
+                f"Схема: {schema_name}",
+                f"Таблица: {table_name}",
+                "Результат: ошибка выполнения",
+                f"Ошибка: {result['message']}",
+            ]
+        )
+    _write_audit(operation, audit_info, username=username)
+
+
+def _require_payload_connection(request, payload):
+    connection_id = payload.get("id")
+    if not connection_id:
+        return None, JsonResponse(
+            {"ok": False, "message": "Подключение не выбрано"}, status=400
+        )
+    return _get_connection_for_request(request, connection_id), None
+
+
+def _format_role_timestamp(value):
+    if value is None:
+        return "Бессрочно"
+    return (
+        value.strftime("%Y-%m-%d %H:%M:%S")
+        if hasattr(value, "strftime")
+        else str(value)
+    )
+
+
+def _role_flag(value):
+    return "Да" if value else "Нет"
+
+
+def _favorite_filter(payload, db_user, db_connection, object_type, columns):
+    """Возвращает безопасное SQL-условие и параметры для фильтра «Избранные»."""
+    if not payload.get("favorites_only"):
+        return "", []
+    keys = list(
+        DBFavorite.objects.filter(
+            user=db_user, connection=db_connection, object_type=object_type
+        ).values_list("object_key", flat=True)
+    )
+    values = [
+        tuple(key.split("\x1f", len(columns) - 1)) if len(columns) > 1 else (key,)
+        for key in keys
+    ]
+    values = [value for value in values if len(value) == len(columns)]
+    if not values:
+        return "AND FALSE", []
+    clauses = [
+        "(" + " AND ".join(f"{column} = %s" for column in columns) + ")"
+        for _value in values
+    ]
+    return f"AND ({' OR '.join(clauses)})", [part for value in values for part in value]
+
+
+def _database_roles_list(request, *, can_login):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page_size = int(payload.get("page_size") or (100 if can_login else 10000))
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "name"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "name": "name",
+        "superuser": "superuser",
+        "createdb": "createdb",
+        "createrole": "createrole",
+        "inherit": "inherit",
+        "replication": "replication",
+        "connection_limit": "connection_limit",
+        "valid_until": "valid_until",
+        "member_count": "member_count",
+    }
+    sort_column = sort_columns.get(sort, "name")
+    role_type_message = "пользователей" if can_login else "групп"
+
+    where_sql = ""
+    params = [can_login]
+    if search:
+        where_sql = "AND role_info.rolname ILIKE %s ESCAPE '!'"
+        params.append(f"%{_escape_like_pattern(search)}%")
+    favorite_sql, favorite_params = _favorite_filter(
+        payload,
+        _current_db_user(request),
+        db_connection,
+        "user" if can_login else "group",
+        ("role_info.rolname",),
+    )
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
+
+    roles_query = f"""
+        WITH roles AS (
+            SELECT
+                role_info.rolname AS name,
+                role_info.rolsuper AS superuser,
+                role_info.rolcreatedb AS createdb,
+                role_info.rolcreaterole AS createrole,
+                role_info.rolinherit AS inherit,
+                role_info.rolreplication AS replication,
+                role_info.rolconnlimit AS connection_limit,
+                role_info.rolvaliduntil AS valid_until,
+                COUNT(membership.member)::bigint AS member_count
+            FROM pg_catalog.pg_roles AS role_info
+            LEFT JOIN pg_catalog.pg_auth_members AS membership
+                ON membership.roleid = role_info.oid
+            WHERE role_info.rolcanlogin = %s
+              {where_sql}
+            GROUP BY
+                role_info.rolname,
+                role_info.rolsuper,
+                role_info.rolcreatedb,
+                role_info.rolcreaterole,
+                role_info.rolinherit,
+                role_info.rolreplication,
+                role_info.rolconnlimit,
+                role_info.rolvaliduntil
+        )
+        SELECT
+            name,
+            superuser,
+            createdb,
+            createrole,
+            inherit,
+            replication,
+            connection_limit,
+            valid_until,
+            member_count,
+            COUNT(*) OVER() AS total_count,
+            SUM(CASE WHEN superuser THEN 1 ELSE 0 END) OVER() AS superuser_count,
+            SUM(CASE WHEN createdb THEN 1 ELSE 0 END) OVER() AS createdb_count,
+            SUM(CASE WHEN replication THEN 1 ELSE 0 END) OVER() AS replication_count,
+            SUM(CASE WHEN superuser OR createdb OR createrole OR replication THEN 1 ELSE 0 END) OVER() AS privileged_count
+        FROM roles
+        ORDER BY {sort_column} {direction}, name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    try:
+        rows = _fetch_db_rows(db_connection, roles_query, [*params, page_size, offset])
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": f"Не удалось получить список {role_type_message}: {exc}",
+            },
+            status=400,
+        )
+
+    roles = [
+        {
+            "name": row[0],
+            "superuser": _role_flag(row[1]),
+            "createdb": _role_flag(row[2]),
+            "createrole": _role_flag(row[3]),
+            "inherit": _role_flag(row[4]),
+            "replication": _role_flag(row[5]),
+            "connection_limit": "Без лимита" if row[6] == -1 else str(row[6]),
+            "valid_until": _format_role_timestamp(row[7]),
+            "member_count": int(row[8] or 0),
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][9]) if rows else 0
+    summary = {
+        "total_count": total_count,
+        "superuser_count": int(rows[0][10]) if rows else 0,
+        "createdb_count": int(rows[0][11]) if rows else 0,
+        "replication_count": int(rows[0][12]) if rows else 0,
+        "privileged_count": int(rows[0][13]) if rows else 0,
+    }
+    return JsonResponse(
+        {
+            "ok": True,
+            "roles": roles,
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "summary": summary,
+        }
+    )
