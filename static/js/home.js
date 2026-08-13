@@ -14,6 +14,8 @@
     let tableSizesRequestId = 0;
     let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
+    let functionsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: ''};
+    let functionsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
@@ -57,6 +59,7 @@
     const databaseSchemasApiUrl = '/databases/schemas/';
     const tableSizesApiUrl = '/tables/sizes/';
     const viewsListApiUrl = '/views/list/';
+    const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
@@ -86,6 +89,7 @@
         'databases': 'Схемы <small>Список схем</small>',
         'tables': 'Таблицы <small>Список таблиц</small>',
         'views': 'Представления <small>Список представлений</small>',
+        'functions': 'Функции <small>Список функций</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
         'queries': 'Активные запросы <small>Долгие запросы</small>',
@@ -125,8 +129,8 @@
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
         const preferredPages = isPostgreSQLConnection(conn)
-            ? ['database-overview', 'databases', 'tables', 'views', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+            ? ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -383,6 +387,7 @@
         initSchemaSizesControls();
         initTableSizesControls();
         initViewsControls();
+        initFunctionsControls();
         initTempTablesControls();
         initDistributionControls();
         initActiveQueriesControls();
@@ -3007,6 +3012,94 @@
         updateViewPaginationButtons();
     }
 
+    function renderFunctionsWarning(message) {
+        const tbody = document.getElementById('functionsTableBody');
+        const count = document.getElementById('functionsCount');
+        const info = document.getElementById('functionPaginationInfo');
+        if (count) count.textContent = 'Нет данных';
+        if (info) info.textContent = 'Страница 1 из 1';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        updateFunctionPaginationButtons();
+    }
+
+    function updateFunctionSortIndicators() {
+        document.querySelectorAll('[data-function-sort]').forEach(button => {
+            const icon = button.querySelector('i');
+            const active = button.dataset.functionSort === functionsState.sort;
+            button.classList.toggle('active', active);
+            if (icon) icon.className = active ? `fas fa-sort-${functionsState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+        });
+    }
+
+    function updateFunctionPaginationButtons() {
+        const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
+        const prev = document.getElementById('functionPrevPageBtn');
+        const next = document.getElementById('functionNextPageBtn');
+        if (prev) prev.disabled = functionsState.page <= 1;
+        if (next) next.disabled = functionsState.page >= totalPages;
+    }
+
+    function renderFunctions(data) {
+        const tbody = document.getElementById('functionsTableBody');
+        if (!tbody) return;
+        functionsState.totalCount = Number(data.total_count) || 0;
+        functionsState.page = Number(data.page) || 1;
+        functionsState.pageSize = Number(data.page_size) || 100;
+        const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
+        document.getElementById('functionsCount').textContent = `${data.functions?.length || 0} из ${functionsState.totalCount} функций`;
+        document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
+        updateFunctionSortIndicators();
+        if (!data.functions?.length) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Функции не найдены</td></tr>';
+        } else {
+            tbody.innerHTML = data.functions.map(item => `<tr>
+                <td>${escapeHtml(item.schema_name || '—')}</td>
+                <td><strong>${escapeHtml(item.function_name || '—')}</strong></td>
+                <td><code>${escapeHtml(item.return_type || '—')}</code></td>
+                <td><code>${escapeHtml(item.arguments || '—')}</code></td>
+            </tr>`).join('');
+        }
+        updateFunctionPaginationButtons();
+    }
+
+    function refreshFunctionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const requestId = ++functionsRequestId;
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderFunctionsWarning('Выберите сохранённое подключение для загрузки функций');
+            return;
+        }
+        renderFunctionsWarning('Загрузка функций...');
+        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction})
+            .then(data => { if (requestId === functionsRequestId) renderFunctions(data); })
+            .catch(error => { if (requestId === functionsRequestId) renderFunctionsWarning(error.message || 'Не удалось получить функции'); });
+    }
+
+    function initFunctionsControls() {
+        let searchTimer = null;
+        document.getElementById('functionSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                functionsState.search = this.value.trim();
+                functionsState.page = 1;
+                refreshFunctionsForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-function-sort]').forEach(button => button.addEventListener('click', function () {
+            const sort = this.dataset.functionSort;
+            if (functionsState.sort === sort) functionsState.direction = functionsState.direction === 'asc' ? 'desc' : 'asc';
+            else { functionsState.sort = sort; functionsState.direction = 'asc'; }
+            functionsState.page = 1;
+            refreshFunctionsForConnection();
+        }));
+        document.getElementById('functionPrevPageBtn')?.addEventListener('click', () => {
+            if (functionsState.page > 1) { functionsState.page -= 1; refreshFunctionsForConnection(); }
+        });
+        document.getElementById('functionNextPageBtn')?.addEventListener('click', () => {
+            if (functionsState.page < Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1)) { functionsState.page += 1; refreshFunctionsForConnection(); }
+        });
+        updateFunctionPaginationButtons();
+    }
+
     function renderDistributionWarning(message) {
         currentDistributionSegments = [];
         currentDistributionTotalRows = 0;
@@ -4035,6 +4128,9 @@
         if (pageId === 'views') {
             refreshViewsForConnection(conn);
         }
+        if (pageId === 'functions') {
+            refreshFunctionsForConnection(conn);
+        }
         if (pageId === 'temp-tables') {
             refreshTempTablesForConnection(conn);
         }
@@ -4337,6 +4433,9 @@
         }
         if (document.getElementById('page-views')?.classList.contains('active')) {
             refreshViewsForConnection();
+        }
+        if (document.getElementById('page-functions')?.classList.contains('active')) {
+            refreshFunctionsForConnection();
         }
         if (document.getElementById('page-temp-tables')?.classList.contains('active')) {
             refreshTempTablesForConnection();

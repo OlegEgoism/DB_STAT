@@ -27,7 +27,7 @@ MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOOPBACK_HOST = "127.0.0.1"
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "functions", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
 SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
 FIXED_SIDEBAR_TAB_IDS = {"settings"}
 SIDEBAR_TAB_LABELS = {
@@ -36,6 +36,7 @@ SIDEBAR_TAB_LABELS = {
     "databases": "Схемы",
     "tables": "Таблицы",
     "views": "Представления",
+    "functions": "Функции",
     "temp-tables": "Временные таблицы",
     "distribution": "Распределение",
     "queries": "Активные запросы",
@@ -1894,6 +1895,66 @@ def database_views_list(request):
     materialized_size_bytes = int(rows[0][12]) if rows else 0
     summary = {"materialized_count": materialized_count, "ordinary_count": ordinary_count, "materialized_size_bytes": materialized_size_bytes, "materialized_size": _format_bytes(materialized_size_bytes)}
     return JsonResponse({"ok": True, "views": items, "summary": summary, "page": page, "page_size": page_size, "total_count": total_count})
+
+
+@require_http_methods(["POST"])
+def database_functions_list(request):
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    page_size = 100
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or "schema_name"
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_columns = {
+        "schema_name": "schema_name",
+        "function_name": "function_name",
+        "return_type": "return_type",
+        "arguments": "arguments",
+    }
+    sort_column = sort_columns.get(sort, "schema_name")
+
+    where_sql = ""
+    params = []
+    if search:
+        where_sql = "AND procedure.proname ILIKE %s ESCAPE '!'"
+        params.append(f"%{_escape_like_pattern(search)}%")
+
+    functions_query = f"""
+        WITH database_functions AS (
+            SELECT
+                namespace.nspname AS schema_name,
+                procedure.proname AS function_name,
+                pg_catalog.pg_get_function_result(procedure.oid) AS return_type,
+                pg_catalog.pg_get_function_arguments(procedure.oid) AS arguments
+            FROM pg_catalog.pg_proc AS procedure
+            JOIN pg_catalog.pg_namespace AS namespace
+                ON namespace.oid = procedure.pronamespace
+            WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT LIKE 'pg_toast%%'
+              {where_sql}
+        )
+        SELECT schema_name, function_name, return_type, arguments, COUNT(*) OVER() AS total_count
+        FROM database_functions
+        ORDER BY {sort_column} {direction}, schema_name ASC, function_name ASC, arguments ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    try:
+        rows = _fetch_db_rows(db_connection, functions_query, [*params, page_size, offset])
+    except Exception as exc:
+        return JsonResponse({"ok": False, "message": f"Не удалось получить функции: {exc}"}, status=400)
+
+    functions = [
+        {"schema_name": row[0], "function_name": row[1], "return_type": row[2], "arguments": row[3]}
+        for row in rows
+    ]
+    total_count = int(rows[0][4]) if rows else 0
+    return JsonResponse({"ok": True, "functions": functions, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
