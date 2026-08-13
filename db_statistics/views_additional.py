@@ -10,13 +10,6 @@ from django.views.decorators.http import require_http_methods
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser
 from db_statistics.view_helpers import (
-    ADMIN_ROLE,
-    DEFAULT_SESSION_DURATION_HOURS,
-    MAX_SESSION_DURATION_HOURS,
-    MIN_SESSION_DURATION_MINUTES,
-    SESSION_EXPIRES_AT_KEY,
-    SESSION_USER_ID_KEY,
-    SUPPORTED_LANGUAGES,
     _audit_action_label,
     _audit_username,
     _available_connections,
@@ -60,8 +53,8 @@ def home(request):
         {
             "db_user": db_user,
             "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
-            "user_can_manage_connections": db_user.role == ADMIN_ROLE,
-            "session_expires_at_ms": request.session.get(SESSION_EXPIRES_AT_KEY, 0)
+            "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
+            "session_expires_at_ms": request.session.get(settings.SESSION_EXPIRES_AT_KEY, 0)
             * 1000,
         },
     )
@@ -78,20 +71,20 @@ def login(request):
     is_english = translation.get_language() == "en"
     login_value = ""
     email_value = ""
-    session_duration_value = str(DEFAULT_SESSION_DURATION_HOURS)
+    session_duration_value = str(settings.DEFAULT_SESSION_DURATION_HOURS)
     if request.method == "POST":
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
         session_duration_value = (
-            request.POST.get("session_duration") or str(DEFAULT_SESSION_DURATION_HOURS)
+            request.POST.get("session_duration") or str(settings.DEFAULT_SESSION_DURATION_HOURS)
         ).strip()
         session_duration_seconds = _session_duration_seconds(session_duration_value)
 
         if session_duration_seconds is None:
             if is_english:
-                error = f"Session duration must be between {MIN_SESSION_DURATION_MINUTES} minutes and {MAX_SESSION_DURATION_HOURS} hours"
+                error = f"Session duration must be between {settings.MIN_SESSION_DURATION_MINUTES} minutes and {settings.MAX_SESSION_DURATION_HOURS} hours"
             else:
-                error = f"Время сессии должно быть от {MIN_SESSION_DURATION_MINUTES} минут до {MAX_SESSION_DURATION_HOURS} часов"
+                error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
             db_user = DBUser.objects.filter(
                 login=login_value, email=email_value, is_active=True
@@ -99,8 +92,8 @@ def login(request):
 
         if not error and db_user:
             request.session.cycle_key()
-            request.session[SESSION_USER_ID_KEY] = db_user.pk
-            request.session[SESSION_EXPIRES_AT_KEY] = (
+            request.session[settings.SESSION_USER_ID_KEY] = db_user.pk
+            request.session[settings.SESSION_EXPIRES_AT_KEY] = (
                 int(timezone.now().timestamp()) + session_duration_seconds
             )
             request.session.set_expiry(session_duration_seconds)
@@ -126,8 +119,8 @@ def login(request):
             "email_value": email_value,
             "session_duration_value": session_duration_value,
             "min_session_duration_hours": "0.1667",
-            "min_session_duration_minutes": MIN_SESSION_DURATION_MINUTES,
-            "max_session_duration_hours": MAX_SESSION_DURATION_HOURS,
+            "min_session_duration_minutes": settings.MIN_SESSION_DURATION_MINUTES,
+            "max_session_duration_hours": settings.MAX_SESSION_DURATION_HOURS,
         },
     )
 
@@ -276,7 +269,7 @@ def language_settings(request):
         return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
 
     language = str(payload.get("language", "")).lower()
-    if language not in SUPPORTED_LANGUAGES:
+    if language not in settings.SUPPORTED_LANGUAGES:
         return JsonResponse(
             {"ok": False, "message": "Поддерживаются только языки RU и EN"}, status=400
         )
@@ -300,7 +293,7 @@ def audit_events(request):
         return JsonResponse(
             {"ok": False, "message": "Требуется вход в приложение"}, status=401
         )
-    if db_user.role != ADMIN_ROLE:
+    if db_user.role != settings.ADMIN_ROLE:
         return JsonResponse(
             {"ok": False, "message": "Аудит доступен только Администратору"}, status=403
         )

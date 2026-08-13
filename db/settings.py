@@ -1,4 +1,6 @@
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -91,3 +93,80 @@ DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# DB STAT application configuration
+#
+# These values are shared by the view modules and their helpers. Keeping them in
+# Django settings provides one configuration source instead of module-level
+# state scattered through the application.
+CONNECTION_TIMEOUT_SECONDS = 5
+ADMIN_ROLE = "Администратор"
+
+SESSION_USER_ID_KEY = "db_user_id"
+DEFAULT_SESSION_DURATION_HOURS = 8
+MIN_SESSION_DURATION_MINUTES = 10
+MAX_SESSION_DURATION_HOURS = 24
+MIN_SESSION_DURATION_SECONDS = MIN_SESSION_DURATION_MINUTES * 60
+MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
+SESSION_EXPIRES_AT_KEY = "session_expires_at"
+
+LOCALHOST_NAMES = {"localhost", "::1"}
+LOOPBACK_HOST = "127.0.0.1"
+
+SIDEBAR_TAB_IDS = [
+    "database-overview",
+    "segments",
+    "databases",
+    "tables",
+    "views",
+    "functions",
+    "temp-tables",
+    "distribution",
+    "queries",
+    "sessions",
+    "locks",
+    "transactions",
+    "memory",
+    "users",
+    "groups",
+    "maintenance",
+    "favorites",
+    "audit",
+    "settings",
+]
+SIDEBAR_SECTION_IDS = [
+    "infrastructure",
+    "data",
+    "performance",
+    "administration",
+    "additional",
+]
+FIXED_SIDEBAR_TAB_IDS = {"settings"}
+SIDEBAR_TAB_LABELS = {
+    "database-overview": "База данных",
+    "segments": "Сегменты",
+    "databases": "Схемы",
+    "tables": "Таблицы",
+    "views": "Представления",
+    "functions": "Функции",
+    "temp-tables": "Временные таблицы",
+    "distribution": "Распределение",
+    "queries": "Активные запросы",
+    "sessions": "Сессии",
+    "locks": "Блокировки",
+    "transactions": "Транзакции",
+    "memory": "Память",
+    "users": "Пользователи",
+    "groups": "Группы",
+    "maintenance": "Обслуживание",
+    "favorites": "Избранное",
+    "audit": "Аудит",
+    "settings": "Настройки",
+}
+SUPPORTED_LANGUAGES = {"ru", "en"}
+
+MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
+    max_workers=4, thread_name_prefix="db-stat-vacuum"
+)
+MAINTENANCE_JOBS = {}
+MAINTENANCE_JOBS_LOCK = threading.Lock()

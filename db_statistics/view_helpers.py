@@ -5,11 +5,10 @@ Keeping infrastructure, session, audit, connection and query helpers here makes
 """
 
 import json
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal, InvalidOperation
 
 import psycopg2
+from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -17,97 +16,11 @@ from psycopg2 import sql
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
 
-CONNECTION_TIMEOUT_SECONDS = 5
-
-ADMIN_ROLE = "Администратор"
-
-SESSION_USER_ID_KEY = "db_user_id"
-
-DEFAULT_SESSION_DURATION_HOURS = 8
-
-MIN_SESSION_DURATION_MINUTES = 10
-
-MAX_SESSION_DURATION_HOURS = 24
-
-MIN_SESSION_DURATION_SECONDS = MIN_SESSION_DURATION_MINUTES * 60
-
-MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
-
-SESSION_EXPIRES_AT_KEY = "session_expires_at"
-
-LOCALHOST_NAMES = {"localhost", "::1"}
-
-LOOPBACK_HOST = "127.0.0.1"
-
-SIDEBAR_TAB_IDS = [
-    "database-overview",
-    "segments",
-    "databases",
-    "tables",
-    "views",
-    "functions",
-    "temp-tables",
-    "distribution",
-    "queries",
-    "sessions",
-    "locks",
-    "transactions",
-    "memory",
-    "users",
-    "groups",
-    "maintenance",
-    "favorites",
-    "audit",
-    "settings",
-]
-
-SIDEBAR_SECTION_IDS = [
-    "infrastructure",
-    "data",
-    "performance",
-    "administration",
-    "additional",
-]
-
-FIXED_SIDEBAR_TAB_IDS = {"settings"}
-
-SIDEBAR_TAB_LABELS = {
-    "database-overview": "База данных",
-    "segments": "Сегменты",
-    "databases": "Схемы",
-    "tables": "Таблицы",
-    "views": "Представления",
-    "functions": "Функции",
-    "temp-tables": "Временные таблицы",
-    "distribution": "Распределение",
-    "queries": "Активные запросы",
-    "sessions": "Сессии",
-    "locks": "Блокировки",
-    "transactions": "Транзакции",
-    "memory": "Память",
-    "users": "Пользователи",
-    "groups": "Группы",
-    "maintenance": "Обслуживание",
-    "favorites": "Избранное",
-    "audit": "Аудит",
-    "settings": "Настройки",
-}
-
-SUPPORTED_LANGUAGES = {"ru", "en"}
-
-MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
-    max_workers=4, thread_name_prefix="db-stat-vacuum"
-)
-
-MAINTENANCE_JOBS = {}
-
-MAINTENANCE_JOBS_LOCK = threading.Lock()
-
 
 def _normalize_database_host(host):
     normalized_host = (host or "").strip().lower()
-    if normalized_host in LOCALHOST_NAMES:
-        return LOOPBACK_HOST
+    if normalized_host in settings.LOCALHOST_NAMES:
+        return settings.LOOPBACK_HOST
     return host
 
 
@@ -115,50 +28,50 @@ def _current_db_user(request):
     if _session_has_expired(request.session):
         request.session.flush()
         return None
-    user_id = request.session.get(SESSION_USER_ID_KEY)
+    user_id = request.session.get(settings.SESSION_USER_ID_KEY)
     if not user_id:
         return None
     try:
         return DBUser.objects.get(pk=user_id, is_active=True)
     except DBUser.DoesNotExist:
-        request.session.pop(SESSION_USER_ID_KEY, None)
+        request.session.pop(settings.SESSION_USER_ID_KEY, None)
         return None
 
 
 def _normalize_sidebar_tabs(tabs):
     if not isinstance(tabs, list):
-        return SIDEBAR_TAB_IDS.copy()
-    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in SIDEBAR_TAB_IDS))
-    if not any(tab not in FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
-        return SIDEBAR_TAB_IDS.copy()
+        return settings.SIDEBAR_TAB_IDS.copy()
+    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in settings.SIDEBAR_TAB_IDS))
+    if not any(tab not in settings.FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
+        return settings.SIDEBAR_TAB_IDS.copy()
     normalized_tabs.extend(
         tab
-        for tab in SIDEBAR_TAB_IDS
-        if tab in FIXED_SIDEBAR_TAB_IDS and tab not in normalized_tabs
+        for tab in settings.SIDEBAR_TAB_IDS
+        if tab in settings.FIXED_SIDEBAR_TAB_IDS and tab not in normalized_tabs
     )
     return normalized_tabs
 
 
 def _normalize_sidebar_sections(sections):
     if not isinstance(sections, list):
-        return SIDEBAR_SECTION_IDS.copy()
+        return settings.SIDEBAR_SECTION_IDS.copy()
     normalized_sections = list(
-        dict.fromkeys(section for section in sections if section in SIDEBAR_SECTION_IDS)
+        dict.fromkeys(section for section in sections if section in settings.SIDEBAR_SECTION_IDS)
     )
     normalized_sections.extend(
-        section for section in SIDEBAR_SECTION_IDS if section not in normalized_sections
+        section for section in settings.SIDEBAR_SECTION_IDS if section not in normalized_sections
     )
     return normalized_sections
 
 
-def _sidebar_settings_values(settings):
-    stored_value = settings.visible_tabs
+def _sidebar_settings_values(sidebar_settings):
+    stored_value = sidebar_settings.visible_tabs
     if isinstance(stored_value, dict):
         return (
             _normalize_sidebar_tabs(stored_value.get("visible_tabs")),
             _normalize_sidebar_sections(stored_value.get("section_order")),
         )
-    return _normalize_sidebar_tabs(stored_value), SIDEBAR_SECTION_IDS.copy()
+    return _normalize_sidebar_tabs(stored_value), settings.SIDEBAR_SECTION_IDS.copy()
 
 
 def _session_duration_seconds(value):
@@ -166,13 +79,13 @@ def _session_duration_seconds(value):
         seconds = int(Decimal(str(value)) * 60 * 60)
     except (InvalidOperation, TypeError, ValueError):
         return None
-    if not MIN_SESSION_DURATION_SECONDS <= seconds <= MAX_SESSION_DURATION_SECONDS:
+    if not settings.MIN_SESSION_DURATION_SECONDS <= seconds <= settings.MAX_SESSION_DURATION_SECONDS:
         return None
     return seconds
 
 
 def _session_has_expired(session, now_timestamp=None):
-    expires_at = session.get(SESSION_EXPIRES_AT_KEY)
+    expires_at = session.get(settings.SESSION_EXPIRES_AT_KEY)
     if not expires_at:
         return False
     try:
@@ -186,17 +99,17 @@ def _session_has_expired(session, now_timestamp=None):
 
 
 def _sidebar_tab_labels(tab_ids):
-    return [SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
+    return [settings.SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
 
 
 def _available_sidebar_tabs_for_user(db_user):
-    if db_user.role == ADMIN_ROLE:
-        return SIDEBAR_TAB_IDS.copy()
-    return [tab_id for tab_id in SIDEBAR_TAB_IDS if tab_id != "audit"]
+    if db_user.role == settings.ADMIN_ROLE:
+        return settings.SIDEBAR_TAB_IDS.copy()
+    return [tab_id for tab_id in settings.SIDEBAR_TAB_IDS if tab_id != "audit"]
 
 
-def _sidebar_settings_values_for_user(settings, db_user):
-    visible_tabs, section_order = _sidebar_settings_values(settings)
+def _sidebar_settings_values_for_user(sidebar_settings, db_user):
+    visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
     available_tabs = set(_available_sidebar_tabs_for_user(db_user))
     return [
         tab_id for tab_id in visible_tabs if tab_id in available_tabs
@@ -215,19 +128,19 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 
 
 def _sidebar_settings_for_user(db_user):
-    settings, _created = DBUserSidebarSettings.objects.get_or_create(
+    sidebar_settings, _created = DBUserSidebarSettings.objects.get_or_create(
         user=db_user,
-        defaults={"visible_tabs": SIDEBAR_TAB_IDS.copy()},
+        defaults={"visible_tabs": settings.SIDEBAR_TAB_IDS.copy()},
     )
-    normalized_tabs, normalized_sections = _sidebar_settings_values(settings)
+    normalized_tabs, normalized_sections = _sidebar_settings_values(sidebar_settings)
     normalized_value = {
         "visible_tabs": normalized_tabs,
         "section_order": normalized_sections,
     }
-    if settings.visible_tabs != normalized_value:
-        settings.visible_tabs = normalized_value
-        settings.save(update_fields=["visible_tabs", "updated"])
-    return settings
+    if sidebar_settings.visible_tabs != normalized_value:
+        sidebar_settings.visible_tabs = normalized_value
+        sidebar_settings.save(update_fields=["visible_tabs", "updated"])
+    return sidebar_settings
 
 
 def _user_payload(db_user):
@@ -242,8 +155,8 @@ def _user_payload(db_user):
         "login": db_user.login,
         "email": db_user.email,
         "role": db_user.role,
-        "can_manage_connections": db_user.role == ADMIN_ROLE,
-        "can_run_destructive_actions": db_user.role == ADMIN_ROLE,
+        "can_manage_connections": db_user.role == settings.ADMIN_ROLE,
+        "can_run_destructive_actions": db_user.role == settings.ADMIN_ROLE,
         "sidebar_visible_tabs": visible_tabs,
         "sidebar_section_order": section_order,
     }
@@ -377,7 +290,7 @@ def _maintenance_vacuum_audit_info(
 
 def _can_manage_connections(request):
     db_user = _current_db_user(request)
-    return bool(db_user and db_user.role == ADMIN_ROLE)
+    return bool(db_user and db_user.role == settings.ADMIN_ROLE)
 
 
 def _destructive_action_permission_error(request):
@@ -386,7 +299,7 @@ def _destructive_action_permission_error(request):
         return JsonResponse(
             {"ok": False, "message": "Требуется вход в приложение"}, status=401
         )
-    if db_user.role != ADMIN_ROLE:
+    if db_user.role != settings.ADMIN_ROLE:
         return JsonResponse(
             {"ok": False, "message": "Действие доступно только Администратору"},
             status=403,
@@ -484,7 +397,7 @@ def _connection_kwargs(host, port, database, username, password, ssl=True):
         "dbname": database,
         "user": username,
         "password": password,
-        "connect_timeout": CONNECTION_TIMEOUT_SECONDS,
+        "connect_timeout": settings.CONNECTION_TIMEOUT_SECONDS,
         "sslmode": "prefer" if ssl else "disable",
     }
 
@@ -561,8 +474,8 @@ def _run_maintenance_vacuum(
         if connection is not None:
             connection.close()
 
-    with MAINTENANCE_JOBS_LOCK:
-        job = MAINTENANCE_JOBS.get(job_id)
+    with settings.MAINTENANCE_JOBS_LOCK:
+        job = settings.MAINTENANCE_JOBS.get(job_id)
         if job:
             job.update(result)
 

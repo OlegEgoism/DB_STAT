@@ -1,13 +1,10 @@
 import uuid
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.view_helpers import (
-    ADMIN_ROLE,
-    MAINTENANCE_JOB_EXECUTOR,
-    MAINTENANCE_JOBS,
-    MAINTENANCE_JOBS_LOCK,
     _current_db_user,
     _database_roles_list,
     _escape_like_pattern,
@@ -307,7 +304,7 @@ def maintenance_vacuum(request):
         return JsonResponse(
             {"ok": False, "message": "Требуется вход в приложение"}, status=401
         )
-    if db_user.role != ADMIN_ROLE:
+    if db_user.role != settings.ADMIN_ROLE:
         return JsonResponse(
             {"ok": False, "message": "Действие доступно только Администратору"},
             status=403,
@@ -315,9 +312,9 @@ def maintenance_vacuum(request):
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
-        with MAINTENANCE_JOBS_LOCK:
+        with settings.MAINTENANCE_JOBS_LOCK:
             job_id = str(payload["job_id"])
-            job = MAINTENANCE_JOBS.get(job_id)
+            job = settings.MAINTENANCE_JOBS.get(job_id)
             if not job or job["user_id"] != db_user.pk:
                 return JsonResponse(
                     {"ok": False, "message": "Задача обслуживания не найдена"},
@@ -327,7 +324,7 @@ def maintenance_vacuum(request):
                 key: value for key, value in job.items() if key != "user_id"
             }
             if job["status"] != "running":
-                MAINTENANCE_JOBS.pop(job_id, None)
+                settings.MAINTENANCE_JOBS.pop(job_id, None)
             return JsonResponse({"ok": True, "job": response_job})
 
     db_connection, error_response = _require_payload_connection(request, payload)
@@ -355,8 +352,8 @@ def maintenance_vacuum(request):
         "table_name": table_name,
         "message": "Операция выполняется",
     }
-    with MAINTENANCE_JOBS_LOCK:
-        MAINTENANCE_JOBS[job_id] = job
+    with settings.MAINTENANCE_JOBS_LOCK:
+        settings.MAINTENANCE_JOBS[job_id] = job
     _write_audit(
         operation,
         _maintenance_vacuum_audit_info(
@@ -368,7 +365,7 @@ def maintenance_vacuum(request):
         ),
         db_user=db_user,
     )
-    MAINTENANCE_JOB_EXECUTOR.submit(
+    settings.MAINTENANCE_JOB_EXECUTOR.submit(
         _run_maintenance_vacuum,
         job_id,
         db_connection.pk,
