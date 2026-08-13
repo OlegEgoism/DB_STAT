@@ -158,7 +158,35 @@
                 <span class="card-meta">Настройки сайдбара</span>
             </div>
             <div class="card-body">
-                <div class="sidebar-language-setting">
+                <section class="settings-section theme-setting" aria-labelledby="themeSettingTitle">
+                    <div class="settings-section__heading">
+                        <div>
+                            <h5 id="themeSettingTitle">Тема оформления</h5>
+                            <p>Выберите цветовую схему интерфейса. Тема применяется сразу и сохраняется для следующих посещений.</p>
+                        </div>
+                    </div>
+                    <div class="theme-options" role="radiogroup" aria-labelledby="themeSettingTitle">
+                        <label class="theme-option" data-theme-option="default">
+                            <input class="theme-option__input" type="radio" name="interfaceTheme" value="default">
+                            <span class="theme-option__preview theme-option__preview--default" aria-hidden="true"><i></i><b></b><em></em></span>
+                            <span class="theme-option__copy"><strong>Белая</strong><small>Стандартная светлая тема</small></span>
+                            <i class="fas fa-check theme-option__check" aria-hidden="true"></i>
+                        </label>
+                        <label class="theme-option" data-theme-option="dark">
+                            <input class="theme-option__input" type="radio" name="interfaceTheme" value="dark">
+                            <span class="theme-option__preview theme-option__preview--dark" aria-hidden="true"><i></i><b></b><em></em></span>
+                            <span class="theme-option__copy"><strong>Тёмная</strong><small>Комфортная работа при слабом освещении</small></span>
+                            <i class="fas fa-check theme-option__check" aria-hidden="true"></i>
+                        </label>
+                        <label class="theme-option" data-theme-option="gray">
+                            <input class="theme-option__input" type="radio" name="interfaceTheme" value="gray">
+                            <span class="theme-option__preview theme-option__preview--gray" aria-hidden="true"><i></i><b></b><em></em></span>
+                            <span class="theme-option__copy"><strong>Светло-серая</strong><small>Мягкий нейтральный фон</small></span>
+                            <i class="fas fa-check theme-option__check" aria-hidden="true"></i>
+                        </label>
+                    </div>
+                </section>
+                <div class="sidebar-language-setting settings-section">
                     <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
                     <select class="form-select" id="interfaceLanguage">
                         <option value="ru">Русский (RU)</option>
