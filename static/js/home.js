@@ -380,6 +380,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        initThemeSettings();
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
@@ -809,6 +810,28 @@
                 })
                 .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить настройки сайдбара'}`));
         });
+    }
+
+    function initThemeSettings() {
+        const inputs = Array.from(document.querySelectorAll('input[name="interfaceTheme"]'));
+        if (!inputs.length || !window.DBStatTheme) return;
+
+        const syncSelection = theme => {
+            inputs.forEach(input => {
+                const selected = input.value === theme;
+                input.checked = selected;
+                input.closest('.theme-option')?.classList.toggle('selected', selected);
+            });
+        };
+
+        syncSelection(window.DBStatTheme.get());
+        inputs.forEach(input => input.addEventListener('change', function () {
+            if (!this.checked) return;
+            const theme = window.DBStatTheme.apply(this.value);
+            syncSelection(theme);
+            showToast('✅ Тема оформления сохранена');
+        }));
+        document.addEventListener('dbstat:themechange', event => syncSelection(event.detail.theme));
     }
 
     function initLogoutForm() {
