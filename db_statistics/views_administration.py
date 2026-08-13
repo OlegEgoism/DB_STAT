@@ -22,6 +22,7 @@ from db_statistics.view_helpers import (
 
 @require_http_methods(["POST"])
 def memory_overview(request):
+    """Возвращает параметры и показатели использования памяти базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -123,6 +124,7 @@ def memory_overview(request):
     }
 
     def usage_row(label, used_key, limit_key):
+        """Формирует строку показателя использования памяти."""
         used = sizes.get(used_key)
         limit = sizes.get(limit_key)
         percent = round((used * 100 / limit), 2) if used is not None and limit else 0
@@ -180,16 +182,19 @@ def memory_overview(request):
 
 @require_http_methods(["POST"])
 def database_users_list(request):
+    """Возвращает список пользователей выбранной базы данных."""
     return _database_roles_list(request, can_login=True)
 
 
 @require_http_methods(["POST"])
 def database_groups_list(request):
+    """Возвращает список групп выбранной базы данных."""
     return _database_roles_list(request, can_login=False)
 
 
 @require_http_methods(["POST"])
 def maintenance_stats(request):
+    """Возвращает статистику обслуживания таблиц базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -271,6 +276,7 @@ def maintenance_stats(request):
         )
 
     def format_datetime(value):
+        """Форматирует дату и время статистики обслуживания."""
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else "Никогда"
 
     tables = [
@@ -299,6 +305,7 @@ def maintenance_stats(request):
 
 @require_http_methods(["POST"])
 def maintenance_vacuum(request):
+    """Запускает VACUUM или возвращает состояние фоновой задачи."""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(

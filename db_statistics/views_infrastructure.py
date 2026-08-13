@@ -6,6 +6,7 @@ from db_statistics.view_helpers import _fetch_db_row, _fetch_db_rows, _open_data
 
 @require_http_methods(["POST"])
 def database_overview(request):
+    """Возвращает основные показатели и размеры базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -285,6 +286,7 @@ def database_overview(request):
 
 @require_http_methods(["POST"])
 def segments_info(request):
+    """Возвращает состояние и конфигурацию сегментов Greenplum."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:

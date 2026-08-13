@@ -18,6 +18,7 @@ from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUs
 
 
 def _normalize_database_host(host):
+    """Нормализует имя хоста базы данных для локальных подключений."""
     normalized_host = (host or "").strip().lower()
     if normalized_host in settings.LOCALHOST_NAMES:
         return settings.LOOPBACK_HOST
@@ -25,6 +26,7 @@ def _normalize_database_host(host):
 
 
 def _current_db_user(request):
+    """Возвращает активного пользователя приложения из текущей сессии."""
     if _session_has_expired(request.session):
         request.session.flush()
         return None
@@ -39,9 +41,12 @@ def _current_db_user(request):
 
 
 def _normalize_sidebar_tabs(tabs):
+    """Проверяет и нормализует список вкладок бокового меню."""
     if not isinstance(tabs, list):
         return settings.SIDEBAR_TAB_IDS.copy()
-    normalized_tabs = list(dict.fromkeys(tab for tab in tabs if tab in settings.SIDEBAR_TAB_IDS))
+    normalized_tabs = list(
+        dict.fromkeys(tab for tab in tabs if tab in settings.SIDEBAR_TAB_IDS)
+    )
     if not any(tab not in settings.FIXED_SIDEBAR_TAB_IDS for tab in normalized_tabs):
         return settings.SIDEBAR_TAB_IDS.copy()
     normalized_tabs.extend(
@@ -53,18 +58,24 @@ def _normalize_sidebar_tabs(tabs):
 
 
 def _normalize_sidebar_sections(sections):
+    """Проверяет и нормализует порядок разделов бокового меню."""
     if not isinstance(sections, list):
         return settings.SIDEBAR_SECTION_IDS.copy()
     normalized_sections = list(
-        dict.fromkeys(section for section in sections if section in settings.SIDEBAR_SECTION_IDS)
+        dict.fromkeys(
+            section for section in sections if section in settings.SIDEBAR_SECTION_IDS
+        )
     )
     normalized_sections.extend(
-        section for section in settings.SIDEBAR_SECTION_IDS if section not in normalized_sections
+        section
+        for section in settings.SIDEBAR_SECTION_IDS
+        if section not in normalized_sections
     )
     return normalized_sections
 
 
 def _sidebar_settings_values(sidebar_settings):
+    """Извлекает нормализованные значения настроек бокового меню."""
     stored_value = sidebar_settings.visible_tabs
     if isinstance(stored_value, dict):
         return (
@@ -75,16 +86,22 @@ def _sidebar_settings_values(sidebar_settings):
 
 
 def _session_duration_seconds(value):
+    """Преобразует длительность сессии из часов в секунды."""
     try:
         seconds = int(Decimal(str(value)) * 60 * 60)
     except (InvalidOperation, TypeError, ValueError):
         return None
-    if not settings.MIN_SESSION_DURATION_SECONDS <= seconds <= settings.MAX_SESSION_DURATION_SECONDS:
+    if (
+        not settings.MIN_SESSION_DURATION_SECONDS
+        <= seconds
+        <= settings.MAX_SESSION_DURATION_SECONDS
+    ):
         return None
     return seconds
 
 
 def _session_has_expired(session, now_timestamp=None):
+    """Проверяет, истёк ли срок действия пользовательской сессии."""
     expires_at = session.get(settings.SESSION_EXPIRES_AT_KEY)
     if not expires_at:
         return False
@@ -99,16 +116,19 @@ def _session_has_expired(session, now_timestamp=None):
 
 
 def _sidebar_tab_labels(tab_ids):
+    """Возвращает отображаемые названия вкладок бокового меню."""
     return [settings.SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
 
 
 def _available_sidebar_tabs_for_user(db_user):
+    """Возвращает вкладки, доступные пользователю с учётом его роли."""
     if db_user.role == settings.ADMIN_ROLE:
         return settings.SIDEBAR_TAB_IDS.copy()
     return [tab_id for tab_id in settings.SIDEBAR_TAB_IDS if tab_id != "audit"]
 
 
 def _sidebar_settings_values_for_user(sidebar_settings, db_user):
+    """Фильтрует настройки бокового меню по правам пользователя."""
     visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
     available_tabs = set(_available_sidebar_tabs_for_user(db_user))
     return [
@@ -117,6 +137,7 @@ def _sidebar_settings_values_for_user(sidebar_settings, db_user):
 
 
 def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
+    """Формирует описание изменения настроек бокового меню для аудита."""
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
     return (
@@ -128,6 +149,7 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 
 
 def _sidebar_settings_for_user(db_user):
+    """Получает или создаёт настройки бокового меню пользователя."""
     sidebar_settings, _created = DBUserSidebarSettings.objects.get_or_create(
         user=db_user,
         defaults={"visible_tabs": settings.SIDEBAR_TAB_IDS.copy()},
@@ -144,6 +166,7 @@ def _sidebar_settings_for_user(db_user):
 
 
 def _user_payload(db_user):
+    """Формирует клиентские данные текущего пользователя."""
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
@@ -163,6 +186,7 @@ def _user_payload(db_user):
 
 
 def _connection_permission_error():
+    """Возвращает ошибку недостаточных прав на управление подключениями."""
     return JsonResponse(
         {
             "ok": False,
@@ -173,6 +197,7 @@ def _connection_permission_error():
 
 
 def _connection_delete_permission_error():
+    """Возвращает ошибку недостаточных прав на удаление подключения."""
     return JsonResponse(
         {"ok": False, "message": "Удалять подключение может только его создатель"},
         status=403,
@@ -180,6 +205,7 @@ def _connection_delete_permission_error():
 
 
 def _connection_edit_permission_error():
+    """Возвращает ошибку недостаточных прав на изменение подключения."""
     return JsonResponse(
         {
             "ok": False,
@@ -190,12 +216,14 @@ def _connection_edit_permission_error():
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
+    """Определяет имя пользователя для записи аудита."""
     if db_user:
         return db_user.login
     return fallback
 
 
 def _write_audit(action_type, info, db_user=None, username=None):
+    """Записывает событие в журнал аудита."""
     DBAudit.objects.create(
         username=username or _audit_username(db_user),
         action_type=action_type,
@@ -205,10 +233,12 @@ def _write_audit(action_type, info, db_user=None, username=None):
 
 
 def _audit_action_label(action_type):
+    """Возвращает отображаемое название действия аудита."""
     return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
 
 
 def _connection_audit_info(action, connection, *, result=None, error=None):
+    """Формирует описание операции с подключением для аудита."""
     details = [
         f"Действие: {action}",
         f"Подключение: {connection.name}",
@@ -226,6 +256,7 @@ def _connection_audit_info(action, connection, *, result=None, error=None):
 
 
 def _favorite_audit_info(action, connection, object_type, object_key):
+    """Формирует описание изменения избранного для аудита."""
     object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
     return "; ".join(
         [
@@ -238,6 +269,7 @@ def _favorite_audit_info(action, connection, object_type, object_key):
 
 
 def _backend_termination_audit_info(action, connection, row):
+    """Формирует описание завершения процесса базы данных для аудита."""
     client_address = str(row[5]) if row[5] else "local"
     client = f"{client_address}:{row[6]}" if row[6] is not None else client_address
     return "; ".join(
@@ -271,6 +303,7 @@ def _backend_termination_audit_info(action, connection, row):
 def _maintenance_vacuum_audit_info(
     operation, connection, schema_name, table_name, result, error=None
 ):
+    """Формирует описание операции VACUUM для аудита."""
     operation_label = "VACUUM FULL" if operation == "vacuum_full" else "VACUUM"
     details = [
         f"Действие: {operation_label}",
@@ -289,11 +322,13 @@ def _maintenance_vacuum_audit_info(
 
 
 def _can_manage_connections(request):
+    """Проверяет право пользователя управлять подключениями."""
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == settings.ADMIN_ROLE)
 
 
 def _destructive_action_permission_error(request):
+    """Проверяет право пользователя выполнять разрушающие операции."""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -308,6 +343,7 @@ def _destructive_action_permission_error(request):
 
 
 def _available_connections(request):
+    """Возвращает доступные текущему пользователю подключения."""
     db_user = _current_db_user(request)
     if not db_user:
         return DBConnection.objects.none()
@@ -315,10 +351,12 @@ def _available_connections(request):
 
 
 def _get_connection_for_request(request, connection_id):
+    """Получает доступное пользователю подключение по идентификатору."""
     return get_object_or_404(_available_connections(request), pk=connection_id)
 
 
 def _connection_to_dict(connection):
+    """Преобразует подключение в словарь для JSON-ответа."""
     return {
         "id": str(connection.pk),
         "name": connection.name,
@@ -336,6 +374,7 @@ def _connection_to_dict(connection):
 
 
 def _read_json_body(request):
+    """Безопасно читает JSON-объект из тела запроса."""
     try:
         return json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -343,6 +382,7 @@ def _read_json_body(request):
 
 
 def _parse_pg_size_to_bytes(value, default_unit="B"):
+    """Преобразует значение размера PostgreSQL в байты."""
     if value in (None, ""):
         return None
     text = str(value).strip()
@@ -376,6 +416,7 @@ def _parse_pg_size_to_bytes(value, default_unit="B"):
 
 
 def _format_bytes(size_bytes):
+    """Форматирует размер в байтах для отображения."""
     if size_bytes is None:
         return "—"
     value = float(size_bytes)
@@ -387,10 +428,12 @@ def _format_bytes(size_bytes):
 
 
 def _escape_like_pattern(value):
+    """Экранирует специальные символы шаблона SQL LIKE."""
     return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
+    """Формирует параметры подключения psycopg2."""
     return {
         "host": _normalize_database_host(host),
         "port": port,
@@ -403,6 +446,7 @@ def _connection_kwargs(host, port, database, username, password, ssl=True):
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
+    """Проверяет подключение по переданным параметрам."""
     with psycopg2.connect(
         **_connection_kwargs(host, port, database, username, password, ssl)
     ) as connection:
@@ -412,6 +456,7 @@ def _test_connection_params(host, port, database, username, password, ssl):
 
 
 def _open_database_connection(db_connection, ssl=True):
+    """Открывает соединение с сохранённой базой данных."""
     return psycopg2.connect(
         **_connection_kwargs(
             db_connection.host,
@@ -425,6 +470,7 @@ def _open_database_connection(db_connection, ssl=True):
 
 
 def _fetch_db_rows(db_connection, query, params=None):
+    """Выполняет запрос и возвращает все строки результата."""
     with _open_database_connection(db_connection) as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, params or [])
@@ -432,6 +478,7 @@ def _fetch_db_rows(db_connection, query, params=None):
 
 
 def _fetch_db_row(db_connection, query, params=None):
+    """Выполняет запрос и возвращает первую строку результата."""
     with _open_database_connection(db_connection) as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, params or [])
@@ -439,6 +486,7 @@ def _fetch_db_row(db_connection, query, params=None):
 
 
 def _fetch_db_resultsets(db_connection, *queries):
+    """Выполняет несколько запросов в одном соединении."""
     resultsets = []
     with _open_database_connection(db_connection) as connection:
         with connection.cursor() as cursor:
@@ -451,6 +499,7 @@ def _fetch_db_resultsets(db_connection, *queries):
 def _run_maintenance_vacuum(
     job_id, connection_id, schema_name, table_name, operation, username
 ):
+    """Выполняет фоновую операцию VACUUM и обновляет состояние задачи."""
     connection = None
     db_connection = None
     try:
@@ -507,6 +556,7 @@ def _run_maintenance_vacuum(
 
 
 def _require_payload_connection(request, payload):
+    """Проверяет запрос и возвращает выбранное подключение."""
     connection_id = payload.get("id")
     if not connection_id:
         return None, JsonResponse(
@@ -516,6 +566,7 @@ def _require_payload_connection(request, payload):
 
 
 def _format_role_timestamp(value):
+    """Форматирует срок действия роли базы данных."""
     if value is None:
         return "Бессрочно"
     return (
@@ -526,6 +577,7 @@ def _format_role_timestamp(value):
 
 
 def _role_flag(value):
+    """Преобразует логический признак роли в отображаемое значение."""
     return "Да" if value else "Нет"
 
 
@@ -553,6 +605,7 @@ def _favorite_filter(payload, db_user, db_connection, object_type, columns):
 
 
 def _database_roles_list(request, *, can_login):
+    """Возвращает отфильтрованный список пользователей или групп базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
