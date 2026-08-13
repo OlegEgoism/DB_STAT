@@ -7,6 +7,7 @@ from db_statistics.view_helpers import _current_db_user, _escape_like_pattern, _
 
 @require_http_methods(["POST"])
 def database_schema_sizes(request):
+    """Возвращает размеры и статистику схем базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -135,6 +136,7 @@ def database_schema_sizes(request):
 
 @require_http_methods(["POST"])
 def database_table_sizes(request):
+    """Возвращает размеры и статистику таблиц базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -291,6 +293,7 @@ def database_table_sizes(request):
 
 @require_http_methods(["POST"])
 def database_views_list(request):
+    """Возвращает список обычных и материализованных представлений."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -430,6 +433,7 @@ def database_views_list(request):
 
 @require_http_methods(["POST"])
 def database_functions_list(request):
+    """Возвращает список функций базы данных и их сигнатуры."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -520,6 +524,7 @@ def database_functions_list(request):
 
 @require_http_methods(["POST"])
 def distribution_tables(request):
+    """Возвращает таблицы, доступные для анализа распределения."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -559,6 +564,7 @@ def distribution_tables(request):
 
 @require_http_methods(["POST"])
 def distribution_info(request):
+    """Возвращает распределение строк таблицы по сегментам."""
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     schema_name = (payload.get("schema_name") or "").strip()
@@ -642,6 +648,7 @@ def distribution_info(request):
 
 @require_http_methods(["POST"])
 def database_temp_table_sizes(request):
+    """Возвращает размеры активных временных таблиц."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:

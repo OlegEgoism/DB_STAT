@@ -7,6 +7,7 @@ from db_statistics.view_helpers import _backend_termination_audit_info, _current
 
 @require_http_methods(["POST"])
 def active_queries(request):
+    """Возвращает активные запросы выбранного подключения."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -83,6 +84,7 @@ def active_queries(request):
 
 @require_http_methods(["POST"])
 def terminate_active_query(request):
+    """Завершает активный запрос по идентификатору процесса."""
     permission_error = _destructive_action_permission_error(request)
     if permission_error:
         return permission_error
@@ -158,6 +160,7 @@ def terminate_active_query(request):
 
 @require_http_methods(["POST"])
 def active_sessions(request):
+    """Возвращает активные пользовательские сессии базы данных."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -279,6 +282,7 @@ def active_sessions(request):
 
 @require_http_methods(["POST"])
 def terminate_active_session(request):
+    """Завершает пользовательскую сессию базы данных."""
     permission_error = _destructive_action_permission_error(request)
     if permission_error:
         return permission_error
@@ -352,6 +356,7 @@ def terminate_active_session(request):
 
 @require_http_methods(["POST"])
 def blocking_locks(request):
+    """Возвращает цепочки блокирующих и заблокированных процессов."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -436,6 +441,7 @@ def blocking_locks(request):
 
 @require_http_methods(["POST"])
 def idle_transactions(request):
+    """Возвращает простаивающие транзакции выбранного подключения."""
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:

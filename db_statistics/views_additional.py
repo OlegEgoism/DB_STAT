@@ -54,7 +54,9 @@ def home(request):
             "db_user": db_user,
             "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
-            "session_expires_at_ms": request.session.get(settings.SESSION_EXPIRES_AT_KEY, 0)
+            "session_expires_at_ms": request.session.get(
+                settings.SESSION_EXPIRES_AT_KEY, 0
+            )
             * 1000,
         },
     )
@@ -63,6 +65,7 @@ def home(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def login(request):
+    """Авторизует пользователя и создаёт ограниченную по времени сессию."""
     db_user = _current_db_user(request)
     if db_user:
         return redirect("home")
@@ -76,7 +79,8 @@ def login(request):
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
         session_duration_value = (
-            request.POST.get("session_duration") or str(settings.DEFAULT_SESSION_DURATION_HOURS)
+            request.POST.get("session_duration")
+            or str(settings.DEFAULT_SESSION_DURATION_HOURS)
         ).strip()
         session_duration_seconds = _session_duration_seconds(session_duration_value)
 
@@ -127,6 +131,7 @@ def login(request):
 
 @require_http_methods(["POST"])
 def logout(request):
+    """Завершает пользовательскую сессию и записывает событие аудита."""
     db_user = _current_db_user(request)
     username = _audit_username(db_user)
     if db_user:
@@ -140,6 +145,7 @@ def logout(request):
 
 @require_http_methods(["GET", "POST"])
 def sidebar_settings(request):
+    """Получает или сохраняет персональные настройки бокового меню."""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -288,6 +294,7 @@ def language_settings(request):
 
 @require_http_methods(["GET"])
 def audit_events(request):
+    """Возвращает отфильтрованные события журнала аудита."""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -374,6 +381,7 @@ def audit_events(request):
 
 @require_http_methods(["GET", "POST"])
 def connections(request):
+    """Возвращает список или сохраняет подключение к базе данных."""
     if request.method == "GET":
         items = _available_connections(request).order_by("name", "host")
         return JsonResponse(
@@ -451,6 +459,7 @@ def connections(request):
 
 @require_http_methods(["POST"])
 def test_connection(request):
+    """Проверяет доступность нового или сохранённого подключения."""
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     has_inline_connection_data = all(
@@ -536,6 +545,7 @@ def test_connection(request):
 
 @require_http_methods(["POST"])
 def delete_connection(request):
+    """Удаляет сохранённое подключение пользователя."""
     if not _can_manage_connections(request):
         return _connection_permission_error()
 
