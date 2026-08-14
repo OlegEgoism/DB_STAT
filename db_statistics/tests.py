@@ -1,10 +1,24 @@
+import os
+from unittest.mock import patch
+
 from django.template.loader import render_to_string
 from django.test import SimpleTestCase, override_settings
 
+from db.settings import _local_database_host
 from db_statistics.view_helpers import _connection_kwargs, _normalize_database_host
 
 
 class DatabaseHostNormalizationTests(SimpleTestCase):
+    def test_container_uses_host_alias_without_explicit_environment_variable(self):
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "db.settings.Path.exists", return_value=True
+        ):
+            self.assertEqual(_local_database_host(), "host.docker.internal")
+
+    def test_explicit_host_override_has_priority(self):
+        with patch.dict(os.environ, {"LOCAL_DATABASE_HOST": "gateway.example"}):
+            self.assertEqual(_local_database_host(), "gateway.example")
+
     @override_settings(LOCAL_DATABASE_HOST="host.docker.internal")
     def test_container_loopback_addresses_use_docker_host_alias(self):
         for host in ("localhost", "127.0.0.1", "::1", " LOCALHOST "):

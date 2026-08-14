@@ -21,6 +21,16 @@ def _env_list(name, default=""):
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def _local_database_host():
+    """Return an explicit host override or Docker's host alias in a container."""
+    configured_host = os.getenv("LOCAL_DATABASE_HOST", "").strip()
+    if configured_host:
+        return configured_host
+    if Path("/.dockerenv").exists() or Path("/run/.containerenv").exists():
+        return "host.docker.internal"
+    return ""
+
+
 def _default_csrf_trusted_origins(hosts):
     origins = []
     for host in hosts:
@@ -111,10 +121,10 @@ MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 
 LOCALHOST_NAMES = {"localhost", "127.0.0.1", "::1"}
-# In a container, loopback points at the container itself rather than at the
-# Docker host.  Images can opt into translating local addresses to Docker's
-# host alias; native development keeps the value empty and uses loopback.
-LOCAL_DATABASE_HOST = os.getenv("LOCAL_DATABASE_HOST", "").strip()
+# Docker images automatically translate loopback to the host alias even when
+# an orchestrator omits or clears LOCAL_DATABASE_HOST. Native development keeps
+# the value empty and therefore continues to use the machine's own loopback.
+LOCAL_DATABASE_HOST = _local_database_host()
 
 SIDEBAR_TAB_IDS = [
     "database-overview",

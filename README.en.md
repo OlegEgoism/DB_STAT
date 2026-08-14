@@ -132,7 +132,7 @@ Or use the provided configuration:
 docker compose up --build --force-recreate
 ```
 
-Enter the familiar `localhost` in the Host field (`127.0.0.1` and `::1` are also supported). The application preserves the user-friendly value but, immediately before connecting from Docker, automatically replaces a loopback address with `LOCAL_DATABASE_HOST` (`host.docker.internal`). For a remote database, enter its real DNS name or IP; non-loopback addresses are not changed.
+Enter the familiar `localhost` in the Host field (`127.0.0.1` and `::1` are also supported); you do not need to enter `host.docker.internal` manually. The application preserves the user-friendly value but, immediately before connecting from Docker, automatically replaces a loopback address with `host.docker.internal`. This also works when `LOCAL_DATABASE_HOST` is not explicitly set: the application detects the container through `/.dockerenv` or `/run/.containerenv`. The variable is needed only to override the address. For a remote database, enter its real DNS name or IP; non-loopback addresses are not changed.
 
 If an error still mentions `127.0.0.1`, an **old image** is running: the fixed version actually connects to `host.docker.internal` from the container even though the form displays `localhost`.
 
