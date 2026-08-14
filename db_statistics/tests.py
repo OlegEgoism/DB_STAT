@@ -26,11 +26,8 @@ class DatabaseHostNormalizationTests(SimpleTestCase):
 
 
 class ConnectionFormHostTests(SimpleTestCase):
-    def test_container_host_is_rendered_in_connection_form(self):
-        html = render_to_string(
-            "includes/_modals.html",
-            {"database_default_host": "host.docker.internal"},
-        )
+    def test_localhost_is_rendered_in_connection_form(self):
+        html = render_to_string("includes/_modals.html")
 
-        self.assertIn('value="host.docker.internal"', html)
-        self.assertIn('data-default-host="host.docker.internal"', html)
+        self.assertIn('id="connHost" placeholder="localhost" value="localhost"', html)
+        self.assertNotIn('value="host.docker.internal"', html)

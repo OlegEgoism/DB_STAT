@@ -53,7 +53,6 @@ def home(request):
         {
             "db_user": db_user,
             "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
-            "database_default_host": settings.LOCAL_DATABASE_HOST or "localhost",
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
             "session_expires_at_ms": request.session.get(
                 settings.SESSION_EXPIRES_AT_KEY, 0

@@ -17,10 +17,8 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Хост <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="connHost" placeholder="localhost" value="{{ database_default_host }}" data-default-host="{{ database_default_host }}">
-                            {% if database_default_host != 'localhost' %}
-                            <div class="form-text">Адрес локальной БД с точки зрения контейнера Docker.</div>
-                            {% endif %}
+                            <input type="text" class="form-control" id="connHost" placeholder="localhost" value="localhost">
+                            <div class="form-text">Для локальной БД укажите localhost — внутри Docker адрес будет преобразован автоматически.</div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Порт <span class="text-danger">*</span></label>

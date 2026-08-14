@@ -132,7 +132,9 @@ Or use the provided configuration:
 docker compose up --build --force-recreate
 ```
 
-In a new container, the Host field defaults to `host.docker.internal`. You may also enter `localhost` or `127.0.0.1`: the application replaces either value with `LOCAL_DATABASE_HOST`. If the error still mentions `127.0.0.1`, an **old image** is running; the fixed version connects to `host.docker.internal` instead.
+Enter the familiar `localhost` in the Host field (`127.0.0.1` and `::1` are also supported). The application preserves the user-friendly value but, immediately before connecting from Docker, automatically replaces a loopback address with `LOCAL_DATABASE_HOST` (`host.docker.internal`). For a remote database, enter its real DNS name or IP; non-loopback addresses are not changed.
+
+If an error still mentions `127.0.0.1`, an **old image** is running: the fixed version actually connects to `host.docker.internal` from the container even though the form displays `localhost`.
 
 PostgreSQL on the host must also accept TCP connections rather than Unix-socket connections only. Check `listen_addresses` in `postgresql.conf`, allow the Docker subnet in `pg_hba.conf`, and permit port `5432` through the firewall. Restart PostgreSQL after changing its configuration. Do not expose port 5432 to the internet; allow only the local Docker subnet.
 
