@@ -107,31 +107,33 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
-- Запуск Docker-контейнера
-
-Запуск контейнерка с доступом к локальной БД.
+- Запуск Docker-контейнера с доступом к PostgreSQL на хосте (Linux и Docker Desktop)
 
 ```bash
-docker run --rm --network=host db-stat
+docker run --rm \
+  -p 8000:8000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e LOCAL_DATABASE_HOST=host.docker.internal \
+  olegegoism/db-stat:latest
 ```
 
-Запуск контейнерка без доступа к локальной БД.
+Или используйте готовую конфигурацию:
 
 ```bash
-docker run --rm -p 8000:8000 db-stat
+docker compose up
 ```
 
-```
+В форме подключения можно оставить `localhost` или `127.0.0.1`: внутри Docker-образа приложение заменит их на значение `LOCAL_DATABASE_HOST`. Важно: `localhost` внутри контейнера — это сам контейнер, а не компьютер, на котором запущен Docker.
+
+PostgreSQL на хосте также должен принимать TCP-подключения не только через Unix-сокет. Проверьте `listen_addresses` в `postgresql.conf`, разрешите Docker-подсеть в `pg_hba.conf` и откройте порт `5432` в firewall. После изменения конфигурации перезапустите PostgreSQL. Не публикуйте порт 5432 в интернет: разрешайте только локальную Docker-подсеть.
+
 Доступно по адресу: http://localhost:8000
-Суперпользователь Django Admin:
-- логин: admin
-- пароль: admin
-Пользователь приложения:
-- логин: admin
-- почта: admin@example.com
 
-Если после сборки есть ошибка подключения к `172.17.0.1` или `192.168.0.1`, значит запущен старый Docker-образ. 
-Пересоберите образ и запустите контейнер заново.
+Для диагностики разрешения имени и доступности порта:
+
+```bash
+docker run --rm --add-host=host.docker.internal:host-gateway busybox nslookup host.docker.internal
+docker run --rm --add-host=host.docker.internal:host-gateway busybox nc -vz host.docker.internal 5432
 ```
 
 

@@ -110,8 +110,11 @@ MIN_SESSION_DURATION_SECONDS = MIN_SESSION_DURATION_MINUTES * 60
 MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 
-LOCALHOST_NAMES = {"localhost", "::1"}
-LOOPBACK_HOST = "127.0.0.1"
+LOCALHOST_NAMES = {"localhost", "127.0.0.1", "::1"}
+# In a container, loopback points at the container itself rather than at the
+# Docker host.  Images can opt into translating local addresses to Docker's
+# host alias; native development keeps the value empty and uses loopback.
+LOCAL_DATABASE_HOST = os.getenv("LOCAL_DATABASE_HOST", "").strip()
 
 SIDEBAR_TAB_IDS = [
     "database-overview",

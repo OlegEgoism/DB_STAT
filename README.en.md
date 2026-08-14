@@ -107,31 +107,33 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
-- Run the Docker container
-
-Run the container with access to a local database.
+- Run the Docker container with access to PostgreSQL on the host (Linux and Docker Desktop)
 
 ```bash
-docker run --rm --network=host db-stat
+docker run --rm \
+  -p 8000:8000 \
+  --add-host=host.docker.internal:host-gateway \
+  -e LOCAL_DATABASE_HOST=host.docker.internal \
+  olegegoism/db-stat:latest
 ```
 
-Run the container without access to a local database.
+Or use the provided configuration:
 
 ```bash
-docker run --rm -p 8000:8000 db-stat
+docker compose up
 ```
 
-```
+The connection form may still contain `localhost` or `127.0.0.1`: in the Docker image the application replaces either value with `LOCAL_DATABASE_HOST`. Remember that a container's `localhost` refers to the container itself, not to the machine running Docker.
+
+PostgreSQL on the host must also accept TCP connections rather than Unix-socket connections only. Check `listen_addresses` in `postgresql.conf`, allow the Docker subnet in `pg_hba.conf`, and permit port `5432` through the firewall. Restart PostgreSQL after changing its configuration. Do not expose port 5432 to the internet; allow only the local Docker subnet.
+
 Available at: http://localhost:8000
-Django Admin superuser:
-- login: admin
-- password: admin
-Application user:
-- login: admin
-- email: admin@example.com
 
-If there is a connection error to `172.17.0.1` or `192.168.0.1` after building, an old Docker image is running.
-Rebuild the image and run the container again.
+To diagnose name resolution and port availability:
+
+```bash
+docker run --rm --add-host=host.docker.internal:host-gateway busybox nslookup host.docker.internal
+docker run --rm --add-host=host.docker.internal:host-gateway busybox nc -vz host.docker.internal 5432
 ```
 
 

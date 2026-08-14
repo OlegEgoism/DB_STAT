@@ -18,11 +18,11 @@ from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUs
 
 
 def _normalize_database_host(host):
-    """Нормализует имя хоста базы данных для локальных подключений."""
+    """Перенаправляет loopback на хост Docker, когда задан его псевдоним."""
     normalized_host = (host or "").strip().lower()
-    if normalized_host in settings.LOCALHOST_NAMES:
-        return settings.LOOPBACK_HOST
-    return host
+    if normalized_host in settings.LOCALHOST_NAMES and settings.LOCAL_DATABASE_HOST:
+        return settings.LOCAL_DATABASE_HOST
+    return (host or "").strip()
 
 
 def _current_db_user(request):

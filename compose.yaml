@@ -1,0 +1,11 @@
+services:
+  db-stat:
+    image: olegegoism/db-stat:latest
+    ports:
+      - "8000:8000"
+    environment:
+      LOCAL_DATABASE_HOST: host.docker.internal
+    extra_hosts:
+      # Docker Desktop provides this name automatically; host-gateway makes
+      # the same configuration work with Docker Engine on Linux.
+      - "host.docker.internal:host-gateway"
