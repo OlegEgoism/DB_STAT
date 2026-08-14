@@ -111,7 +111,12 @@ MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 
 LOCALHOST_NAMES = {"localhost", "::1"}
-LOOPBACK_HOST = "127.0.0.1"
+# In a regular local run localhost must keep pointing at this machine. The
+# Docker image overrides this value with the host alias prepared by its
+# entrypoint, so users can enter the same host name in both environments.
+LOCALHOST_DB_HOST = (
+    os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
+)
 
 SIDEBAR_TAB_IDS = [
     "database-overview",
