@@ -137,6 +137,11 @@ Application user:
 
 If there is a connection error to `172.17.0.1` or `192.168.0.1` after building, an old Docker image is running.
 Rebuild the image and run the container again.
+
+`exec /app/docker-entrypoint.sh: no such file or directory` means that the
+entrypoint was copied with Windows line endings or that the image predates the
+fix. Current builds force the script to LF. Rebuild and publish the image, then
+run `docker pull` again.
 ```
 
 
