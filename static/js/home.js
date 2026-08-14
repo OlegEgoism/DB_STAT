@@ -4270,7 +4270,8 @@
         document.getElementById('connId').value = '';
         modalInstance.show();
         document.getElementById('connName').value = 'New Connection';
-        document.getElementById('connHost').value = 'localhost';
+        const connectionHostInput = document.getElementById('connHost');
+        connectionHostInput.value = connectionHostInput.dataset.defaultHost || 'localhost';
         document.getElementById('connPort').value = '5432';
         document.getElementById('connDatabase').value = 'postgres';
         document.getElementById('connUser').value = 'postgres';

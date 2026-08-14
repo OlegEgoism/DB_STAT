@@ -107,10 +107,19 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
+После изменения исходного кода старый уже запущенный контейнер **не обновляется**. Пересоздайте его из нового образа. Для публикации исправления в Docker Hub выполните:
+
+```bash
+docker build --pull -t olegegoism/db-stat:latest .
+docker push olegegoism/db-stat:latest
+docker rm -f db-stat 2>/dev/null || true
+```
+
 - Запуск Docker-контейнера с доступом к PostgreSQL на хосте (Linux и Docker Desktop)
 
 ```bash
 docker run --rm \
+  --name db-stat \
   -p 8000:8000 \
   --add-host=host.docker.internal:host-gateway \
   -e LOCAL_DATABASE_HOST=host.docker.internal \
@@ -120,10 +129,10 @@ docker run --rm \
 Или используйте готовую конфигурацию:
 
 ```bash
-docker compose up
+docker compose up --build --force-recreate
 ```
 
-В форме подключения можно оставить `localhost` или `127.0.0.1`: внутри Docker-образа приложение заменит их на значение `LOCAL_DATABASE_HOST`. Важно: `localhost` внутри контейнера — это сам контейнер, а не компьютер, на котором запущен Docker.
+В новом контейнере поле «Хост» по умолчанию показывает `host.docker.internal`. Можно также ввести `localhost` или `127.0.0.1`: приложение заменит их на значение `LOCAL_DATABASE_HOST`. Если сообщение об ошибке всё ещё содержит `127.0.0.1`, запущен **старый образ**, поскольку исправленная версия пытается подключиться к `host.docker.internal`.
 
 PostgreSQL на хосте также должен принимать TCP-подключения не только через Unix-сокет. Проверьте `listen_addresses` в `postgresql.conf`, разрешите Docker-подсеть в `pg_hba.conf` и откройте порт `5432` в firewall. После изменения конфигурации перезапустите PostgreSQL. Не публикуйте порт 5432 в интернет: разрешайте только локальную Docker-подсеть.
 

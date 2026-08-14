@@ -1,5 +1,6 @@
 services:
   db-stat:
+    build: .
     image: olegegoism/db-stat:latest
     ports:
       - "8000:8000"

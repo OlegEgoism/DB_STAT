@@ -107,10 +107,19 @@ python -m ruff format .
 docker build -t db-stat .
 ```
 
+Changing the source does **not** update an already running container. Recreate it from the new image. To publish the fix to Docker Hub, run:
+
+```bash
+docker build --pull -t olegegoism/db-stat:latest .
+docker push olegegoism/db-stat:latest
+docker rm -f db-stat 2>/dev/null || true
+```
+
 - Run the Docker container with access to PostgreSQL on the host (Linux and Docker Desktop)
 
 ```bash
 docker run --rm \
+  --name db-stat \
   -p 8000:8000 \
   --add-host=host.docker.internal:host-gateway \
   -e LOCAL_DATABASE_HOST=host.docker.internal \
@@ -120,10 +129,10 @@ docker run --rm \
 Or use the provided configuration:
 
 ```bash
-docker compose up
+docker compose up --build --force-recreate
 ```
 
-The connection form may still contain `localhost` or `127.0.0.1`: in the Docker image the application replaces either value with `LOCAL_DATABASE_HOST`. Remember that a container's `localhost` refers to the container itself, not to the machine running Docker.
+In a new container, the Host field defaults to `host.docker.internal`. You may also enter `localhost` or `127.0.0.1`: the application replaces either value with `LOCAL_DATABASE_HOST`. If the error still mentions `127.0.0.1`, an **old image** is running; the fixed version connects to `host.docker.internal` instead.
 
 PostgreSQL on the host must also accept TCP connections rather than Unix-socket connections only. Check `listen_addresses` in `postgresql.conf`, allow the Docker subnet in `pg_hba.conf`, and permit port `5432` through the firewall. Restart PostgreSQL after changing its configuration. Do not expose port 5432 to the internet; allow only the local Docker subnet.
 

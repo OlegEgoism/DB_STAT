@@ -1,3 +1,4 @@
+from django.template.loader import render_to_string
 from django.test import SimpleTestCase, override_settings
 
 from db_statistics.view_helpers import _connection_kwargs, _normalize_database_host
@@ -22,3 +23,14 @@ class DatabaseHostNormalizationTests(SimpleTestCase):
     def test_connection_kwargs_use_normalized_host(self):
         params = _connection_kwargs("localhost", 5432, "postgres", "postgres", "secret")
         self.assertEqual(params["host"], "host.docker.internal")
+
+
+class ConnectionFormHostTests(SimpleTestCase):
+    def test_container_host_is_rendered_in_connection_form(self):
+        html = render_to_string(
+            "includes/_modals.html",
+            {"database_default_host": "host.docker.internal"},
+        )
+
+        self.assertIn('value="host.docker.internal"', html)
+        self.assertIn('data-default-host="host.docker.internal"', html)
