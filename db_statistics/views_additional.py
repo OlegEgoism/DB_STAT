@@ -21,6 +21,7 @@ from db_statistics.view_helpers import (
     _connection_permission_error,
     _connection_to_dict,
     _current_db_user,
+    _database_connection_error_message,
     _favorite_audit_info,
     _get_connection_for_request,
     _normalize_sidebar_sections,
@@ -525,7 +526,12 @@ def test_connection(request):
             )
         _write_audit("connection_test", info, db_user=audit_user)
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось подключиться к {name}: {exc}"},
+            {
+                "ok": False,
+                "message": _database_connection_error_message(
+                    name, params["host"], exc
+                ),
+            },
             status=400,
         )
 

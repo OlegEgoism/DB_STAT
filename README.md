@@ -122,10 +122,31 @@ docker run --name db-stat --rm -p 8000:8000 db-stat
 направит такое подключение на хост Docker. Это работает в Docker Desktop и в
 обычном Docker под Linux без дополнительного параметра `--add-host`.
 
-PostgreSQL на хосте должен принимать подключения не только через Unix-сокет и
-разрешать подключения из сети Docker в `listen_addresses` и `pg_hba.conf`.
-При необходимости адрес назначения можно переопределить параметром
-`-e LOCALHOST_DB_HOST=<адрес>`.
+### Локальная PostgreSQL в Linux
+
+Адрес `172.17.0.1` в тексте ошибки означает, что перенаправление `localhost`
+уже работает. `Connection refused` означает, что PostgreSQL на хосте не
+слушает Docker bridge. Есть два варианта:
+
+1. **Без изменения PostgreSQL (рекомендуется для одного Linux-хоста):**
+
+   ```bash
+   docker run --name db-stat --rm --network host \
+     -e LOCALHOST_DB_HOST=127.0.0.1 olegegoism/db-stat:latest
+   ```
+
+   Параметр `-p` при host network не нужен; приложение будет доступно на порту
+   `8000` хоста. Этот режим — специфичный для Linux.
+
+2. **Сохранить bridge network:** добавьте адрес Docker bridge в
+   `listen_addresses` (`listen_addresses = 'localhost,172.17.0.1'`) в
+   `postgresql.conf` и разрешите
+   нужную подсеть, например `host all all 172.17.0.0/16 scram-sha-256`, в
+   `pg_hba.conf`, затем перезапустите PostgreSQL. Уточните свою Docker-подсеть
+   командой `docker network inspect bridge` и не открывайте PostgreSQL для всех сетей.
+
+Для удалённых БД вводите их DNS-имя или IP: они не перенаправляются. Адрес
+для `localhost` можно явно задать параметром `-e LOCALHOST_DB_HOST=<адрес>`.
 
 ```
 Доступно по адресу: http://localhost:8000

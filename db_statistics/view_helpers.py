@@ -25,6 +25,20 @@ def _normalize_database_host(host):
     return host
 
 
+def _database_connection_error_message(name, host, error):
+    """Adds an actionable hint when a container cannot reach a host-local DB."""
+    message = f"Не удалось подключиться к {name}: {error}"
+    if (host or "").strip().lower() not in settings.LOCALHOST_NAMES:
+        return message
+    return (
+        f"{message}\n\n"
+        "Локальная БД запущена на Docker-хосте. В Linux PostgreSQL "
+        "должен слушать адрес Docker bridge, а pg_hba.conf — разрешать "
+        "подсеть контейнеров. Альтернатива для Linux: запустите образ "
+        "с --network host и LOCALHOST_DB_HOST=127.0.0.1. Подробности есть в README."
+    )
+
+
 def _current_db_user(request):
     """Возвращает активного пользователя приложения из текущей сессии."""
     if _session_has_expired(request.session):

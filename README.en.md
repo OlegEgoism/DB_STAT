@@ -122,9 +122,22 @@ Enter `localhost` in the connection form. Inside the image, the application
 automatically routes that connection to the Docker host. This works both in
 Docker Desktop and native Docker on Linux without an extra `--add-host` option.
 
-PostgreSQL on the host must listen on more than its Unix socket and allow the
-Docker network in `listen_addresses` and `pg_hba.conf`. If necessary, override
-the target with `-e LOCALHOST_DB_HOST=<address>`.
+### Local PostgreSQL on Linux
+
+If the error mentions `172.17.0.1`, localhost forwarding is already working.
+`Connection refused` means PostgreSQL is not listening on the Docker bridge.
+Either run on Linux with host networking (no `-p` is needed):
+
+```bash
+docker run --name db-stat --rm --network host \
+  -e LOCALHOST_DB_HOST=127.0.0.1 olegegoism/db-stat:latest
+```
+
+Or keep bridge networking: add the Docker bridge address to `listen_addresses`
+in `postgresql.conf`, allow only the actual Docker subnet in `pg_hba.conf`, and
+restart PostgreSQL. Find that subnet with `docker network inspect bridge`.
+Remote database host names are never rewritten. The localhost target can also
+be overridden with `-e LOCALHOST_DB_HOST=<address>`.
 
 ```
 Available at: http://localhost:8000
