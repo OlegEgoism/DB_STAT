@@ -27,7 +27,10 @@ RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requir
 
 COPY . .
 
-RUN chmod +x /app/docker-entrypoint.sh
+# A build context prepared on Windows may contain CRLF despite the repository
+# attributes. Normalize the script in the image as a second line of defence.
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
+    && chmod +x /app/docker-entrypoint.sh
 
 RUN rm -f /app/db.sqlite3 \
     && python manage.py makemigrations \
@@ -37,5 +40,5 @@ RUN rm -f /app/db.sqlite3 \
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
