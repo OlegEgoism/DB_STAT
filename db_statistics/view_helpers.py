@@ -21,7 +21,7 @@ def _normalize_database_host(host):
     """Нормализует имя хоста базы данных для локальных подключений."""
     normalized_host = (host or "").strip().lower()
     if normalized_host in settings.LOCALHOST_NAMES:
-        return settings.LOOPBACK_HOST
+        return settings.LOCALHOST_DB_HOST
     return host
 
 

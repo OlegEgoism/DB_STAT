@@ -44,6 +44,9 @@ LANGUAGE_CODE=ru
 
 DB_CONNECTION_ENCRYPTION_KEY=
 
+# Хост, на который перенаправляются localhost и ::1 в подключениях приложения
+LOCALHOST_DB_HOST=127.0.0.1
+
 DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
 
@@ -109,17 +112,20 @@ docker build -t db-stat .
 
 - Запуск Docker-контейнера
 
-Запуск контейнерка с доступом к локальной БД.
+Обычный запуск контейнера с доступом к локальной БД хоста:
 
 ```bash
-docker run --rm --network=host db-stat
+docker run --name db-stat --rm -p 8000:8000 db-stat
 ```
 
-Запуск контейнерка без доступа к локальной БД.
+В форме подключения укажите `localhost`: внутри образа приложение автоматически
+направит такое подключение на хост Docker. Это работает в Docker Desktop и в
+обычном Docker под Linux без дополнительного параметра `--add-host`.
 
-```bash
-docker run --rm -p 8000:8000 db-stat
-```
+PostgreSQL на хосте должен принимать подключения не только через Unix-сокет и
+разрешать подключения из сети Docker в `listen_addresses` и `pg_hba.conf`.
+При необходимости адрес назначения можно переопределить параметром
+`-e LOCALHOST_DB_HOST=<адрес>`.
 
 ```
 Доступно по адресу: http://localhost:8000

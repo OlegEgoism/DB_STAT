@@ -44,6 +44,9 @@ LANGUAGE_CODE=ru
 
 DB_CONNECTION_ENCRYPTION_KEY=
 
+# Target used for localhost and ::1 in application database connections
+LOCALHOST_DB_HOST=127.0.0.1
+
 DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
 
@@ -109,17 +112,19 @@ docker build -t db-stat .
 
 - Run the Docker container
 
-Run the container with access to a local database.
+Run the container with access to a database on the Docker host:
 
 ```bash
-docker run --rm --network=host db-stat
+docker run --name db-stat --rm -p 8000:8000 db-stat
 ```
 
-Run the container without access to a local database.
+Enter `localhost` in the connection form. Inside the image, the application
+automatically routes that connection to the Docker host. This works both in
+Docker Desktop and native Docker on Linux without an extra `--add-host` option.
 
-```bash
-docker run --rm -p 8000:8000 db-stat
-```
+PostgreSQL on the host must listen on more than its Unix socket and allow the
+Docker network in `listen_addresses` and `pg_hba.conf`. If necessary, override
+the target with `-e LOCALHOST_DB_HOST=<address>`.
 
 ```
 Available at: http://localhost:8000
