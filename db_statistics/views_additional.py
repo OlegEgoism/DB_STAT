@@ -21,6 +21,7 @@ from db_statistics.view_helpers import (
     _connection_permission_error,
     _connection_to_dict,
     _current_db_user,
+    _destructive_action_permission_error,
     _favorite_audit_info,
     _get_connection_for_request,
     _normalize_sidebar_sections,
@@ -294,15 +295,9 @@ def language_settings(request):
 @require_http_methods(["GET"])
 def audit_events(request):
     """Возвращает отфильтрованные события журнала аудита."""
-    db_user = _current_db_user(request)
-    if not db_user:
-        return JsonResponse(
-            {"ok": False, "message": "Требуется вход в приложение"}, status=401
-        )
-    if db_user.role != settings.ADMIN_ROLE:
-        return JsonResponse(
-            {"ok": False, "message": "Аудит доступен только Администратору"}, status=403
-        )
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
 
     action_type = (request.GET.get("action_type") or "").strip()
     username = (request.GET.get("username") or "").strip()
