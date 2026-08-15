@@ -21,6 +21,9 @@ from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUs
 
 logger = logging.getLogger(__name__)
 
+# Служебные схемы, которые не показываются пользователю как обычные объекты БД.
+EXCLUDED_SYSTEM_SCHEMAS_SQL = "('pg_catalog', 'information_schema', 'gp_toolkit')"
+
 
 def _normalize_database_host(host):
     """Нормализует имя хоста базы данных для локальных подключений."""
@@ -242,33 +245,49 @@ def _audit_action_label(action_type):
     return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
 
 
+def _format_audit_details(pairs):
+    """Собирает список пар (метка, значение) в строку описания события аудита."""
+    return "; ".join(f"{label}: {value}" for label, value in pairs)
+
+
+def _connection_audit_fields(connection, *, server_label=False):
+    """Возвращает базовые поля подключения, общие для разных записей аудита."""
+    host_field = (
+        ("Сервер", f"{_normalize_database_host(connection.host)}:{connection.port}")
+        if server_label
+        else ("Хост", connection.host)
+    )
+    fields = [
+        ("Подключение", connection.name),
+        ("Тип БД", connection.db_type),
+        host_field,
+    ]
+    if not server_label:
+        fields.append(("Порт", connection.port))
+    fields.append(("База данных", connection.database))
+    fields.append(("Пользователь БД", connection.username))
+    return fields
+
+
 def _connection_audit_info(action, connection, *, result=None, error=None):
     """Формирует описание операции с подключением для аудита."""
-    details = [
-        f"Действие: {action}",
-        f"Подключение: {connection.name}",
-        f"Тип БД: {connection.db_type}",
-        f"Хост: {connection.host}",
-        f"Порт: {connection.port}",
-        f"База данных: {connection.database}",
-        f"Пользователь БД: {connection.username}",
-    ]
+    pairs = [("Действие", action), *_connection_audit_fields(connection)]
     if result:
-        details.append(f"Результат: {result}")
+        pairs.append(("Результат", result))
     if error:
-        details.append(f"Ошибка: {error}")
-    return "; ".join(details)
+        pairs.append(("Ошибка", error))
+    return _format_audit_details(pairs)
 
 
 def _favorite_audit_info(action, connection, object_type, object_key):
     """Формирует описание изменения избранного для аудита."""
     object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
-    return "; ".join(
+    return _format_audit_details(
         [
-            action,
-            f"Подключение: {connection.name}",
-            f"Тип объекта: {object_type_label}",
-            f"Идентификатор объекта: {object_key}",
+            ("Действие", action),
+            ("Подключение", connection.name),
+            ("Тип объекта", object_type_label),
+            ("Идентификатор объекта", object_key),
         ]
     )
 
@@ -277,30 +296,26 @@ def _backend_termination_audit_info(action, connection, row):
     """Формирует описание завершения процесса базы данных для аудита."""
     client_address = str(row[5]) if row[5] else "local"
     client = f"{client_address}:{row[6]}" if row[6] is not None else client_address
-    return "; ".join(
+    return _format_audit_details(
         [
-            f"Действие: {action}",
-            f"Подключение: {connection.name}",
-            f"Тип БД: {connection.db_type}",
-            f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
-            f"База подключения: {connection.database}",
-            f"Пользователь подключения: {connection.username}",
-            f"PID: {row[1]}",
-            f"Пользователь сессии: {row[2] or '—'}",
-            f"База сессии: {row[3] or '—'}",
-            f"Приложение: {row[4] or '—'}",
-            f"Клиент: {client}",
-            f"Состояние: {row[7] or '—'}",
-            f"Тип backend: {row[8] or '—'}",
-            f"Начало сессии: {row[9] or '—'}",
-            f"Начало транзакции: {row[10] or '—'}",
-            f"Начало запроса: {row[11] or '—'}",
-            f"Последнее изменение состояния: {row[12] or '—'}",
-            f"Ожидание: {' / '.join(part for part in [row[13], row[14]] if part) or '—'}",
-            f"Длительность сессии: {row[15] or '—'}",
-            f"Длительность запроса: {row[16] or '—'}",
-            f"SQL: {row[17] or '—'}",
-            "Результат: успешно завершено",
+            ("Действие", action),
+            *_connection_audit_fields(connection, server_label=True),
+            ("PID", row[1]),
+            ("Пользователь сессии", row[2] or "—"),
+            ("База сессии", row[3] or "—"),
+            ("Приложение", row[4] or "—"),
+            ("Клиент", client),
+            ("Состояние", row[7] or "—"),
+            ("Тип backend", row[8] or "—"),
+            ("Начало сессии", row[9] or "—"),
+            ("Начало транзакции", row[10] or "—"),
+            ("Начало запроса", row[11] or "—"),
+            ("Последнее изменение состояния", row[12] or "—"),
+            ("Ожидание", " / ".join(part for part in [row[13], row[14]] if part) or "—"),
+            ("Длительность сессии", row[15] or "—"),
+            ("Длительность запроса", row[16] or "—"),
+            ("SQL", row[17] or "—"),
+            ("Результат", "успешно завершено"),
         ]
     )
 
@@ -310,20 +325,16 @@ def _maintenance_vacuum_audit_info(
 ):
     """Формирует описание операции VACUUM для аудита."""
     operation_label = "VACUUM FULL" if operation == "vacuum_full" else "VACUUM"
-    details = [
-        f"Действие: {operation_label}",
-        f"Подключение: {connection.name}",
-        f"Тип БД: {connection.db_type}",
-        f"Сервер: {_normalize_database_host(connection.host)}:{connection.port}",
-        f"База данных: {connection.database}",
-        f"Пользователь БД: {connection.username}",
-        f"Схема: {schema_name}",
-        f"Таблица: {table_name}",
-        f"Результат: {result}",
+    pairs = [
+        ("Действие", operation_label),
+        *_connection_audit_fields(connection, server_label=True),
+        ("Схема", schema_name),
+        ("Таблица", table_name),
+        ("Результат", result),
     ]
     if error:
-        details.append(f"Ошибка: {error}")
-    return "; ".join(details)
+        pairs.append(("Ошибка", error))
+    return _format_audit_details(pairs)
 
 
 def _can_manage_connections(request):
@@ -420,6 +431,16 @@ def _parse_pg_size_to_bytes(value, default_unit="B"):
     return int(number * multipliers.get(unit, 1))
 
 
+def _format_duration(value):
+    """Форматирует интервал времени (timedelta) для отображения."""
+    return str(value).split(".")[0] if value else "—"
+
+
+def _duration_seconds(value):
+    """Возвращает продолжительность интервала в секундах (0, если значение отсутствует)."""
+    return max(int(value.total_seconds()), 0) if value else 0
+
+
 def _format_bytes(size_bytes):
     """Форматирует размер в байтах для отображения."""
     if size_bytes is None:
@@ -443,9 +464,34 @@ def _safe_db_error_message(action_description, exc):
     return f"{action_description}. Подробности см. в журнале сервера приложения."
 
 
+def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=100):
+    """Разбирает общие параметры пагинации, поиска и сортировки для списковых запросов.
+
+    Возвращает (page, page_size, offset, search, sort_column, direction).
+    """
+    page_size = int(payload.get("page_size") or default_page_size)
+    page = max(int(payload.get("page") or 1), 1)
+    offset = (page - 1) * page_size
+    search = (payload.get("search") or "").strip()
+    sort = payload.get("sort") or default_sort
+    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
+    sort_column = sort_columns.get(sort, default_sort)
+    return page, page_size, offset, search, sort_column, direction
+
+
 def _escape_like_pattern(value):
     """Экранирует специальные символы шаблона SQL LIKE."""
     return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
+
+
+def _multi_column_search_filter(search, columns):
+    """Строит условие ILIKE по нескольким колонкам для текстового поиска.
+
+    Возвращает (where_sql, params); where_sql уже начинается с ``AND``.
+    """
+    pattern = f"%{_escape_like_pattern(search)}%"
+    clauses = " OR ".join(f"{column} ILIKE %s ESCAPE '!'" for column in columns)
+    return f"AND ({clauses})", [pattern] * len(columns)
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
@@ -670,31 +716,32 @@ def _database_roles_list(request, *, can_login):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = int(payload.get("page_size") or (100 if can_login else 10000))
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "name"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "name": "name",
-        "superuser": "superuser",
-        "createdb": "createdb",
-        "createrole": "createrole",
-        "inherit": "inherit",
-        "replication": "replication",
-        "connection_limit": "connection_limit",
-        "valid_until": "valid_until",
-        "member_count": "member_count",
-    }
-    sort_column = sort_columns.get(sort, "name")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "name": "name",
+            "superuser": "superuser",
+            "createdb": "createdb",
+            "createrole": "createrole",
+            "inherit": "inherit",
+            "replication": "replication",
+            "connection_limit": "connection_limit",
+            "valid_until": "valid_until",
+            "member_count": "member_count",
+        },
+        "name",
+        default_page_size=100 if can_login else 10000,
+    )
     role_type_message = "пользователей" if can_login else "групп"
 
     where_sql = ""
     params = [can_login]
     if search:
-        where_sql = "AND role_info.rolname ILIKE %s ESCAPE '!'"
-        params.append(f"%{_escape_like_pattern(search)}%")
+        search_sql, search_params = _multi_column_search_filter(
+            search, ("role_info.rolname",)
+        )
+        where_sql = search_sql
+        params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),

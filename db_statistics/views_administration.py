@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.view_helpers import (
+    EXCLUDED_SYSTEM_SCHEMAS_SQL,
     _current_db_user,
     _database_roles_list,
     _escape_like_pattern,
@@ -12,6 +13,7 @@ from db_statistics.view_helpers import (
     _fetch_db_row,
     _fetch_db_rows,
     _format_bytes,
+    _list_query_params,
     _maintenance_vacuum_audit_info,
     _parse_pg_size_to_bytes,
     _read_json_body,
@@ -29,7 +31,7 @@ def memory_overview(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    memory_query = """
+    memory_query = f"""
         WITH relation_sizes AS (
             SELECT
                 table_class.oid,
@@ -46,7 +48,7 @@ def memory_overview(request):
             JOIN pg_catalog.pg_namespace AS namespace
                 ON namespace.oid = table_class.relnamespace
             WHERE table_class.relkind IN ('r', 'p', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
         )
         SELECT
@@ -206,22 +208,19 @@ def maintenance_stats(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "dead_rows"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schemaname",
-        "table_name": "relname",
-        "live_rows": "live_rows",
-        "dead_rows": "dead_rows",
-        "dead_percent": "dead_percent",
-        "last_vacuum": "last_vacuum_at",
-        "last_analyze": "last_analyze_at",
-    }
-    sort_column = sort_columns.get(sort, "dead_rows")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schemaname",
+            "table_name": "relname",
+            "live_rows": "live_rows",
+            "dead_rows": "dead_rows",
+            "dead_percent": "dead_percent",
+            "last_vacuum": "last_vacuum_at",
+            "last_analyze": "last_analyze_at",
+        },
+        "dead_rows",
+    )
     where_sql = ""
     params = []
     if search:

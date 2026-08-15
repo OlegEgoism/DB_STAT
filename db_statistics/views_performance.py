@@ -2,7 +2,20 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import _backend_termination_audit_info, _current_db_user, _destructive_action_permission_error, _escape_like_pattern, _fetch_db_row, _fetch_db_rows, _read_json_body, _require_payload_connection, _safe_db_error_message, _write_audit
+from db_statistics.view_helpers import (
+    _backend_termination_audit_info,
+    _current_db_user,
+    _destructive_action_permission_error,
+    _duration_seconds,
+    _escape_like_pattern,
+    _fetch_db_row,
+    _fetch_db_rows,
+    _format_duration,
+    _read_json_body,
+    _require_payload_connection,
+    _safe_db_error_message,
+    _write_audit,
+)
 
 
 @require_http_methods(["POST"])
@@ -68,10 +81,8 @@ def active_queries(request):
                 "username": row[1] or "—",
                 "relation_name": row[2] or "—",
                 "state": row[3] or "—",
-                "duration": str(duration).split(".")[0] if duration else "—",
-                "duration_seconds": (
-                    max(int(duration.total_seconds()), 0) if duration else 0
-                ),
+                "duration": _format_duration(duration),
+                "duration_seconds": _duration_seconds(duration),
                 "sql": row[5] or "—",
             }
         )
@@ -248,20 +259,10 @@ def active_sessions(request):
                 "wait_event": " / ".join([part for part in [row[11], row[12]] if part])
                 or "—",
                 "backend_type": row[13] or "—",
-                "session_duration": (
-                    str(session_duration).split(".")[0] if session_duration else "—"
-                ),
-                "session_duration_seconds": (
-                    max(int(session_duration.total_seconds()), 0)
-                    if session_duration
-                    else 0
-                ),
-                "query_duration": (
-                    str(query_duration).split(".")[0] if query_duration else "—"
-                ),
-                "query_duration_seconds": (
-                    max(int(query_duration.total_seconds()), 0) if query_duration else 0
-                ),
+                "session_duration": _format_duration(session_duration),
+                "session_duration_seconds": _duration_seconds(session_duration),
+                "query_duration": _format_duration(query_duration),
+                "query_duration_seconds": _duration_seconds(query_duration),
                 "sql": row[16] or "—",
             }
         )
@@ -434,15 +435,11 @@ def blocking_locks(request):
             {
                 "blocked_pid": row[0],
                 "blocked_user": row[1] or "—",
-                "blocked_duration": (
-                    str(blocked_duration).split(".")[0] if blocked_duration else "—"
-                ),
+                "blocked_duration": _format_duration(blocked_duration),
                 "blocked_query": row[3] or "—",
                 "blocker_pid": row[4],
                 "blocker_user": row[5] or "—",
-                "blocker_duration": (
-                    str(blocker_duration).split(".")[0] if blocker_duration else "—"
-                ),
+                "blocker_duration": _format_duration(blocker_duration),
                 "blocker_query": row[7] or "—",
             }
         )
@@ -505,14 +502,8 @@ def idle_transactions(request):
                 "application_name": row[2] or "—",
                 "client_addr": str(row[3]) if row[3] else "—",
                 "state": row[4] or "—",
-                "transaction_duration": (
-                    str(transaction_duration).split(".")[0]
-                    if transaction_duration
-                    else "—"
-                ),
-                "idle_duration": (
-                    str(idle_duration).split(".")[0] if idle_duration else "—"
-                ),
+                "transaction_duration": _format_duration(transaction_duration),
+                "idle_duration": _format_duration(idle_duration),
                 "sql": row[7] or "—",
             }
         )

@@ -3,14 +3,16 @@ from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
 from db_statistics.view_helpers import (
+    EXCLUDED_SYSTEM_SCHEMAS_SQL,
     _current_db_user,
-    _escape_like_pattern,
     _favorite_filter,
     _fetch_db_resultsets,
     _fetch_db_rows,
     _format_bytes,
     _get_connection_for_request,
     _greenplum_only_error,
+    _list_query_params,
+    _multi_column_search_filter,
     _open_database_connection,
     _read_json_body,
     _require_greenplum_connection,
@@ -26,25 +28,24 @@ def database_schema_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "size_bytes"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "schema_owner": "schema_owner",
-        "table_count": "table_count",
-        "size_bytes": "size_bytes",
-    }
-    sort_column = sort_columns.get(sort, "size_bytes")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schema_name",
+            "schema_owner": "schema_owner",
+            "table_count": "table_count",
+            "size_bytes": "size_bytes",
+        },
+        "size_bytes",
+    )
 
     where_sql = ""
     params = []
     if search:
-        where_sql = "AND (namespace.nspname ILIKE %s OR owner.rolname ILIKE %s)"
-        params.extend([f"%{search}%", f"%{search}%"])
+        where_sql, search_params = _multi_column_search_filter(
+            search, ("namespace.nspname", "owner.rolname")
+        )
+        params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),
@@ -68,7 +69,7 @@ def database_schema_sizes(request):
             LEFT JOIN pg_catalog.pg_roles AS owner
                 ON owner.oid = namespace.nspowner
             WHERE table_class.relkind IN ('r', 'p', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
             GROUP BY namespace.nspname, owner.rolname
@@ -96,7 +97,7 @@ def database_schema_sizes(request):
             LEFT JOIN pg_catalog.pg_roles AS owner
                 ON owner.oid = namespace.nspowner
             WHERE table_class.relkind IN ('r', 'p', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
             GROUP BY namespace.nspname
@@ -158,35 +159,33 @@ def database_table_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "size_bytes"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "table_name": "table_name",
-        "table_owner": "table_owner",
-        "size_bytes": "size_bytes",
-        "index_size_bytes": "index_size_bytes",
-        "index_count": "index_count",
-        "row_count": "row_count",
-    }
-    sort_column = sort_columns.get(sort, "size_bytes")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schema_name",
+            "table_name": "table_name",
+            "table_owner": "table_owner",
+            "size_bytes": "size_bytes",
+            "index_size_bytes": "index_size_bytes",
+            "index_count": "index_count",
+            "row_count": "row_count",
+        },
+        "size_bytes",
+    )
 
     where_sql = ""
     params = []
     if search:
-        search_pattern = f"%{_escape_like_pattern(search)}%"
-        where_sql = """
-          AND (
-              namespace.nspname ILIKE %s ESCAPE '!'
-              OR table_class.relname ILIKE %s ESCAPE '!'
-              OR (namespace.nspname || '.' || table_class.relname) ILIKE %s ESCAPE '!'
-          )
-        """
-        params.extend([search_pattern, search_pattern, search_pattern])
+        where_sql, search_params = _multi_column_search_filter(
+            search,
+            (
+                "namespace.nspname",
+                "table_class.relname",
+                "(namespace.nspname || '.' || table_class.relname)",
+                "owner.rolname",
+            ),
+        )
+        params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),
@@ -217,7 +216,7 @@ def database_table_sizes(request):
             LEFT JOIN pg_catalog.pg_roles AS owner
                 ON owner.oid = table_class.relowner
             WHERE table_class.relkind IN ('r', 'p')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
         )
@@ -247,7 +246,7 @@ def database_table_sizes(request):
             JOIN pg_catalog.pg_namespace AS namespace
                 ON namespace.oid = table_class.relnamespace
             WHERE table_class.relkind IN ('r', 'p')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
         )
@@ -318,23 +317,20 @@ def database_views_list(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schema_name",
+            "view_name": "view_name",
+            "view_owner": "view_owner",
+            "view_type": "view_type",
+            "size_bytes": "size_bytes",
+            "index_size_bytes": "index_size_bytes",
+            "row_count": "row_count",
+        },
+        "schema_name",
+    )
     view_type = payload.get("view_type") or ""
-    sort = payload.get("sort") or "schema_name"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "view_name": "view_name",
-        "view_owner": "view_owner",
-        "view_type": "view_type",
-        "size_bytes": "size_bytes",
-        "index_size_bytes": "index_size_bytes",
-        "row_count": "row_count",
-    }
-    sort_column = sort_columns.get(sort, "schema_name")
 
     where_sql = ""
     params = []
@@ -344,16 +340,16 @@ def database_views_list(request):
     elif view_type == "materialized":
         type_sql = "AND view_class.relkind = 'm'"
     if search:
-        search_pattern = f"%{_escape_like_pattern(search)}%"
-        where_sql = """
-          AND (
-              namespace.nspname ILIKE %s ESCAPE '!'
-              OR view_class.relname ILIKE %s ESCAPE '!'
-              OR owner.rolname ILIKE %s ESCAPE '!'
-              OR (namespace.nspname || '.' || view_class.relname) ILIKE %s ESCAPE '!'
-          )
-        """
-        params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+        where_sql, search_params = _multi_column_search_filter(
+            search,
+            (
+                "namespace.nspname",
+                "view_class.relname",
+                "owner.rolname",
+                "(namespace.nspname || '.' || view_class.relname)",
+            ),
+        )
+        params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),
@@ -383,7 +379,7 @@ def database_views_list(request):
             LEFT JOIN pg_catalog.pg_roles AS owner
                 ON owner.oid = view_class.relowner
             WHERE view_class.relkind IN ('v', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {type_sql}
               {where_sql}
@@ -462,25 +458,21 @@ def database_functions_list(request):
     if error_response:
         return error_response
 
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "schema_name"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "function_name": "function_name",
-        "return_type": "return_type",
-        "arguments": "arguments",
-    }
-    sort_column = sort_columns.get(sort, "schema_name")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schema_name",
+            "function_name": "function_name",
+            "return_type": "return_type",
+            "arguments": "arguments",
+        },
+        "schema_name",
+    )
 
     where_sql = ""
     params = []
     if search:
-        where_sql = "AND procedure.proname ILIKE %s ESCAPE '!'"
-        params.append(f"%{_escape_like_pattern(search)}%")
+        where_sql, params = _multi_column_search_filter(search, ("procedure.proname",))
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),
@@ -505,7 +497,7 @@ def database_functions_list(request):
             FROM pg_catalog.pg_proc AS procedure
             JOIN pg_catalog.pg_namespace AS namespace
                 ON namespace.oid = procedure.pronamespace
-            WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+            WHERE namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
               {where_sql}
         )
@@ -556,7 +548,7 @@ def distribution_tables(request):
     db_connection, error_response = _require_greenplum_connection(request, payload)
     if error_response:
         return error_response
-    tables_query = """
+    tables_query = f"""
         SELECT
             namespace.nspname AS schema_name,
             table_class.relname AS table_name,
@@ -569,7 +561,7 @@ def distribution_tables(request):
         JOIN pg_catalog.pg_namespace AS namespace
             ON namespace.oid = table_class.relnamespace
         WHERE table_class.relkind IN ('r', 'p', 'm')
-          AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+          AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
           AND namespace.nspname NOT LIKE 'pg_toast%%'
         ORDER BY namespace.nspname ASC, table_class.relname ASC;
     """
@@ -688,34 +680,30 @@ def database_temp_table_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page_size = 100
-    page = max(int(payload.get("page") or 1), 1)
-    offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
-    sort = payload.get("sort") or "size_bytes"
-    direction = "ASC" if payload.get("direction") == "asc" else "DESC"
-    sort_columns = {
-        "schema_name": "schema_name",
-        "table_name": "table_name",
-        "table_owner": "table_owner",
-        "size_bytes": "size_bytes",
-        "session_label": "session_label",
-    }
-    sort_column = sort_columns.get(sort, "size_bytes")
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {
+            "schema_name": "schema_name",
+            "table_name": "table_name",
+            "table_owner": "table_owner",
+            "size_bytes": "size_bytes",
+            "session_label": "session_label",
+        },
+        "size_bytes",
+    )
 
     where_sql = ""
     params = []
     if search:
-        search_pattern = f"%{_escape_like_pattern(search)}%"
-        where_sql = """
-          AND (
-              namespace.nspname ILIKE %s ESCAPE '!'
-              OR table_class.relname ILIKE %s ESCAPE '!'
-              OR owner.rolname ILIKE %s ESCAPE '!'
-              OR (namespace.nspname || '.' || table_class.relname) ILIKE %s ESCAPE '!'
-          )
-        """
-        params.extend([search_pattern, search_pattern, search_pattern, search_pattern])
+        where_sql, params = _multi_column_search_filter(
+            search,
+            (
+                "namespace.nspname",
+                "table_class.relname",
+                "owner.rolname",
+                "(namespace.nspname || '.' || table_class.relname)",
+            ),
+        )
 
     temp_table_sizes_query = f"""
         WITH temp_table_sizes AS (

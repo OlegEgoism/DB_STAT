@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import _fetch_db_row, _fetch_db_rows, _open_database_connection, _read_json_body, _require_greenplum_connection, _require_payload_connection, _safe_db_error_message
+from db_statistics.view_helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _fetch_db_resultsets, _open_database_connection, _read_json_body, _require_greenplum_connection, _require_payload_connection, _safe_db_error_message
 
 
 @require_http_methods(["POST"])
@@ -11,7 +11,7 @@ def database_overview(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    overview_query = """
+    overview_query = f"""
         WITH relation_sizes AS (
             SELECT
                 table_class.oid,
@@ -28,7 +28,7 @@ def database_overview(request):
             JOIN pg_catalog.pg_namespace AS namespace
                 ON namespace.oid = table_class.relnamespace
             WHERE table_class.relkind IN ('r', 'p', 'm')
-              AND namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'gp_toolkit')
+              AND namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
               AND namespace.nspname NOT LIKE 'pg_toast%%'
         )
         SELECT
@@ -102,20 +102,12 @@ def database_overview(request):
     """
 
     try:
-        row = _fetch_db_row(
+        overview_rows, extension_rows = _fetch_db_resultsets(
             db_connection,
-            overview_query,
-            [
-                db_connection.database,
-                db_connection.database,
-                db_connection.database,
-                db_connection.database,
-                db_connection.database,
-                db_connection.database,
-                db_connection.database,
-            ],
+            (overview_query, [db_connection.database] * 7),
+            (extensions_query, None),
         )
-        extension_rows = _fetch_db_rows(db_connection, extensions_query)
+        row = overview_rows[0]
     except Exception as exc:
         return JsonResponse(
             {
