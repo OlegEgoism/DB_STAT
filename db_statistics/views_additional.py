@@ -79,7 +79,6 @@ def login(request):
     if request.method == "POST":
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
-        password_value = request.POST.get("password") or ""
         session_duration_value = (
             request.POST.get("session_duration")
             or str(settings.DEFAULT_SESSION_DURATION_HOURS)
@@ -92,11 +91,9 @@ def login(request):
             else:
                 error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
-            candidate = DBUser.objects.filter(
+            db_user = DBUser.objects.filter(
                 login=login_value, email=email_value, is_active=True
             ).first()
-            if candidate and candidate.check_password(password_value):
-                db_user = candidate
 
         if not error and db_user:
             request.session.cycle_key()
@@ -113,9 +110,9 @@ def login(request):
             return redirect("home")
         if not error:
             error = (
-                "Invalid login, email or password, or the user is inactive"
+                "No active user with the specified login and email was found"
                 if is_english
-                else "Неверный логин, почта или пароль, либо пользователь отключён"
+                else "Пользователь с указанными логином и электронной почтой не найден или отключён"
             )
 
     return render(

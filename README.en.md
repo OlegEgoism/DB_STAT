@@ -85,13 +85,7 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 - Create a DBUser for application authentication
 
 ```bash
-python manage.py shell -c "
-from db_statistics.models import DBUser
-user, created = DBUser.objects.get_or_create(login='admin', defaults={'email': 'admin@example.com', 'role': 'Администратор', 'is_active': True})
-if created:
-    user.set_password('admin')
-    user.save()
-"
+python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
 ```
 
 - Encrypt any connection passwords left in plain text after upgrading from a version without encryption (one-time command, safe to re-run)
