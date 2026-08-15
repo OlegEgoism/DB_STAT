@@ -2,7 +2,21 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.view_helpers import _current_db_user, _escape_like_pattern, _favorite_filter, _fetch_db_resultsets, _fetch_db_rows, _format_bytes, _get_connection_for_request, _open_database_connection, _read_json_body, _require_payload_connection
+from db_statistics.view_helpers import (
+    _current_db_user,
+    _escape_like_pattern,
+    _favorite_filter,
+    _fetch_db_resultsets,
+    _fetch_db_rows,
+    _format_bytes,
+    _get_connection_for_request,
+    _greenplum_only_error,
+    _open_database_connection,
+    _read_json_body,
+    _require_greenplum_connection,
+    _require_payload_connection,
+    _safe_db_error_message,
+)
 
 
 @require_http_methods(["POST"])
@@ -103,7 +117,10 @@ def database_schema_sizes(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить размеры схем: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить размеры схем", exc),
+            },
             status=400,
         )
 
@@ -251,7 +268,10 @@ def database_table_sizes(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить размеры таблиц: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить размеры таблиц", exc),
+            },
             status=400,
         )
 
@@ -391,7 +411,10 @@ def database_views_list(request):
         rows = _fetch_db_rows(db_connection, views_query, [*params, page_size, offset])
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить представления: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить представления", exc),
+            },
             status=400,
         )
 
@@ -498,7 +521,11 @@ def database_functions_list(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить функции: {exc}"}, status=400
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить функции", exc),
+            },
+            status=400,
         )
 
     functions = [
@@ -526,7 +553,7 @@ def database_functions_list(request):
 def distribution_tables(request):
     """Возвращает таблицы, доступные для анализа распределения."""
     payload = _read_json_body(request)
-    db_connection, error_response = _require_payload_connection(request, payload)
+    db_connection, error_response = _require_greenplum_connection(request, payload)
     if error_response:
         return error_response
     tables_query = """
@@ -555,7 +582,10 @@ def distribution_tables(request):
         ]
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить список таблиц: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить список таблиц", exc),
+            },
             status=400,
         )
 
@@ -577,6 +607,8 @@ def distribution_info(request):
         return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
 
     db_connection = _get_connection_for_request(request, connection_id)
+    if db_connection.db_type != "Greenplum":
+        return _greenplum_only_error()
     validate_query = """
         SELECT 1
         FROM pg_catalog.pg_class AS table_class
@@ -607,7 +639,10 @@ def distribution_info(request):
                 rows = cursor.fetchall()
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить распределение: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить распределение", exc),
+            },
             status=400,
         )
 
@@ -750,7 +785,12 @@ def database_temp_table_sizes(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить временные таблицы: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message(
+                    "Не удалось получить временные таблицы", exc
+                ),
+            },
             status=400,
         )
 

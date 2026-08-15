@@ -78,6 +78,7 @@ def login(request):
     if request.method == "POST":
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
+        password_value = request.POST.get("password") or ""
         session_duration_value = (
             request.POST.get("session_duration")
             or str(settings.DEFAULT_SESSION_DURATION_HOURS)
@@ -90,9 +91,11 @@ def login(request):
             else:
                 error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
-            db_user = DBUser.objects.filter(
+            candidate = DBUser.objects.filter(
                 login=login_value, email=email_value, is_active=True
             ).first()
+            if candidate and candidate.check_password(password_value):
+                db_user = candidate
 
         if not error and db_user:
             request.session.cycle_key()
@@ -109,9 +112,9 @@ def login(request):
             return redirect("home")
         if not error:
             error = (
-                "No active user with the specified login and email was found"
+                "Invalid login, email or password, or the user is inactive"
                 if is_english
-                else "Пользователь с указанными логином и электронной почтой не найден или отключён"
+                else "Неверный логин, почта или пароль, либо пользователь отключён"
             )
 
     return render(
@@ -167,11 +170,7 @@ def sidebar_settings(request):
             }
         )
 
-    try:
-        payload = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
-
+    payload = _read_json_body(request)
     previous_tabs = current_tabs
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     visible_tabs = [tab_id for tab_id in visible_tabs if tab_id in available_tabs]
@@ -207,6 +206,10 @@ def favorites(request):
 
     payload = request.GET if request.method == "GET" else _read_json_body(request)
     connection_id = payload.get("id")
+    if not connection_id:
+        return JsonResponse(
+            {"ok": False, "message": "Подключение не выбрано"}, status=400
+        )
     connection = _get_connection_for_request(request, connection_id)
     queryset = DBFavorite.objects.filter(user=db_user, connection=connection)
     if request.method == "GET":
@@ -269,11 +272,7 @@ def favorites(request):
 @require_http_methods(["POST"])
 def language_settings(request):
     """Сохраняет выбранный язык интерфейса в стандартной cookie Django."""
-    try:
-        payload = json.loads(request.body or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"ok": False, "message": "Некорректный JSON"}, status=400)
-
+    payload = _read_json_body(request)
     language = str(payload.get("language", "")).lower()
     if language not in settings.SUPPORTED_LANGUAGES:
         return JsonResponse(
@@ -432,12 +431,23 @@ def connections(request):
             }
         )
 
+    lookup = {
+        "name": payload["name"].strip(),
+        "host": payload["host"].strip(),
+        "port": int(payload["port"]),
+        "database": payload["database"].strip(),
+        "username": defaults["username"],
+    }
+    existing_connection = DBConnection.objects.filter(**lookup).first()
+    if (
+        existing_connection
+        and existing_connection.created_user_id is not None
+        and (not db_user or existing_connection.created_user_id != db_user.pk)
+    ):
+        return _connection_edit_permission_error()
+
     connection, created = DBConnection.objects.update_or_create(
-        name=payload["name"].strip(),
-        host=payload["host"].strip(),
-        port=int(payload["port"]),
-        database=payload["database"].strip(),
-        defaults={**defaults, "password": payload.get("password", "")},
+        defaults=defaults, **lookup
     )
     if db_user:
         if created or connection.created_user_id is None:

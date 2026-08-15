@@ -8,6 +8,7 @@ from db_statistics.view_helpers import (
     _current_db_user,
     _database_roles_list,
     _escape_like_pattern,
+    _evict_stale_maintenance_jobs,
     _fetch_db_row,
     _fetch_db_rows,
     _format_bytes,
@@ -16,6 +17,7 @@ from db_statistics.view_helpers import (
     _read_json_body,
     _require_payload_connection,
     _run_maintenance_vacuum,
+    _safe_db_error_message,
     _write_audit,
 )
 
@@ -70,7 +72,12 @@ def memory_overview(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить параметры памяти: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message(
+                    "Не удалось получить параметры памяти", exc
+                ),
+            },
             status=400,
         )
 
@@ -270,7 +277,9 @@ def maintenance_stats(request):
         return JsonResponse(
             {
                 "ok": False,
-                "message": f"Не удалось получить статистику обслуживания: {exc}",
+                "message": _safe_db_error_message(
+                    "Не удалось получить статистику обслуживания", exc
+                ),
             },
             status=400,
         )
@@ -320,6 +329,7 @@ def maintenance_vacuum(request):
     payload = _read_json_body(request)
     if payload.get("job_id"):
         with settings.MAINTENANCE_JOBS_LOCK:
+            _evict_stale_maintenance_jobs()
             job_id = str(payload["job_id"])
             job = settings.MAINTENANCE_JOBS.get(job_id)
             if not job or job["user_id"] != db_user.pk:
@@ -360,6 +370,7 @@ def maintenance_vacuum(request):
         "message": "Операция выполняется",
     }
     with settings.MAINTENANCE_JOBS_LOCK:
+        _evict_stale_maintenance_jobs()
         settings.MAINTENANCE_JOBS[job_id] = job
     _write_audit(
         operation,

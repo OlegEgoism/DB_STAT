@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import _fetch_db_row, _fetch_db_rows, _open_database_connection, _read_json_body, _require_payload_connection
+from db_statistics.view_helpers import _fetch_db_row, _fetch_db_rows, _open_database_connection, _read_json_body, _require_greenplum_connection, _require_payload_connection, _safe_db_error_message
 
 
 @require_http_methods(["POST"])
@@ -118,7 +118,11 @@ def database_overview(request):
         extension_rows = _fetch_db_rows(db_connection, extensions_query)
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить обзор БД: {exc}"}, status=400
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить обзор БД", exc),
+            },
+            status=400,
         )
 
     installed_extensions = [
@@ -288,7 +292,7 @@ def database_overview(request):
 def segments_info(request):
     """Возвращает состояние и конфигурацию сегментов Greenplum."""
     payload = _read_json_body(request)
-    db_connection, error_response = _require_payload_connection(request, payload)
+    db_connection, error_response = _require_greenplum_connection(request, payload)
     if error_response:
         return error_response
     config_query = """
@@ -377,7 +381,9 @@ def segments_info(request):
         return JsonResponse(
             {
                 "ok": False,
-                "message": f"Не удалось получить информацию о сегментах: {exc}",
+                "message": _safe_db_error_message(
+                    "Не удалось получить информацию о сегментах", exc
+                ),
             },
             status=400,
         )

@@ -36,7 +36,7 @@ RUN rm -f /app/db.sqlite3 \
     && python manage.py makemigrations \
     && python manage.py migrate \
     && python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')" \
-    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
+    && python manage.py shell -c "from db_statistics.models import DBUser; u, c = DBUser.objects.get_or_create(login='admin', defaults={'email': 'admin@example.com', 'role': 'Администратор', 'is_active': True}); u.set_password('admin') if c else None; u.save() if c else None"
 
 EXPOSE 8000
 
