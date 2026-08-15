@@ -4,7 +4,7 @@
     const language = String(window.DB_STAT_LANGUAGE || 'ru').toLowerCase();
     const translations = {
         'Авторизация': 'Sign in', 'Авторизация пользователя': 'User sign in', 'Войти': 'Sign in',
-        'Логин/Login': 'Login', 'Почта/Email': 'Email', 'Время сессии, часов': 'Session duration (hours)', 'Время сессии (часы)': 'Session duration (hours)', 'Ошибка 404': 'Error 404',
+        'Время сессии (часы)': 'Session duration (hours)', 'Ошибка 404': 'Error 404',
         'Страница не найдена': 'Page not found', 'Запрошенная страница не существует или была удалена.': 'The requested page does not exist or has been removed.',
         'Запрошенный адрес': 'Requested address', 'На главную': 'Home', 'Главная': 'Home', 'Главная страница': 'Home page',
         'Инфраструктура': 'Infrastructure', 'Данные': 'Data', 'Производительность': 'Performance', 'Администрирование': 'Administration', 'Дополнительно': 'Additional',
@@ -22,8 +22,6 @@
         'Стандартная светлая тема': 'Standard light theme', 'Комфортная работа при слабом освещении': 'Comfortable in low light', 'Мягкий нейтральный фон': 'Soft neutral background',
         'Выберите цветовую схему интерфейса. Тема применяется сразу и сохраняется для следующих посещений.': 'Choose the interface color scheme. The theme is applied immediately and saved for future visits.',
         'Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.': 'The language applies to the entire interface and is saved for future visits.',
-        'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя.': 'Select the tabs to show in the sidebar for the current user.',
-        'Выберите вкладки, которые нужно показывать в боковом меню для текущего пользователя. Перетаскивайте вкладки мышкой, чтобы изменить их порядок внутри каждого блока.': 'Select the tabs to show in the sidebar for the current user. Drag tabs to reorder them within each section.',
         'Выберите вкладки, которые нужно показывать в боковом меню. Перетаскивайте вкладки внутри блоков, а сами блоки — за заголовок, чтобы настроить последовательность их отображения.': 'Select the tabs to show in the sidebar. Drag tabs within sections, and drag section headers to change the section order.',
         'Выбрать все': 'Select all', 'Сохранить': 'Save', 'Уведомление': 'Notification', 'Новое подключение': 'New connection',
         'Подтверждение завершения': 'Confirm termination', 'Подтвердите завершение процесса.': 'Confirm process termination.',
@@ -31,7 +29,7 @@
         'Перетащить вкладку': 'Drag tab', 'Перетащить блок': 'Drag section',
         'Название': 'Name', 'Хост': 'Host', 'Порт': 'Port', 'Тип БД': 'Database type', 'Пароль': 'Password', 'Пользователь': 'User',
         'Пользователь БД': 'Database user', 'Владелец': 'Owner', 'Информация о подключении': 'Connection information',
-        'Информация о пользователе': 'User information', 'Почта': 'Email', 'Роль': 'Role', 'Новое подключение': 'New connection',
+        'Информация о пользователе': 'User information', 'Почта': 'Email', 'Роль': 'Role',
         'Удалить': 'Delete', 'Отмена': 'Cancel', 'Проверить': 'Test', 'Подключиться': 'Connect', 'Редактировать подключение': 'Edit connection',
         'Загрузка подключений...': 'Loading connections...', 'Нет доступных подключений': 'No connections available', 'Выйти': 'Sign out',
         'Описание разделов': 'Section overview', 'Размеры и структура': 'Sizes and structure', 'Состояние и конфигурация': 'Status and configuration',
@@ -40,17 +38,17 @@
         'Пользователи и подключения': 'Users and connections', 'Кто кого блокирует': 'Blocking relationships', 'Параметры памяти': 'Memory settings',
         'Список пользователей': 'User list', 'Список групп': 'Group list', 'Очистка / анализ': 'Vacuum / analyze', 'Действия пользователя': 'User actions',
         'Избранные объекты': 'Favorite objects', 'Сохранённые объекты подключения': 'Saved objects for the connection',
-        'Нет данных': 'No data', 'Загрузка...': 'Loading...', 'Обновить': 'Refresh', 'Поиск': 'Search', 'Все': 'All', 'Да': 'Yes', 'Нет': 'No',
+        'Нет данных': 'No data', 'Обновить': 'Refresh', 'Поиск': 'Search', 'Все': 'All', 'Да': 'Yes', 'Нет': 'No',
         'Параметр': 'Parameter', 'Значение': 'Value', 'Статус': 'Status', 'Состояние': 'State', 'Размер': 'Size', 'Всего': 'Total', 'Все записи': 'All records', 'Только избранные': 'Favorites only',
-        'Схема': 'Schema', 'Таблица': 'Table', 'Индексы': 'Indexes', 'Строк': 'Rows', 'Строки': 'Rows', 'Длительность': 'Duration', 'Тип объекта': 'Object type', 'Объект': 'Object', 'Идентификатор объекта': 'Object identifier',
+        'Схема': 'Schema', 'Таблица': 'Table', 'Индексы': 'Indexes', 'Строк': 'Rows', 'Длительность': 'Duration', 'Тип объекта': 'Object type', 'Объект': 'Object', 'Идентификатор объекта': 'Object identifier',
         'Дата': 'Date', 'Действие': 'Action', 'Действия': 'Actions', 'Информация': 'Information', 'События аудита не найдены': 'No audit events found',
-        'Страница 1 из 1': 'Page 1 of 1', 'Страница 1': 'Page 1', 'Все действия': 'All actions', 'Свернуть график': 'Collapse chart',
+        'Страница 1 из 1': 'Page 1 of 1', 'Страница 1': 'Page 1', 'Свернуть график': 'Collapse chart',
         'Развернуть график': 'Expand chart', 'Выберите таблицу': 'Select a table', 'Таблицы не найдены': 'No tables found',
         'Показать список таблиц': 'Show table list', 'Таблицы базы данных': 'Database tables',
         'Пользователи не найдены': 'No users found', 'Группы не найдены': 'No groups found', 'Схемы не найдены': 'No schemas found',
         'Представления не найдены': 'No views found', 'Функции не найдены': 'No functions found', 'Временные таблицы не найдены': 'No temporary tables found',
-        'Транзакции не найдены': 'No transactions found', 'Блокировки не найдены': 'No locks found', 'Сессии не найдены': 'No sessions found',
-        'Запросы не найдены': 'No queries found', 'Недоступно': 'Unavailable', 'Обновление...': 'Updating...',
+        'Транзакции не найдены': 'No transactions found', 'Блокировки не найдены': 'No locks found',
+        'Недоступно': 'Unavailable', 'Обновление...': 'Updating...',
         'Основные данные БД': 'Database basics', 'Активность БД': 'Database activity', 'Коммиты / Роллбеки': 'Commits / rollbacks',
         'Показатель': 'Metric', 'Слоты подключений': 'Connection slots', 'Использование': 'Usage', 'Пользователи и группы': 'Users and groups',
         'Тип': 'Type', 'Количество': 'Count', 'Установленные расширения': 'Installed extensions', 'Расширение': 'Extension', 'Версия': 'Version',
@@ -117,7 +115,7 @@
         'Все пользователи': 'All users', 'Все сегменты': 'All segments', 'Остальные': 'Other', 'Процент': 'Percent',
         '10 сек': '10 sec', '30 сек': '30 sec', '5 сек': '5 sec', '60 сек': '60 sec',
         'Активные запросы не найдены': 'No active queries found', 'Активные сессии и подключения не найдены': 'No active sessions or connections found',
-        'Действие': 'Action', 'Завершить': 'Terminate',
+        'Завершить': 'Terminate',
         'Завершение активного запроса': 'Active query termination', 'Завершение активной сессии': 'Active session termination',
         'Указан некорректный PID запроса': 'Invalid query PID', 'Указан некорректный PID сессии': 'Invalid session PID',
         'Не удалось завершить активный запрос': 'Failed to terminate the active query',
@@ -167,16 +165,17 @@
         'Неизвестный тип действия': 'Unknown action type', 'Некорректный JSON': 'Invalid JSON', 'Подключение не выбрано': 'No connection selected',
         'Требуется вход в приложение': 'Sign-in required', 'Заполните все обязательные поля': 'Fill in all required fields',
         'Выход из приложения: активный пользователь не найден': 'Signed out: no active user was found',
-        'Пользователь с указанными login и email не найден или отключён': 'No active user with the specified login and email was found',
         'Поддерживаются только языки RU и EN': 'Only RU and EN are supported',
         'Редактировать подключение может только его создатель': 'Only the connection creator can edit it',
         'Удалять подключение может только его создатель': 'Only the connection creator can delete it',
-        'Удалить подключение может только его создатель': 'Only the connection creator can delete it',
         'Удалять подключения может только Администратор': 'Only an Administrator can delete connections',
         'Создавать подключения может только Администратор': 'Only an Administrator can create connections',
         'Сохранять подключения может только Администратор': 'Only an Administrator can save connections',
         'Проверять новое подключение может только Администратор': 'Only an Administrator can test a new connection',
         'Создавать и редактировать подключения может только Администратор': 'Only an Administrator can create and edit connections',
+        'Действие доступно только Администратору': 'This action is available to Administrators only',
+        'Эта функция доступна только для подключений типа Greenplum': 'This feature is only available for Greenplum connections',
+        'Некорректные параметры сортировки': 'Invalid sort parameters',
         'Выберите хотя бы одну вкладку для сайдбара': 'Select at least one sidebar tab',
         'Настройки сайдбара сохранены': 'Sidebar settings saved',
         'Тема оформления сохранена': 'Appearance theme saved',
@@ -192,7 +191,8 @@
         'Не удалось получить список групп': 'Failed to load groups', 'Не удалось получить список пользователей': 'Failed to load users',
         'Не удалось получить статистику обслуживания': 'Failed to load maintenance statistics',
         'Не удалось получить транзакции': 'Failed to load transactions', 'Не удалось сохранить настройки сайдбара': 'Failed to save sidebar settings',
-        'Не удалось обновить информацию о сегментах': 'Failed to refresh segment information',
+        'Не удалось получить обзор БД': 'Failed to load database overview',
+        'Не удалось получить информацию о сегментах': 'Failed to load segment information',
         'Выберите сохранённое подключение для загрузки активных сессий и подключений': 'Select a saved connection to load active sessions and connections',
         'Выберите сохранённое подключение для загрузки памяти': 'Select a saved connection to load memory data', 'Выберите сохранённое подключение для загрузки функций': 'Select a saved connection to load functions',
         'Выберите сохранённое подключение для загрузки списка таблиц': 'Select a saved connection to load the table list',
@@ -261,8 +261,6 @@
         [/^Сессия с PID (\d+) завершена$/, 'Session with PID $1 was terminated'],
         [/^Активный запрос с PID (\d+) не найден$/, 'Active query with PID $1 was not found'],
         [/^Сессия с PID (\d+) не найдена$/, 'Session with PID $1 was not found'],
-        [/^Не удалось завершить запрос с PID (\d+): (.+)$/, 'Failed to terminate query with PID $1: $2'],
-        [/^Не удалось завершить сессию с PID (\d+): (.+)$/, 'Failed to terminate session with PID $1: $2'],
         [/^Не удалось завершить запрос с PID (\d+)$/, 'Failed to terminate query with PID $1'],
         [/^Не удалось завершить сессию с PID (\d+)$/, 'Failed to terminate session with PID $1'],
         [/^Все сегменты подняты и синхронизированы$/, 'All segments are up and synchronized'],
@@ -284,21 +282,13 @@
         ['Проверка нового подключения', 'New connection test'], ['Изменение подключения', 'Connection update'],
         ['Создание подключения', 'Connection creation'], ['Удаление подключения', 'Connection deletion'],
         ['Подключение к', 'Connection to'], ['Подключение ', 'Connection '], [' удалено', ' deleted'], [' успешно', ' successfully'],
-        ['Не удалось получить список пользователей:', 'Failed to load users:'],
-        ['Не удалось получить список групп:', 'Failed to load groups:'],
-        ['Не удалось получить список таблиц:', 'Failed to load table list:'],
-        ['Не удалось получить активные запросы:', 'Failed to load active queries:'],
-        ['Не удалось получить активные сессии и подключения:', 'Failed to load active sessions and connections:'],
-        ['Не удалось получить блокировки:', 'Failed to load locks:'], ['Не удалось получить временные таблицы:', 'Failed to load temporary tables:'],
-        ['Не удалось получить информацию о сегментах:', 'Failed to load segment information:'],
-        ['Не удалось получить параметры памяти:', 'Failed to load memory settings:'], ['Не удалось получить представления:', 'Failed to load views:'],
-        ['Не удалось получить размеры схем:', 'Failed to load schema sizes:'], ['Не удалось получить размеры таблиц:', 'Failed to load table sizes:'],
-        ['Не удалось получить распределение:', 'Failed to load distribution data:'],
-        ['Не удалось получить статистику обслуживания:', 'Failed to load maintenance statistics:'],
         ['Не удалось получить статус обслуживания:', 'Failed to get maintenance job status:'],
         ['Не удалось запустить обслуживание:', 'Failed to start maintenance:'],
-        ['Не удалось получить транзакции:', 'Failed to load transactions:'], ['Не удалось подключиться к', 'Failed to connect to'],
-        ['Не удалось получить обзор БД:', 'Failed to load database overview:'], ['Не удалось получить список ', 'Failed to load '],
+        ['Не удалось подключиться к', 'Failed to connect to'],
+        ['Не удалось получить список ', 'Failed to load '],
+        ['Не удалось завершить запрос с PID ', 'Failed to terminate the query with PID '],
+        ['Не удалось завершить сессию с PID ', 'Failed to terminate the session with PID '],
+        ['Подробности см. в журнале сервера приложения.', 'See the application server log for details.'],
         ['Выберите сохранённое подключение для загрузки ', 'Select a saved connection to load '],
         ['Выберите подключение или дождитесь загрузки ', 'Select a connection or wait for '],
         ['Выберите сохранённое подключение для расчёта ', 'Select a saved connection to calculate '],
@@ -313,7 +303,6 @@
         ['статистики обслуживания', 'maintenance statistics'], ['аудита', 'audit'],
         ['Действие:', 'Action:'], ['Подключение:', 'Connection:'], ['ID подключения:', 'Connection ID:'], ['Тип БД:', 'Database type:'], ['Сервер:', 'Server:'], ['База данных:', 'Database:'],
         ['Пользователь БД:', 'Database user:'], ['Пользователь:', 'User:'], ['Хост:', 'Host:'], ['Порт:', 'Port:'],
-        ['База подключения:', 'Connection database:'], ['Пользователь подключения:', 'Connection user:'],
         ['Пользователь сессии:', 'Session user:'], ['База сессии:', 'Session database:'], ['Приложение:', 'Application:'],
         ['Клиент:', 'Client:'], ['Состояние:', 'State:'], ['Тип backend:', 'Backend type:'], ['Начало сессии:', 'Session started:'],
         ['Начало транзакции:', 'Transaction started:'], ['Начало запроса:', 'Query started:'],
@@ -348,6 +337,15 @@
         return value;
     }
 
+    function translateAttributes(element) {
+        ['title', 'aria-label', 'placeholder'].forEach(attribute => {
+            if (!element.hasAttribute(attribute)) return;
+            const current = element.getAttribute(attribute);
+            const translated = translateText(current);
+            if (translated !== current) element.setAttribute(attribute, translated);
+        });
+    }
+
     function translateElement(root) {
         if (language !== 'en' || !root) return;
         if (root.nodeType === Node.TEXT_NODE) {
@@ -358,11 +356,14 @@
         }
         if (root.nodeType !== Node.ELEMENT_NODE) return;
         if (root.closest('[data-i18n-skip]')) return;
-        ['title', 'aria-label', 'placeholder'].forEach(attribute => {
-            if (!root.hasAttribute(attribute)) return;
-            const current = root.getAttribute(attribute);
-            const translated = translateText(current);
-            if (translated !== current) root.setAttribute(attribute, translated);
+        translateAttributes(root);
+        // translateAttributes(root) above only covers the root element itself; without this,
+        // every title/aria-label/placeholder on a DESCENDANT element (i.e. virtually every
+        // static attribute rendered by the server, plus anything built via innerHTML) would
+        // never be inspected, since the TreeWalker below only visits text nodes, not elements.
+        root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(element => {
+            if (element.closest('[data-i18n-skip]')) return;
+            translateAttributes(element);
         });
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
         let node;
