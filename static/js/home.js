@@ -196,14 +196,14 @@
 
     function favoriteButton(type, key, label) {
         const selected = favoriteKeys.has(favoriteId(type, key));
-        const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+        const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
         return `<button type="button" class="favorite-btn${selected ? ' active' : ''}" data-favorite-type="${escapeHtml(type)}" data-favorite-key="${escapeHtml(key)}" data-favorite-label="${escapeHtml(label)}" title="${action}: ${escapeHtml(label)}" aria-label="${action}: ${escapeHtml(label)}" aria-pressed="${selected}"><i class="${selected ? 'fas' : 'far'} fa-star"></i></button>`;
     }
 
     function updateFavoriteButtons() {
         document.querySelectorAll('[data-favorite-type][data-favorite-key]').forEach(button => {
             const selected = favoriteKeys.has(favoriteId(button.dataset.favoriteType, button.dataset.favoriteKey));
-            const action = selected ? 'Удалить из избранного' : 'Добавить в избранное';
+            const action = translateInterfaceText(selected ? 'Удалить из избранного' : 'Добавить в избранное');
             const label = button.dataset.favoriteLabel || button.dataset.favoriteKey;
             button.classList.toggle('active', selected);
             button.setAttribute('aria-pressed', String(selected));
@@ -371,7 +371,7 @@
                     applyFavoriteChange(data);
                     refreshFavoriteFilteredTable(data.object_type);
                 })
-                .catch(error => window.alert(error.message))
+                .catch(error => window.alert(translateInterfaceText(error.message)))
                 .finally(() => setFavoriteButtonsDisabled(objectType, objectKey, false));
         });
     }
@@ -661,11 +661,12 @@
             row.className = 'sidebar-settings-item';
             row.dataset.sidebarPage = pageId;
             row.dataset.fixedPage = String(isFixed);
+            const dragTabLabel = translateInterfaceText('Перетащить вкладку');
             row.innerHTML = `
                 ${isFixed ? '<span class="sidebar-settings-item__fixed-space" aria-hidden="true"></span>' : `<input class="form-check-input" id="${escapeHtml(inputId)}" type="checkbox" value="${escapeHtml(pageId)}" ${visiblePages.has(pageId) ? 'checked' : ''}>`}
                 <span class="sidebar-settings-item__icon"></span>
                 ${isFixed ? `<span>${escapeHtml(label)}</span>` : `<label for="${escapeHtml(inputId)}">${escapeHtml(label)}</label>`}
-                <span class="sidebar-settings-item__drag-handle" draggable="true" data-sidebar-drag-handle title="Перетащить вкладку" aria-label="Перетащить вкладку" role="button" tabindex="0"><i class="fas fa-grip-vertical" aria-hidden="true"></i></span>
+                <span class="sidebar-settings-item__drag-handle" draggable="true" data-sidebar-drag-handle title="${dragTabLabel}" aria-label="${dragTabLabel}" role="button" tabindex="0"><i class="fas fa-grip-vertical" aria-hidden="true"></i></span>
             `;
             if (icon) row.querySelector('.sidebar-settings-item__icon').appendChild(icon);
             groupItems.appendChild(row);
@@ -676,7 +677,9 @@
             const sectionId = items[0].closest('[data-sidebar-section]')?.dataset.sidebarSection;
             group.className = 'sidebar-settings-group';
             group.dataset.sidebarSection = sectionId;
-            group.innerHTML = `<h6 class="sidebar-settings-group__title" draggable="true" data-sidebar-group-drag-handle tabindex="0" role="button" title="Перетащить блок" aria-label="Перетащить блок ${escapeHtml(label)}"><span>${escapeHtml(label)}</span><i class="fas fa-grip-vertical" aria-hidden="true"></i></h6><div class="sidebar-settings-group__items"></div>`;
+            const dragSectionTitle = translateInterfaceText('Перетащить блок');
+            const dragSectionAriaLabel = translateInterfaceText(`Перетащить блок ${escapeHtml(translateInterfaceText(label))}`);
+            group.innerHTML = `<h6 class="sidebar-settings-group__title" draggable="true" data-sidebar-group-drag-handle tabindex="0" role="button" title="${dragSectionTitle}" aria-label="${dragSectionAriaLabel}"><span>${escapeHtml(label)}</span><i class="fas fa-grip-vertical" aria-hidden="true"></i></h6><div class="sidebar-settings-group__items"></div>`;
             const groupItems = group.querySelector('.sidebar-settings-group__items');
             items.forEach(item => appendSettingsItem(item, groupItems));
             list.appendChild(group);
@@ -2421,7 +2424,8 @@
                         showToast(`✅ ${operationLabel} для ${tableLabel} завершён`);
                         refreshMaintenanceStatsForConnection();
                     } else {
-                        showToast(`❌ ${operationLabel} для ${tableLabel}: ${job.message || 'операция завершилась с ошибкой'}`);
+                        const failureMessage = translateInterfaceText(job.message || 'операция завершилась с ошибкой');
+                        showToast(`❌ ${operationLabel} для ${tableLabel}: ${failureMessage}`);
                     }
                 })
                 .catch(error => {
@@ -4269,7 +4273,7 @@
         document.getElementById('connectionDeleteBtn').classList.add('d-none');
         document.getElementById('connId').value = '';
         modalInstance.show();
-        document.getElementById('connName').value = 'New Connection';
+        document.getElementById('connName').value = translateInterfaceText('Новое подключение');
         document.getElementById('connHost').value = 'localhost';
         document.getElementById('connPort').value = '5432';
         document.getElementById('connDatabase').value = 'postgres';
@@ -4321,7 +4325,7 @@
             return;
         }
 
-        if (!confirm(`Удалить подключение "${conn.name}"?`)) {
+        if (!confirm(translateInterfaceText(`Удалить подключение "${conn.name}"?`))) {
             return;
         }
 
