@@ -3,6 +3,7 @@ import hashlib
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
+from django.contrib.auth.hashers import check_password as verify_password_hash, make_password
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -77,6 +78,7 @@ class DBUser(DateStamp, Active):
 
     login = models.CharField(**vn("Логин"), max_length=100, db_index=True, unique=True)
     email = models.EmailField(**vn("Почта"), unique=True)
+    password = models.CharField(**vn("Пароль"), max_length=255, blank=True, default="")
     role = models.CharField(**vn("Роль"), max_length=20, choices=USER_ROLE, default="Аналитик")
     connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключение к базе данных"), blank=True)
 
@@ -89,6 +91,16 @@ class DBUser(DateStamp, Active):
 
     def __str__(self):
         return self.login
+
+    def set_password(self, raw_password):
+        """Хеширует пароль пользователя (в памяти; вызывающий код должен сохранить объект)"""
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        """Проверяет пароль пользователя. Пустой хеш всегда считается неверным паролем"""
+        if not self.password:
+            return False
+        return verify_password_hash(raw_password, self.password)
 
 
 class DBUserSidebarSettings(DateStamp):
@@ -158,12 +170,8 @@ class DBConnection(DateStamp, Active):
         unique_together = ("name", "host", "port", "database", "username")
 
     def get_password(self):
-        decrypted_password = decrypt_connection_password(self.password)
-        if self.password and not str(self.password).startswith(ENCRYPTED_PASSWORD_PREFIX) and self.pk:
-            encrypted_password = encrypt_connection_password(self.password)
-            type(self).objects.filter(pk=self.pk).update(password=encrypted_password)
-            self.password = encrypted_password
-        return decrypted_password
+        """Расшифровывает пароль подключения"""
+        return decrypt_connection_password(self.password)
 
     def save(self, *args, **kwargs):
         self.password = encrypt_connection_password(self.password)

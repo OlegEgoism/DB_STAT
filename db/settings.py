@@ -175,3 +175,7 @@ MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
 )
 MAINTENANCE_JOBS = {}
 MAINTENANCE_JOBS_LOCK = threading.Lock()
+# Завершённые задачи обслуживания, которые никто не забрал повторным опросом,
+# удаляются из MAINTENANCE_JOBS по истечении этого времени, чтобы словарь не
+# рос неограниченно в течение жизни процесса.
+MAINTENANCE_JOB_MAX_AGE_SECONDS = 60 * 60

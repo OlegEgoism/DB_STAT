@@ -30,6 +30,10 @@
                 <input class="form-control" id="emailInput" name="email" type="email" value="{{ email_value }}" autocomplete="email" required>
             </div>
             <div class="form-field">
+                <label class="form-label" for="passwordInput">{% if LANGUAGE_CODE == 'en' %}Password{% else %}Пароль{% endif %}</label>
+                <input class="form-control" id="passwordInput" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <div class="form-field">
                 <label class="form-label" for="sessionDurationInput">{% if LANGUAGE_CODE == 'en' %}Session duration (hours){% else %}Время сессии (часы){% endif %}</label>
                 <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="any" inputmode="decimal" required aria-describedby="sessionDurationHelp">
                 <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_minutes }} minutes to {{ max_session_duration_hours }} hours. Fractions are allowed, for example 0.5 = 30 minutes.{% else %}От {{ min_session_duration_minutes }} минут до {{ max_session_duration_hours }} часов. Можно использовать дробные значения, например 0,5 = 30 минут.{% endif %}</div>

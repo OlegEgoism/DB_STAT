@@ -1,27 +1,10 @@
+from django import forms
+from django.conf import settings
 from django.contrib import admin
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
 
-SIDEBAR_TAB_LABELS = {
-    "database-overview": "База данных",
-    "segments": "Сегменты",
-    "databases": "Схемы",
-    "tables": "Таблицы",
-    "views": "Представления",
-    "temp-tables": "Временные таблицы",
-    "distribution": "Распределение",
-    "queries": "Запросы",
-    "sessions": "Сессии",
-    "locks": "Блокировки",
-    "transactions": "Транзакции",
-    "memory": "Память",
-    "users": "Пользователи",
-    "groups": "Группы",
-    "maintenance": "Обслуживание",
-    "favorites": "Избранное",
-    "audit": "Аудит",
-    "settings": "Настройки",
-}
+SIDEBAR_TAB_LABELS = settings.SIDEBAR_TAB_LABELS
 
 
 class BaseAdmin(admin.ModelAdmin):
@@ -32,16 +15,37 @@ class BaseAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 
+class DBUserAdminForm(forms.ModelForm):
+    """Форма пользователя с полем для установки пароля вместо прямого поля модели"""
+
+    password = forms.CharField(label="Новый пароль", required=False, widget=forms.PasswordInput, help_text="Оставьте пустым, чтобы не менять текущий пароль.")
+
+    class Meta:
+        model = DBUser
+        fields = ["login", "email", "role", "is_active", "connections"]
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        raw_password = self.cleaned_data.get("password")
+        if raw_password:
+            user.set_password(raw_password)
+        if commit:
+            user.save()
+            self.save_m2m()
+        return user
+
+
 @admin.register(DBUser)
 class DBUserAdmin(BaseAdmin):
     """Пользователь"""
 
+    form = DBUserAdminForm
     list_display = ("login", "email", "role", "count_column", "is_active", "created", "updated")
     list_filter = ("is_active", "role")
     list_editable = ("is_active",)
     search_fields = ("login", "email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("login", "email", "role", "is_active", "connections", "created", "updated")
+    fields = ("login", "email", "password", "role", "is_active", "connections", "created", "updated")
     filter_horizontal = ("connections",)
 
     @admin.display(description="Количество подключений")

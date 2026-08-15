@@ -5,6 +5,9 @@ Keeping infrastructure, session, audit, connection and query helpers here makes
 """
 
 import json
+import logging
+import time
+from contextlib import closing, contextmanager
 from decimal import Decimal, InvalidOperation
 
 import psycopg2
@@ -15,6 +18,8 @@ from django.utils import timezone
 from psycopg2 import sql
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_database_host(host):
@@ -377,7 +382,7 @@ def _read_json_body(request):
     """Безопасно читает JSON-объект из тела запроса."""
     try:
         return json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
+    except (UnicodeDecodeError, json.JSONDecodeError):
         return {}
 
 
@@ -427,6 +432,17 @@ def _format_bytes(size_bytes):
     return f"{value:.2f} ТБ"
 
 
+def _safe_db_error_message(action_description, exc):
+    """Логирует подробности ошибки БД и возвращает безопасное сообщение для клиента.
+
+    Сырой текст исключения psycopg2/драйвера может содержать имена схем, таблиц
+    и другие внутренние детали целевой БД, которые не должны попадать в ответ
+    пользователю (в том числе Аналитику с ограниченным доступом).
+    """
+    logger.warning("%s", action_description, exc_info=exc)
+    return f"{action_description}. Подробности см. в журнале сервера приложения."
+
+
 def _escape_like_pattern(value):
     """Экранирует специальные символы шаблона SQL LIKE."""
     return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
@@ -447,17 +463,24 @@ def _connection_kwargs(host, port, database, username, password, ssl=True):
 
 def _test_connection_params(host, port, database, username, password, ssl):
     """Проверяет подключение по переданным параметрам."""
-    with psycopg2.connect(
-        **_connection_kwargs(host, port, database, username, password, ssl)
+    with closing(
+        psycopg2.connect(**_connection_kwargs(host, port, database, username, password, ssl))
     ) as connection:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
 
 
+@contextmanager
 def _open_database_connection(db_connection, ssl=True):
-    """Открывает соединение с сохранённой базой данных."""
-    return psycopg2.connect(
+    """Открывает соединение с сохранённой базой данных и гарантированно закрывает его.
+
+    В отличие от использования psycopg2-соединения напрямую как контекстного
+    менеджера (который только коммитит/откатывает транзакцию, но не закрывает
+    сокет), этот менеджер контекста явно закрывает соединение при выходе из
+    блока `with`, независимо от того, как он завершился.
+    """
+    connection = psycopg2.connect(
         **_connection_kwargs(
             db_connection.host,
             db_connection.port,
@@ -467,6 +490,10 @@ def _open_database_connection(db_connection, ssl=True):
             ssl,
         )
     )
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def _fetch_db_rows(db_connection, query, params=None):
@@ -496,11 +523,25 @@ def _fetch_db_resultsets(db_connection, *queries):
     return resultsets
 
 
+def _evict_stale_maintenance_jobs():
+    """Удаляет завершённые задачи обслуживания старше допустимого времени.
+
+    Вызывающий код должен удерживать ``settings.MAINTENANCE_JOBS_LOCK``.
+    """
+    cutoff = time.time() - settings.MAINTENANCE_JOB_MAX_AGE_SECONDS
+    stale_ids = [
+        job_id
+        for job_id, job in settings.MAINTENANCE_JOBS.items()
+        if job.get("status") != "running" and job.get("finished_at", cutoff) <= cutoff
+    ]
+    for job_id in stale_ids:
+        settings.MAINTENANCE_JOBS.pop(job_id, None)
+
+
 def _run_maintenance_vacuum(
     job_id, connection_id, schema_name, table_name, operation, username
 ):
     """Выполняет фоновую операцию VACUUM и обновляет состояние задачи."""
-    connection = None
     db_connection = None
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
@@ -508,25 +549,23 @@ def _run_maintenance_vacuum(
             mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""),
             table=sql.Identifier(schema_name, table_name),
         )
-        # VACUUM запрещён внутри транзакции. Контекстный менеджер psycopg2
-        # открывает транзакцию даже при установке autocommit внутри блока,
-        # поэтому соединением для обслуживания управляем явно.
-        connection = _open_database_connection(db_connection)
-        connection.autocommit = True
-        with connection.cursor() as cursor:
-            cursor.execute(statement)
+        # VACUUM запрещён внутри транзакции, поэтому autocommit включается
+        # сразу после открытия соединения, до выполнения запроса.
+        with _open_database_connection(db_connection) as connection:
+            connection.autocommit = True
+            with connection.cursor() as cursor:
+                cursor.execute(statement)
     except Exception as exc:
         result = {"status": "failed", "message": str(exc)}
     else:
         result = {"status": "completed", "message": "Операция успешно завершена"}
-    finally:
-        if connection is not None:
-            connection.close()
 
     with settings.MAINTENANCE_JOBS_LOCK:
         job = settings.MAINTENANCE_JOBS.get(job_id)
         if job:
             job.update(result)
+            job["finished_at"] = time.time()
+        _evict_stale_maintenance_jobs()
 
     if db_connection is not None:
         audit_info = _maintenance_vacuum_audit_info(
@@ -563,6 +602,27 @@ def _require_payload_connection(request, payload):
             {"ok": False, "message": "Подключение не выбрано"}, status=400
         )
     return _get_connection_for_request(request, connection_id), None
+
+
+def _greenplum_only_error():
+    """Возвращает ошибку для функций, доступных только подключениям Greenplum."""
+    return JsonResponse(
+        {
+            "ok": False,
+            "message": "Эта функция доступна только для подключений типа Greenplum",
+        },
+        status=400,
+    )
+
+
+def _require_greenplum_connection(request, payload):
+    """Проверяет запрос и возвращает подключение, если оно имеет тип Greenplum."""
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return None, error_response
+    if db_connection.db_type != "Greenplum":
+        return None, _greenplum_only_error()
+    return db_connection, None
 
 
 def _format_role_timestamp(value):
@@ -698,7 +758,9 @@ def _database_roles_list(request, *, can_login):
         return JsonResponse(
             {
                 "ok": False,
-                "message": f"Не удалось получить список {role_type_message}: {exc}",
+                "message": _safe_db_error_message(
+                    f"Не удалось получить список {role_type_message}", exc
+                ),
             },
             status=400,
         )

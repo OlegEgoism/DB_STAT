@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import _backend_termination_audit_info, _current_db_user, _destructive_action_permission_error, _escape_like_pattern, _fetch_db_row, _fetch_db_rows, _read_json_body, _require_payload_connection, _write_audit
+from db_statistics.view_helpers import _backend_termination_audit_info, _current_db_user, _destructive_action_permission_error, _escape_like_pattern, _fetch_db_row, _fetch_db_rows, _read_json_body, _require_payload_connection, _safe_db_error_message, _write_audit
 
 
 @require_http_methods(["POST"])
@@ -52,7 +52,10 @@ def active_queries(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить активные запросы: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить активные запросы", exc),
+            },
             status=400,
         )
 
@@ -131,7 +134,12 @@ def terminate_active_query(request):
         row = _fetch_db_row(db_connection, terminate_query, [pid])
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось завершить запрос с PID {pid}: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message(
+                    f"Не удалось завершить запрос с PID {pid}", exc
+                ),
+            },
             status=400,
         )
 
@@ -203,7 +211,9 @@ def active_sessions(request):
         return JsonResponse(
             {
                 "ok": False,
-                "message": f"Не удалось получить активные сессии и подключения: {exc}",
+                "message": _safe_db_error_message(
+                    "Не удалось получить активные сессии и подключения", exc
+                ),
             },
             status=400,
         )
@@ -328,7 +338,12 @@ def terminate_active_session(request):
         row = _fetch_db_row(db_connection, terminate_query, [pid])
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось завершить сессию с PID {pid}: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message(
+                    f"Не удалось завершить сессию с PID {pid}", exc
+                ),
+            },
             status=400,
         )
 
@@ -404,7 +419,10 @@ def blocking_locks(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить блокировки: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить блокировки", exc),
+            },
             status=400,
         )
 
@@ -469,7 +487,10 @@ def idle_transactions(request):
         )
     except Exception as exc:
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось получить транзакции: {exc}"},
+            {
+                "ok": False,
+                "message": _safe_db_error_message("Не удалось получить транзакции", exc),
+            },
             status=400,
         )
 
