@@ -8,6 +8,7 @@ from db_statistics.view_helpers import (
     EXCLUDED_SYSTEM_SCHEMAS_SQL,
     _current_db_user,
     _database_roles_list,
+    _destructive_action_permission_error,
     _escape_like_pattern,
     _evict_stale_maintenance_jobs,
     _fetch_db_row,
@@ -314,16 +315,10 @@ def maintenance_stats(request):
 @require_http_methods(["POST"])
 def maintenance_vacuum(request):
     """Запускает VACUUM или возвращает состояние фоновой задачи."""
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
     db_user = _current_db_user(request)
-    if not db_user:
-        return JsonResponse(
-            {"ok": False, "message": "Требуется вход в приложение"}, status=401
-        )
-    if db_user.role != settings.ADMIN_ROLE:
-        return JsonResponse(
-            {"ok": False, "message": "Действие доступно только Администратору"},
-            status=403,
-        )
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
