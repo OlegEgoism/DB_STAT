@@ -43,6 +43,8 @@
     let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
+    let runtimeMemoryRequestId = 0;
+    let runtimeMemoryState = {refreshInterval: 0, timer: null};
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
     let auditState = {page: 1, pageSize: 100, totalCount: 0, sort: 'created', direction: 'desc'};
@@ -70,6 +72,7 @@
     const blockingLocksApiUrl = '/locks/blocking/';
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
+    const runtimeMemoryApiUrl = '/memory/runtime/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const maintenanceVacuumApiUrl = '/maintenance/vacuum/';
     const usersListApiUrl = '/users/list/';
@@ -97,6 +100,7 @@
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
         'transactions': 'Транзакции <small>Commit / Rollback</small>',
         'memory': 'Память <small>Параметры памяти</small>',
+        'runtime-memory': 'ОЗУ запросов <small>Фактический RSS resource groups</small>',
         'users': 'Пользователи <small>Список пользователей</small>',
         'groups': 'Группы <small>Список групп</small>',
         'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
@@ -106,7 +110,7 @@
     };
 
 
-    const greenplumOnlyPages = new Set(['segments', 'distribution']);
+    const greenplumOnlyPages = new Set(['segments', 'distribution', 'runtime-memory']);
 
     function isPostgreSQLConnection(conn) {
         return String(conn?.db_type || '').toLowerCase() === 'postgresql';
@@ -130,7 +134,7 @@
         if (!conn) return 'home';
         const preferredPages = isPostgreSQLConnection(conn)
             ? ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'runtime-memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -402,6 +406,7 @@
         initActiveSessionsControls();
         initBlockingLocksControls();
         initIdleTransactionsControls();
+        initRuntimeMemoryControls();
         initMaintenanceStatsControls();
         initUsersControls();
         initGroupsControls();
@@ -1964,6 +1969,62 @@
         connectionRequest(memoryOverviewApiUrl, {id: conn.id})
             .then(data => renderMemoryOverview(data))
             .catch(error => renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти'));
+    }
+
+    function renderRuntimeMemoryWarning(message) {
+        const groupsBody = document.getElementById('runtimeMemoryGroupsTableBody');
+        const usersBody = document.getElementById('runtimeMemoryUsersTableBody');
+        if (groupsBody) groupsBody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (usersBody) usersBody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        ['runtimeMemoryTotal', 'runtimeMemoryGroupsCount', 'runtimeMemoryUsersCount'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = 'Нет данных';
+        });
+    }
+
+    function renderRuntimeMemory(data) {
+        const groups = data.groups || [];
+        const users = data.users || [];
+        document.getElementById('runtimeMemoryTotal').textContent = `Всего: ${data.total_memory || '—'}`;
+        document.getElementById('runtimeMemoryGroupsCount').textContent = `${groups.length} строк`;
+        document.getElementById('runtimeMemoryUsersCount').textContent = `${users.length} пользователей`;
+        document.getElementById('runtimeMemoryMeasurement').textContent = data.measurement || 'Фактический RSS из Linux cgroups';
+        document.getElementById('runtimeMemoryGroupsTableBody').innerHTML = groups.length ? groups.map(item => `
+            <tr><td><strong>${escapeHtml(item.group_name)}</strong></td><td>${escapeHtml(item.hostname)}</td><td><strong>${escapeHtml(item.memory)}</strong></td><td>${escapeHtml(item.cpu_usage)}</td><td>${escapeHtml(item.memory_quota)}</td><td>${escapeHtml(item.concurrency)}</td><td>${escapeHtml(item.running)}</td><td>${escapeHtml(item.queueing)}</td></tr>
+        `).join('') : '<tr><td colspan="8" class="text-muted">Активные resource groups не найдены</td></tr>';
+        document.getElementById('runtimeMemoryUsersTableBody').innerHTML = users.length ? users.map(item => `
+            <tr><td><strong>${escapeHtml(item.username)}</strong></td><td>${escapeHtml(item.group_name)}</td><td>${escapeHtml(item.active_queries)}</td><td>${escapeHtml(item.sessions)}</td><td><strong>${escapeHtml(item.shared_group_memory)}</strong></td></tr>
+        `).join('') : '<tr><td colspan="5" class="text-muted">Активные пользовательские сессии не найдены</td></tr>';
+    }
+
+    function refreshRuntimeMemoryForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), {silent = false} = {}) {
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderRuntimeMemoryWarning('Выберите Greenplum-подключение для загрузки фактического RSS');
+            return;
+        }
+        const requestId = ++runtimeMemoryRequestId;
+        if (!silent) renderRuntimeMemoryWarning('Загрузка фактического использования ОЗУ...');
+        connectionRequest(runtimeMemoryApiUrl, {id: conn.id})
+            .then(data => { if (requestId === runtimeMemoryRequestId) renderRuntimeMemory(data); })
+            .catch(error => { if (requestId === runtimeMemoryRequestId) renderRuntimeMemoryWarning(error.message || 'Не удалось получить фактическое использование ОЗУ'); });
+    }
+
+    function scheduleRuntimeMemoryRefresh() {
+        clearInterval(runtimeMemoryState.timer);
+        runtimeMemoryState.timer = null;
+        if (!runtimeMemoryState.refreshInterval) return;
+        runtimeMemoryState.timer = setInterval(() => {
+            if (document.getElementById('page-runtime-memory')?.classList.contains('active')) refreshRuntimeMemoryForConnection(undefined, {silent: true});
+        }, runtimeMemoryState.refreshInterval * 1000);
+    }
+
+    function initRuntimeMemoryControls() {
+        document.getElementById('runtimeMemoryRefreshBtn')?.addEventListener('click', () => refreshRuntimeMemoryForConnection());
+        document.getElementById('runtimeMemoryRefreshInterval')?.addEventListener('change', function () {
+            runtimeMemoryState.refreshInterval = Number(this.value) || 0;
+            scheduleRuntimeMemoryRefresh();
+            refreshRuntimeMemoryForConnection(undefined, {silent: true});
+        });
     }
 
     function renderRolesListWarning(tbodyId, countId, colspan, message) {
@@ -4192,6 +4253,9 @@
         if (pageId === 'memory') {
             refreshMemoryOverviewForConnection(conn);
         }
+        if (pageId === 'runtime-memory') {
+            refreshRuntimeMemoryForConnection(conn);
+        }
         if (pageId === 'users') {
             refreshUsersForConnection(conn);
         }
@@ -4494,6 +4558,9 @@
         }
         if (document.getElementById('page-memory')?.classList.contains('active')) {
             refreshMemoryOverviewForConnection();
+        }
+        if (document.getElementById('page-runtime-memory')?.classList.contains('active')) {
+            refreshRuntimeMemoryForConnection();
         }
         if (document.getElementById('page-users')?.classList.contains('active')) {
             refreshUsersForConnection();

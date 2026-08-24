@@ -191,6 +191,127 @@ def memory_overview(request):
 
 
 @require_http_methods(["POST"])
+def runtime_memory_usage(request):
+    """Возвращает фактическое потребление RAM resource groups в Greenplum.
+
+    ``memory_usage`` берётся из cgroups на каждом segment host. Greenplum не
+    публикует RSS отдельного пользователя в SQL, поэтому пользовательская
+    детализация честно показывает общий RSS его группы и число активных
+    запросов, а не приписывает разделяемую память конкретному backend.
+    """
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    host_query = """
+        SELECT
+            status.groupid,
+            status.groupname,
+            status.hostname,
+            COALESCE(status.cpu_usage, 0),
+            COALESCE(status.memory_usage, 0),
+            config.memory_quota,
+            config.concurrency
+        FROM gp_toolkit.gp_resgroup_status_per_host AS status
+        LEFT JOIN gp_toolkit.gp_resgroup_config AS config
+            ON config.groupid = status.groupid
+        ORDER BY status.memory_usage DESC, status.groupname, status.hostname;
+    """
+    users_query = """
+        WITH active_users AS (
+            SELECT
+                activity.usename,
+                roles.rolresgroup AS groupid,
+                COUNT(*) FILTER (WHERE activity.state = 'active')::integer AS active_queries,
+                COUNT(*)::integer AS sessions
+            FROM pg_catalog.pg_stat_activity AS activity
+            JOIN pg_catalog.pg_roles AS roles ON roles.rolname = activity.usename
+            WHERE activity.usename IS NOT NULL
+              AND activity.pid <> pg_backend_pid()
+            GROUP BY activity.usename, roles.rolresgroup
+        ), group_memory AS (
+            SELECT groupid, groupname, SUM(COALESCE(memory_usage, 0)) AS memory_usage
+            FROM gp_toolkit.gp_resgroup_status_per_host
+            GROUP BY groupid, groupname
+        )
+        SELECT
+            users.usename,
+            COALESCE(memory.groupname, '—'),
+            users.active_queries,
+            users.sessions,
+            COALESCE(memory.memory_usage, 0)
+        FROM active_users AS users
+        LEFT JOIN group_memory AS memory ON memory.groupid = users.groupid
+        ORDER BY users.active_queries DESC, memory.memory_usage DESC, users.usename;
+    """
+    status_query = """
+        SELECT groupid, groupname, num_running, num_queueing
+        FROM gp_toolkit.gp_resgroup_status;
+    """
+
+    try:
+        host_rows = _fetch_db_rows(db_connection, host_query)
+        user_rows = _fetch_db_rows(db_connection, users_query)
+        status_rows = _fetch_db_rows(db_connection, status_query)
+    except Exception as exc:
+        return JsonResponse(
+            {
+                "ok": False,
+                "message": _safe_db_error_message(
+                    "Не удалось получить фактическое использование RAM resource groups. Представление доступно только в Greenplum с активными resource groups",
+                    exc,
+                ),
+            },
+            status=400,
+        )
+
+    statuses = {row[0]: row for row in status_rows}
+    groups = []
+    total_memory_mb = 0.0
+    for row in host_rows:
+        memory_mb = float(row[4] or 0)
+        total_memory_mb += memory_mb
+        status = statuses.get(row[0], ())
+        groups.append(
+            {
+                "group_id": row[0],
+                "group_name": row[1] or "—",
+                "hostname": row[2] or "—",
+                "cpu_usage": float(row[3] or 0),
+                "memory_mb": memory_mb,
+                "memory": _format_bytes(int(memory_mb * 1024 * 1024)),
+                "memory_quota": row[5] if row[5] is not None else "—",
+                "concurrency": row[6] if row[6] is not None else "—",
+                "running": status[2] if len(status) > 2 else 0,
+                "queueing": status[3] if len(status) > 3 else 0,
+            }
+        )
+
+    users = [
+        {
+            "username": row[0] or "—",
+            "group_name": row[1] or "—",
+            "active_queries": row[2] or 0,
+            "sessions": row[3] or 0,
+            "shared_group_memory_mb": float(row[4] or 0),
+            "shared_group_memory": _format_bytes(int(float(row[4] or 0) * 1024 * 1024)),
+        }
+        for row in user_rows
+    ]
+    return JsonResponse(
+        {
+            "ok": True,
+            "groups": groups,
+            "users": users,
+            "total_memory_mb": total_memory_mb,
+            "total_memory": _format_bytes(int(total_memory_mb * 1024 * 1024)),
+            "measurement": "Фактический RSS resource group из Linux cgroups, суммированный по segment hosts",
+        }
+    )
+
+
+@require_http_methods(["POST"])
 def database_users_list(request):
     """Возвращает список пользователей выбранной базы данных."""
     return _database_roles_list(request, can_login=True)

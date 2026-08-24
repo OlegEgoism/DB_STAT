@@ -1323,6 +1323,55 @@
     </div>
 
     <!-- ============================================================ -->
+    <!-- PAGE: RUNTIME MEMORY -->
+    <!-- ============================================================ -->
+    <div class="page" id="page-runtime-memory">
+        <div class="glass-card mb-3">
+            <div class="card-header">
+                <span><i class="fas fa-tachometer-alt"></i> Фактическое использование ОЗУ</span>
+                <span class="card-meta" id="runtimeMemoryTotal">Нет данных</span>
+            </div>
+            <div class="database-table-toolbar refresh-toolbar">
+                <label class="refresh-interval-control" for="runtimeMemoryRefreshInterval">
+                    <span>Обновление</span>
+                    <select id="runtimeMemoryRefreshInterval" class="form-control form-control-sm">
+                        <option value="0">Вручную</option>
+                        <option value="5">5 сек</option>
+                        <option value="10">10 сек</option>
+                        <option value="30">30 сек</option>
+                        <option value="60">60 сек</option>
+                    </select>
+                </label>
+                <button class="btn-conn primary" type="button" id="runtimeMemoryRefreshBtn"><i class="fas fa-sync-alt"></i> Обновить</button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-0" id="runtimeMemoryMeasurement">Данные загружаются из Linux cgroups на segment hosts.</p>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-users"></i> Resource groups по хостам</span><span class="card-meta" id="runtimeMemoryGroupsCount">Нет данных</span></div>
+                    <div class="card-body p-0"><div class="table-responsive table-scroll-lg"><table class="table table-sm">
+                        <thead><tr><th>Группа</th><th>Хост</th><th>Фактический RSS</th><th>CPU</th><th>Memory quota</th><th>Concurrency</th><th>Выполняется</th><th>В очереди</th></tr></thead>
+                        <tbody id="runtimeMemoryGroupsTableBody"><tr><td colspan="8" class="text-muted">Выберите Greenplum-подключение</td></tr></tbody>
+                    </table></div></div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-user-clock"></i> Активные пользователи и их группы</span><span class="card-meta" id="runtimeMemoryUsersCount">Нет данных</span></div>
+                    <div class="card-body"><div class="alert alert-info py-2 mb-3">Greenplum не предоставляет точный RSS отдельного пользователя через SQL. Поэтому показан фактический общий RSS resource group, разделяемый всеми её процессами; значение нельзя складывать по пользователям.</div></div>
+                    <div class="card-body p-0"><div class="table-responsive table-scroll-lg"><table class="table table-sm">
+                        <thead><tr><th>Пользователь</th><th>Resource group</th><th>Активных запросов</th><th>Сессий</th><th>Общий RSS группы</th></tr></thead>
+                        <tbody id="runtimeMemoryUsersTableBody"><tr><td colspan="5" class="text-muted">Выберите Greenplum-подключение</td></tr></tbody>
+                    </table></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
     <!-- PAGE: USERS -->
     <!-- ============================================================ -->
     <div class="page" id="page-users">

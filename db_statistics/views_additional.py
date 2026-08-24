@@ -176,6 +176,7 @@ def sidebar_settings(request):
     settings.visible_tabs = {
         "visible_tabs": visible_tabs,
         "section_order": section_order,
+        "version": 2,
     }
     settings.save(update_fields=["visible_tabs", "updated"])
     _write_audit(

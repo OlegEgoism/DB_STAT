@@ -162,10 +162,16 @@ def _sidebar_settings_for_user(db_user):
         user=db_user,
         defaults={"visible_tabs": settings.SIDEBAR_TAB_IDS.copy()},
     )
+    stored_value = sidebar_settings.visible_tabs
     normalized_tabs, normalized_sections = _sidebar_settings_values(sidebar_settings)
+    settings_version = stored_value.get("version", 1) if isinstance(stored_value, dict) else 1
+    if settings_version < 2 and "runtime-memory" not in normalized_tabs:
+        memory_index = normalized_tabs.index("memory") + 1 if "memory" in normalized_tabs else len(normalized_tabs)
+        normalized_tabs.insert(memory_index, "runtime-memory")
     normalized_value = {
         "visible_tabs": normalized_tabs,
         "section_order": normalized_sections,
+        "version": 2,
     }
     if sidebar_settings.visible_tabs != normalized_value:
         sidebar_settings.visible_tabs = normalized_value

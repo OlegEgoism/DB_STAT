@@ -73,6 +73,11 @@ urlpatterns = [
         "memory/overview/", views_administration.memory_overview, name="memory_overview"
     ),
     path(
+        "memory/runtime/",
+        views_administration.runtime_memory_usage,
+        name="runtime_memory_usage",
+    ),
+    path(
         "maintenance/stats/",
         views_administration.maintenance_stats,
         name="maintenance_stats",
