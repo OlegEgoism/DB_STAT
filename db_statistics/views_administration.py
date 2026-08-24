@@ -250,6 +250,49 @@ def runtime_memory_usage(request):
         SELECT groupid, groupname, num_running, num_queueing
         FROM gp_toolkit.gp_resgroup_status;
     """
+    # smaps_rollup даёт PSS (пропорциональную долю разделяемых страниц) и Swap
+    # каждого QE-процесса. В отличие от RSS resource group это позволяет
+    # привязать физическую память к конкретной Greenplum session/query.
+    query_process_memory_sql = """
+        WITH process_samples AS (
+            SELECT
+                activity.gp_segment_id AS segment_id,
+                activity.sess_id,
+                activity.pid,
+                activity.usename,
+                activity.datname,
+                activity.query,
+                pg_catalog.pg_read_file(
+                    '/proc/' || activity.pid::text || '/smaps_rollup',
+                    0,
+                    1048576,
+                    true
+                ) AS smaps
+            FROM gp_dist_random('pg_stat_activity') AS activity
+            WHERE activity.state = 'active'
+              AND activity.usename IS NOT NULL
+              AND activity.pid <> pg_backend_pid()
+        ), parsed AS (
+            SELECT
+                *,
+                COALESCE(substring(smaps FROM 'Pss:\\s+([0-9]+) kB')::bigint, 0) AS pss_kb,
+                COALESCE(substring(smaps FROM 'SwapPss:\\s+([0-9]+) kB')::bigint, 0) AS swap_kb
+            FROM process_samples
+            WHERE smaps IS NOT NULL
+        )
+        SELECT
+            sess_id,
+            usename,
+            datname,
+            COUNT(*)::integer AS process_count,
+            COUNT(DISTINCT segment_id)::integer AS segment_count,
+            SUM(pss_kb)::bigint AS pss_kb,
+            SUM(swap_kb)::bigint AS swap_kb,
+            MIN(query) AS query
+        FROM parsed
+        GROUP BY sess_id, usename, datname
+        ORDER BY SUM(pss_kb) DESC, SUM(swap_kb) DESC;
+    """
 
     try:
         host_rows = _fetch_db_rows(db_connection, host_query)
@@ -265,6 +308,16 @@ def runtime_memory_usage(request):
                 ),
             },
             status=400,
+        )
+
+    process_rows = []
+    process_warning = ""
+    try:
+        process_rows = _fetch_db_rows(db_connection, query_process_memory_sql)
+    except Exception as exc:
+        process_warning = _safe_db_error_message(
+            "Не удалось прочитать RAM и Swap процессов запросов. Подключению нужны права на pg_read_file и чтение /proc/<pid>/smaps_rollup на segment hosts",
+            exc,
         )
 
     statuses = {row[0]: row for row in status_rows}
@@ -300,11 +353,31 @@ def runtime_memory_usage(request):
         }
         for row in user_rows
     ]
+    queries = []
+    for row in process_rows:
+        pss_bytes = int(row[5] or 0) * 1024
+        swap_bytes = int(row[6] or 0) * 1024
+        queries.append(
+            {
+                "session_id": row[0],
+                "username": row[1] or "—",
+                "database": row[2] or "—",
+                "process_count": row[3] or 0,
+                "segment_count": row[4] or 0,
+                "ram_bytes": pss_bytes,
+                "ram": _format_bytes(pss_bytes),
+                "swap_bytes": swap_bytes,
+                "swap": _format_bytes(swap_bytes),
+                "query": row[7] or "—",
+            }
+        )
     return JsonResponse(
         {
             "ok": True,
             "groups": groups,
             "users": users,
+            "queries": queries,
+            "process_warning": process_warning,
             "total_memory_mb": total_memory_mb,
             "total_memory": _format_bytes(int(total_memory_mb * 1024 * 1024)),
             "measurement": "Фактический RSS resource group из Linux cgroups, суммированный по segment hosts",

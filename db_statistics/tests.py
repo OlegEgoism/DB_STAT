@@ -24,6 +24,7 @@ class RuntimeMemoryUsageTests(SimpleTestCase):
             [(6438, "rg_analysts", "sdw1", 12.5, 256, 2048, 10)],
             [("analyst_1", "rg_analysts", 2, 3, 256)],
             [(6438, "rg_analysts", 2, 1)],
+            [(501, "analyst_1", "warehouse", 12, 6, 524288, 16384, "COPY facts FROM ...")],
         ]
 
         response = runtime_memory_usage(self.request)
@@ -35,6 +36,8 @@ class RuntimeMemoryUsageTests(SimpleTestCase):
         self.assertEqual(payload["groups"][0]["queueing"], 1)
         self.assertEqual(payload["users"][0]["shared_group_memory"], "256.00 МБ")
         self.assertTrue(payload["sampled_at"].endswith("+00:00"))
+        self.assertEqual(payload["queries"][0]["ram"], "512.00 МБ")
+        self.assertEqual(payload["queries"][0]["swap"], "16.00 МБ")
 
     @patch("db_statistics.views_administration._fetch_db_rows", side_effect=RuntimeError("view missing"))
     @patch("db_statistics.views_administration._require_payload_connection")

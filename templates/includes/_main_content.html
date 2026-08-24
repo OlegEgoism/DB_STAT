@@ -1352,6 +1352,16 @@
         <div class="row g-3">
             <div class="col-12">
                 <div class="glass-card">
+                    <div class="card-header"><span><i class="fas fa-microchip"></i> RAM и Swap активных запросов</span><span class="card-meta" id="runtimeMemoryQueriesCount">Нет данных</span></div>
+                    <div class="card-body pb-0"><div class="alert alert-warning py-2 mb-3 d-none" id="runtimeMemoryProcessWarning"></div></div>
+                    <div class="card-body p-0"><div class="table-responsive table-scroll-lg"><table class="table table-sm">
+                        <thead><tr><th>Session ID</th><th>Пользователь</th><th>База</th><th>RAM (PSS)</th><th>Swap (PSS)</th><th>Процессов</th><th>Сегментов</th><th>SQL</th></tr></thead>
+                        <tbody id="runtimeMemoryQueriesTableBody"><tr><td colspan="8" class="text-muted">Выберите Greenplum-подключение</td></tr></tbody>
+                    </table></div></div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="glass-card">
                     <div class="card-header"><span><i class="fas fa-users"></i> Resource groups по хостам</span><span class="card-meta" id="runtimeMemoryGroupsCount">Нет данных</span></div>
                     <div class="card-body p-0"><div class="table-responsive table-scroll-lg"><table class="table table-sm">
                         <thead><tr><th>Группа</th><th>Хост</th><th>Фактический RSS</th><th>CPU</th><th>Memory quota</th><th>Concurrency</th><th>Выполняется</th><th>В очереди</th></tr></thead>

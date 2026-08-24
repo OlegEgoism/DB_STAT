@@ -1974,9 +1974,11 @@
     function renderRuntimeMemoryWarning(message) {
         const groupsBody = document.getElementById('runtimeMemoryGroupsTableBody');
         const usersBody = document.getElementById('runtimeMemoryUsersTableBody');
+        const queriesBody = document.getElementById('runtimeMemoryQueriesTableBody');
         if (groupsBody) groupsBody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
         if (usersBody) usersBody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        ['runtimeMemoryTotal', 'runtimeMemoryGroupsCount', 'runtimeMemoryUsersCount'].forEach(id => {
+        if (queriesBody) queriesBody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        ['runtimeMemoryTotal', 'runtimeMemoryGroupsCount', 'runtimeMemoryUsersCount', 'runtimeMemoryQueriesCount'].forEach(id => {
             const element = document.getElementById(id);
             if (element) element.textContent = 'Нет данных';
         });
@@ -1987,9 +1989,11 @@
     function renderRuntimeMemory(data) {
         const groups = data.groups || [];
         const users = data.users || [];
+        const queries = data.queries || [];
         document.getElementById('runtimeMemoryTotal').textContent = `Всего: ${data.total_memory || '—'}`;
         document.getElementById('runtimeMemoryGroupsCount').textContent = `${groups.length} строк`;
         document.getElementById('runtimeMemoryUsersCount').textContent = `${users.length} пользователей`;
+        document.getElementById('runtimeMemoryQueriesCount').textContent = `${queries.length} запросов`;
         document.getElementById('runtimeMemoryMeasurement').textContent = data.measurement || 'Фактический RSS из Linux cgroups';
         const sampledAt = data.sampled_at ? new Date(data.sampled_at) : new Date();
         document.getElementById('runtimeMemorySampledAt').textContent = Number.isNaN(sampledAt.getTime()) ? '—' : sampledAt.toLocaleString();
@@ -1999,6 +2003,12 @@
         document.getElementById('runtimeMemoryUsersTableBody').innerHTML = users.length ? users.map(item => `
             <tr><td><strong>${escapeHtml(item.username)}</strong></td><td>${escapeHtml(item.group_name)}</td><td>${escapeHtml(item.active_queries)}</td><td>${escapeHtml(item.sessions)}</td><td><strong>${escapeHtml(item.shared_group_memory)}</strong></td></tr>
         `).join('') : '<tr><td colspan="5" class="text-muted">Активные пользовательские сессии не найдены</td></tr>';
+        document.getElementById('runtimeMemoryQueriesTableBody').innerHTML = queries.length ? queries.map(item => `
+            <tr><td>${escapeHtml(item.session_id)}</td><td><strong>${escapeHtml(item.username)}</strong></td><td>${escapeHtml(item.database)}</td><td><strong>${escapeHtml(item.ram)}</strong></td><td class="${Number(item.swap_bytes) > 0 ? 'text-danger' : ''}"><strong>${escapeHtml(item.swap)}</strong></td><td>${escapeHtml(item.process_count)}</td><td>${escapeHtml(item.segment_count)}</td><td><code class="query-sql">${escapeHtml(item.query)}</code></td></tr>
+        `).join('') : '<tr><td colspan="8" class="text-muted">Активные запросы не найдены</td></tr>';
+        const processWarning = document.getElementById('runtimeMemoryProcessWarning');
+        processWarning.textContent = data.process_warning || '';
+        processWarning.classList.toggle('d-none', !data.process_warning);
     }
 
     function refreshRuntimeMemoryForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), {silent = false} = {}) {
