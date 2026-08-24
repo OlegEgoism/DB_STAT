@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from django.conf import settings
 from django.http import JsonResponse
@@ -307,6 +308,7 @@ def runtime_memory_usage(request):
             "total_memory_mb": total_memory_mb,
             "total_memory": _format_bytes(int(total_memory_mb * 1024 * 1024)),
             "measurement": "Фактический RSS resource group из Linux cgroups, суммированный по segment hosts",
+            "sampled_at": datetime.now(UTC).isoformat(),
         }
     )
 

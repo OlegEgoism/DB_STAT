@@ -1336,7 +1336,7 @@
                     <span>Обновление</span>
                     <select id="runtimeMemoryRefreshInterval" class="form-control form-control-sm">
                         <option value="0">Вручную</option>
-                        <option value="5">5 сек</option>
+                        <option value="5" selected>5 сек</option>
                         <option value="10">10 сек</option>
                         <option value="30">30 сек</option>
                         <option value="60">60 сек</option>
@@ -1345,7 +1345,8 @@
                 <button class="btn-conn primary" type="button" id="runtimeMemoryRefreshBtn"><i class="fas fa-sync-alt"></i> Обновить</button>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-0" id="runtimeMemoryMeasurement">Данные загружаются из Linux cgroups на segment hosts.</p>
+                <p class="text-muted mb-1" id="runtimeMemoryMeasurement">Данные загружаются из Linux cgroups на segment hosts.</p>
+                <p class="text-muted mb-0"><i class="fas fa-clock"></i> Последний снимок: <strong id="runtimeMemorySampledAt">—</strong>. Значения обновляются без накопления и показывают состояние на момент опроса.</p>
             </div>
         </div>
         <div class="row g-3">

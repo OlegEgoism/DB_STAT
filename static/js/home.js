@@ -44,7 +44,7 @@
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let runtimeMemoryRequestId = 0;
-    let runtimeMemoryState = {refreshInterval: 0, timer: null};
+    let runtimeMemoryState = {refreshInterval: 5, timer: null};
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
     let auditState = {page: 1, pageSize: 100, totalCount: 0, sort: 'created', direction: 'desc'};
@@ -1980,6 +1980,8 @@
             const element = document.getElementById(id);
             if (element) element.textContent = 'Нет данных';
         });
+        const sampledAt = document.getElementById('runtimeMemorySampledAt');
+        if (sampledAt) sampledAt.textContent = '—';
     }
 
     function renderRuntimeMemory(data) {
@@ -1989,6 +1991,8 @@
         document.getElementById('runtimeMemoryGroupsCount').textContent = `${groups.length} строк`;
         document.getElementById('runtimeMemoryUsersCount').textContent = `${users.length} пользователей`;
         document.getElementById('runtimeMemoryMeasurement').textContent = data.measurement || 'Фактический RSS из Linux cgroups';
+        const sampledAt = data.sampled_at ? new Date(data.sampled_at) : new Date();
+        document.getElementById('runtimeMemorySampledAt').textContent = Number.isNaN(sampledAt.getTime()) ? '—' : sampledAt.toLocaleString();
         document.getElementById('runtimeMemoryGroupsTableBody').innerHTML = groups.length ? groups.map(item => `
             <tr><td><strong>${escapeHtml(item.group_name)}</strong></td><td>${escapeHtml(item.hostname)}</td><td><strong>${escapeHtml(item.memory)}</strong></td><td>${escapeHtml(item.cpu_usage)}</td><td>${escapeHtml(item.memory_quota)}</td><td>${escapeHtml(item.concurrency)}</td><td>${escapeHtml(item.running)}</td><td>${escapeHtml(item.queueing)}</td></tr>
         `).join('') : '<tr><td colspan="8" class="text-muted">Активные resource groups не найдены</td></tr>';
@@ -2025,6 +2029,7 @@
             scheduleRuntimeMemoryRefresh();
             refreshRuntimeMemoryForConnection(undefined, {silent: true});
         });
+        scheduleRuntimeMemoryRefresh();
     }
 
     function renderRolesListWarning(tbodyId, countId, colspan, message) {

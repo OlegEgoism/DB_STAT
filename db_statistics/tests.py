@@ -34,6 +34,7 @@ class RuntimeMemoryUsageTests(SimpleTestCase):
         self.assertEqual(payload["groups"][0]["running"], 2)
         self.assertEqual(payload["groups"][0]["queueing"], 1)
         self.assertEqual(payload["users"][0]["shared_group_memory"], "256.00 МБ")
+        self.assertTrue(payload["sampled_at"].endswith("+00:00"))
 
     @patch("db_statistics.views_administration._fetch_db_rows", side_effect=RuntimeError("view missing"))
     @patch("db_statistics.views_administration._require_payload_connection")
