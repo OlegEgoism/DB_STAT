@@ -20,6 +20,29 @@ from db_statistics.view_helpers import (
     _safe_db_error_message,
 )
 
+SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
+TABLE_SEARCH_COLUMNS = (
+    "namespace.nspname",
+    "table_class.relname",
+    "(namespace.nspname || '.' || table_class.relname)",
+)
+VIEW_SEARCH_COLUMNS = (
+    "namespace.nspname",
+    "view_class.relname",
+    "(namespace.nspname || '.' || view_class.relname)",
+)
+FUNCTION_SEARCH_COLUMNS = (
+    "namespace.nspname",
+    "procedure.proname",
+    "pg_catalog.pg_get_function_result(procedure.oid)",
+    "pg_catalog.pg_get_function_arguments(procedure.oid)",
+)
+TEMP_TABLE_SEARCH_COLUMNS = (
+    "namespace.nspname",
+    "table_class.relname",
+    "(namespace.nspname || '.' || table_class.relname)",
+)
+
 
 @require_http_methods(["POST"])
 def database_schema_sizes(request):
@@ -43,7 +66,7 @@ def database_schema_sizes(request):
     params = []
     if search:
         where_sql, search_params = _multi_column_search_filter(
-            search, ("namespace.nspname", "owner.rolname")
+            search, SCHEMA_SEARCH_COLUMNS
         )
         params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
@@ -178,12 +201,7 @@ def database_table_sizes(request):
     if search:
         where_sql, search_params = _multi_column_search_filter(
             search,
-            (
-                "namespace.nspname",
-                "table_class.relname",
-                "(namespace.nspname || '.' || table_class.relname)",
-                "owner.rolname",
-            ),
+            TABLE_SEARCH_COLUMNS,
         )
         params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
@@ -342,12 +360,7 @@ def database_views_list(request):
     if search:
         where_sql, search_params = _multi_column_search_filter(
             search,
-            (
-                "namespace.nspname",
-                "view_class.relname",
-                "owner.rolname",
-                "(namespace.nspname || '.' || view_class.relname)",
-            ),
+            VIEW_SEARCH_COLUMNS,
         )
         params.extend(search_params)
     favorite_sql, favorite_params = _favorite_filter(
@@ -474,12 +487,7 @@ def database_functions_list(request):
     if search:
         where_sql, params = _multi_column_search_filter(
             search,
-            (
-                "namespace.nspname",
-                "procedure.proname",
-                "pg_catalog.pg_get_function_result(procedure.oid)",
-                "pg_catalog.pg_get_function_arguments(procedure.oid)",
-            ),
+            FUNCTION_SEARCH_COLUMNS,
         )
     favorite_sql, favorite_params = _favorite_filter(
         payload,
@@ -705,12 +713,7 @@ def database_temp_table_sizes(request):
     if search:
         where_sql, params = _multi_column_search_filter(
             search,
-            (
-                "namespace.nspname",
-                "table_class.relname",
-                "owner.rolname",
-                "(namespace.nspname || '.' || table_class.relname)",
-            ),
+            TEMP_TABLE_SEARCH_COLUMNS,
         )
 
     temp_table_sizes_query = f"""
