@@ -2462,7 +2462,7 @@
                         const failureMessage = translateInterfaceText(job.message || 'операция завершилась с ошибкой');
                         showToast(`❌ ${operationLabel} для ${tableLabel}: ${failureMessage}`);
                     }
-                    if (['analyze', 'explain_analyze'].includes(job.operation)) showMaintenanceResult(job);
+                    showMaintenanceResult(job);
                 })
                 .catch(error => {
                     maintenanceJobs.delete(jobId);
