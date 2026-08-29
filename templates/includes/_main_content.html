@@ -495,7 +495,7 @@
                     <div class="database-table-toolbar">
                         <div class="search-box">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="schemaSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema...{% else %}Поиск по схеме...{% endif %}">
+                            <input type="search" id="schemaSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema...{% else %}Поиск по схеме...{% endif %}" autocomplete="off">
                         </div>
                         <div class="toolbar-filter"><select id="schemaFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
                     </div>
@@ -568,7 +568,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="tableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
+                    <input type="search" id="tableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}" autocomplete="off">
                 </div>
                 <div class="toolbar-filter"><select id="tableFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
             </div>
@@ -648,7 +648,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="viewSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or view...{% else %}Поиск по схеме или представлению...{% endif %}">
+                    <input type="search" id="viewSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or view...{% else %}Поиск по схеме или представлению...{% endif %}" autocomplete="off">
                 </div>
                 <div class="toolbar-filter-group">
                     <div class="toolbar-filter">
@@ -738,7 +738,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="search" id="functionSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by function name...{% else %}Поиск по названию функции...{% endif %}" autocomplete="off">
+                    <input type="search" id="functionSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search function data...{% else %}Поиск по данным функции...{% endif %}" autocomplete="off">
                 </div>
                 <div class="toolbar-filter"><select id="functionFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
             </div>
@@ -890,7 +890,7 @@
                     <div class="database-table-toolbar">
                         <div class="search-box">
                             <i class="fas fa-search"></i>
-                            <input type="text" id="tempTableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
+                            <input type="search" id="tempTableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}" autocomplete="off">
                         </div>
                     </div>
                     <div class="card-body p-0">
@@ -956,7 +956,7 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="activeQueriesUserFilter">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}User{% else %}Пользователь{% endif %}</span>
-                    <input id="activeQueriesUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
+                    <input id="activeQueriesUserFilter" class="form-control form-control-sm" type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="activeQueriesRefreshInterval">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
@@ -1021,7 +1021,7 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="activeSessionsUserFilter">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}User{% else %}Пользователь{% endif %}</span>
-                    <input id="activeSessionsUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
+                    <input id="activeSessionsUserFilter" class="form-control form-control-sm" type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="activeSessionsStateFilter">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}State{% else %}Состояние{% endif %}</span>
@@ -1129,11 +1129,11 @@
             <div class="database-table-toolbar refresh-toolbar">
                 <label class="refresh-interval-control" for="blockingLocksBlockedUserFilter">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Blocked user{% else %}Заблок. пользователь{% endif %}</span>
-                    <input id="blockingLocksBlockedUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
+                    <input id="blockingLocksBlockedUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="blockingLocksBlockerUserFilter">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Blocking user{% else %}Блок. пользователь{% endif %}</span>
-                    <input id="blockingLocksBlockerUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
+                    <input id="blockingLocksBlockerUserFilter" class="form-control form-control-sm" data-blocking-locks-user-filter type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                 </label>
                 <label class="refresh-interval-control" for="blockingLocksRefreshInterval">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
@@ -1189,7 +1189,7 @@
                     <div class="database-table-toolbar refresh-toolbar">
                         <label class="refresh-interval-control" for="idleTransactionsUserFilter">
                             <span>{% if CURRENT_LANGUAGE == 'en' %}User{% else %}Пользователь{% endif %}</span>
-                            <input id="idleTransactionsUserFilter" class="form-control form-control-sm" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}" autocomplete="off">
+                            <input id="idleTransactionsUserFilter" class="form-control form-control-sm" type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                         </label>
                         <label class="refresh-interval-control" for="idleTransactionsRefreshInterval">
                             <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
@@ -1340,7 +1340,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="usersSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}">
+                    <input type="search" id="usersSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by user...{% else %}Поиск по пользователю...{% endif %}" autocomplete="off">
                 </div>
                 <div class="toolbar-filter"><select id="usersFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
             </div>
@@ -1436,7 +1436,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="groupsSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by group...{% else %}Поиск по группе...{% endif %}">
+                    <input type="search" id="groupsSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by group...{% else %}Поиск по группе...{% endif %}" autocomplete="off">
                 </div>
                 <div class="toolbar-filter"><select id="groupsFavoritesFilter" class="form-select form-select-sm"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
             </div>
@@ -1519,7 +1519,7 @@
             <div class="database-table-toolbar">
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input id="maintenanceSearchInput" type="text" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}">
+                    <input id="maintenanceSearchInput" type="search" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema or table...{% else %}Поиск по схеме или таблице...{% endif %}" autocomplete="off">
                 </div>
             </div>
             <div class="card-body p-0">

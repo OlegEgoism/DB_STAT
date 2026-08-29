@@ -1,10 +1,13 @@
+from unittest.mock import patch
+
 from django.conf import settings
 from django.contrib import admin
-from django.test import SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase
 
 from db_statistics.admin import DBConnectionAdmin
 from db_statistics.models import DBAudit, DBConnection
-from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS
+from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter
+from db_statistics.views_performance import blocking_locks, idle_transactions
 
 
 class ApplicationDatabaseTests(SimpleTestCase):
@@ -13,6 +16,57 @@ class ApplicationDatabaseTests(SimpleTestCase):
             settings.DATABASES["default"]["ENGINE"],
             "django.db.backends.sqlite3",
         )
+
+
+class SearchTests(SimpleTestCase):
+    def test_like_search_escapes_wildcards_without_losing_substring_search(self):
+        self.assertEqual(_like_search_pattern("ops_100%!"), "%ops!_100!%!!%")
+
+    def test_multi_column_search_uses_every_described_data_column(self):
+        where_sql, params = _multi_column_search_filter(
+            "Sales_2026", ("schema_name", "table_name")
+        )
+        self.assertEqual(
+            where_sql,
+            "AND (schema_name ILIKE %s ESCAPE '!' OR table_name ILIKE %s ESCAPE '!')",
+        )
+        self.assertEqual(params, ["%Sales!_2026%", "%Sales!_2026%"])
+
+    @patch("db_statistics.views_performance._fetch_db_rows", return_value=[])
+    @patch("db_statistics.views_performance._require_payload_connection")
+    @patch("db_statistics.views_performance._read_json_body")
+    def test_lock_user_fields_search_by_partial_value(
+        self, read_body, require_connection, fetch_rows
+    ):
+        read_body.return_value = {
+            "blocked_username": "ops_",
+            "blocker_username": "Admin%",
+        }
+        require_connection.return_value = (object(), None)
+
+        response = blocking_locks(RequestFactory().post("/locks"))
+
+        self.assertEqual(response.status_code, 200)
+        query, params = fetch_rows.call_args.args[1:]
+        self.assertIn("blocked.usename ILIKE %s ESCAPE '!'", query)
+        self.assertIn("blocker.usename ILIKE %s ESCAPE '!'", query)
+        self.assertEqual(params, ["ops_", "%ops!_%", "Admin%", "%Admin!%%"])
+
+    @patch("db_statistics.views_performance._fetch_db_rows", return_value=[])
+    @patch("db_statistics.views_performance._require_payload_connection")
+    @patch("db_statistics.views_performance._read_json_body")
+    def test_idle_transaction_user_field_searches_by_partial_value(
+        self, read_body, require_connection, fetch_rows
+    ):
+        read_body.return_value = {"username": "report_"}
+        require_connection.return_value = (object(), None)
+
+        response = idle_transactions(RequestFactory().post("/transactions"))
+
+        self.assertEqual(response.status_code, 200)
+        query, params = fetch_rows.call_args.args[1:]
+        self.assertIn("usename ILIKE %s ESCAPE '!'", query)
+        self.assertEqual(params, ["report_", "%report!_%"])
 
 
 class DBConnectionTypeTests(SimpleTestCase):

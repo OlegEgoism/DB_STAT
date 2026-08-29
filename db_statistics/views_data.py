@@ -472,7 +472,15 @@ def database_functions_list(request):
     where_sql = ""
     params = []
     if search:
-        where_sql, params = _multi_column_search_filter(search, ("procedure.proname",))
+        where_sql, params = _multi_column_search_filter(
+            search,
+            (
+                "namespace.nspname",
+                "procedure.proname",
+                "pg_catalog.pg_get_function_result(procedure.oid)",
+                "pg_catalog.pg_get_function_arguments(procedure.oid)",
+            ),
+        )
     favorite_sql, favorite_params = _favorite_filter(
         payload,
         _current_db_user(request),

@@ -492,12 +492,17 @@ def _escape_like_pattern(value):
     return value.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
+def _like_search_pattern(value):
+    """Возвращает безопасный шаблон для регистронезависимого поиска подстроки."""
+    return f"%{_escape_like_pattern(value)}%"
+
+
 def _multi_column_search_filter(search, columns):
     """Строит условие ILIKE по нескольким колонкам для текстового поиска.
 
     Возвращает (where_sql, params); where_sql уже начинается с ``AND``.
     """
-    pattern = f"%{_escape_like_pattern(search)}%"
+    pattern = _like_search_pattern(search)
     clauses = " OR ".join(f"{column} ILIKE %s ESCAPE '!'" for column in columns)
     return f"AND ({clauses})", [pattern] * len(columns)
 
