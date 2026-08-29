@@ -139,6 +139,7 @@
         'Поиск по группе...': 'Search by group...', 'Поиск по пользователю...': 'Search by user...',
         'Поиск по схеме...': 'Search by schema...', 'Поиск по схеме или таблице...': 'Search by schema or table...',
         'Поиск по схеме или представлению...': 'Search by schema or view...', 'Поиск по названию функции...': 'Search by function name...',
+        'Поиск по данным функции...': 'Search function data...',
         'Детализация размеров базы данных': 'Database size breakdown',
         'Обычные и материализованные представления': 'Regular and materialized views',
         'Пользователи с правом репликации': 'Users with replication permission',

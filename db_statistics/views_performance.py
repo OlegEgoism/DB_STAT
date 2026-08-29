@@ -7,10 +7,10 @@ from db_statistics.view_helpers import (
     _current_db_user,
     _destructive_action_permission_error,
     _duration_seconds,
-    _escape_like_pattern,
     _fetch_db_row,
     _fetch_db_rows,
     _format_duration,
+    _like_search_pattern,
     _read_json_body,
     _require_payload_connection,
     _safe_db_error_message,
@@ -26,7 +26,7 @@ def active_queries(request):
     if error_response:
         return error_response
     username = (payload.get("username") or "").strip()
-    username_pattern = f"%{_escape_like_pattern(username)}%" if username else ""
+    username_pattern = _like_search_pattern(username) if username else ""
     active_queries_query = """
         WITH locked_relations AS (
             SELECT
@@ -185,7 +185,7 @@ def active_sessions(request):
     if error_response:
         return error_response
     username = (payload.get("username") or "").strip()
-    username_pattern = f"%{_escape_like_pattern(username)}%" if username else ""
+    username_pattern = _like_search_pattern(username) if username else ""
     state = (payload.get("state") or "").strip()
     sessions_query = """
         SELECT
@@ -379,6 +379,8 @@ def blocking_locks(request):
         return error_response
     blocked_username = (payload.get("blocked_username") or "").strip()
     blocker_username = (payload.get("blocker_username") or "").strip()
+    blocked_username_pattern = _like_search_pattern(blocked_username) if blocked_username else ""
+    blocker_username_pattern = _like_search_pattern(blocker_username) if blocker_username else ""
     blocking_locks_query = """
         SELECT
             blocked.pid AS blocked_pid,
@@ -408,15 +410,15 @@ def blocking_locks(request):
             ON blocker.pid = blocker_locks.pid
         WHERE NOT blocked_locks.granted
           AND blocker_locks.granted
-          AND (%s = '' OR blocked.usename = %s)
-          AND (%s = '' OR blocker.usename = %s);
+          AND (%s = '' OR blocked.usename ILIKE %s ESCAPE '!')
+          AND (%s = '' OR blocker.usename ILIKE %s ESCAPE '!');
     """
 
     try:
         rows = _fetch_db_rows(
             db_connection,
             blocking_locks_query,
-            [blocked_username, blocked_username, blocker_username, blocker_username],
+            [blocked_username, blocked_username_pattern, blocker_username, blocker_username_pattern],
         )
     except Exception as exc:
         return JsonResponse(
@@ -462,6 +464,7 @@ def idle_transactions(request):
     if error_response:
         return error_response
     username = (payload.get("username") or "").strip()
+    username_pattern = _like_search_pattern(username) if username else ""
     idle_transactions_query = """
         SELECT
             pid,
@@ -474,13 +477,13 @@ def idle_transactions(request):
             query
         FROM pg_catalog.pg_stat_activity
         WHERE state = 'idle in transaction'
-          AND (%s = '' OR usename = %s)
+          AND (%s = '' OR usename ILIKE %s ESCAPE '!')
         ORDER BY xact_start;
     """
 
     try:
         rows = _fetch_db_rows(
-            db_connection, idle_transactions_query, [username, username]
+            db_connection, idle_transactions_query, [username, username_pattern]
         )
     except Exception as exc:
         return JsonResponse(
