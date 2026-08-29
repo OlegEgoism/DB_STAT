@@ -2432,6 +2432,13 @@
         const message = document.getElementById('maintenanceResultMessage');
         message.textContent = job.message || (succeeded ? 'Операция успешно завершена' : 'Операция завершилась с ошибкой');
         message.className = `alert ${succeeded ? 'alert-success' : 'alert-danger'} mb-3`;
+        const statisticsSection = document.getElementById('maintenanceResultStatisticsSection');
+        const statistics = job.statistics;
+        statisticsSection.classList.toggle('d-none', !statistics);
+        if (statistics) {
+            document.getElementById('maintenanceResultLiveRows').textContent = formatRowCount(statistics.live_rows);
+            document.getElementById('maintenanceResultDeadRows').textContent = formatRowCount(statistics.dead_rows);
+        }
         const planSection = document.getElementById('maintenanceExplainPlanSection');
         const plan = document.getElementById('maintenanceExplainPlan');
         const planLines = Array.isArray(job.details) ? job.details : [];
