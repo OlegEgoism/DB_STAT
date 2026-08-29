@@ -1,5 +1,7 @@
+from django.contrib import admin
 from django.test import SimpleTestCase
 
+from db_statistics.admin import DBConnectionAdmin
 from db_statistics.models import DBAudit, DBConnection
 from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS
 
@@ -21,3 +23,12 @@ class MaintenanceOperationTests(SimpleTestCase):
         expected_operations = {"vacuum", "vacuum_full", "analyze", "explain_analyze"}
         self.assertEqual(set(MAINTENANCE_OPERATION_LABELS), expected_operations)
         self.assertTrue(expected_operations.issubset(dict(DBAudit.ACTION_TYPES)))
+
+
+class DBConnectionAdminTests(SimpleTestCase):
+    def test_assigned_user_logins_are_visible_and_searchable(self):
+        model_admin = admin.site._registry[DBConnection]
+        self.assertIsInstance(model_admin, DBConnectionAdmin)
+        self.assertIn("users_logins", model_admin.list_display)
+        self.assertIn("users_logins", model_admin.readonly_fields)
+        self.assertIn("dbuser__login", model_admin.search_fields)
