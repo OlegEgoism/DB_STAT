@@ -20,7 +20,3 @@ staticfiles/
 
 # User-uploaded media files
 media/
-
-# Generated Django migrations (keep the package marker tracked)
-db_statistics/migrations/*
-!db_statistics/migrations/__init__.py

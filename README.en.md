@@ -121,8 +121,14 @@ docker build -t db-stat .
 Run the container with access to a database on the Docker host:
 
 ```bash
-docker run --name db-stat --rm -p 8000:8000 db-stat
+docker run --name db-stat --rm -p 8000:8000 \
+  -v db-stat-data:/app/data db-stat
 ```
+
+The `db-stat-data` named volume preserves the single internal SQLite database
+file across container restarts and upgrades. On startup, the container applies
+the versioned migrations committed to the project; generating migrations in
+the image or running a separate application database server is unnecessary.
 
 Enter `localhost` in the connection form. Inside the image, the application
 automatically routes that connection to the Docker host. This works both in
