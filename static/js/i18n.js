@@ -74,6 +74,7 @@
         'Действует до': 'Valid until', 'Группы по количеству участников': 'Groups by member count', 'Привилегированные группы': 'Privileged groups',
         'Привилегированные / обычные': 'Privileged / regular', 'Группа': 'Group', 'Участников': 'Members',
         'Статистика обслуживания': 'Maintenance statistics', 'Живые/мёртвые строки': 'Live/dead rows', 'Тепловая карта статуса обслуживания': 'Maintenance status heatmap',
+        'Статус рассчитывается по текущей доле мёртвых строк, а не по дате последнего VACUUM. После новых UPDATE/DELETE таблица может снова потребовать очистки.': 'Status is calculated from the current dead-row ratio, not the last VACUUM date. New UPDATE/DELETE activity may make the table require cleanup again.',
         'Живых строк': 'Live rows', 'Мёртвых строк': 'Dead rows', 'Доля мёртвых строк': 'Dead-row share',
         'Последняя очистка (VACUUM)': 'Last VACUUM', 'Последний анализ (ANALYZE)': 'Last ANALYZE', 'Аудит действий': 'Action audit',
         'Выполняется': 'Running', 'VACUUM таблицы': 'Table VACUUM', 'VACUUM FULL таблицы': 'Table VACUUM FULL',
