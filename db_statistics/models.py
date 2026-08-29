@@ -9,8 +9,8 @@ ENCRYPTED_PASSWORD_PREFIX = "enc$"
 
 
 def vn(name: str, **kwargs) -> dict:
-    """Соединение verbose_name + db_comment из одной строки"""
-    return {"verbose_name": name, "db_comment": name, **kwargs}
+    """Возвращает общее отображаемое имя поля для интерфейса Django."""
+    return {"verbose_name": name, **kwargs}
 
 
 def _connection_password_cipher():
@@ -78,11 +78,10 @@ class DBUser(DateStamp, Active):
     login = models.CharField(**vn("Логин"), max_length=100, db_index=True, unique=True)
     email = models.EmailField(**vn("Почта"), unique=True)
     role = models.CharField(**vn("Роль"), max_length=20, choices=USER_ROLE, default="Аналитик")
-    connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключение к базе данных"), blank=True)
+    connections = models.ManyToManyField(to="db_statistics.DBConnection", verbose_name="Подключение к базе данных", blank=True)
 
     class Meta:
         db_table = "db_user"
-        db_table_comment = "Пользователь"
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
         ordering = ["login"]
@@ -99,7 +98,6 @@ class DBUserSidebarSettings(DateStamp):
 
     class Meta:
         db_table = "db_user_sidebar_settings"
-        db_table_comment = "Настройки сайдбара"
         verbose_name = "Настройки сайдбара"
         verbose_name_plural = "Настройки сайдбара"
 
@@ -126,7 +124,6 @@ class DBFavorite(DateStamp):
 
     class Meta:
         db_table = "db_favorite"
-        db_table_comment = "Избранный объект"
         verbose_name = "Избранный объект"
         verbose_name_plural = "Избранные объекты"
         ordering = ("object_type", "object_key")
@@ -156,7 +153,6 @@ class DBConnection(DateStamp, Active):
 
     class Meta:
         db_table = "db_connection"
-        db_table_comment = "Подключение"
         verbose_name = "Подключение"
         verbose_name_plural = "Подключения"
         unique_together = ("name", "host", "port", "database", "username")
@@ -210,7 +206,6 @@ class DBAudit(models.Model):
 
     class Meta:
         db_table = "db_audit"
-        db_table_comment = "Аудит"
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
         ordering = ("-created",)

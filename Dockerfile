@@ -14,7 +14,7 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    SQLITE_NAME=/app/db.sqlite3 \
+    SQLITE_NAME=/app/data/db.sqlite3 \
     LOCALHOST_DB_HOST=host.docker.internal \
     ALLOWED_HOSTS=*
 
@@ -31,11 +31,9 @@ COPY . .
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
     && chmod +x /app/docker-entrypoint.sh
 
-RUN rm -f /app/db.sqlite3 \
-    && python manage.py makemigrations \
-    && python manage.py migrate \
-    && python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')" \
-    && python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
+RUN mkdir -p /app/data
+
+VOLUME ["/app/data"]
 
 EXPOSE 8000
 
