@@ -37,6 +37,7 @@
                                 <select class="visually-hidden" id="connDbType" aria-hidden="true" tabindex="-1">
                                     <option value="PostgreSQL" data-icon="{% static 'img/postgresql-icon.svg' %}">PostgreSQL</option>
                                     <option value="Greenplum" data-icon="{% static 'img/greenplum-icon.svg' %}">Greenplum</option>
+                                    <option value="Greengage" data-icon="{% static 'img/greengage.svg' %}">Greengage</option>
                                 </select>
                                 <button
                                     class="db-type-select__toggle"
@@ -64,6 +65,10 @@
                                     <button class="db-type-select__option" type="button" role="option" aria-selected="false" data-value="Greenplum" data-icon="{% static 'img/greenplum-icon.svg' %}">
                                         <img class="db-type-select__option-icon" src="{% static 'img/greenplum-icon.svg' %}" alt="">
                                         <span>Greenplum</span>
+                                    </button>
+                                    <button class="db-type-select__option" type="button" role="option" aria-selected="false" data-value="Greengage" data-icon="{% static 'img/greengage.svg' %}">
+                                        <img class="db-type-select__option-icon" src="{% static 'img/greengage.svg' %}" alt="">
+                                        <span>Greengage</span>
                                     </button>
                                 </div>
                             </div>
@@ -116,6 +121,38 @@
                     <i class="fas fa-stop-circle me-1" aria-hidden="true"></i>
                     Завершить
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ========== MAINTENANCE RESULT MODAL ========== -->
+<div class="modal fade" id="maintenanceResultModal" tabindex="-1" aria-labelledby="maintenanceResultModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="maintenanceResultModalTitle">
+                    <i class="fas fa-chart-line me-2 text-accent-blue" aria-hidden="true"></i>
+                    Результат обслуживания
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row mb-3">
+                    <dt class="col-sm-3">Операция</dt><dd class="col-sm-9" id="maintenanceResultOperation">—</dd>
+                    <dt class="col-sm-3">Таблица</dt><dd class="col-sm-9"><code id="maintenanceResultTable">—</code></dd>
+                    <dt class="col-sm-3">Статус</dt><dd class="col-sm-9" id="maintenanceResultStatus">—</dd>
+                    <dt class="col-sm-3">Длительность</dt><dd class="col-sm-9" id="maintenanceResultDuration">—</dd>
+                </dl>
+                <div id="maintenanceResultMessage" class="alert alert-info mb-3"></div>
+                <div id="maintenanceExplainPlanSection" class="d-none">
+                    <h6>План выполнения</h6>
+                    <pre id="maintenanceExplainPlan" class="bg-dark text-light rounded p-3 mb-0 overflow-auto" style="max-height: 55vh; white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
     </div>

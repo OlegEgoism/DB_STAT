@@ -71,7 +71,7 @@
     const idleTransactionsApiUrl = '/transactions/idle/';
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
-    const maintenanceVacuumApiUrl = '/maintenance/vacuum/';
+    const maintenanceOperationApiUrl = '/maintenance/operation/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
@@ -108,8 +108,8 @@
 
     const greenplumOnlyPages = new Set(['segments', 'distribution']);
 
-    function isPostgreSQLConnection(conn) {
-        return String(conn?.db_type || '').toLowerCase() === 'postgresql';
+    function isGreenplumCompatibleConnection(conn) {
+        return new Set(['greenplum', 'greengage']).has(String(conn?.db_type || '').toLowerCase());
     }
 
     function isSidebarPageEnabled(pageId) {
@@ -122,15 +122,15 @@
         if (pageId === 'home' || pageId === 'audit' || pageId === 'settings') return true;
         if (pageId === 'favorites') return Boolean(conn);
         if (!pageId || !conn) return false;
-        if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
+        if (!isGreenplumCompatibleConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
     }
 
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
-        const preferredPages = isPostgreSQLConnection(conn)
-            ? ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+        const preferredPages = isGreenplumCompatibleConnection(conn)
+            ? ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -169,9 +169,12 @@
 
     function getConnectionDbTypeIconSrc(dbType, iconElement) {
         const normalizedType = String(dbType || '').toLowerCase();
-        return normalizedType === 'greenplum'
-            ? iconElement?.dataset?.greenplumIcon
-            : iconElement?.dataset?.postgresqlIcon;
+        const iconsByType = {
+            greenplum: iconElement?.dataset?.greenplumIcon,
+            greengage: iconElement?.dataset?.greengageIcon,
+            postgresql: iconElement?.dataset?.postgresqlIcon
+        };
+        return iconsByType[normalizedType] || iconsByType.postgresql;
     }
 
     function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -2384,6 +2387,8 @@
                     ${canRunDestructiveActions() ? `<td class="maintenance-actions">
                         <button class="btn btn-sm btn-outline-primary" type="button" data-maintenance-operation="vacuum" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM</button>
                         <button class="btn btn-sm btn-outline-danger" type="button" data-maintenance-operation="vacuum_full" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM FULL</button>
+                        <button class="btn btn-sm btn-outline-success" type="button" data-maintenance-operation="analyze" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>ANALYZE</button>
+                        <button class="btn btn-sm btn-outline-info" type="button" data-maintenance-operation="explain_analyze" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>EXPLAIN ANALYZE</button>
                         ${runningJob ? '<span class="maintenance-job-running"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Выполняется</span>' : ''}
                     </td>` : ''}
                 </tr>
@@ -2400,14 +2405,44 @@
         tbody.querySelectorAll('[data-maintenance-operation]').forEach(button => {
             button.addEventListener('click', function (event) {
                 event.stopPropagation();
-                startMaintenanceVacuum(this.dataset.schemaName, this.dataset.tableName, this.dataset.maintenanceOperation);
+                startMaintenanceOperation(this.dataset.schemaName, this.dataset.tableName, this.dataset.maintenanceOperation);
             });
         });
     }
 
+    function getMaintenanceOperationLabel(operation) {
+        return {
+            vacuum: 'VACUUM',
+            vacuum_full: 'VACUUM FULL',
+            analyze: 'ANALYZE',
+            explain_analyze: 'EXPLAIN ANALYZE'
+        }[operation] || String(operation || '').toUpperCase();
+    }
+
+    function showMaintenanceResult(job) {
+        const modalElement = document.getElementById('maintenanceResultModal');
+        if (!modalElement) return;
+        const succeeded = job.status === 'completed';
+        document.getElementById('maintenanceResultOperation').textContent = getMaintenanceOperationLabel(job.operation);
+        document.getElementById('maintenanceResultTable').textContent = `${job.schema_name}.${job.table_name}`;
+        document.getElementById('maintenanceResultStatus').innerHTML = succeeded
+            ? '<span class="badge bg-success">Успешно завершено</span>'
+            : '<span class="badge bg-danger">Ошибка</span>';
+        document.getElementById('maintenanceResultDuration').textContent = `${Number(job.duration_seconds || 0).toLocaleString()} с`;
+        const message = document.getElementById('maintenanceResultMessage');
+        message.textContent = job.message || (succeeded ? 'Операция успешно завершена' : 'Операция завершилась с ошибкой');
+        message.className = `alert ${succeeded ? 'alert-success' : 'alert-danger'} mb-3`;
+        const planSection = document.getElementById('maintenanceExplainPlanSection');
+        const plan = document.getElementById('maintenanceExplainPlan');
+        const planLines = Array.isArray(job.details) ? job.details : [];
+        plan.textContent = planLines.join('\n');
+        planSection.classList.toggle('d-none', job.operation !== 'explain_analyze' || planLines.length === 0);
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }
+
     function pollMaintenanceJob(jobId) {
         window.setTimeout(() => {
-            connectionRequest(maintenanceVacuumApiUrl, {job_id: jobId})
+            connectionRequest(maintenanceOperationApiUrl, {job_id: jobId})
                 .then(data => {
                     const job = data.job;
                     const trackedJob = maintenanceJobs.get(jobId);
@@ -2418,7 +2453,7 @@
                         return;
                     }
                     maintenanceJobs.delete(jobId);
-                    const operationLabel = job.operation === 'vacuum_full' ? 'VACUUM FULL' : 'VACUUM';
+                    const operationLabel = getMaintenanceOperationLabel(job.operation);
                     const tableLabel = `${job.schema_name}.${job.table_name}`;
                     if (job.status === 'completed') {
                         showToast(`✅ ${operationLabel} для ${tableLabel} завершён`);
@@ -2427,6 +2462,7 @@
                         const failureMessage = translateInterfaceText(job.message || 'операция завершилась с ошибкой');
                         showToast(`❌ ${operationLabel} для ${tableLabel}: ${failureMessage}`);
                     }
+                    if (['analyze', 'explain_analyze'].includes(job.operation)) showMaintenanceResult(job);
                 })
                 .catch(error => {
                     maintenanceJobs.delete(jobId);
@@ -2436,14 +2472,14 @@
         }, 1500);
     }
 
-    function startMaintenanceVacuum(schemaName, tableName, operation) {
+    function startMaintenanceOperation(schemaName, tableName, operation) {
         const conn = connections.find(c => String(c.id) === String(activeConnectionId));
         if (!conn) {
             showToast('⚠️ Выберите подключение');
             return;
         }
         const tableKey = `${schemaName}.${tableName}`;
-        connectionRequest(maintenanceVacuumApiUrl, {
+        connectionRequest(maintenanceOperationApiUrl, {
             id: conn.id,
             schema_name: schemaName,
             table_name: tableName,
@@ -2451,7 +2487,7 @@
         })
             .then(data => {
                 maintenanceJobs.set(data.job.id, {...data.job, tableKey});
-                showToast(`⏳ ${operation === 'vacuum_full' ? 'VACUUM FULL' : 'VACUUM'} для ${tableKey} запущен в фоне`);
+                showToast(`⏳ ${getMaintenanceOperationLabel(operation)} для ${tableKey} запущен в фоне`);
                 refreshMaintenanceStatsForConnection();
                 pollMaintenanceJob(data.job.id);
             })
@@ -3712,7 +3748,9 @@
             query_terminate: 'audit-action-badge--query-terminate',
             session_terminate: 'audit-action-badge--session-terminate',
             vacuum: 'audit-action-badge--vacuum',
-            vacuum_full: 'audit-action-badge--vacuum-full'
+            vacuum_full: 'audit-action-badge--vacuum-full',
+            analyze: 'audit-action-badge--analyze',
+            explain_analyze: 'audit-action-badge--explain-analyze'
         };
         return classes[actionType] || 'audit-action-badge--default';
     }
@@ -3984,7 +4022,7 @@
         if (normalized.includes('gp_segment_configuration') || normalized.includes('не существует')) {
             return {
                 title: 'Сегменты недоступны для выбранного подключения',
-                text: 'Выбранное подключение не похоже на Greenplum или у пользователя нет доступа к gp_segment_configuration. Выберите Greenplum-подключение или проверьте права доступа.'
+                text: 'Выбранное подключение не похоже на Greenplum/Greengage или у пользователя нет доступа к gp_segment_configuration. Выберите подключение Greenplum/Greengage или проверьте права доступа.'
             };
         }
         return {
@@ -4056,7 +4094,7 @@
 
     function refreshSegmentsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum.');
+            renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum или Greengage.');
             return;
         }
 
@@ -4254,7 +4292,7 @@
         if (conn) {
             updateSidebarForConnection(conn);
             activatePage(getDefaultPageForConnection(conn));
-            if (!isPostgreSQLConnection(conn)) {
+            if (isGreenplumCompatibleConnection(conn)) {
                 refreshSegmentsForConnection(conn);
             }
             showToast(`🔌 Подключено к ${conn.name}`);
@@ -4380,7 +4418,7 @@
                 updateConnectionTooltip(savedConnection);
                 updateSidebarForConnection(savedConnection);
                 activatePage(getDefaultPageForConnection(savedConnection));
-                if (!isPostgreSQLConnection(savedConnection)) {
+                if (isGreenplumCompatibleConnection(savedConnection)) {
                     refreshSegmentsForConnection(savedConnection);
                 }
                 modalInstance.hide();

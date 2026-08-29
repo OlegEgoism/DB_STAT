@@ -79,8 +79,13 @@ urlpatterns = [
     ),
     path(
         "maintenance/vacuum/",
-        views_administration.maintenance_vacuum,
+        views_administration.maintenance_operation,
         name="maintenance_vacuum",
+    ),
+    path(
+        "maintenance/operation/",
+        views_administration.maintenance_operation,
+        name="maintenance_operation",
     ),
     path(
         "users/list/",

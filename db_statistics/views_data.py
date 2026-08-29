@@ -599,7 +599,7 @@ def distribution_info(request):
         return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
 
     db_connection = _get_connection_for_request(request, connection_id)
-    if db_connection.db_type != "Greenplum":
+    if not db_connection.is_greenplum_compatible:
         return _greenplum_only_error()
     validate_query = """
         SELECT 1
