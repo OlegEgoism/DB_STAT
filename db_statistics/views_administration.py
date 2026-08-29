@@ -15,11 +15,11 @@ from db_statistics.view_helpers import (
     _fetch_db_rows,
     _format_bytes,
     _list_query_params,
-    _maintenance_vacuum_audit_info,
+    _maintenance_operation_audit_info,
     _parse_pg_size_to_bytes,
     _read_json_body,
     _require_payload_connection,
-    _run_maintenance_vacuum,
+    _run_maintenance_operation,
     _safe_db_error_message,
     _write_audit,
 )
@@ -313,8 +313,8 @@ def maintenance_stats(request):
 
 
 @require_http_methods(["POST"])
-def maintenance_vacuum(request):
-    """Запускает VACUUM или возвращает состояние фоновой задачи."""
+def maintenance_operation(request):
+    """Запускает фоновое обслуживание или возвращает состояние задачи."""
     permission_error = _destructive_action_permission_error(request)
     if permission_error:
         return permission_error
@@ -348,7 +348,7 @@ def maintenance_vacuum(request):
         return JsonResponse(
             {"ok": False, "message": "Не выбрана таблица для обслуживания"}, status=400
         )
-    if operation not in {"vacuum", "vacuum_full"}:
+    if operation not in {"vacuum", "vacuum_full", "analyze", "explain_analyze"}:
         return JsonResponse(
             {"ok": False, "message": "Неизвестная операция обслуживания"}, status=400
         )
@@ -368,7 +368,7 @@ def maintenance_vacuum(request):
         settings.MAINTENANCE_JOBS[job_id] = job
     _write_audit(
         operation,
-        _maintenance_vacuum_audit_info(
+        _maintenance_operation_audit_info(
             operation,
             db_connection,
             schema_name,
@@ -378,7 +378,7 @@ def maintenance_vacuum(request):
         db_user=db_user,
     )
     settings.MAINTENANCE_JOB_EXECUTOR.submit(
-        _run_maintenance_vacuum,
+        _run_maintenance_operation,
         job_id,
         db_connection.pk,
         schema_name,

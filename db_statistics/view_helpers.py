@@ -320,11 +320,19 @@ def _backend_termination_audit_info(action, connection, row):
     )
 
 
-def _maintenance_vacuum_audit_info(
+MAINTENANCE_OPERATION_LABELS = {
+    "vacuum": "VACUUM",
+    "vacuum_full": "VACUUM FULL",
+    "analyze": "ANALYZE",
+    "explain_analyze": "EXPLAIN ANALYZE",
+}
+
+
+def _maintenance_operation_audit_info(
     operation, connection, schema_name, table_name, result, error=None
 ):
-    """Формирует описание операции VACUUM для аудита."""
-    operation_label = "VACUUM FULL" if operation == "vacuum_full" else "VACUUM"
+    """Формирует описание фоновой операции обслуживания для аудита."""
+    operation_label = MAINTENANCE_OPERATION_LABELS.get(operation, operation.upper())
     pairs = [
         ("Действие", operation_label),
         *_connection_audit_fields(connection, server_label=True),
@@ -584,27 +592,46 @@ def _evict_stale_maintenance_jobs():
         settings.MAINTENANCE_JOBS.pop(job_id, None)
 
 
-def _run_maintenance_vacuum(
+def _run_maintenance_operation(
     job_id, connection_id, schema_name, table_name, operation, username
 ):
-    """Выполняет фоновую операцию VACUUM и обновляет состояние задачи."""
+    """Выполняет VACUUM/ANALYZE/EXPLAIN ANALYZE и обновляет состояние задачи."""
     db_connection = None
+    started_at = time.monotonic()
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
-        statement = sql.SQL("VACUUM {mode} {table}").format(
-            mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""),
-            table=sql.Identifier(schema_name, table_name),
-        )
+        table_identifier = sql.Identifier(schema_name, table_name)
+        if operation in {"vacuum", "vacuum_full"}:
+            statement = sql.SQL("VACUUM {mode} {table}").format(
+                mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""),
+                table=table_identifier,
+            )
+        elif operation == "analyze":
+            statement = sql.SQL("ANALYZE {table}").format(table=table_identifier)
+        else:
+            statement = sql.SQL(
+                "EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) SELECT * FROM {table}"
+            ).format(table=table_identifier)
         # VACUUM запрещён внутри транзакции, поэтому autocommit включается
         # сразу после открытия соединения, до выполнения запроса.
         with _open_database_connection(db_connection) as connection:
             connection.autocommit = True
             with connection.cursor() as cursor:
                 cursor.execute(statement)
+                details = (
+                    [str(row[0]) for row in cursor.fetchmany(500)]
+                    if operation == "explain_analyze"
+                    else []
+                )
     except Exception as exc:
-        result = {"status": "failed", "message": str(exc)}
+        result = {"status": "failed", "message": str(exc), "details": []}
     else:
-        result = {"status": "completed", "message": "Операция успешно завершена"}
+        result = {
+            "status": "completed",
+            "message": "Операция успешно завершена",
+            "details": details,
+        }
+    result["duration_seconds"] = round(time.monotonic() - started_at, 3)
 
     with settings.MAINTENANCE_JOBS_LOCK:
         job = settings.MAINTENANCE_JOBS.get(job_id)
@@ -614,7 +641,7 @@ def _run_maintenance_vacuum(
         _evict_stale_maintenance_jobs()
 
     if db_connection is not None:
-        audit_info = _maintenance_vacuum_audit_info(
+        audit_info = _maintenance_operation_audit_info(
             operation,
             db_connection,
             schema_name,
@@ -629,7 +656,7 @@ def _run_maintenance_vacuum(
     else:
         audit_info = "; ".join(
             [
-                f"Действие: {'VACUUM FULL' if operation == 'vacuum_full' else 'VACUUM'}",
+                f"Действие: {MAINTENANCE_OPERATION_LABELS.get(operation, operation.upper())}",
                 f"ID подключения: {connection_id}",
                 f"Схема: {schema_name}",
                 f"Таблица: {table_name}",
@@ -651,22 +678,22 @@ def _require_payload_connection(request, payload):
 
 
 def _greenplum_only_error():
-    """Возвращает ошибку для функций, доступных только подключениям Greenplum."""
+    """Возвращает ошибку для функций распределённых СУБД."""
     return JsonResponse(
         {
             "ok": False,
-            "message": "Эта функция доступна только для подключений типа Greenplum",
+            "message": "Эта функция доступна только для подключений типа Greenplum или Greengage",
         },
         status=400,
     )
 
 
 def _require_greenplum_connection(request, payload):
-    """Проверяет запрос и возвращает подключение, если оно имеет тип Greenplum."""
+    """Возвращает подключение Greenplum или совместимого с ним Greengage."""
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return None, error_response
-    if db_connection.db_type != "Greenplum":
+    if not db_connection.is_greenplum_compatible:
         return None, _greenplum_only_error()
     return db_connection, None
 
