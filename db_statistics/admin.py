@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
+from django.urls import reverse
+from django.utils.html import format_html_join
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
 
@@ -52,12 +54,32 @@ class DBUserSidebarSettingsAdmin(BaseAdmin):
 class DBConnectionAdmin(BaseAdmin):
     """Подключение"""
 
-    list_display = ("name", "host", "port", "username", "database", "created_user", "users_count", "is_active", "created", "updated")
+    list_display = ("name", "host", "port", "username", "database", "created_user", "users_logins", "users_count", "is_active", "created", "updated")
     list_filter = ("is_active", "db_type")
     list_editable = ("is_active",)
-    search_fields = ("name", "database", "username")
-    search_help_text = "Поиск по: названию, базе данных, пользователю"
-    fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "is_active", "created", "updated")
+    search_fields = ("name", "database", "username", "dbuser__login")
+    search_help_text = "Поиск по: названию, базе данных, пользователю БД, логину пользователя DB STAT"
+    fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "users_logins", "is_active", "created", "updated")
+    readonly_fields = BaseAdmin.readonly_fields + ("users_logins",)
+
+    def get_queryset(self, request):
+        """Предзагружает назначенных пользователей для списка подключений."""
+        return super().get_queryset(request).prefetch_related("dbuser_set")
+
+    @admin.display(description="Логины пользователей")
+    def users_logins(self, obj):
+        """Показывает логины пользователей с ссылками на их карточки."""
+        users = obj.dbuser_set.all()
+        if not users:
+            return "—"
+        return format_html_join(
+            ", ",
+            '<a href="{}">{}</a>',
+            (
+                (reverse("admin:db_statistics_dbuser_change", args=(user.pk,)), user.login)
+                for user in users
+            ),
+        )
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
