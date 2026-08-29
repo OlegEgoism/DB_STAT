@@ -623,6 +623,45 @@ def _run_maintenance_operation(
                     if operation == "explain_analyze"
                     else []
                 )
+                # После VACUUM принудительно обновляем оценки планировщика.
+                # В Greenplum/Greengage значения pg_stat_user_tables на
+                # coordinator без ANALYZE могут оставаться устаревшими.
+                if operation in {"vacuum", "vacuum_full"}:
+                    cursor.execute(
+                        sql.SQL("ANALYZE {table}").format(table=table_identifier)
+                    )
+                cursor.execute(
+                    """
+                    SELECT
+                        COALESCE(n_live_tup, 0)::bigint,
+                        COALESCE(n_dead_tup, 0)::bigint,
+                        last_vacuum,
+                        last_autovacuum,
+                        last_analyze,
+                        last_autoanalyze
+                    FROM pg_catalog.pg_stat_user_tables
+                    WHERE schemaname = %s AND relname = %s
+                    """,
+                    [schema_name, table_name],
+                )
+                statistics_row = cursor.fetchone()
+                statistics = (
+                    {
+                        "live_rows": int(statistics_row[0]),
+                        "dead_rows": int(statistics_row[1]),
+                        "last_vacuum": max(
+                            filter(None, (statistics_row[2], statistics_row[3])),
+                            default=None,
+                        ),
+                        "last_analyze": max(
+                            filter(None, (statistics_row[4], statistics_row[5])),
+                            default=None,
+                        ),
+                        "is_estimate": True,
+                    }
+                    if statistics_row
+                    else None
+                )
     except Exception as exc:
         result = {"status": "failed", "message": str(exc), "details": []}
     else:
@@ -630,6 +669,7 @@ def _run_maintenance_operation(
             "status": "completed",
             "message": "Операция успешно завершена",
             "details": details,
+            "statistics": statistics,
         }
     result["duration_seconds"] = round(time.monotonic() - started_at, 3)
 

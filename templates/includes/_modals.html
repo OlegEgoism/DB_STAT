@@ -146,6 +146,14 @@
                     <dt class="col-sm-3">Длительность</dt><dd class="col-sm-9" id="maintenanceResultDuration">—</dd>
                 </dl>
                 <div id="maintenanceResultMessage" class="alert alert-info mb-3"></div>
+                <div id="maintenanceResultStatisticsSection" class="d-none mb-3">
+                    <h6>Статистика после выполнения</h6>
+                    <div class="row g-2">
+                        <div class="col-sm-6"><div class="border rounded p-2"><small class="text-muted d-block">Живых строк, оценка</small><strong id="maintenanceResultLiveRows">—</strong></div></div>
+                        <div class="col-sm-6"><div class="border rounded p-2"><small class="text-muted d-block">Мёртвых строк, оценка</small><strong id="maintenanceResultDeadRows">—</strong></div></div>
+                    </div>
+                    <div class="text-muted small mt-2">Значения получены из pg_stat_user_tables после операции и являются оценкой статистики, а не физическим подсчётом версий строк.</div>
+                </div>
                 <div id="maintenanceExplainPlanSection" class="d-none">
                     <h6>План выполнения</h6>
                     <pre id="maintenanceExplainPlan" class="bg-dark text-light rounded p-3 mb-0 overflow-auto" style="max-height: 55vh; white-space: pre-wrap;"></pre>
