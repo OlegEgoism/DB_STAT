@@ -87,6 +87,7 @@ urlpatterns = [
         views_administration.maintenance_operation,
         name="maintenance_operation",
     ),
+    path("maintenance/jobs/", views_administration.maintenance_jobs, name="maintenance_jobs"),
     path(
         "users/list/",
         views_administration.database_users_list,

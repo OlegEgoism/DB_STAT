@@ -5,6 +5,7 @@ set -eu
 # versioned migrations on every start so both cases use the current schema.
 mkdir -p "$(dirname "${SQLITE_NAME:-/app/data/db.sqlite3}")"
 python manage.py migrate --noinput --fake-initial
+python manage.py recover_maintenance_jobs
 
 # Preserve the image's documented first-run accounts without baking a mutable
 # SQLite file into an image layer. Both commands are idempotent.

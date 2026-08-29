@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import uuid
 
 from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
@@ -208,4 +209,40 @@ class DBAudit(models.Model):
         db_table = "db_audit"
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
+        ordering = ("-created",)
+
+
+class MaintenanceJob(models.Model):
+    """Устойчивая очередь фоновых операций обслуживания."""
+
+    STATUS_CHOICES = [
+        ("queued", "В очереди"),
+        ("running", "Выполняется"),
+        ("completed", "Завершено"),
+        ("failed", "Ошибка"),
+    ]
+    OPERATION_CHOICES = [
+        ("vacuum", "VACUUM"),
+        ("vacuum_full", "VACUUM FULL"),
+        ("analyze", "ANALYZE"),
+        ("explain_analyze", "EXPLAIN ANALYZE"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(DBUser, on_delete=models.SET_NULL, null=True, related_name="maintenance_jobs")
+    connection = models.ForeignKey(DBConnection, on_delete=models.CASCADE, related_name="maintenance_jobs")
+    operation = models.CharField(max_length=32, choices=OPERATION_CHOICES)
+    schema_name = models.CharField(max_length=255)
+    table_name = models.CharField(max_length=255)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="queued", db_index=True)
+    message = models.TextField(default="Операция ожидает выполнения")
+    details = models.JSONField(default=list, blank=True)
+    statistics = models.JSONField(null=True, blank=True)
+    duration_seconds = models.FloatField(null=True, blank=True)
+    created = models.DateTimeField(auto_now_add=True, db_index=True)
+    started = models.DateTimeField(null=True, blank=True)
+    finished = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "maintenance_job"
         ordering = ("-created",)

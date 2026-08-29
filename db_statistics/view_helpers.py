@@ -12,12 +12,13 @@ from decimal import Decimal, InvalidOperation
 
 import psycopg2
 from django.conf import settings
+from django.db import close_old_connections
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from psycopg2 import sql
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
 
 logger = logging.getLogger(__name__)
 
@@ -582,25 +583,43 @@ def _fetch_db_resultsets(db_connection, *queries):
     return resultsets
 
 
-def _evict_stale_maintenance_jobs():
-    """Удаляет завершённые задачи обслуживания старше допустимого времени.
+def _serialize_maintenance_job(job):
+    """Преобразует сохранённую задачу в безопасный ответ API."""
+    return {
+        "id": str(job.pk),
+        "connection_id": job.connection_id,
+        "connection_name": job.connection.name,
+        "status": job.status,
+        "operation": job.operation,
+        "schema_name": job.schema_name,
+        "table_name": job.table_name,
+        "message": job.message,
+        "details": job.details,
+        "statistics": job.statistics,
+        "duration_seconds": job.duration_seconds,
+        "created": job.created.isoformat(),
+    }
 
-    Вызывающий код должен удерживать ``settings.MAINTENANCE_JOBS_LOCK``.
-    """
-    cutoff = time.time() - settings.MAINTENANCE_JOB_MAX_AGE_SECONDS
-    stale_ids = [
-        job_id
-        for job_id, job in settings.MAINTENANCE_JOBS.items()
-        if job.get("status") != "running" and job.get("finished_at", cutoff) <= cutoff
-    ]
-    for job_id in stale_ids:
-        settings.MAINTENANCE_JOBS.pop(job_id, None)
+
+def _submit_maintenance_job(job_id):
+    settings.MAINTENANCE_JOB_EXECUTOR.submit(_run_maintenance_operation, str(job_id))
 
 
-def _run_maintenance_operation(
-    job_id, connection_id, schema_name, table_name, operation, username
-):
+def _run_maintenance_operation(job_id):
     """Выполняет VACUUM/ANALYZE/EXPLAIN ANALYZE и обновляет состояние задачи."""
+    close_old_connections()
+    claimed = MaintenanceJob.objects.filter(pk=job_id, status="queued").update(
+        status="running", message="Операция выполняется", started=timezone.now()
+    )
+    if not claimed:
+        close_old_connections()
+        return
+    job = MaintenanceJob.objects.select_related("connection", "user").get(pk=job_id)
+    connection_id = job.connection_id
+    schema_name = job.schema_name
+    table_name = job.table_name
+    operation = job.operation
+    username = job.user.login if job.user else "system"
     db_connection = None
     started_at = time.monotonic()
     try:
@@ -657,11 +676,11 @@ def _run_maintenance_operation(
                         "last_vacuum": max(
                             filter(None, (statistics_row[2], statistics_row[3])),
                             default=None,
-                        ),
+                        ).isoformat() if any((statistics_row[2], statistics_row[3])) else None,
                         "last_analyze": max(
                             filter(None, (statistics_row[4], statistics_row[5])),
                             default=None,
-                        ),
+                        ).isoformat() if any((statistics_row[4], statistics_row[5])) else None,
                         "is_estimate": True,
                     }
                     if statistics_row
@@ -678,12 +697,14 @@ def _run_maintenance_operation(
         }
     result["duration_seconds"] = round(time.monotonic() - started_at, 3)
 
-    with settings.MAINTENANCE_JOBS_LOCK:
-        job = settings.MAINTENANCE_JOBS.get(job_id)
-        if job:
-            job.update(result)
-            job["finished_at"] = time.time()
-        _evict_stale_maintenance_jobs()
+    MaintenanceJob.objects.filter(pk=job_id).update(
+        status=result["status"],
+        message=result["message"],
+        details=result.get("details", []),
+        statistics=result.get("statistics"),
+        duration_seconds=result["duration_seconds"],
+        finished=timezone.now(),
+    )
 
     if db_connection is not None:
         audit_info = _maintenance_operation_audit_info(
@@ -710,6 +731,7 @@ def _run_maintenance_operation(
             ]
         )
     _write_audit(operation, audit_info, username=username)
+    close_old_connections()
 
 
 def _require_payload_connection(request, payload):

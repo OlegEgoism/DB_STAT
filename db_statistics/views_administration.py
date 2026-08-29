@@ -1,16 +1,13 @@
-import uuid
-
-from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.models import MaintenanceJob
 from db_statistics.view_helpers import (
     EXCLUDED_SYSTEM_SCHEMAS_SQL,
     _current_db_user,
     _database_roles_list,
     _destructive_action_permission_error,
     _escape_like_pattern,
-    _evict_stale_maintenance_jobs,
     _fetch_db_row,
     _fetch_db_rows,
     _format_bytes,
@@ -19,8 +16,9 @@ from db_statistics.view_helpers import (
     _parse_pg_size_to_bytes,
     _read_json_body,
     _require_payload_connection,
-    _run_maintenance_operation,
     _safe_db_error_message,
+    _serialize_maintenance_job,
+    _submit_maintenance_job,
     _write_audit,
 )
 
@@ -322,21 +320,15 @@ def maintenance_operation(request):
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
-        with settings.MAINTENANCE_JOBS_LOCK:
-            _evict_stale_maintenance_jobs()
-            job_id = str(payload["job_id"])
-            job = settings.MAINTENANCE_JOBS.get(job_id)
-            if not job or job["user_id"] != db_user.pk:
-                return JsonResponse(
-                    {"ok": False, "message": "Задача обслуживания не найдена"},
-                    status=404,
-                )
-            response_job = {
-                key: value for key, value in job.items() if key != "user_id"
-            }
-            if job["status"] != "running":
-                settings.MAINTENANCE_JOBS.pop(job_id, None)
-            return JsonResponse({"ok": True, "job": response_job})
+        job = MaintenanceJob.objects.select_related("connection").filter(
+            pk=payload["job_id"], user=db_user
+        ).first()
+        if not job:
+            return JsonResponse(
+                {"ok": False, "message": "Задача обслуживания не найдена"},
+                status=404,
+            )
+        return JsonResponse({"ok": True, "job": _serialize_maintenance_job(job)})
 
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
@@ -353,19 +345,13 @@ def maintenance_operation(request):
             {"ok": False, "message": "Неизвестная операция обслуживания"}, status=400
         )
 
-    job_id = uuid.uuid4().hex
-    job = {
-        "id": job_id,
-        "user_id": db_user.pk,
-        "status": "running",
-        "operation": operation,
-        "schema_name": schema_name,
-        "table_name": table_name,
-        "message": "Операция выполняется",
-    }
-    with settings.MAINTENANCE_JOBS_LOCK:
-        _evict_stale_maintenance_jobs()
-        settings.MAINTENANCE_JOBS[job_id] = job
+    job = MaintenanceJob.objects.create(
+        user=db_user,
+        connection=db_connection,
+        operation=operation,
+        schema_name=schema_name,
+        table_name=table_name,
+    )
     _write_audit(
         operation,
         _maintenance_operation_audit_info(
@@ -377,19 +363,21 @@ def maintenance_operation(request):
         ),
         db_user=db_user,
     )
-    settings.MAINTENANCE_JOB_EXECUTOR.submit(
-        _run_maintenance_operation,
-        job_id,
-        db_connection.pk,
-        schema_name,
-        table_name,
-        operation,
-        db_user.login,
-    )
+    _submit_maintenance_job(job.pk)
     return JsonResponse(
         {
             "ok": True,
-            "job": {key: value for key, value in job.items() if key != "user_id"},
+            "job": _serialize_maintenance_job(job),
         },
         status=202,
     )
+
+
+@require_http_methods(["GET", "POST"])
+def maintenance_jobs(request):
+    """Возвращает сохранённую историю фоновых задач текущего пользователя."""
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    jobs = MaintenanceJob.objects.select_related("connection").filter(user=db_user)[:25]
+    return JsonResponse({"ok": True, "jobs": [_serialize_maintenance_job(job) for job in jobs]})

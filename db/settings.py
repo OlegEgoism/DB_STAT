@@ -1,5 +1,4 @@
 import os
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -176,9 +175,3 @@ SUPPORTED_LANGUAGES = {"ru", "en"}
 MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
     max_workers=4, thread_name_prefix="db-stat-vacuum"
 )
-MAINTENANCE_JOBS = {}
-MAINTENANCE_JOBS_LOCK = threading.Lock()
-# Завершённые задачи обслуживания, которые никто не забрал повторным опросом,
-# удаляются из MAINTENANCE_JOBS по истечении этого времени, чтобы словарь не
-# рос неограниченно в течение жизни процесса.
-MAINTENANCE_JOB_MAX_AGE_SECONDS = 60 * 60

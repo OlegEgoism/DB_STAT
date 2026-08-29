@@ -72,6 +72,7 @@
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const maintenanceOperationApiUrl = '/maintenance/operation/';
+    const maintenanceJobsApiUrl = '/maintenance/jobs/';
     const usersListApiUrl = '/users/list/';
     const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
@@ -406,6 +407,7 @@
         initBlockingLocksControls();
         initIdleTransactionsControls();
         initMaintenanceStatsControls();
+        initBackgroundJobs();
         initUsersControls();
         initGroupsControls();
         initFavoriteControls();
@@ -2374,7 +2376,7 @@
             const deadClass = deadPercent >= 10 ? 'text-danger' : (deadPercent >= 1 ? 'text-warning' : 'text-success');
             const tableKey = getMaintenanceTableKey(table);
             const activeClass = tableKey === maintenanceStatsState.selectedTableKey ? ' active' : '';
-            const runningJob = Array.from(maintenanceJobs.values()).find(job => job.tableKey === tableKey && job.status === 'running');
+            const runningJob = Array.from(maintenanceJobs.values()).find(job => job.tableKey === tableKey && ['queued', 'running'].includes(job.status));
             return `
                 <tr class="maintenance-row-selectable${activeClass}" data-maintenance-table-key="${escapeHtml(tableKey)}">
                     <td>${escapeHtml(table.schema_name)}</td>
@@ -2389,7 +2391,7 @@
                         <button class="btn btn-sm btn-outline-danger" type="button" data-maintenance-operation="vacuum_full" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>VACUUM FULL</button>
                         <button class="btn btn-sm btn-outline-success" type="button" data-maintenance-operation="analyze" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>ANALYZE</button>
                         <button class="btn btn-sm btn-outline-info" type="button" data-maintenance-operation="explain_analyze" data-schema-name="${escapeHtml(table.schema_name)}" data-table-name="${escapeHtml(table.table_name)}" ${runningJob ? 'disabled' : ''}>EXPLAIN ANALYZE</button>
-                        ${runningJob ? '<span class="maintenance-job-running"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Выполняется</span>' : ''}
+                        ${runningJob ? `<span class="maintenance-job-running"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ${runningJob.status === 'queued' ? 'В очереди' : 'Выполняется'}</span>` : ''}
                     </td>` : ''}
                 </tr>
             `;
@@ -2417,6 +2419,54 @@
             analyze: 'ANALYZE',
             explain_analyze: 'EXPLAIN ANALYZE'
         }[operation] || String(operation || '').toUpperCase();
+    }
+
+    function renderBackgroundJobs(jobs = []) {
+        const indicator = document.getElementById('backgroundJobsIndicator');
+        const count = document.getElementById('backgroundJobsCount');
+        const list = document.getElementById('backgroundJobsList');
+        const activeJobs = jobs.filter(job => ['queued', 'running'].includes(job.status));
+        if (count) count.textContent = String(activeJobs.length);
+        indicator?.classList.toggle('has-active-jobs', activeJobs.length > 0);
+        if (!list) return;
+        if (!jobs.length) {
+            list.textContent = 'Нет фоновых операций';
+            return;
+        }
+        list.innerHTML = jobs.slice(0, 8).map(job => {
+            const labels = {queued: 'В очереди', running: 'Выполняется', completed: 'Завершено', failed: 'Ошибка'};
+            return `<div class="background-job-item"><b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}<small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small></div>`;
+        }).join('');
+    }
+
+    function loadBackgroundJobs() {
+        connectionRequest(maintenanceJobsApiUrl, {}).then(data => {
+            const jobs = data.jobs || [];
+            renderBackgroundJobs(jobs);
+            jobs.filter(job => ['queued', 'running'].includes(job.status)).forEach(job => {
+                if (maintenanceJobs.has(job.id)) return;
+                maintenanceJobs.set(job.id, {...job, tableKey: `${job.schema_name}.${job.table_name}`});
+                pollMaintenanceJob(job.id);
+            });
+        }).catch(() => renderBackgroundJobs([]));
+    }
+
+    function initBackgroundJobs() {
+        const indicator = document.getElementById('backgroundJobsIndicator');
+        const panel = document.getElementById('backgroundJobsPanel');
+        indicator?.addEventListener('click', event => {
+            event.stopPropagation();
+            const open = panel?.hasAttribute('hidden');
+            if (open) panel.removeAttribute('hidden'); else panel?.setAttribute('hidden', '');
+            indicator.setAttribute('aria-expanded', String(open));
+            if (open) loadBackgroundJobs();
+        });
+        document.addEventListener('click', () => {
+            panel?.setAttribute('hidden', '');
+            indicator?.setAttribute('aria-expanded', 'false');
+        });
+        loadBackgroundJobs();
+        window.setInterval(loadBackgroundJobs, 10000);
     }
 
     function showMaintenanceResult(job) {
@@ -2455,7 +2505,8 @@
                     const trackedJob = maintenanceJobs.get(jobId);
                     if (!trackedJob) return;
                     trackedJob.status = job.status;
-                    if (job.status === 'running') {
+                    if (['queued', 'running'].includes(job.status)) {
+                        loadBackgroundJobs();
                         pollMaintenanceJob(jobId);
                         return;
                     }
@@ -2470,6 +2521,7 @@
                         showToast(`❌ ${operationLabel} для ${tableLabel}: ${failureMessage}`);
                     }
                     showMaintenanceResult(job);
+                    loadBackgroundJobs();
                 })
                 .catch(error => {
                     maintenanceJobs.delete(jobId);
@@ -2497,6 +2549,7 @@
                 showToast(`⏳ ${getMaintenanceOperationLabel(operation)} для ${tableKey} запущен в фоне`);
                 refreshMaintenanceStatsForConnection();
                 pollMaintenanceJob(data.job.id);
+                loadBackgroundJobs();
             })
             .catch(error => showToast(`❌ Не удалось запустить обслуживание: ${error.message}`));
     }
