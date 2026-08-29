@@ -773,6 +773,39 @@ body {
     color: var(--text-primary);
 }
 
+.background-jobs-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 999px;
+    padding: 5px 8px;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    font-size: 12px;
+}
+
+.background-jobs-indicator.has-active-jobs {
+    color: var(--accent-blue);
+}
+
+.background-jobs-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(380px, 85vw);
+    padding: 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-card-hover);
+    z-index: 1200;
+}
+
+.background-jobs-list { margin-top: 8px; display: grid; gap: 7px; }
+.background-job-item { padding-top: 7px; border-top: 1px solid var(--sidebar-border); font-size: 12px; }
+.background-job-item small { display: block; color: var(--text-muted); }
+
 .connection-info-tooltip {
     position: absolute;
     top: calc(100% + 10px);

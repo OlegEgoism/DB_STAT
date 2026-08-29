@@ -24,6 +24,14 @@
                 <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
                     <option value="">Загрузка подключений...</option>
                 </select>
+                <button class="background-jobs-indicator" id="backgroundJobsIndicator" type="button" aria-expanded="false" aria-controls="backgroundJobsPanel" title="Фоновые операции">
+                    <i class="fas fa-tasks" aria-hidden="true"></i>
+                    <span id="backgroundJobsCount">0</span>
+                </button>
+                <div class="background-jobs-panel" id="backgroundJobsPanel" hidden>
+                    <strong>Фоновые операции</strong>
+                    <div id="backgroundJobsList" class="background-jobs-list">Нет фоновых операций</div>
+                </div>
                 <div class="connection-info-tooltip" id="connectionSelectInfo" role="tooltip">
                     <div class="connection-info-tooltip-title">Информация о подключении</div>
                     <div class="connection-info-tooltip-row">

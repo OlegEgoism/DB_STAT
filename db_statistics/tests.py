@@ -2,13 +2,50 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib import admin
-from django.test import RequestFactory, SimpleTestCase
+from django.core.management import call_command
+from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from db_statistics.admin import DBConnectionAdmin
-from db_statistics.models import DBAudit, DBConnection
+from db_statistics.models import DBAudit, DBConnection, DBUser, MaintenanceJob
 from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter
 from db_statistics.views_data import FUNCTION_SEARCH_COLUMNS, SCHEMA_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS, TEMP_TABLE_SEARCH_COLUMNS, VIEW_SEARCH_COLUMNS
 from db_statistics.views_performance import blocking_locks, idle_transactions
+
+
+class MaintenanceQueueTests(TestCase):
+    def setUp(self):
+        self.user = DBUser.objects.create(login="queue-admin", email="queue@example.com", role="Администратор")
+        self.connection = DBConnection.objects.create(name="queue-db", host="db", database="postgres", username="monitor", password="secret")
+
+    def test_recover_command_returns_interrupted_job_to_queue(self):
+        job = MaintenanceJob.objects.create(
+            user=self.user,
+            connection=self.connection,
+            operation="analyze",
+            schema_name="public",
+            table_name="events",
+            status="running",
+        )
+
+        call_command("recover_maintenance_jobs")
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, "queued")
+        self.assertIn("восстановлена", job.message)
+
+    def test_completed_jobs_keep_result_history(self):
+        job = MaintenanceJob.objects.create(
+            user=self.user,
+            connection=self.connection,
+            operation="vacuum",
+            schema_name="public",
+            table_name="events",
+            status="completed",
+            details=["done"],
+            statistics={"live_rows": 10, "dead_rows": 0},
+        )
+
+        self.assertEqual(MaintenanceJob.objects.get(pk=job.pk).statistics["live_rows"], 10)
 
 
 class ApplicationDatabaseTests(SimpleTestCase):

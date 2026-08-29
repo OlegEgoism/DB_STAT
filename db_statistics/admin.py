@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html_join
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
 
 SIDEBAR_TAB_LABELS = settings.SIDEBAR_TAB_LABELS
 
@@ -118,3 +118,12 @@ class DBAuditAdmin(admin.ModelAdmin):
     @admin.display(description="Информация")
     def short_info(self, obj):
         return obj.info[:120] + ("…" if len(obj.info) > 120 else "")
+
+
+@admin.register(MaintenanceJob)
+class MaintenanceJobAdmin(admin.ModelAdmin):
+    list_display = ("id", "operation", "connection", "schema_name", "table_name", "status", "created", "finished")
+    list_filter = ("status", "operation", "connection")
+    search_fields = ("schema_name", "table_name", "user__login", "connection__name")
+    readonly_fields = tuple(field.name for field in MaintenanceJob._meta.fields)
+    ordering = ("-created",)
