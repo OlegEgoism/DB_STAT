@@ -7,6 +7,7 @@ from django.test import RequestFactory, SimpleTestCase
 from db_statistics.admin import DBConnectionAdmin
 from db_statistics.models import DBAudit, DBConnection
 from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter
+from db_statistics.views_data import FUNCTION_SEARCH_COLUMNS, SCHEMA_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS, TEMP_TABLE_SEARCH_COLUMNS, VIEW_SEARCH_COLUMNS
 from db_statistics.views_performance import blocking_locks, idle_transactions
 
 
@@ -19,6 +20,35 @@ class ApplicationDatabaseTests(SimpleTestCase):
 
 
 class SearchTests(SimpleTestCase):
+    def test_search_columns_match_field_descriptions(self):
+        self.assertEqual(SCHEMA_SEARCH_COLUMNS, ("namespace.nspname",))
+        self.assertEqual(
+            TABLE_SEARCH_COLUMNS,
+            (
+                "namespace.nspname",
+                "table_class.relname",
+                "(namespace.nspname || '.' || table_class.relname)",
+            ),
+        )
+        self.assertEqual(
+            VIEW_SEARCH_COLUMNS,
+            (
+                "namespace.nspname",
+                "view_class.relname",
+                "(namespace.nspname || '.' || view_class.relname)",
+            ),
+        )
+        self.assertEqual(TEMP_TABLE_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS)
+        self.assertEqual(
+            FUNCTION_SEARCH_COLUMNS,
+            (
+                "namespace.nspname",
+                "procedure.proname",
+                "pg_catalog.pg_get_function_result(procedure.oid)",
+                "pg_catalog.pg_get_function_arguments(procedure.oid)",
+            ),
+        )
+
     def test_like_search_escapes_wildcards_without_losing_substring_search(self):
         self.assertEqual(_like_search_pattern("ops_100%!"), "%ops!_100!%!!%")
 
