@@ -47,17 +47,17 @@ DB_CONNECTION_ENCRYPTION_KEY=
 # Target used for localhost and ::1 in application database connections
 LOCALHOST_DB_HOST=127.0.0.1
 
-DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
-
-DB_NAME=db_statistics
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_HOST=localhost
-DB_PORT=5432
 
 STATIC_URL=static/
 ```
+
+The application's own state (users, saved connections, audit records, and
+sessions) is stored exclusively in SQLite. Set the database file path with
+`SQLITE_NAME`; it defaults to `db.sqlite3` in the project root. Selecting a
+different Django database backend through environment variables is not
+supported. PostgreSQL, Greenplum, and Greengage remain monitoring targets and
+are configured through the connection form in the UI.
 
 ## Running the project in development mode
 

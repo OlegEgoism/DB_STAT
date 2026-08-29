@@ -49,17 +49,17 @@ DB_CONNECTION_ENCRYPTION_KEY=
 # Хост, на который перенаправляются localhost и ::1 в подключениях приложения
 LOCALHOST_DB_HOST=127.0.0.1
 
-DB_ENGINE=sqlite
 SQLITE_NAME=db.sqlite3
-
-DB_NAME=db_statistics
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_HOST=localhost
-DB_PORT=5432
 
 STATIC_URL=static/
 ```
+
+Служебные данные самого приложения (пользователи, сохранённые подключения,
+аудит и сессии) хранятся только в SQLite. Путь к файлу задаётся переменной
+`SQLITE_NAME`; по умолчанию используется `db.sqlite3` в корне проекта.
+Переменные выбора другого Django-бэкенда не поддерживаются. PostgreSQL,
+Greenplum и Greengage остаются целевыми базами мониторинга и настраиваются
+через форму подключения в интерфейсе.
 
 ## Запуск проекта в режиме разаработки
 
