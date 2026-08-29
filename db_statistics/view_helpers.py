@@ -651,22 +651,22 @@ def _require_payload_connection(request, payload):
 
 
 def _greenplum_only_error():
-    """Возвращает ошибку для функций, доступных только подключениям Greenplum."""
+    """Возвращает ошибку для функций распределённых СУБД."""
     return JsonResponse(
         {
             "ok": False,
-            "message": "Эта функция доступна только для подключений типа Greenplum",
+            "message": "Эта функция доступна только для подключений типа Greenplum или Greengage",
         },
         status=400,
     )
 
 
 def _require_greenplum_connection(request, payload):
-    """Проверяет запрос и возвращает подключение, если оно имеет тип Greenplum."""
+    """Возвращает подключение Greenplum или совместимого с ним Greengage."""
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return None, error_response
-    if db_connection.db_type != "Greenplum":
+    if not db_connection.is_greenplum_compatible:
         return None, _greenplum_only_error()
     return db_connection, None
 

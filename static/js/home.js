@@ -108,8 +108,8 @@
 
     const greenplumOnlyPages = new Set(['segments', 'distribution']);
 
-    function isPostgreSQLConnection(conn) {
-        return String(conn?.db_type || '').toLowerCase() === 'postgresql';
+    function isGreenplumCompatibleConnection(conn) {
+        return new Set(['greenplum', 'greengage']).has(String(conn?.db_type || '').toLowerCase());
     }
 
     function isSidebarPageEnabled(pageId) {
@@ -122,15 +122,15 @@
         if (pageId === 'home' || pageId === 'audit' || pageId === 'settings') return true;
         if (pageId === 'favorites') return Boolean(conn);
         if (!pageId || !conn) return false;
-        if (isPostgreSQLConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
+        if (!isGreenplumCompatibleConnection(conn) && greenplumOnlyPages.has(pageId)) return false;
         return true;
     }
 
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
-        const preferredPages = isPostgreSQLConnection(conn)
-            ? ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+        const preferredPages = isGreenplumCompatibleConnection(conn)
+            ? ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -169,9 +169,12 @@
 
     function getConnectionDbTypeIconSrc(dbType, iconElement) {
         const normalizedType = String(dbType || '').toLowerCase();
-        return normalizedType === 'greenplum'
-            ? iconElement?.dataset?.greenplumIcon
-            : iconElement?.dataset?.postgresqlIcon;
+        const iconsByType = {
+            greenplum: iconElement?.dataset?.greenplumIcon,
+            greengage: iconElement?.dataset?.greengageIcon,
+            postgresql: iconElement?.dataset?.postgresqlIcon
+        };
+        return iconsByType[normalizedType] || iconsByType.postgresql;
     }
 
     function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -3984,7 +3987,7 @@
         if (normalized.includes('gp_segment_configuration') || normalized.includes('не существует')) {
             return {
                 title: 'Сегменты недоступны для выбранного подключения',
-                text: 'Выбранное подключение не похоже на Greenplum или у пользователя нет доступа к gp_segment_configuration. Выберите Greenplum-подключение или проверьте права доступа.'
+                text: 'Выбранное подключение не похоже на Greenplum/Greengage или у пользователя нет доступа к gp_segment_configuration. Выберите подключение Greenplum/Greengage или проверьте права доступа.'
             };
         }
         return {
@@ -4056,7 +4059,7 @@
 
     function refreshSegmentsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum.');
+            renderSegmentsWarning('Информация о сегментах недоступна: выберите сохранённое подключение Greenplum или Greengage.');
             return;
         }
 
@@ -4254,7 +4257,7 @@
         if (conn) {
             updateSidebarForConnection(conn);
             activatePage(getDefaultPageForConnection(conn));
-            if (!isPostgreSQLConnection(conn)) {
+            if (isGreenplumCompatibleConnection(conn)) {
                 refreshSegmentsForConnection(conn);
             }
             showToast(`🔌 Подключено к ${conn.name}`);
@@ -4380,7 +4383,7 @@
                 updateConnectionTooltip(savedConnection);
                 updateSidebarForConnection(savedConnection);
                 activatePage(getDefaultPageForConnection(savedConnection));
-                if (!isPostgreSQLConnection(savedConnection)) {
+                if (isGreenplumCompatibleConnection(savedConnection)) {
                     refreshSegmentsForConnection(savedConnection);
                 }
                 modalInstance.hide();

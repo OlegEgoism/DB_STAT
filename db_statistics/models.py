@@ -139,7 +139,11 @@ class DBFavorite(DateStamp):
 class DBConnection(DateStamp, Active):
     """Подключение"""
 
-    DATABASE_TYPES = [("PostgreSQL", "PostgreSQL"), ("Greenplum", "Greenplum")]
+    POSTGRESQL = "PostgreSQL"
+    GREENPLUM = "Greenplum"
+    GREENGAGE = "Greengage"
+    DATABASE_TYPES = [(POSTGRESQL, POSTGRESQL), (GREENPLUM, GREENPLUM), (GREENGAGE, GREENGAGE)]
+    GREENPLUM_COMPATIBLE_TYPES = frozenset((GREENPLUM, GREENGAGE))
 
     name = models.CharField(**vn("Название"), max_length=120)
     host = models.CharField(**vn("Хост"), max_length=255)
@@ -147,7 +151,7 @@ class DBConnection(DateStamp, Active):
     database = models.CharField(**vn("База данных"), max_length=120)
     username = models.CharField(**vn("Пользователь"), max_length=120)
     password = models.CharField(**vn("Пароль"), max_length=255)
-    db_type = models.CharField(**vn("Тип базы данных"), max_length=20, choices=DATABASE_TYPES, default="PostgreSQL")
+    db_type = models.CharField(**vn("Тип базы данных"), max_length=20, choices=DATABASE_TYPES, default=POSTGRESQL)
     created_user = models.ForeignKey(to="db_statistics.DBUser", **vn("Создатель подключения"), related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
@@ -160,6 +164,11 @@ class DBConnection(DateStamp, Active):
     def get_password(self):
         """Расшифровывает пароль подключения"""
         return decrypt_connection_password(self.password)
+
+    @property
+    def is_greenplum_compatible(self):
+        """Поддерживает ли СУБД функции распределённого кластера Greenplum."""
+        return self.db_type in self.GREENPLUM_COMPATIBLE_TYPES
 
     def save(self, *args, **kwargs):
         self.password = encrypt_connection_password(self.password)
