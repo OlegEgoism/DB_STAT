@@ -67,13 +67,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "db.wsgi.application"
 
-DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").strip().lower()
-if DB_ENGINE == "postgresql":
-    DATABASES = {
-        "default": {"ENGINE": "django.db.backends.postgresql", "NAME": os.getenv("DB_NAME", "db_statistics"), "USER": os.getenv("DB_USER", "postgres"), "PASSWORD": os.getenv("DB_PASSWORD", ""), "HOST": os.getenv("DB_HOST", "localhost"), "PORT": int(os.getenv("DB_PORT", "5432"))}
+# The application state is intentionally stored only in SQLite. PostgreSQL,
+# Greenplum and Greengage credentials saved through the UI describe monitored
+# targets and are not Django database backends.
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3"),
     }
-else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3")}}
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

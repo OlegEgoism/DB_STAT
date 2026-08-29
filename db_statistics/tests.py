@@ -1,9 +1,18 @@
+from django.conf import settings
 from django.contrib import admin
 from django.test import SimpleTestCase
 
 from db_statistics.admin import DBConnectionAdmin
 from db_statistics.models import DBAudit, DBConnection
 from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS
+
+
+class ApplicationDatabaseTests(SimpleTestCase):
+    def test_application_database_uses_sqlite(self):
+        self.assertEqual(
+            settings.DATABASES["default"]["ENGINE"],
+            "django.db.backends.sqlite3",
+        )
 
 
 class DBConnectionTypeTests(SimpleTestCase):

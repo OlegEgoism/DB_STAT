@@ -14,7 +14,6 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DB_ENGINE=sqlite \
     SQLITE_NAME=/app/db.sqlite3 \
     LOCALHOST_DB_HOST=host.docker.internal \
     ALLOWED_HOSTS=*
