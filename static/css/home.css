@@ -609,13 +609,21 @@ body {
 }
 
 /* ========== MAIN CONTENT ========== */
+/* Fixed to the viewport (like .sidebar) so it never grows the document: the
+   topbar stays put and only .page.active scrolls internally. This is what
+   prevents the old double scrollbar (page + table both scrolling). */
 .main-content {
-    margin-left: var(--sidebar-width);
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
     padding: var(--space-5) var(--space-7) 40px;
-    min-height: 100vh;
-    position: relative;
     z-index: 1;
-    transition: margin-left 0.3s ease;
+    overflow: hidden;
+    transition: left 0.3s ease;
 }
 
 /* ========== TOP BAR ========== */
@@ -625,6 +633,7 @@ body {
     align-items: center;
     padding: 0 0 20px;
     margin-bottom: var(--space-6);
+    flex-shrink: 0;
     flex-wrap: wrap;
     gap: var(--space-3);
 }
@@ -941,6 +950,16 @@ body {
     transition: all 0.3s ease;
     box-shadow: var(--shadow-card);
     overflow: hidden;
+}
+
+/* A card's own overflow:hidden (for rounded corners) sits between a table's
+   sticky thead and .page.active, the page's single scroll container — any
+   non-visible overflow ancestor becomes the sticky reference instead, so the
+   header would "stick" to a box that never scrolls and just disappears.
+   Cards with a table opt back into overflow:visible so the sticky thead
+   correctly follows .page.active's scroll. */
+.glass-card:has(.table-responsive) {
+    overflow: visible;
 }
 
 .glass-card:hover {
@@ -1867,7 +1886,7 @@ body {
 }
 
 .maintenance-table-scroll {
-    overflow: auto;
+    overflow: visible;
 }
 
 .maintenance-table-scroll thead th {
@@ -1885,6 +1904,14 @@ body {
 
 .page.active {
     display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    /* The single scroll container for the whole page (both axes): a table's
+       own wrapper must stay overflow:visible (see .page .table-responsive
+       below), otherwise it — not .page.active — becomes the nearest
+       scrolling ancestor and breaks the sticky thead. */
+    overflow-y: auto;
+    overflow-x: auto;
 }
 
 @keyframes pageFade {
@@ -2223,7 +2250,7 @@ body {
     }
 
     .main-content {
-        margin-left: 0;
+        left: 0;
         padding: 16px;
     }
 
@@ -2387,7 +2414,7 @@ body {
 }
 
 .audit-table-scroll {
-    overflow: auto;
+    overflow: visible;
 }
 
 .audit-table-scroll thead th {
@@ -2736,11 +2763,12 @@ body {
 .page .table-responsive {
     width: 100%;
     max-width: 100%;
-    max-height: 720px;
-    max-height: max(720px, calc(100dvh - 220px));
-    overflow: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    /* Must stay overflow:visible on BOTH axes: .page.active is the only
+       scroll container (vertical and, for wide tables, horizontal too).
+       Setting overflow-x here would force overflow-y away from visible per
+       the CSS spec and make this element — not .page.active — the nearest
+       scrolling ancestor, breaking the sticky thead below. */
+    overflow: visible;
 }
 
 .page .table-responsive > .table {
@@ -3065,7 +3093,7 @@ body.sidebar-collapsed .sidebar {
 }
 
 body.sidebar-collapsed .main-content {
-    margin-left: var(--sidebar-collapsed-width);
+    left: var(--sidebar-collapsed-width);
 }
 
 body.sidebar-collapsed .sidebar-brand {
@@ -3100,7 +3128,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
     }
 
     body.sidebar-collapsed .main-content {
-        margin-left: 0;
+        left: 0;
     }
 }
 
