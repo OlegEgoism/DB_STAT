@@ -1,5 +1,7 @@
+from django import forms
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.password_validation import validate_password
 from django.urls import reverse
 from django.utils.html import format_html_join
 
@@ -16,16 +18,71 @@ class BaseAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 
+class DBUserAdminForm(forms.ModelForm):
+    """Форма пользователя с явным заданием пароля вместо прямого редактирования хэша"""
+
+    password1 = forms.CharField(
+        label="Пароль",
+        widget=forms.PasswordInput,
+        required=False,
+        help_text="Обязателен для нового пользователя. При редактировании оставьте пустым, чтобы не менять текущий пароль.",
+    )
+    password2 = forms.CharField(
+        label="Подтверждение пароля", widget=forms.PasswordInput, required=False
+    )
+
+    class Meta:
+        model = DBUser
+        fields = ("login", "email", "role", "is_active", "connections")
+
+    def clean_password2(self):
+        password1 = self.cleaned_data.get("password1")
+        password2 = self.cleaned_data.get("password2")
+        if password1 != password2:
+            raise forms.ValidationError("Пароли не совпадают")
+        return password2
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if not cleaned_data.get("password1") and (
+            self.instance.pk is None or not self.instance.password
+        ):
+            self.add_error("password1", "Укажите пароль для нового пользователя")
+        return cleaned_data
+
+    def _post_clean(self):
+        super()._post_clean()
+        password1 = self.cleaned_data.get("password1")
+        if password1:
+            try:
+                validate_password(password1, self.instance)
+            except forms.ValidationError as error:
+                self.add_error("password1", error)
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        password1 = self.cleaned_data.get("password1")
+        if password1:
+            user.set_password(password1)
+            user.failed_login_attempts = 0
+            user.lockout_until = None
+        if commit:
+            user.save()
+            self.save_m2m()
+        return user
+
+
 @admin.register(DBUser)
 class DBUserAdmin(BaseAdmin):
     """Пользователь"""
 
+    form = DBUserAdminForm
     list_display = ("login", "email", "role", "count_column", "is_active", "created", "updated")
     list_filter = ("is_active", "role")
     list_editable = ("is_active",)
     search_fields = ("login", "email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("login", "email", "role", "is_active", "connections", "created", "updated")
+    fields = ("login", "email", "role", "is_active", "password1", "password2", "connections", "created", "updated")
     filter_horizontal = ("connections",)
 
     @admin.display(description="Количество подключений")
