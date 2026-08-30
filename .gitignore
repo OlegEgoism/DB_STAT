@@ -20,3 +20,7 @@ staticfiles/
 
 # User-uploaded media files
 media/
+
+# Django migrations (keep __init__.py)
+**/migrations/*.py
+!**/migrations/__init__.py
