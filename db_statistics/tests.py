@@ -1,13 +1,15 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.conf import settings
 from django.contrib import admin
 from django.core.management import call_command
 from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.utils import timezone
 
 from db_statistics.admin import DBConnectionAdmin
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
-from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter
+from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter, _serialize_maintenance_job
 from db_statistics.views_data import FUNCTION_SEARCH_COLUMNS, SCHEMA_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS, TEMP_TABLE_SEARCH_COLUMNS, VIEW_SEARCH_COLUMNS
 from db_statistics.views_performance import blocking_locks, idle_transactions
 
@@ -34,6 +36,8 @@ class MaintenanceQueueTests(TestCase):
         self.assertIn("восстановлена", job.message)
 
     def test_completed_jobs_keep_result_history(self):
+        started = timezone.now()
+        finished = started + timedelta(seconds=3)
         job = MaintenanceJob.objects.create(
             user=self.user,
             connection=self.connection,
@@ -43,9 +47,14 @@ class MaintenanceQueueTests(TestCase):
             status="completed",
             details=["done"],
             statistics={"live_rows": 10, "dead_rows": 0},
+            started=started,
+            finished=finished,
         )
 
         self.assertEqual(MaintenanceJob.objects.get(pk=job.pk).statistics["live_rows"], 10)
+        serialized = _serialize_maintenance_job(job)
+        self.assertEqual(serialized["started"], started.isoformat())
+        self.assertEqual(serialized["finished"], finished.isoformat())
 
 
 class ModelHelpTextTests(SimpleTestCase):

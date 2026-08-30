@@ -2433,9 +2433,21 @@
             list.textContent = 'Нет фоновых операций';
             return;
         }
+        const formatJobDateTime = value => {
+            if (!value) return '—';
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString();
+        };
         list.innerHTML = jobs.slice(0, 8).map(job => {
             const labels = {queued: 'В очереди', running: 'Выполняется', completed: 'Завершено', failed: 'Ошибка'};
-            return `<div class="background-job-item"><b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}<small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small></div>`;
+            return `<div class="background-job-item">
+                <b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}
+                <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
+                <dl class="background-job-times">
+                    <div><dt>Начало</dt><dd>${escapeHtml(formatJobDateTime(job.started))}</dd></div>
+                    <div><dt>Окончание</dt><dd>${escapeHtml(formatJobDateTime(job.finished))}</dd></div>
+                </dl>
+            </div>`;
         }).join('');
     }
 
