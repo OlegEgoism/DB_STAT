@@ -598,6 +598,8 @@ def _serialize_maintenance_job(job):
         "statistics": job.statistics,
         "duration_seconds": job.duration_seconds,
         "created": job.created.isoformat(),
+        "started": job.started.isoformat() if job.started else None,
+        "finished": job.finished.isoformat() if job.finished else None,
     }
 
 
