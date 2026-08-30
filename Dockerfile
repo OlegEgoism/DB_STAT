@@ -3,7 +3,7 @@ FROM python:3.13-slim AS builder
 WORKDIR /wheels
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y gcc libpq-dev \
+    && apt-get install --no-install-recommends -y gcc libc6-dev libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
