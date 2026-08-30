@@ -14,9 +14,9 @@ from db_statistics.view_helpers import (
     _list_query_params,
     _maintenance_operation_audit_info,
     _parse_pg_size_to_bytes,
+    _query_or_error,
     _read_json_body,
     _require_payload_connection,
-    _safe_db_error_message,
     _serialize_maintenance_job,
     _submit_maintenance_job,
     _write_audit,
@@ -65,22 +65,14 @@ def memory_overview(request):
         FROM relation_sizes;
     """
 
-    try:
-        row = _fetch_db_row(
-            db_connection,
-            memory_query,
-            [db_connection.database, db_connection.database],
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    "Не удалось получить параметры памяти", exc
-                ),
-            },
-            status=400,
-        )
+    row, error_response = _query_or_error(
+        "Не удалось получить параметры памяти",
+        lambda: _fetch_db_row(
+            db_connection, memory_query, [db_connection.database, db_connection.database]
+        ),
+    )
+    if error_response:
+        return error_response
 
     settings = [
         {
@@ -267,20 +259,12 @@ def maintenance_stats(request):
         LIMIT %s OFFSET %s;
     """
 
-    try:
-        rows = _fetch_db_rows(
-            db_connection, maintenance_query, [*params, page_size, offset]
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    "Не удалось получить статистику обслуживания", exc
-                ),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить статистику обслуживания",
+        lambda: _fetch_db_rows(db_connection, maintenance_query, [*params, page_size, offset]),
+    )
+    if error_response:
+        return error_response
 
     def format_datetime(value):
         """Форматирует дату и время статистики обслуживания."""

@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _fetch_db_resultsets, _open_database_connection, _read_json_body, _require_greenplum_connection, _require_payload_connection, _safe_db_error_message
+from db_statistics.view_helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _fetch_db_resultsets, _open_database_connection, _query_or_error, _read_json_body, _require_greenplum_connection, _require_payload_connection
 
 
 @require_http_methods(["POST"])
@@ -101,21 +101,18 @@ def database_overview(request):
         ORDER BY extension.extname;
     """
 
-    try:
-        overview_rows, extension_rows = _fetch_db_resultsets(
+    result, error_response = _query_or_error(
+        "Не удалось получить обзор БД",
+        lambda: _fetch_db_resultsets(
             db_connection,
             (overview_query, [db_connection.database] * 7),
             (extensions_query, None),
-        )
-        row = overview_rows[0]
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить обзор БД", exc),
-            },
-            status=400,
-        )
+        ),
+    )
+    if error_response:
+        return error_response
+    overview_rows, extension_rows = result
+    row = overview_rows[0]
 
     installed_extensions = [
         {
@@ -345,40 +342,37 @@ def segments_info(request):
         FROM gp_segment_configuration
         WHERE content >= 0;
     """
-    try:
+    def _fetch_segments_data():
         with _open_database_connection(db_connection) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(config_query)
-                segments = [
-                    {
-                        "segment": row[0],
-                        "role": row[1],
-                        "preferred_role": row[2],
-                        "mode": row[3],
-                        "status": row[4],
-                        "port": row[5],
-                        "hostname": row[6],
-                        "address": row[7],
-                    }
-                    for row in cursor.fetchall()
-                ]
+                segment_rows = cursor.fetchall()
                 cursor.execute(health_query)
                 health_row = cursor.fetchone()
                 cursor.execute(metrics_query)
-                metrics = [
-                    {"name": row[0], "value": float(row[1])}
-                    for row in cursor.fetchall()
-                ]
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    "Не удалось получить информацию о сегментах", exc
-                ),
-            },
-            status=400,
-        )
+                metric_rows = cursor.fetchall()
+        return segment_rows, health_row, metric_rows
+
+    result, error_response = _query_or_error(
+        "Не удалось получить информацию о сегментах", _fetch_segments_data
+    )
+    if error_response:
+        return error_response
+    segment_rows, health_row, metric_rows = result
+    segments = [
+        {
+            "segment": row[0],
+            "role": row[1],
+            "preferred_role": row[2],
+            "mode": row[3],
+            "status": row[4],
+            "port": row[5],
+            "hostname": row[6],
+            "address": row[7],
+        }
+        for row in segment_rows
+    ]
+    metrics = [{"name": row[0], "value": float(row[1])} for row in metric_rows]
 
     return JsonResponse(
         {

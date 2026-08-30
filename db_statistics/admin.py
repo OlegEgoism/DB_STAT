@@ -57,8 +57,8 @@ class DBConnectionAdmin(BaseAdmin):
     list_display = ("name", "host", "port", "username", "database", "created_user", "users_count", "is_active", "created", "updated")
     list_filter = ("is_active", "db_type")
     list_editable = ("is_active",)
-    search_fields = ("name", "database", "username", "dbuser__login")
-    search_help_text = "Поиск по: названию, базе данных, пользователю БД, логину пользователя DB STAT"
+    search_fields = ("name", "host", "database", "username", "dbuser__login")
+    search_help_text = "Поиск по: названию, хосту, базе данных, пользователю БД, логину пользователя DB STAT"
     fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "users_logins", "is_active", "created", "updated")
     readonly_fields = BaseAdmin.readonly_fields + ("name", "host", "port", "database", "username", "db_type", "created_user", "users_logins")
 
@@ -127,5 +127,7 @@ class MaintenanceJobAdmin(admin.ModelAdmin):
     list_filter = ("status", "operation", "connection")
     search_fields = ("schema_name", "table_name", "user__login", "connection__name")
     search_help_text = "Поиск по: схема, таблица, логин, название подключения"
+    date_hierarchy = "created"
+    list_per_page = 20
     readonly_fields = tuple(field.name for field in MaintenanceJob._meta.fields)
     ordering = ("-created",)

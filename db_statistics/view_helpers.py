@@ -473,6 +473,26 @@ def _safe_db_error_message(action_description, exc):
     return f"{action_description}. Подробности см. в журнале сервера приложения"
 
 
+def _query_or_error(action_description, fn):
+    """Выполняет запрос к целевой БД, превращая ошибки драйвера в безопасный JSON-ответ.
+
+    Перехватывает только ``psycopg2.Error`` — ошибки самой целевой БД (сеть,
+    авторизация, синтаксис SQL и т.п.). Программные ошибки (KeyError, TypeError
+    и другие баги в обработке результата) не перехватываются и всплывают как
+    обычно, а не маскируются под «ошибку базы данных».
+
+    Возвращает (результат fn(), None) при успехе или (None, JsonResponse) при
+    ошибке БД — вызывающий код должен вернуть этот JsonResponse клиенту.
+    """
+    try:
+        return fn(), None
+    except psycopg2.Error as exc:
+        return None, JsonResponse(
+            {"ok": False, "message": _safe_db_error_message(action_description, exc)},
+            status=400,
+        )
+
+
 def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=100):
     """Разбирает общие параметры пагинации, поиска и сортировки для списковых запросов.
 
@@ -689,7 +709,7 @@ def _run_maintenance_operation(job_id):
                     if statistics_row
                     else None
                 )
-    except Exception as exc:
+    except psycopg2.Error as exc:
         result = {"status": "failed", "message": str(exc), "details": []}
     else:
         result = {
@@ -896,18 +916,12 @@ def _database_roles_list(request, *, can_login):
         LIMIT %s OFFSET %s;
     """
 
-    try:
-        rows = _fetch_db_rows(db_connection, roles_query, [*params, page_size, offset])
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    f"Не удалось получить список {role_type_message}", exc
-                ),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        f"Не удалось получить список {role_type_message}",
+        lambda: _fetch_db_rows(db_connection, roles_query, [*params, page_size, offset]),
+    )
+    if error_response:
+        return error_response
 
     roles = [
         {

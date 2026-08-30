@@ -15,10 +15,15 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     SQLITE_NAME=/app/data/db.sqlite3 \
-    LOCALHOST_DB_HOST=host.docker.internal \
-    ALLOWED_HOSTS=*
+    LOCALHOST_DB_HOST=host.docker.internal
 
 WORKDIR /app
+
+# psycopg2 (non-binary) links against the system libpq at runtime instead of
+# bundling its own copy; the builder stage already has libpq-dev to compile it.
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y libpq5 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements-runtime.txt \

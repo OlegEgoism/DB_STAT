@@ -63,6 +63,11 @@ are configured through the connection form in the UI.
 
 - Install dependencies from `requirements.txt`
 
+`psycopg2` is built from source and links against the system `libpq`, so
+outside Docker you need the PostgreSQL headers installed first, e.g.
+`sudo apt install libpq-dev` (Debian/Ubuntu) or `brew install postgresql`
+(macOS). The Docker image already has the build dependencies covered.
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -85,7 +90,16 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 - Create a DBUser for application authentication
 
 ```bash
-python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
+python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True, password=make_password('admin'))"
+```
+
+Login is password-protected: after 5 consecutive failed attempts, login is
+locked for that user for 5 minutes. Users created before the password field
+existed (an empty `password`) cannot log in until a password is set — use the
+same reset command:
+
+```bash
+python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('NEW_PASSWORD'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
 ```
 
 - Encrypt any connection passwords left in plain text after upgrading from a version without encryption (one-time command, safe to re-run)
@@ -134,6 +148,11 @@ Enter `localhost` in the connection form. Inside the image, the application
 automatically routes that connection to the Docker host. This works both in
 Docker Desktop and native Docker on Linux without an extra `--add-host` option.
 
+The image no longer defaults `ALLOWED_HOSTS` to `*`; it falls back to the
+application's own default (`localhost, 127.0.0.1`), which is enough for the
+command above. If the container is reached through another hostname or a
+reverse proxy, pass it explicitly: `-e ALLOWED_HOSTS=example.com`.
+
 PostgreSQL on the host must listen on more than its Unix socket and allow the
 Docker network in `listen_addresses` and `pg_hba.conf`. If necessary, override
 the target with `-e LOCALHOST_DB_HOST=<address>`.
@@ -146,6 +165,7 @@ Django Admin superuser:
 Application user:
 - login: admin
 - email: admin@example.com
+- password: admin
 
 If there is a connection error to `172.17.0.1` or `192.168.0.1` after building, an old Docker image is running.
 Rebuild the image and run the container again.

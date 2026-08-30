@@ -1,5 +1,6 @@
-import json
+from datetime import timedelta
 
+import psycopg2
 from django.conf import settings
 from django.db.models import Case, CharField, F, Value, When
 from django.http import JsonResponse
@@ -53,7 +54,7 @@ def home(request):
         "home.html",
         {
             "db_user": db_user,
-            "db_user_json": json.dumps(_user_payload(db_user), ensure_ascii=False),
+            "db_user_payload": _user_payload(db_user),
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
             "session_expires_at_ms": request.session.get(
                 settings.SESSION_EXPIRES_AT_KEY, 0
@@ -61,6 +62,15 @@ def home(request):
             * 1000,
         },
     )
+
+
+def _lockout_message(lockout_until, is_english):
+    """Формирует сообщение о временной блокировке входа"""
+    remaining_seconds = int((lockout_until - timezone.now()).total_seconds())
+    remaining_minutes = max(1, -(-remaining_seconds // 60))
+    if is_english:
+        return f"Too many failed attempts. Try again in {remaining_minutes} min."
+    return f"Слишком много неверных попыток. Повторите через {remaining_minutes} мин."
 
 
 @ensure_csrf_cookie
@@ -79,11 +89,18 @@ def login(request):
     if request.method == "POST":
         login_value = (request.POST.get("login") or "").strip()
         email_value = (request.POST.get("email") or "").strip()
+        password_value = request.POST.get("password") or ""
         session_duration_value = (
             request.POST.get("session_duration")
             or str(settings.DEFAULT_SESSION_DURATION_HOURS)
         ).strip()
         session_duration_seconds = _session_duration_seconds(session_duration_value)
+
+        invalid_credentials_message = (
+            "Invalid login, email or password"
+            if is_english
+            else "Неверный логин, почта или пароль"
+        )
 
         if session_duration_seconds is None:
             if is_english:
@@ -91,9 +108,34 @@ def login(request):
             else:
                 error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
-            db_user = DBUser.objects.filter(
+            candidate = DBUser.objects.filter(
                 login=login_value, email=email_value, is_active=True
             ).first()
+            if candidate and candidate.lockout_until and candidate.lockout_until > timezone.now():
+                error = _lockout_message(candidate.lockout_until, is_english)
+            elif candidate and candidate.check_password(password_value):
+                db_user = candidate
+                db_user.failed_login_attempts = 0
+                db_user.lockout_until = None
+                db_user.save(update_fields=["failed_login_attempts", "lockout_until"])
+            else:
+                error = invalid_credentials_message
+                if candidate:
+                    candidate.failed_login_attempts += 1
+                    attempt_number = candidate.failed_login_attempts
+                    if attempt_number >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
+                        candidate.failed_login_attempts = 0
+                        candidate.lockout_until = timezone.now() + timedelta(
+                            seconds=settings.LOGIN_LOCKOUT_SECONDS
+                        )
+                        error = _lockout_message(candidate.lockout_until, is_english)
+                    candidate.save(update_fields=["failed_login_attempts", "lockout_until"])
+                    _write_audit(
+                        "login",
+                        f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; "
+                        f"попытка №{attempt_number}",
+                        db_user=candidate,
+                    )
 
         if not error and db_user:
             request.session.cycle_key()
@@ -108,12 +150,6 @@ def login(request):
                 db_user=db_user,
             )
             return redirect("home")
-        if not error:
-            error = (
-                "No active user with the specified login and email was found"
-                if is_english
-                else "Пользователь с указанными логином и электронной почтой не найден или отключён"
-            )
 
     return render(
         request,
@@ -514,7 +550,7 @@ def test_connection(request):
     audit_connection = connection if connection_id else None
     try:
         _test_connection_params(**params)
-    except Exception as exc:
+    except psycopg2.Error as exc:
         if audit_connection:
             info = _connection_audit_info(
                 "Проверка подключения", audit_connection, result="Ошибка", error=exc

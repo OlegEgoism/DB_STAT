@@ -53,15 +53,15 @@
                 </div>
                 <span class="conn-divider"></span>
                 {% if user_can_manage_connections %}
-                    <button class="btn-conn primary" onclick="openConnectionModal()" title="Новое подключение">
+                    <button class="btn-conn primary" id="openConnectionModalBtn" title="Новое подключение">
                         <i class="fas fa-plus"></i>
                     </button>
                 {% endif %}
-                <button class="btn-conn" onclick="testConnection()" title="Проверить">
+                <button class="btn-conn" id="testConnectionBtn" title="Проверить">
                     <i class="fas fa-plug"></i>
                 </button>
                 {% if user_can_manage_connections %}
-                    <button class="btn-conn d-none" id="connectionEditBtn" onclick="editConnection()" title="Редактировать подключение">
+                    <button class="btn-conn d-none" id="connectionEditBtn" title="Редактировать подключение">
                         <i class="fas fa-pen"></i>
                     </button>
                 {% endif %}
@@ -798,7 +798,7 @@
                             </div>
                             <div class="distribution-table-options" id="distributionTableOptions" role="listbox" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Database tables{% else %}Таблицы базы данных{% endif %}" hidden></div>
                         </div>
-                        <button class="btn-conn primary" type="button" onclick="refreshDistributionForSelectedTable()">
+                        <button class="btn-conn primary" type="button" id="distributionRefreshBtn">
                             <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
                         </button>
                     </div>

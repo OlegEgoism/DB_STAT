@@ -65,6 +65,11 @@ Greenplum и Greengage остаются целевыми базами монит
 
 - Установка библиотек из файла requirements.txt
 
+Пакет `psycopg2` собирается из исходников и линкуется с системной `libpq`, поэтому
+перед установкой (вне Docker) нужны заголовки PostgreSQL, например
+`sudo apt install libpq-dev` (Debian/Ubuntu) или `brew install postgresql` (macOS).
+Внутри Docker-образа сборочные зависимости уже учтены.
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -87,7 +92,16 @@ python manage.py shell -c "from django.contrib.auth import get_user_model; User=
 - Создание пользователя DBUser для авторизации в приложении
 
 ```bash
-python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True)"
+python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True, password=make_password('admin'))"
+```
+
+Вход в приложение защищён паролем: после 5 подряд неверных попыток вход для
+пользователя блокируется на 5 минут. Пользователи, созданные до появления
+пароля (поле `password` пустое), не смогут войти, пока им не задать пароль —
+для этого выполните ту же команду сброса:
+
+```bash
+python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('НОВЫЙ_ПАРОЛЬ'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
 ```
 
 - Шифрование паролей подключений, оставшихся в открытом виде после обновления с версии без шифрования (одноразовая команда, безопасно выполнять повторно)
@@ -136,6 +150,11 @@ docker run --name db-stat --rm -p 8000:8000 \
 направит такое подключение на хост Docker. Это работает в Docker Desktop и в
 обычном Docker под Linux без дополнительного параметра `--add-host`.
 
+По умолчанию `ALLOWED_HOSTS` не задан образом и используется список из настроек
+приложения (`localhost, 127.0.0.1`), которого достаточно для запуска командой
+выше. Если контейнер открывается по другому имени хоста или через обратный
+прокси, передайте его явно: `-e ALLOWED_HOSTS=example.com`.
+
 PostgreSQL на хосте должен принимать подключения не только через Unix-сокет и
 разрешать подключения из сети Docker в `listen_addresses` и `pg_hba.conf`.
 При необходимости адрес назначения можно переопределить параметром
@@ -149,6 +168,7 @@ PostgreSQL на хосте должен принимать подключени�
 Пользователь приложения:
 - логин: admin
 - почта: admin@example.com
+- пароль: admin
 
 Если после сборки есть ошибка подключения к `172.17.0.1` или `192.168.0.1`, значит запущен старый Docker-образ. 
 Пересоберите образ и запустите контейнер заново.

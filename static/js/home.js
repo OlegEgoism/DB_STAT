@@ -389,6 +389,7 @@
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
         initCharts();
+        initConnectionActionButtons();
         initNavigation();
         initSidebarCollapse();
         initSidebarSectionToggles();
@@ -3536,6 +3537,7 @@
             else closeDistributionTablePicker();
             select?.focus();
         });
+        document.getElementById('distributionRefreshBtn')?.addEventListener('click', refreshDistributionForSelectedTable);
         document.addEventListener('click', function(event) {
             if (!event.target.closest('#distributionTablePicker')) closeDistributionTablePicker();
         });
@@ -4543,6 +4545,15 @@
                 document.getElementById('connectionSelect').value = activeConnectionId;
                 showToast(`❌ ${error.message}`);
             });
+    }
+
+    function initConnectionActionButtons() {
+        document.getElementById('openConnectionModalBtn')?.addEventListener('click', openConnectionModal);
+        document.getElementById('testConnectionBtn')?.addEventListener('click', testConnection);
+        document.getElementById('connectionEditBtn')?.addEventListener('click', editConnection);
+        document.getElementById('connectionDeleteBtn')?.addEventListener('click', deleteConnection);
+        document.getElementById('testNewConnectionBtn')?.addEventListener('click', testNewConnection);
+        document.getElementById('saveConnectionBtn')?.addEventListener('click', saveConnection);
     }
 
     // ============================

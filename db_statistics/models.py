@@ -3,7 +3,10 @@ import hashlib
 import uuid
 
 from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -14,10 +17,35 @@ def vn(name: str, help_text: str, **kwargs) -> dict:
     return {"verbose_name": name, "help_text": help_text, **kwargs}
 
 
+# Фиксированная соль приложения для PBKDF2. Соль не обязана быть секретной или
+# случайной для каждой инсталляции — её роль здесь только в том, чтобы ключ
+# шифрования не совпадал с сырым значением секрета и требовал дорогостоящего
+# растяжения (много итераций), что затрудняет офлайн-подбор при низкой
+# энтропии DB_CONNECTION_ENCRYPTION_KEY/SECRET_KEY.
+_CONNECTION_PASSWORD_KDF_SALT = b"db-stat:connection-password:v1"
+_CONNECTION_PASSWORD_KDF_ITERATIONS = 390_000
+
+
+def _connection_encryption_secret():
+    """Возвращает секрет, из которого выводится ключ шифрования паролей подключений"""
+    return str(getattr(settings, "DB_CONNECTION_ENCRYPTION_KEY", "") or settings.SECRET_KEY)
+
+
 def _connection_password_cipher():
-    """Создаёт экземпляр шифра на основе секретного ключа из настроек"""
-    secret = getattr(settings, "DB_CONNECTION_ENCRYPTION_KEY", "") or settings.SECRET_KEY
-    key = base64.urlsafe_b64encode(hashlib.sha256(str(secret).encode("utf-8")).digest())
+    """Создаёт экземпляр шифра на основе ключа, растянутого через PBKDF2"""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=_CONNECTION_PASSWORD_KDF_SALT,
+        iterations=_CONNECTION_PASSWORD_KDF_ITERATIONS,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(_connection_encryption_secret().encode("utf-8")))
+    return Fernet(key)
+
+
+def _legacy_connection_password_cipher():
+    """Шифр на основе прежнего вывода ключа (sha256 без растяжения), только для чтения старых записей"""
+    key = base64.urlsafe_b64encode(hashlib.sha256(_connection_encryption_secret().encode("utf-8")).digest())
     return Fernet(key)
 
 
@@ -33,15 +61,23 @@ def encrypt_connection_password(raw_password):
 
 
 def decrypt_connection_password(stored_password):
-    """Расшифровывает пароль подключения"""
+    """Расшифровывает пароль подключения.
+
+    Сначала пробует текущий (PBKDF2) ключ, а при неудаче — прежний sha256-ключ,
+    чтобы подключения, зашифрованные до перехода на PBKDF2, не сломались.
+    """
     if stored_password in (None, ""):
         return stored_password or ""
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX):]
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX):].encode("utf-8")
     try:
-        return _connection_password_cipher().decrypt(token.encode("utf-8")).decode("utf-8")
+        return _connection_password_cipher().decrypt(token).decode("utf-8")
+    except InvalidToken:
+        pass
+    try:
+        return _legacy_connection_password_cipher().decrypt(token).decode("utf-8")
     except InvalidToken:
         return ""
 
@@ -78,8 +114,11 @@ class DBUser(DateStamp, Active):
 
     login = models.CharField(**vn("Логин", "Уникальное имя пользователя для входа в DB STAT"), max_length=100, db_index=True, unique=True)
     email = models.EmailField(**vn("Почта", "Уникальный адрес электронной почты пользователя"), unique=True)
+    password = models.CharField(**vn("Пароль", "Хэш пароля пользователя для входа в DB STAT"), max_length=128, blank=True, default="")
     role = models.CharField(**vn("Роль", "Роль определяет доступные пользователю действия"), max_length=20, choices=USER_ROLE, default="Аналитик")
     connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключения к базам данных", "Подключения, доступные этому пользователю"), blank=True)
+    failed_login_attempts = models.PositiveIntegerField(**vn("Неудачные попытки входа", "Количество подряд неверных попыток ввода пароля с момента последнего успешного входа"), default=0)
+    lockout_until = models.DateTimeField(**vn("Заблокирован до", "Пока не истечёт это время, вход для пользователя запрещён из-за подбора пароля"), null=True, blank=True)
 
     class Meta:
         db_table = "db_user"
@@ -89,6 +128,14 @@ class DBUser(DateStamp, Active):
 
     def __str__(self):
         return self.login
+
+    def set_password(self, raw_password):
+        """Хэширует и сохраняет пароль (не забудьте вызвать save())"""
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        """Проверяет пароль по сохранённому хэшу"""
+        return bool(self.password) and check_password(raw_password, self.password)
 
 
 class DBUserSidebarSettings(DateStamp):

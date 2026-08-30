@@ -14,10 +14,10 @@ from db_statistics.view_helpers import (
     _list_query_params,
     _multi_column_search_filter,
     _open_database_connection,
+    _query_or_error,
     _read_json_body,
     _require_greenplum_connection,
     _require_payload_connection,
-    _safe_db_error_message,
 )
 
 SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
@@ -133,20 +133,17 @@ def database_schema_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC;
     """
 
-    try:
-        rows, distribution_rows = _fetch_db_resultsets(
+    result, error_response = _query_or_error(
+        "Не удалось получить размеры схем",
+        lambda: _fetch_db_resultsets(
             db_connection,
             (schema_sizes_query, [*params, page_size, offset]),
             (schema_distribution_query, params),
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить размеры схем", exc),
-            },
-            status=400,
-        )
+        ),
+    )
+    if error_response:
+        return error_response
+    rows, distribution_rows = result
 
     schemas = [
         {
@@ -277,20 +274,17 @@ def database_table_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC, table_name ASC;
     """
 
-    try:
-        rows, distribution_rows = _fetch_db_resultsets(
+    result, error_response = _query_or_error(
+        "Не удалось получить размеры таблиц",
+        lambda: _fetch_db_resultsets(
             db_connection,
             (table_sizes_query, [*params, page_size, offset]),
             (table_distribution_query, params),
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить размеры таблиц", exc),
-            },
-            status=400,
-        )
+        ),
+    )
+    if error_response:
+        return error_response
+    rows, distribution_rows = result
 
     tables = [
         {
@@ -416,16 +410,12 @@ def database_views_list(request):
         LIMIT %s OFFSET %s;
     """
 
-    try:
-        rows = _fetch_db_rows(db_connection, views_query, [*params, page_size, offset])
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить представления", exc),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить представления",
+        lambda: _fetch_db_rows(db_connection, views_query, [*params, page_size, offset]),
+    )
+    if error_response:
+        return error_response
 
     items = [
         {
@@ -523,18 +513,12 @@ def database_functions_list(request):
         LIMIT %s OFFSET %s;
     """
 
-    try:
-        rows = _fetch_db_rows(
-            db_connection, functions_query, [*params, page_size, offset]
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить функции", exc),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить функции",
+        lambda: _fetch_db_rows(db_connection, functions_query, [*params, page_size, offset]),
+    )
+    if error_response:
+        return error_response
 
     functions = [
         {
@@ -582,21 +566,17 @@ def distribution_tables(request):
         ORDER BY namespace.nspname ASC, table_class.relname ASC;
     """
 
-    try:
-        rows = _fetch_db_rows(db_connection, tables_query)
-        tables = [
-            {"schema_name": row[0], "table_name": row[1], "object_type": row[2]}
-            for row in rows
-        ]
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить список таблиц", exc),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить список таблиц",
+        lambda: _fetch_db_rows(db_connection, tables_query),
+    )
+    if error_response:
+        return error_response
 
+    tables = [
+        {"schema_name": row[0], "table_name": row[1], "object_type": row[2]}
+        for row in rows
+    ]
     return JsonResponse({"ok": True, "tables": tables})
 
 
@@ -634,24 +614,23 @@ def distribution_info(request):
         ORDER BY gp_segment_id ASC;
     """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
 
-    try:
+    def _fetch_distribution_rows():
         with _open_database_connection(db_connection) as connection:
             with connection.cursor() as cursor:
                 cursor.execute(validate_query, [schema_name, table_name])
                 if not cursor.fetchone():
-                    return JsonResponse(
-                        {"ok": False, "message": "Выбранная таблица не найдена"},
-                        status=404,
-                    )
+                    return None
                 cursor.execute(distribution_query)
-                rows = cursor.fetchall()
-    except Exception as exc:
+                return cursor.fetchall()
+
+    rows, error_response = _query_or_error(
+        "Не удалось получить распределение", _fetch_distribution_rows
+    )
+    if error_response:
+        return error_response
+    if rows is None:
         return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить распределение", exc),
-            },
-            status=400,
+            {"ok": False, "message": "Выбранная таблица не найдена"}, status=404
         )
 
     segments = [{"segment_id": int(row[0]), "row_count": int(row[1])} for row in rows]
@@ -776,22 +755,17 @@ def database_temp_table_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC, table_name ASC;
     """
 
-    try:
-        rows, distribution_rows = _fetch_db_resultsets(
+    result, error_response = _query_or_error(
+        "Не удалось получить временные таблицы",
+        lambda: _fetch_db_resultsets(
             db_connection,
             (temp_table_sizes_query, [*params, page_size, offset]),
             (temp_table_distribution_query, params),
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    "Не удалось получить временные таблицы", exc
-                ),
-            },
-            status=400,
-        )
+        ),
+    )
+    if error_response:
+        return error_response
+    rows, distribution_rows = result
 
     temp_tables = [
         {

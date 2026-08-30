@@ -11,9 +11,9 @@ from db_statistics.view_helpers import (
     _fetch_db_rows,
     _format_duration,
     _like_search_pattern,
+    _query_or_error,
     _read_json_body,
     _require_payload_connection,
-    _safe_db_error_message,
     _write_audit,
 )
 
@@ -59,18 +59,12 @@ def active_queries(request):
         ORDER BY duration DESC;
     """
 
-    try:
-        rows = _fetch_db_rows(
-            db_connection, active_queries_query, [username, username_pattern]
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить активные запросы", exc),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить активные запросы",
+        lambda: _fetch_db_rows(db_connection, active_queries_query, [username, username_pattern]),
+    )
+    if error_response:
+        return error_response
 
     queries = []
     for row in rows:
@@ -141,18 +135,12 @@ def terminate_active_query(request):
           AND activity.state = 'active'
           AND activity.pid <> pg_backend_pid();
     """
-    try:
-        row = _fetch_db_row(db_connection, terminate_query, [pid])
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    f"Не удалось завершить запрос с PID {pid}", exc
-                ),
-            },
-            status=400,
-        )
+    row, error_response = _query_or_error(
+        f"Не удалось завершить запрос с PID {pid}",
+        lambda: _fetch_db_row(db_connection, terminate_query, [pid]),
+    )
+    if error_response:
+        return error_response
 
     if not row:
         return JsonResponse(
@@ -214,20 +202,12 @@ def active_sessions(request):
             backend_start DESC;
     """
 
-    try:
-        rows = _fetch_db_rows(
-            db_connection, sessions_query, [username, username_pattern, state, state]
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    "Не удалось получить активные сессии и подключения", exc
-                ),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить активные сессии и подключения",
+        lambda: _fetch_db_rows(db_connection, sessions_query, [username, username_pattern, state, state]),
+    )
+    if error_response:
+        return error_response
 
     sessions = []
     state_counts = {}
@@ -335,18 +315,12 @@ def terminate_active_session(request):
         WHERE activity.pid = %s
           AND activity.pid <> pg_backend_pid();
     """
-    try:
-        row = _fetch_db_row(db_connection, terminate_query, [pid])
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message(
-                    f"Не удалось завершить сессию с PID {pid}", exc
-                ),
-            },
-            status=400,
-        )
+    row, error_response = _query_or_error(
+        f"Не удалось завершить сессию с PID {pid}",
+        lambda: _fetch_db_row(db_connection, terminate_query, [pid]),
+    )
+    if error_response:
+        return error_response
 
     if not row:
         return JsonResponse(
@@ -414,20 +388,16 @@ def blocking_locks(request):
           AND (%s = '' OR blocker.usename ILIKE %s ESCAPE '!');
     """
 
-    try:
-        rows = _fetch_db_rows(
+    rows, error_response = _query_or_error(
+        "Не удалось получить блокировки",
+        lambda: _fetch_db_rows(
             db_connection,
             blocking_locks_query,
             [blocked_username, blocked_username_pattern, blocker_username, blocker_username_pattern],
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить блокировки", exc),
-            },
-            status=400,
-        )
+        ),
+    )
+    if error_response:
+        return error_response
 
     locks = []
     for row in rows:
@@ -481,18 +451,12 @@ def idle_transactions(request):
         ORDER BY xact_start;
     """
 
-    try:
-        rows = _fetch_db_rows(
-            db_connection, idle_transactions_query, [username, username_pattern]
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {
-                "ok": False,
-                "message": _safe_db_error_message("Не удалось получить транзакции", exc),
-            },
-            status=400,
-        )
+    rows, error_response = _query_or_error(
+        "Не удалось получить транзакции",
+        lambda: _fetch_db_rows(db_connection, idle_transactions_query, [username, username_pattern]),
+    )
+    if error_response:
+        return error_response
 
     transactions = []
     for row in rows:
