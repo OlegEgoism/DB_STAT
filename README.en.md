@@ -19,12 +19,24 @@ The main goal of DB STAT is to simplify daily database health checks.
 
 <table>
   <tr>
-    <td><img src="screenshots/db.png" width="700" alt="Database dashboard"></td>
-    <td><img src="screenshots/memory.png" width="700" alt="Memory dashboard"></td>
+    <td align="center">
+      <img src="screenshots/db.png" width="700" alt="Database dashboard"><br>
+      <sub>Database — size, activity, connection slots</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/memory.png" width="700" alt="Memory dashboard"><br>
+      <sub>Memory — settings and usage</sub>
+    </td>
   </tr>
   <tr>
-    <td><img src="screenshots/service.png" width="700" alt="Service dashboard"></td>
-    <td><img src="screenshots/session.png" width="700" alt="Session dashboard"></td>
+    <td align="center">
+      <img src="screenshots/service.png" width="700" alt="Service dashboard"><br>
+      <sub>Maintenance — VACUUM/ANALYZE, live/dead rows</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/session.png" width="700" alt="Session dashboard"><br>
+      <sub>Sessions — active user connections</sub>
+    </td>
   </tr>
 </table>
 

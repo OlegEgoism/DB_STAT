@@ -21,12 +21,24 @@
 
 <table>
   <tr>
-    <td><img src="screenshots/db.png" width="700" alt="Database dashboard"></td>
-    <td><img src="screenshots/memory.png" width="700" alt="Memory dashboard"></td>
+    <td align="center">
+      <img src="screenshots/db.png" width="700" alt="Database dashboard"><br>
+      <sub>База данных — размер, активность, слоты подключений</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/memory.png" width="700" alt="Memory dashboard"><br>
+      <sub>Память — параметры и использование</sub>
+    </td>
   </tr>
   <tr>
-    <td><img src="screenshots/service.png" width="700" alt="Service dashboard"></td>
-    <td><img src="screenshots/session.png" width="700" alt="Session dashboard"></td>
+    <td align="center">
+      <img src="screenshots/service.png" width="700" alt="Service dashboard"><br>
+      <sub>Обслуживание — VACUUM/ANALYZE, живые/мёртвые строки</sub>
+    </td>
+    <td align="center">
+      <img src="screenshots/session.png" width="700" alt="Session dashboard"><br>
+      <sub>Сессии — активные подключения пользователей</sub>
+    </td>
   </tr>
 </table>
 
