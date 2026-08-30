@@ -777,6 +777,18 @@ body {
     position: relative;
     display: inline-flex;
     align-items: center;
+    height: 40px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    padding: 4px 12px;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-card);
+}
+
+.background-jobs-manager:hover {
+    border-color: var(--control-border);
+    box-shadow: var(--shadow-card-hover);
 }
 
 .background-jobs-indicator {
@@ -784,10 +796,9 @@ body {
     align-items: center;
     gap: 5px;
     border: 0;
-    border-radius: 999px;
-    padding: 5px 8px;
+    padding: 0;
     color: var(--text-muted);
-    background: var(--bg-primary);
+    background: transparent;
     font-size: 12px;
 }
 

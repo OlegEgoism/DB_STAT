@@ -15,6 +15,8 @@
         'Настройки сайдбара': 'Interface settings', 'Свернуть сайдбар': 'Collapse sidebar', 'Свернуть/развернуть сайдбар': 'Collapse/expand sidebar',
         'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Сессии и подключения': 'Sessions and connections',
         'До завершения сессии': 'Session time remaining',
+        'Фоновые операции': 'Background jobs', 'Нет фоновых операций': 'No background jobs', 'Завершено': 'Completed',
+        'Удалить подключение может только его создатель': 'Only the connection creator can delete it',
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Тема оформления': 'Appearance theme', 'Белая': 'White', 'Тёмная': 'Dark', 'Светло-серая': 'Light gray',
         'Светло-синяя': 'Light blue', 'Светло-коричневая': 'Light brown', 'Светло-зелёная': 'Light green',
@@ -281,9 +283,11 @@
         [/^Использование слотов подключений: (\d+) из (\d+), ([\d.]+)%$/, 'Connection slot usage: $1 of $2, $3%'],
         [/^Активность БД: коммиты ([\d.]+)%, роллбеки ([\d.]+)%$/, 'Database activity: commits $1%, rollbacks $2%'],
         [/^Перетащить блок (.+)$/, 'Drag $1 section'],
-        [/^(VACUUM(?: FULL)?) для (.+) запущен в фоне$/, '$1 for $2 started in the background'],
-        [/^(VACUUM(?: FULL)?) для (.+) завершён$/, '$1 for $2 completed'],
-        [/^(VACUUM(?: FULL)?) для (.+): (.+)$/, '$1 for $2: $3']
+        [/^(VACUUM(?: FULL)?|ANALYZE|EXPLAIN ANALYZE) для (.+) запущен в фоне$/, '$1 for $2 started in the background'],
+        [/^(VACUUM(?: FULL)?|ANALYZE|EXPLAIN ANALYZE) для (.+) завершён$/, '$1 for $2 completed'],
+        [/^(VACUUM(?: FULL)?|ANALYZE|EXPLAIN ANALYZE) для (.+): (.+)$/, '$1 for $2: $3'],
+        [/^([\d.,]+) с$/, '$1 s'],
+        [/^Неудачная попытка входа: login=(.+); email=(.+); попытка №(\d+)$/, 'Failed sign-in attempt: login=$1; email=$2; attempt #$3']
     ];
     const phraseTranslations = [
         ['запущено в фоновом режиме', 'started in the background'], ['успешно завершено', 'completed successfully'],
