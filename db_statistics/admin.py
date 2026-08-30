@@ -180,7 +180,7 @@ class DBAuditAdmin(admin.ModelAdmin):
 @admin.register(MaintenanceJob)
 class MaintenanceJobAdmin(admin.ModelAdmin):
     """Фоновые операции обслуживания"""
-    list_display = ("id", "operation", "connection", "schema_name", "table_name", "status", "created", "finished")
+    list_display = ("id", "operation", "connection", "schema_name", "table_name", "user", "status", "created", "finished")
     list_filter = ("status", "operation", "connection")
     search_fields = ("schema_name", "table_name", "user__login", "connection__name")
     search_help_text = "Поиск по: схема, таблица, логин, название подключения"

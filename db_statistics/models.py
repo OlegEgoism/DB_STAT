@@ -18,11 +18,6 @@ def vn(name: str, help_text: str, **kwargs) -> dict:
     return {"verbose_name": name, "help_text": help_text, **kwargs}
 
 
-# Фиксированная соль приложения для PBKDF2. Соль не обязана быть секретной или
-# случайной для каждой инсталляции — её роль здесь только в том, чтобы ключ
-# шифрования не совпадал с сырым значением секрета и требовал дорогостоящего
-# растяжения (много итераций), что затрудняет офлайн-подбор при низкой
-# энтропии DB_CONNECTION_ENCRYPTION_KEY/SECRET_KEY.
 _CONNECTION_PASSWORD_KDF_SALT = b"db-stat:connection-password:v1"
 _CONNECTION_PASSWORD_KDF_ITERATIONS = 390_000
 
@@ -139,15 +134,7 @@ class DBUserManager(BaseUserManager):
 
 
 class DBUser(AbstractBaseUser, PermissionsMixin, DateStamp, Active):
-    """Единый пользователь: вход в приложение DB STAT и в Django admin.
-
-    ``password``/``last_login`` — от AbstractBaseUser; ``is_superuser``,
-    ``groups`` и ``user_permissions`` — от PermissionsMixin. Роль (``role``)
-    управляет правами внутри самого приложения и не связана с ``is_staff``/
-    ``is_superuser``, которые управляют доступом к /admin/ — это осознанно
-    разделено, чтобы не выдавать доступ к Django admin всем «Администраторам»
-    приложения автоматически.
-    """
+    """Пользователь"""
 
     USER_ROLE = [("Администратор", "Администратор"), ("Аналитик", "Аналитик")]
 
