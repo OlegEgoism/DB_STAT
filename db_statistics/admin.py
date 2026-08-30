@@ -33,7 +33,7 @@ class DBUserAdminForm(forms.ModelForm):
 
     class Meta:
         model = DBUser
-        fields = ("login", "email", "role", "is_active", "connections")
+        fields = ("login", "email", "role", "is_active", "is_staff", "is_superuser", "connections", "groups", "user_permissions")
 
     def clean_password2(self):
         password1 = self.cleaned_data.get("password1")
@@ -77,13 +77,13 @@ class DBUserAdmin(BaseAdmin):
     """Пользователь"""
 
     form = DBUserAdminForm
-    list_display = ("login", "email", "role", "count_column", "is_active", "created", "updated")
-    list_filter = ("is_active", "role")
+    list_display = ("login", "email", "role", "count_column", "is_active", "is_staff", "created", "updated")
+    list_filter = ("is_active", "role", "is_staff", "is_superuser")
     list_editable = ("is_active",)
     search_fields = ("login", "email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("login", "email", "role", "is_active", "password1", "password2", "connections", "created", "updated")
-    filter_horizontal = ("connections",)
+    fields = ("login", "email", "role", "is_active", "password1", "password2", "is_staff", "is_superuser", "connections", "groups", "user_permissions", "created", "updated")
+    filter_horizontal = ("connections", "groups", "user_permissions")
 
     @admin.display(description="Количество подключений")
     def count_column(self, obj):

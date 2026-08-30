@@ -6,7 +6,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.conf import settings
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -107,18 +108,61 @@ class Active(models.Model):
 # ============================================================================
 # МОДЕЛИ
 # ============================================================================
-class DBUser(DateStamp, Active):
-    """Пользователь"""
+class DBUserManager(BaseUserManager):
+    """Менеджер единого пользователя DB STAT (приложение + Django admin)"""
+
+    use_in_migrations = True
+
+    def _create_user(self, login, email, password, **extra_fields):
+        if not login:
+            raise ValueError("Укажите логин пользователя")
+        email = self.normalize_email(email)
+        user = self.model(login=login, email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, login, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        return self._create_user(login, email, password, **extra_fields)
+
+    def create_superuser(self, login, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        extra_fields.setdefault("role", "Администратор")
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Суперпользователь обязан иметь is_staff=True")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Суперпользователь обязан иметь is_superuser=True")
+        return self._create_user(login, email, password, **extra_fields)
+
+
+class DBUser(AbstractBaseUser, PermissionsMixin, DateStamp, Active):
+    """Единый пользователь: вход в приложение DB STAT и в Django admin.
+
+    ``password``/``last_login`` — от AbstractBaseUser; ``is_superuser``,
+    ``groups`` и ``user_permissions`` — от PermissionsMixin. Роль (``role``)
+    управляет правами внутри самого приложения и не связана с ``is_staff``/
+    ``is_superuser``, которые управляют доступом к /admin/ — это осознанно
+    разделено, чтобы не выдавать доступ к Django admin всем «Администраторам»
+    приложения автоматически.
+    """
 
     USER_ROLE = [("Администратор", "Администратор"), ("Аналитик", "Аналитик")]
 
     login = models.CharField(**vn("Логин", "Уникальное имя пользователя для входа в DB STAT"), max_length=100, db_index=True, unique=True)
     email = models.EmailField(**vn("Почта", "Уникальный адрес электронной почты пользователя"), unique=True)
-    password = models.CharField(**vn("Пароль", "Хэш пароля пользователя для входа в DB STAT"), max_length=128, blank=True, default="")
-    role = models.CharField(**vn("Роль", "Роль определяет доступные пользователю действия"), max_length=20, choices=USER_ROLE, default="Аналитик")
+    role = models.CharField(**vn("Роль", "Роль определяет доступные пользователю действия в приложении"), max_length=20, choices=USER_ROLE, default="Аналитик")
+    is_staff = models.BooleanField(**vn("Доступ к Django admin", "Позволяет входить в административный сайт Django (/admin/)"), default=False)
     connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключения к базам данных", "Подключения, доступные этому пользователю"), blank=True)
     failed_login_attempts = models.PositiveIntegerField(**vn("Неудачные попытки входа", "Количество подряд неверных попыток ввода пароля с момента последнего успешного входа"), default=0)
     lockout_until = models.DateTimeField(**vn("Заблокирован до", "Пока не истечёт это время, вход для пользователя запрещён из-за подбора пароля"), null=True, blank=True)
+
+    USERNAME_FIELD = "login"
+    REQUIRED_FIELDS = ["email"]
+
+    objects = DBUserManager()
 
     class Meta:
         db_table = "db_user"
@@ -128,14 +172,6 @@ class DBUser(DateStamp, Active):
 
     def __str__(self):
         return self.login
-
-    def set_password(self, raw_password):
-        """Хэширует и сохраняет пароль (не забудьте вызвать save())"""
-        self.password = make_password(raw_password)
-
-    def check_password(self, raw_password):
-        """Проверяет пароль по сохранённому хэшу"""
-        return bool(self.password) and check_password(raw_password, self.password)
 
 
 class DBUserSidebarSettings(DateStamp):

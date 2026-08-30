@@ -83,22 +83,25 @@ python manage.py migrate
 
 В частности, эта команда создаёт таблицу `db_favorite`, необходимую для работы избранного. Миграция совместима как с новой базой, так и с существующей базой, таблицы которой ранее были созданы через `run-syncdb`.
 
-- Создание суперпользователя для входа в Django Admin
+- Создание пользователя
+
+`DBUser` — единая модель пользователя (`AUTH_USER_MODEL`): один и тот же
+аккаунт используется и для входа в само приложение, и для входа в Django
+Admin (`/admin/`). Отдельного суперпользователя Django создавать не нужно.
 
 ```bash
-python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')"
+python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create_superuser('admin', 'admin@example.com', 'admin', role='Администратор')"
 ```
 
-- Создание пользователя DBUser для авторизации в приложении
-
-```bash
-python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True, password=make_password('admin'))"
-```
+`create_superuser` задаёт `is_staff=True` и `is_superuser=True` (доступ к
+`/admin/` с полными правами). Для пользователя без доступа к Django Admin
+используйте `DBUser.objects.create_user(login=..., email=..., password=..., role=...)`
+— по умолчанию `is_staff=False`.
 
 Вход в приложение защищён паролем: после 5 подряд неверных попыток вход для
 пользователя блокируется на 5 минут. Пользователи, созданные до появления
-пароля (поле `password` пустое), не смогут войти, пока им не задать пароль —
-для этого выполните ту же команду сброса:
+пароля (поле `password` пустое или непригодное), не смогут войти, пока им не
+задать пароль — для этого выполните команду сброса:
 
 ```bash
 python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('НОВЫЙ_ПАРОЛЬ'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
@@ -162,10 +165,7 @@ PostgreSQL на хосте должен принимать подключени�
 
 ```
 Доступно по адресу: http://localhost:8000
-Суперпользователь Django Admin:
-- логин: admin
-- пароль: admin
-Пользователь приложения:
+Единый пользователь (вход в приложение и в Django Admin — /admin/):
 - логин: admin
 - почта: admin@example.com
 - пароль: admin

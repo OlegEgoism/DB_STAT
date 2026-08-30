@@ -7,10 +7,10 @@ mkdir -p "$(dirname "${SQLITE_NAME:-/app/data/db.sqlite3}")"
 python manage.py migrate --noinput --fake-initial
 python manage.py recover_maintenance_jobs
 
-# Preserve the image's documented first-run accounts without baking a mutable
-# SQLite file into an image layer. Both commands are idempotent.
-python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')"
-python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True, password=make_password('admin'))"
+# Preserve the image's documented first-run account without baking a mutable
+# SQLite file into an image layer. Idempotent. DBUser is AUTH_USER_MODEL, so
+# this single account logs into both the app itself and Django admin (/admin/).
+python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create_superuser('admin', 'admin@example.com', 'admin', role='Администратор')"
 
 # Docker Desktop provides host.docker.internal automatically. On native Linux
 # Docker it is not always present, so derive Docker's default gateway at runtime

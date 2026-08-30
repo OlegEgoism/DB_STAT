@@ -81,22 +81,25 @@ python manage.py migrate
 
 In particular, this creates the `db_favorite` table required by favorites. The migration supports both new databases and existing databases whose tables were previously created with `run-syncdb`.
 
-- Create a superuser for Django Admin access
+- Create a user
+
+`DBUser` is the single, unified user model (`AUTH_USER_MODEL`): the same
+account logs into the application itself and into Django Admin (`/admin/`).
+There is no separate Django superuser to create.
 
 ```bash
-python manage.py shell -c "from django.contrib.auth import get_user_model; User=get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin')"
+python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create_superuser('admin', 'admin@example.com', 'admin', role='Администратор')"
 ```
 
-- Create a DBUser for application authentication
-
-```bash
-python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create(login='admin', email='admin@example.com', role='Администратор', is_active=True, password=make_password('admin'))"
-```
+`create_superuser` sets `is_staff=True` and `is_superuser=True` (full access
+to `/admin/`). For a user without Django Admin access, use
+`DBUser.objects.create_user(login=..., email=..., password=..., role=...)` —
+`is_staff` defaults to `False`.
 
 Login is password-protected: after 5 consecutive failed attempts, login is
 locked for that user for 5 minutes. Users created before the password field
-existed (an empty `password`) cannot log in until a password is set — use the
-same reset command:
+existed (an empty or unusable `password`) cannot log in until a password is
+set — use the same reset command:
 
 ```bash
 python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('NEW_PASSWORD'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
@@ -159,10 +162,7 @@ the target with `-e LOCALHOST_DB_HOST=<address>`.
 
 ```
 Available at: http://localhost:8000
-Django Admin superuser:
-- login: admin
-- password: admin
-Application user:
+Single account (logs into the app and into Django Admin — /admin/):
 - login: admin
 - email: admin@example.com
 - password: admin

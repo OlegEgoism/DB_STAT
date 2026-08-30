@@ -54,6 +54,12 @@ if _env_bool("SECURE_PROXY_SSL_HEADER", False):
 
 INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "db_statistics.apps.DbStatisticsConfig"]
 
+# DBUser — единый пользователь и для входа в само приложение (см. собственную
+# сессионную аутентификацию в view_helpers._current_db_user), и для входа в
+# Django admin (через стандартный django.contrib.auth). Обычный auth.User
+# больше не используется.
+AUTH_USER_MODEL = "db_statistics.DBUser"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
