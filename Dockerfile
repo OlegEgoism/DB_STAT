@@ -43,4 +43,6 @@ VOLUME ["/app/data"]
 EXPOSE 8000
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# --insecure: DEBUG defaults to False (see db/settings.py), and without it the
+# dev server stops serving STATIC_URL entirely, breaking every page's CSS/JS.
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000", "--insecure"]
