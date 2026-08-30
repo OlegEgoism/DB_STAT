@@ -9,7 +9,7 @@ class DbStatisticsConfig(AppConfig):
     verbose_name = "DB STAT"
 
     def ready(self):
-        """Запускает сохранённые задачи после полной инициализации Django."""
+        """Запускает сохранённые задачи после полной инициализации Django"""
         def submit_queued_jobs():
             from db_statistics.models import MaintenanceJob
             from db_statistics.view_helpers import _submit_maintenance_job

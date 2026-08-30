@@ -40,8 +40,8 @@ class DBUserSidebarSettingsAdmin(BaseAdmin):
     list_display = ("user", "visible_tabs_display", "created", "updated")
     search_fields = ("user__login", "user__email")
     search_help_text = "Поиск по: логин, почта"
-    fields = ("user", "visible_tabs", "visible_tabs_display", "created", "updated")
-    readonly_fields = BaseAdmin.readonly_fields + ("visible_tabs_display",)
+    fields = ("user", "visible_tabs_display", "created", "updated")
+    readonly_fields = BaseAdmin.readonly_fields + ("visible_tabs_display", "user")
 
     @admin.display(description="Видимые вкладки")
     def visible_tabs_display(self, obj):
@@ -54,21 +54,21 @@ class DBUserSidebarSettingsAdmin(BaseAdmin):
 class DBConnectionAdmin(BaseAdmin):
     """Подключение"""
 
-    list_display = ("name", "host", "port", "username", "database", "created_user", "users_logins", "users_count", "is_active", "created", "updated")
+    list_display = ("name", "host", "port", "username", "database", "created_user", "users_count", "is_active", "created", "updated")
     list_filter = ("is_active", "db_type")
     list_editable = ("is_active",)
     search_fields = ("name", "database", "username", "dbuser__login")
     search_help_text = "Поиск по: названию, базе данных, пользователю БД, логину пользователя DB STAT"
     fields = ("name", "host", "port", "database", "username", "db_type", "created_user", "users_logins", "is_active", "created", "updated")
-    readonly_fields = BaseAdmin.readonly_fields + ("users_logins",)
+    readonly_fields = BaseAdmin.readonly_fields + ("name", "host", "port", "database", "username", "db_type", "created_user", "users_logins")
 
     def get_queryset(self, request):
-        """Предзагружает назначенных пользователей для списка подключений."""
+        """Предзагружает назначенных пользователей для списка подключений"""
         return super().get_queryset(request).prefetch_related("dbuser_set")
 
-    @admin.display(description="Логины пользователей")
+    @admin.display(description="Доступ к этому подключению")
     def users_logins(self, obj):
-        """Показывает логины пользователей с ссылками на их карточки."""
+        """Показывает логины пользователей с ссылками на их карточки"""
         users = obj.dbuser_set.all()
         if not users:
             return "—"
@@ -93,7 +93,7 @@ class DBFavoriteAdmin(BaseAdmin):
     list_display = ("user", "connection", "object_type", "object_key", "created", "updated")
     list_filter = ("object_type", "connection")
     search_fields = ("user__login",)
-    search_help_text = "Поиск по: Логин"
+    search_help_text = "Поиск по: логин"
     date_hierarchy = "created"
     list_per_page = 20
     fields = ("user", "connection", "object_type", "object_key", "created", "updated")
@@ -122,8 +122,10 @@ class DBAuditAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceJob)
 class MaintenanceJobAdmin(admin.ModelAdmin):
+    """Фоновые операции обслуживания"""
     list_display = ("id", "operation", "connection", "schema_name", "table_name", "status", "created", "finished")
     list_filter = ("status", "operation", "connection")
     search_fields = ("schema_name", "table_name", "user__login", "connection__name")
+    search_help_text = "Поиск по: схема, таблица, логин, название подключения"
     readonly_fields = tuple(field.name for field in MaintenanceJob._meta.fields)
     ordering = ("-created",)
