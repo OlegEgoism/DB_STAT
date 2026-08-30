@@ -68,6 +68,7 @@ class ModelHelpTextTests(SimpleTestCase):
                     self.assertTrue(field.help_text)
 
     def test_maintenance_job_has_descriptive_metadata(self):
+        self.assertEqual(MaintenanceJob._meta.db_table, "db_maintenance_job")
         self.assertEqual(
             MaintenanceJob._meta.verbose_name,
             "Фоновая операция обслуживания",
