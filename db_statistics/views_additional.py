@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import psycopg2
 from django.conf import settings
-from django.db.models import Case, CharField, F, Value, When
+from django.db.models import Case, CharField, F, Q, Value, When
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone, translation
@@ -83,12 +83,10 @@ def login(request):
 
     error = ""
     is_english = translation.get_language() == "en"
-    login_value = ""
-    email_value = ""
+    identifier_value = ""
     session_duration_value = str(settings.DEFAULT_SESSION_DURATION_HOURS)
     if request.method == "POST":
-        login_value = (request.POST.get("login") or "").strip()
-        email_value = (request.POST.get("email") or "").strip()
+        identifier_value = (request.POST.get("identifier") or "").strip()
         password_value = request.POST.get("password") or ""
         session_duration_value = (
             request.POST.get("session_duration")
@@ -109,7 +107,8 @@ def login(request):
                 error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
             candidate = DBUser.objects.filter(
-                login=login_value, email=email_value, is_active=True
+                Q(login=identifier_value) | Q(email=identifier_value),
+                is_active=True,
             ).first()
             if candidate and candidate.lockout_until and candidate.lockout_until > timezone.now():
                 error = _lockout_message(candidate.lockout_until, is_english)
@@ -156,8 +155,7 @@ def login(request):
         "login.html",
         {
             "error": error,
-            "login_value": login_value,
-            "email_value": email_value,
+            "identifier_value": identifier_value,
             "session_duration_value": session_duration_value,
             "min_session_duration_hours": "0.1667",
             "min_session_duration_minutes": settings.MIN_SESSION_DURATION_MINUTES,
