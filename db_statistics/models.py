@@ -244,7 +244,7 @@ class MaintenanceJob(models.Model):
     finished = models.DateTimeField(**vn("Дата завершения", "Дата и время успешного или ошибочного завершения задачи."), null=True, blank=True)
 
     class Meta:
-        db_table = "maintenance_job"
+        db_table = "db_maintenance_job"
         verbose_name = "Фоновая операция обслуживания"
         verbose_name_plural = "Фоновые операции обслуживания"
         ordering = ("-created",)
