@@ -53,6 +53,7 @@ class MaintenanceQueueTests(TestCase):
 
         self.assertEqual(MaintenanceJob.objects.get(pk=job.pk).statistics["live_rows"], 10)
         serialized = _serialize_maintenance_job(job)
+        self.assertEqual(serialized["username"], self.user.login)
         self.assertEqual(serialized["started"], started.isoformat())
         self.assertEqual(serialized["finished"], finished.isoformat())
 

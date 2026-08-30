@@ -134,7 +134,7 @@
         'Нет данных о распределении данных по временным таблицам': 'No temporary-table distribution data',
         'Анимация разборки и сборки жёсткого диска': 'Hard drive disassembly and assembly animation',
         'Обновить аудит': 'Refresh audit', 'Фильтр действий аудита': 'Audit action filter',
-        'Начало': 'Started', 'Окончание': 'Finished', 'В очереди': 'Queued', 'Выполняется': 'Running',
+        'Начало': 'Started', 'Окончание': 'Finished', 'В очереди': 'Queued', 'Выполняется': 'Running', 'Пользователь:': 'User:',
         'Развернуть раздел': 'Expand section', 'Свернуть раздел': 'Collapse section', 'Развернуть сайдбар': 'Expand sidebar',
         'Например: Production GP': 'For example: Production GP', 'Начните вводить схему или название таблицы': 'Start typing a schema or table name',
         'Поиск по группе...': 'Search by group...', 'Поиск по пользователю...': 'Search by user...',

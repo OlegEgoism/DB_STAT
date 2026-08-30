@@ -2443,6 +2443,7 @@
             return `<div class="background-job-item">
                 <b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}
                 <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
+                <small><span class="background-job-user-label">Пользователь:</span> ${escapeHtml(job.username || '—')}</small>
                 <dl class="background-job-times">
                     <div><dt>Начало</dt><dd>${escapeHtml(formatJobDateTime(job.started))}</dd></div>
                     <div><dt>Окончание</dt><dd>${escapeHtml(formatJobDateTime(job.finished))}</dd></div>

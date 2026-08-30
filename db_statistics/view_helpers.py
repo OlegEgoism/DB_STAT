@@ -589,6 +589,7 @@ def _serialize_maintenance_job(job):
         "id": str(job.pk),
         "connection_id": job.connection_id,
         "connection_name": job.connection.name,
+        "username": job.user.login if job.user else "—",
         "status": job.status,
         "operation": job.operation,
         "schema_name": job.schema_name,

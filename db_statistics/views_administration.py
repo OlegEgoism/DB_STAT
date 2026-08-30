@@ -320,7 +320,7 @@ def maintenance_operation(request):
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
-        job = MaintenanceJob.objects.select_related("connection").filter(
+        job = MaintenanceJob.objects.select_related("connection", "user").filter(
             pk=payload["job_id"], user=db_user
         ).first()
         if not job:
@@ -379,5 +379,5 @@ def maintenance_jobs(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
-    jobs = MaintenanceJob.objects.select_related("connection").filter(user=db_user)[:25]
+    jobs = MaintenanceJob.objects.select_related("connection", "user").filter(user=db_user)[:25]
     return JsonResponse({"ok": True, "jobs": [_serialize_maintenance_job(job) for job in jobs]})

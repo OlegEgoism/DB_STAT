@@ -805,6 +805,7 @@ body {
 .background-jobs-list { margin-top: 8px; display: grid; gap: 7px; }
 .background-job-item { padding-top: 7px; border-top: 1px solid var(--sidebar-border); font-size: 12px; }
 .background-job-item small { display: block; color: var(--text-muted); }
+.background-job-user-label { color: var(--text-primary); font-weight: 500; }
 .background-job-times { margin: 6px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .background-job-times div { min-width: 0; }
 .background-job-times dt { color: var(--text-muted); font-size: 10px; font-weight: 500; }
