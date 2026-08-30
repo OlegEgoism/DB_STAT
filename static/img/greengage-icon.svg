@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="280" viewBox="0 0 280 280" fill="none" shape-rendering="geometricPrecision">
+
+  <!-- Green arch -->
+  <path
+    d="M110 160.5H71V105.5C71 72.2 101.7 46 140 46C178.3 46 209 72.2 209 105.5V160.5"
+    stroke="#43FF6B"
+    stroke-width="19"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- Cyan vertical stem -->
+  <path
+    d="M138 80.5V188"
+    stroke="#05F3FF"
+    stroke-width="17"
+    stroke-linecap="round"/>
+
+  <!-- Cyan branch -->
+  <path
+    d="M139 147.5L175 119"
+    stroke="#05F3FF"
+    stroke-width="17"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- Cyan ring -->
+  <circle cx="138" cy="214" r="28.5" fill="#05F3FF"/>
+  <circle cx="138" cy="214" r="10.5" fill="#000000"/>
+
+</svg>

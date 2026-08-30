@@ -38,13 +38,13 @@ from db_statistics.view_helpers import (
 
 
 def page_not_found(request, exception=None):
-    """Показывает фирменную страницу для неизвестных адресов."""
+    """Показывает фирменную страницу для неизвестных адресов"""
     return render(request, "404.html", status=404)
 
 
 @ensure_csrf_cookie
 def home(request):
-    """Главная страница мониторинга БД."""
+    """Главная страница мониторинга БД"""
     db_user = _current_db_user(request)
     if not db_user:
         return redirect("login")
@@ -66,7 +66,7 @@ def home(request):
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def login(request):
-    """Авторизует пользователя и создаёт ограниченную по времени сессию."""
+    """Авторизует пользователя и создаёт ограниченную по времени сессию"""
     db_user = _current_db_user(request)
     if db_user:
         return redirect("home")
@@ -132,7 +132,7 @@ def login(request):
 
 @require_http_methods(["POST"])
 def logout(request):
-    """Завершает пользовательскую сессию и записывает событие аудита."""
+    """Завершает пользовательскую сессию и записывает событие аудита"""
     db_user = _current_db_user(request)
     username = _audit_username(db_user)
     if db_user:
@@ -146,7 +146,7 @@ def logout(request):
 
 @require_http_methods(["GET", "POST"])
 def sidebar_settings(request):
-    """Получает или сохраняет персональные настройки бокового меню."""
+    """Получает или сохраняет персональные настройки бокового меню"""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -195,7 +195,7 @@ def sidebar_settings(request):
 
 @require_http_methods(["GET", "POST"])
 def favorites(request):
-    """Возвращает избранное пользователя или изменяет состояние одного объекта."""
+    """Возвращает избранное пользователя или изменяет состояние одного объекта"""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -269,7 +269,7 @@ def favorites(request):
 
 @require_http_methods(["POST"])
 def language_settings(request):
-    """Сохраняет выбранный язык интерфейса в стандартной cookie Django."""
+    """Сохраняет выбранный язык интерфейса в стандартной cookie Django"""
     payload = _read_json_body(request)
     language = str(payload.get("language", "")).lower()
     if language not in settings.SUPPORTED_LANGUAGES:
@@ -291,7 +291,7 @@ def language_settings(request):
 
 @require_http_methods(["GET"])
 def audit_events(request):
-    """Возвращает отфильтрованные события журнала аудита."""
+    """Возвращает отфильтрованные события журнала аудита"""
     permission_error = _destructive_action_permission_error(request)
     if permission_error:
         return permission_error

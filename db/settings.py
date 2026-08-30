@@ -66,9 +66,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "db.wsgi.application"
 
-# The application state is intentionally stored only in SQLite. PostgreSQL,
-# Greenplum and Greengage credentials saved through the UI describe monitored
-# targets and are not Django database backends.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -96,11 +93,6 @@ DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# DB STAT application configuration
-#
-# These values are shared by the view modules and their helpers. Keeping them in
-# Django settings provides one configuration source instead of module-level
-# state scattered through the application.
 CONNECTION_TIMEOUT_SECONDS = 5
 ADMIN_ROLE = "Администратор"
 
@@ -113,9 +105,6 @@ MAX_SESSION_DURATION_SECONDS = MAX_SESSION_DURATION_HOURS * 60 * 60
 SESSION_EXPIRES_AT_KEY = "session_expires_at"
 
 LOCALHOST_NAMES = {"localhost", "::1"}
-# In a regular local run localhost must keep pointing at this machine. The
-# Docker image overrides this value with the host alias prepared by its
-# entrypoint, so users can enter the same host name in both environments.
 LOCALHOST_DB_HOST = (
     os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
 )

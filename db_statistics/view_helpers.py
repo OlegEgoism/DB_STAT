@@ -27,7 +27,7 @@ EXCLUDED_SYSTEM_SCHEMAS_SQL = "('pg_catalog', 'information_schema', 'gp_toolkit'
 
 
 def _normalize_database_host(host):
-    """Нормализует имя хоста базы данных для локальных подключений."""
+    """Нормализует имя хоста базы данных для локальных подключений"""
     normalized_host = (host or "").strip().lower()
     if normalized_host in settings.LOCALHOST_NAMES:
         return settings.LOCALHOST_DB_HOST
@@ -35,7 +35,7 @@ def _normalize_database_host(host):
 
 
 def _current_db_user(request):
-    """Возвращает активного пользователя приложения из текущей сессии."""
+    """Возвращает активного пользователя приложения из текущей сессии"""
     if _session_has_expired(request.session):
         request.session.flush()
         return None
@@ -50,7 +50,7 @@ def _current_db_user(request):
 
 
 def _normalize_sidebar_tabs(tabs):
-    """Проверяет и нормализует список вкладок бокового меню."""
+    """Проверяет и нормализует список вкладок бокового меню"""
     if not isinstance(tabs, list):
         return settings.SIDEBAR_TAB_IDS.copy()
     normalized_tabs = list(
@@ -67,7 +67,7 @@ def _normalize_sidebar_tabs(tabs):
 
 
 def _normalize_sidebar_sections(sections):
-    """Проверяет и нормализует порядок разделов бокового меню."""
+    """Проверяет и нормализует порядок разделов бокового меню"""
     if not isinstance(sections, list):
         return settings.SIDEBAR_SECTION_IDS.copy()
     normalized_sections = list(
@@ -84,7 +84,7 @@ def _normalize_sidebar_sections(sections):
 
 
 def _sidebar_settings_values(sidebar_settings):
-    """Извлекает нормализованные значения настроек бокового меню."""
+    """Извлекает нормализованные значения настроек бокового меню"""
     stored_value = sidebar_settings.visible_tabs
     if isinstance(stored_value, dict):
         return (
@@ -95,7 +95,7 @@ def _sidebar_settings_values(sidebar_settings):
 
 
 def _session_duration_seconds(value):
-    """Преобразует длительность сессии из часов в секунды."""
+    """Преобразует длительность сессии из часов в секунды"""
     try:
         seconds = int(Decimal(str(value)) * 60 * 60)
     except (InvalidOperation, TypeError, ValueError):
@@ -110,7 +110,7 @@ def _session_duration_seconds(value):
 
 
 def _session_has_expired(session, now_timestamp=None):
-    """Проверяет, истёк ли срок действия пользовательской сессии."""
+    """Проверяет, истёк ли срок действия пользовательской сессии"""
     expires_at = session.get(settings.SESSION_EXPIRES_AT_KEY)
     if not expires_at:
         return False
@@ -125,19 +125,19 @@ def _session_has_expired(session, now_timestamp=None):
 
 
 def _sidebar_tab_labels(tab_ids):
-    """Возвращает отображаемые названия вкладок бокового меню."""
+    """Возвращает отображаемые названия вкладок бокового меню"""
     return [settings.SIDEBAR_TAB_LABELS.get(tab_id, tab_id) for tab_id in tab_ids]
 
 
 def _available_sidebar_tabs_for_user(db_user):
-    """Возвращает вкладки, доступные пользователю с учётом его роли."""
+    """Возвращает вкладки, доступные пользователю с учётом его роли"""
     if db_user.role == settings.ADMIN_ROLE:
         return settings.SIDEBAR_TAB_IDS.copy()
     return [tab_id for tab_id in settings.SIDEBAR_TAB_IDS if tab_id != "audit"]
 
 
 def _sidebar_settings_values_for_user(sidebar_settings, db_user):
-    """Фильтрует настройки бокового меню по правам пользователя."""
+    """Фильтрует настройки бокового меню по правам пользователя"""
     visible_tabs, section_order = _sidebar_settings_values(sidebar_settings)
     available_tabs = set(_available_sidebar_tabs_for_user(db_user))
     return [
@@ -146,7 +146,7 @@ def _sidebar_settings_values_for_user(sidebar_settings, db_user):
 
 
 def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
-    """Формирует описание изменения настроек бокового меню для аудита."""
+    """Формирует описание изменения настроек бокового меню для аудита"""
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
     return (
@@ -158,7 +158,7 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
 
 
 def _sidebar_settings_for_user(db_user):
-    """Получает или создаёт настройки бокового меню пользователя."""
+    """Получает или создаёт настройки бокового меню пользователя"""
     sidebar_settings, _created = DBUserSidebarSettings.objects.get_or_create(
         user=db_user,
         defaults={"visible_tabs": settings.SIDEBAR_TAB_IDS.copy()},
@@ -175,7 +175,7 @@ def _sidebar_settings_for_user(db_user):
 
 
 def _user_payload(db_user):
-    """Формирует клиентские данные текущего пользователя."""
+    """Формирует клиентские данные текущего пользователя"""
     if not db_user:
         return None
     sidebar_settings = _sidebar_settings_for_user(db_user)
@@ -195,7 +195,7 @@ def _user_payload(db_user):
 
 
 def _connection_permission_error():
-    """Возвращает ошибку недостаточных прав на управление подключениями."""
+    """Возвращает ошибку недостаточных прав на управление подключениями"""
     return JsonResponse(
         {
             "ok": False,
@@ -206,7 +206,7 @@ def _connection_permission_error():
 
 
 def _connection_delete_permission_error():
-    """Возвращает ошибку недостаточных прав на удаление подключения."""
+    """Возвращает ошибку недостаточных прав на удаление подключения"""
     return JsonResponse(
         {"ok": False, "message": "Удалять подключение может только его создатель"},
         status=403,
@@ -214,7 +214,7 @@ def _connection_delete_permission_error():
 
 
 def _connection_edit_permission_error():
-    """Возвращает ошибку недостаточных прав на изменение подключения."""
+    """Возвращает ошибку недостаточных прав на изменение подключения"""
     return JsonResponse(
         {
             "ok": False,
@@ -225,14 +225,14 @@ def _connection_edit_permission_error():
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):
-    """Определяет имя пользователя для записи аудита."""
+    """Определяет имя пользователя для записи аудита"""
     if db_user:
         return db_user.login
     return fallback
 
 
 def _write_audit(action_type, info, db_user=None, username=None):
-    """Записывает событие в журнал аудита."""
+    """Записывает событие в журнал аудита"""
     DBAudit.objects.create(
         username=username or _audit_username(db_user),
         action_type=action_type,
@@ -242,17 +242,17 @@ def _write_audit(action_type, info, db_user=None, username=None):
 
 
 def _audit_action_label(action_type):
-    """Возвращает отображаемое название действия аудита."""
+    """Возвращает отображаемое название действия аудита"""
     return dict(DBAudit.ACTION_TYPES).get(action_type, action_type)
 
 
 def _format_audit_details(pairs):
-    """Собирает список пар (метка, значение) в строку описания события аудита."""
+    """Собирает список пар (метка, значение) в строку описания события аудита"""
     return "; ".join(f"{label}: {value}" for label, value in pairs)
 
 
 def _connection_audit_fields(connection, *, server_label=False):
-    """Возвращает базовые поля подключения, общие для разных записей аудита."""
+    """Возвращает базовые поля подключения, общие для разных записей аудита"""
     host_field = (
         ("Сервер", f"{_normalize_database_host(connection.host)}:{connection.port}")
         if server_label
@@ -271,7 +271,7 @@ def _connection_audit_fields(connection, *, server_label=False):
 
 
 def _connection_audit_info(action, connection, *, result=None, error=None):
-    """Формирует описание операции с подключением для аудита."""
+    """Формирует описание операции с подключением для аудита"""
     pairs = [("Действие", action), *_connection_audit_fields(connection)]
     if result:
         pairs.append(("Результат", result))
@@ -281,7 +281,7 @@ def _connection_audit_info(action, connection, *, result=None, error=None):
 
 
 def _favorite_audit_info(action, connection, object_type, object_key):
-    """Формирует описание изменения избранного для аудита."""
+    """Формирует описание изменения избранного для аудита"""
     object_type_label = dict(DBFavorite.OBJECT_TYPES).get(object_type, object_type)
     return _format_audit_details(
         [
@@ -294,7 +294,7 @@ def _favorite_audit_info(action, connection, object_type, object_key):
 
 
 def _backend_termination_audit_info(action, connection, row):
-    """Формирует описание завершения процесса базы данных для аудита."""
+    """Формирует описание завершения процесса базы данных для аудита"""
     client_address = str(row[5]) if row[5] else "local"
     client = f"{client_address}:{row[6]}" if row[6] is not None else client_address
     return _format_audit_details(
@@ -332,7 +332,7 @@ MAINTENANCE_OPERATION_LABELS = {
 def _maintenance_operation_audit_info(
     operation, connection, schema_name, table_name, result, error=None
 ):
-    """Формирует описание фоновой операции обслуживания для аудита."""
+    """Формирует описание фоновой операции обслуживания для аудита"""
     operation_label = MAINTENANCE_OPERATION_LABELS.get(operation, operation.upper())
     pairs = [
         ("Действие", operation_label),
@@ -347,13 +347,13 @@ def _maintenance_operation_audit_info(
 
 
 def _can_manage_connections(request):
-    """Проверяет право пользователя управлять подключениями."""
+    """Проверяет право пользователя управлять подключениями"""
     db_user = _current_db_user(request)
     return bool(db_user and db_user.role == settings.ADMIN_ROLE)
 
 
 def _destructive_action_permission_error(request):
-    """Проверяет право пользователя выполнять разрушающие операции."""
+    """Проверяет право пользователя выполнять разрушающие операции"""
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse(
@@ -368,7 +368,7 @@ def _destructive_action_permission_error(request):
 
 
 def _available_connections(request):
-    """Возвращает доступные текущему пользователю подключения."""
+    """Возвращает доступные текущему пользователю подключения"""
     db_user = _current_db_user(request)
     if not db_user:
         return DBConnection.objects.none()
@@ -376,12 +376,12 @@ def _available_connections(request):
 
 
 def _get_connection_for_request(request, connection_id):
-    """Получает доступное пользователю подключение по идентификатору."""
+    """Получает доступное пользователю подключение по идентификатору"""
     return get_object_or_404(_available_connections(request), pk=connection_id)
 
 
 def _connection_to_dict(connection):
-    """Преобразует подключение в словарь для JSON-ответа."""
+    """Преобразует подключение в словарь для JSON-ответа"""
     return {
         "id": str(connection.pk),
         "name": connection.name,
@@ -399,7 +399,7 @@ def _connection_to_dict(connection):
 
 
 def _read_json_body(request):
-    """Безопасно читает JSON-объект из тела запроса."""
+    """Безопасно читает JSON-объект из тела запроса"""
     try:
         return json.loads(request.body.decode("utf-8") or "{}")
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -407,7 +407,7 @@ def _read_json_body(request):
 
 
 def _parse_pg_size_to_bytes(value, default_unit="B"):
-    """Преобразует значение размера PostgreSQL в байты."""
+    """Преобразует значение размера PostgreSQL в байты"""
     if value in (None, ""):
         return None
     text = str(value).strip()
@@ -420,7 +420,7 @@ def _parse_pg_size_to_bytes(value, default_unit="B"):
     else:
         number_part, unit_part = parts[0], parts[1]
     try:
-        number = float(number_part.replace(",", "."))
+        number = float(number_part.replace(",", ""))
     except ValueError:
         return None
     unit = unit_part.lower()
@@ -441,17 +441,17 @@ def _parse_pg_size_to_bytes(value, default_unit="B"):
 
 
 def _format_duration(value):
-    """Форматирует интервал времени (timedelta) для отображения."""
+    """Форматирует интервал времени (timedelta) для отображения"""
     return str(value).split(".")[0] if value else "—"
 
 
 def _duration_seconds(value):
-    """Возвращает продолжительность интервала в секундах (0, если значение отсутствует)."""
+    """Возвращает продолжительность интервала в секундах (0, если значение отсутствует)"""
     return max(int(value.total_seconds()), 0) if value else 0
 
 
 def _format_bytes(size_bytes):
-    """Форматирует размер в байтах для отображения."""
+    """Форматирует размер в байтах для отображения"""
     if size_bytes is None:
         return "—"
     value = float(size_bytes)
@@ -470,7 +470,7 @@ def _safe_db_error_message(action_description, exc):
     пользователю (в том числе Аналитику с ограниченным доступом).
     """
     logger.warning("%s", action_description, exc_info=exc)
-    return f"{action_description}. Подробности см. в журнале сервера приложения."
+    return f"{action_description}. Подробности см. в журнале сервера приложения"
 
 
 def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=100):
