@@ -195,3 +195,5 @@ entrypoint попал в образ с Windows-переносами строк �
 ## Скачать образ из hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat
+
+
