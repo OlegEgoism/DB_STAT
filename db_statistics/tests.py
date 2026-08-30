@@ -6,7 +6,7 @@ from django.core.management import call_command
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from db_statistics.admin import DBConnectionAdmin
-from db_statistics.models import DBAudit, DBConnection, DBUser, MaintenanceJob
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
 from db_statistics.view_helpers import MAINTENANCE_OPERATION_LABELS, _like_search_pattern, _multi_column_search_filter
 from db_statistics.views_data import FUNCTION_SEARCH_COLUMNS, SCHEMA_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS, TEMP_TABLE_SEARCH_COLUMNS, VIEW_SEARCH_COLUMNS
 from db_statistics.views_performance import blocking_locks, idle_transactions
@@ -46,6 +46,27 @@ class MaintenanceQueueTests(TestCase):
         )
 
         self.assertEqual(MaintenanceJob.objects.get(pk=job.pk).statistics["live_rows"], 10)
+
+
+class ModelHelpTextTests(SimpleTestCase):
+    def test_all_declared_model_fields_have_help_text(self):
+        models = (DBUser, DBUserSidebarSettings, DBFavorite, DBConnection, DBAudit, MaintenanceJob)
+        for model in models:
+            for field in (*model._meta.fields, *model._meta.many_to_many):
+                if field.auto_created:
+                    continue
+                with self.subTest(model=model.__name__, field=field.name):
+                    self.assertTrue(field.help_text)
+
+    def test_maintenance_job_has_descriptive_metadata(self):
+        self.assertEqual(
+            MaintenanceJob._meta.verbose_name,
+            "Фоновая операция обслуживания",
+        )
+        self.assertEqual(
+            MaintenanceJob._meta.verbose_name_plural,
+            "Фоновые операции обслуживания",
+        )
 
 
 class ApplicationDatabaseTests(SimpleTestCase):

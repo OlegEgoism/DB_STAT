@@ -9,9 +9,9 @@ from django.db import models
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
 
 
-def vn(name: str, **kwargs) -> dict:
-    """Возвращает общее отображаемое имя поля для интерфейса Django."""
-    return {"verbose_name": name, **kwargs}
+def vn(name: str, help_text: str, **kwargs) -> dict:
+    """Возвращает единые подпись и пояснение поля для интерфейса Django."""
+    return {"verbose_name": name, "help_text": help_text, **kwargs}
 
 
 def _connection_password_cipher():
@@ -52,8 +52,8 @@ def decrypt_connection_password(stored_password):
 class DateStamp(models.Model):
     """Временные отметки"""
 
-    created = models.DateTimeField(**vn("Дата создания"), auto_now_add=True)
-    updated = models.DateTimeField(**vn("Дата изменения"), auto_now=True)
+    created = models.DateTimeField(**vn("Дата создания", "Дата и время создания записи."), auto_now_add=True)
+    updated = models.DateTimeField(**vn("Дата изменения", "Дата и время последнего изменения записи."), auto_now=True)
 
     class Meta:
         abstract = True
@@ -62,7 +62,7 @@ class DateStamp(models.Model):
 class Active(models.Model):
     """Статус активности"""
 
-    is_active = models.BooleanField(**vn("Активность"), default=True)
+    is_active = models.BooleanField(**vn("Активность", "Определяет, доступна ли запись для использования в приложении."), default=True)
 
     class Meta:
         abstract = True
@@ -76,10 +76,10 @@ class DBUser(DateStamp, Active):
 
     USER_ROLE = [("Администратор", "Администратор"), ("Аналитик", "Аналитик")]
 
-    login = models.CharField(**vn("Логин"), max_length=100, db_index=True, unique=True)
-    email = models.EmailField(**vn("Почта"), unique=True)
-    role = models.CharField(**vn("Роль"), max_length=20, choices=USER_ROLE, default="Аналитик")
-    connections = models.ManyToManyField(to="db_statistics.DBConnection", verbose_name="Подключение к базе данных", blank=True)
+    login = models.CharField(**vn("Логин", "Уникальное имя пользователя для входа в DB STAT."), max_length=100, db_index=True, unique=True)
+    email = models.EmailField(**vn("Почта", "Уникальный адрес электронной почты пользователя."), unique=True)
+    role = models.CharField(**vn("Роль", "Роль определяет доступные пользователю действия."), max_length=20, choices=USER_ROLE, default="Аналитик")
+    connections = models.ManyToManyField(to="db_statistics.DBConnection", **vn("Подключения к базам данных", "Подключения, доступные этому пользователю."), blank=True)
 
     class Meta:
         db_table = "db_user"
@@ -94,8 +94,8 @@ class DBUser(DateStamp, Active):
 class DBUserSidebarSettings(DateStamp):
     """Настройки сайдбара """
 
-    user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь"), related_name="user_db_user_sidebar_settings", on_delete=models.CASCADE)
-    visible_tabs = models.JSONField(**vn("Видимые вкладки"), default=list, blank=True)
+    user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь", "Пользователь, которому принадлежат настройки бокового меню."), related_name="user_db_user_sidebar_settings", on_delete=models.CASCADE)
+    visible_tabs = models.JSONField(**vn("Видимые вкладки", "Сохранённый порядок и набор доступных вкладок бокового меню."), default=list, blank=True)
 
     class Meta:
         db_table = "db_user_sidebar_settings"
@@ -118,10 +118,10 @@ class DBFavorite(DateStamp):
         ("group", "Группа")
     ]]
 
-    user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь"), related_name="user_db_favorite", on_delete=models.CASCADE)
-    connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение"), related_name="connection_db_favorite", on_delete=models.CASCADE)
-    object_type = models.CharField(**vn("Тип объекта"), max_length=16, choices=OBJECT_TYPES)
-    object_key = models.CharField(**vn("Идентификатор объекта"), max_length=512)
+    user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь", "Пользователь, добавивший объект в избранное."), related_name="user_db_favorite", on_delete=models.CASCADE)
+    connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение", "Подключение, в котором находится избранный объект."), related_name="connection_db_favorite", on_delete=models.CASCADE)
+    object_type = models.CharField(**vn("Тип объекта", "Категория избранного объекта базы данных."), max_length=16, choices=OBJECT_TYPES)
+    object_key = models.CharField(**vn("Идентификатор объекта", "Стабильный составной ключ объекта внутри подключения."), max_length=512)
 
     class Meta:
         db_table = "db_favorite"
@@ -143,14 +143,14 @@ class DBConnection(DateStamp, Active):
     DATABASE_TYPES = [(POSTGRESQL, POSTGRESQL), (GREENPLUM, GREENPLUM), (GREENGAGE, GREENGAGE)]
     GREENPLUM_COMPATIBLE_TYPES = frozenset((GREENPLUM, GREENGAGE))
 
-    name = models.CharField(**vn("Название"), max_length=120)
-    host = models.CharField(**vn("Хост"), max_length=255)
-    port = models.PositiveIntegerField(**vn("Порт"), default=5432)
-    database = models.CharField(**vn("База данных"), max_length=120)
-    username = models.CharField(**vn("Пользователь"), max_length=120)
-    password = models.CharField(**vn("Пароль"), max_length=255)
-    db_type = models.CharField(**vn("Тип базы данных"), max_length=20, choices=DATABASE_TYPES, default=POSTGRESQL)
-    created_user = models.ForeignKey(to="db_statistics.DBUser", **vn("Создатель подключения"), related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(**vn("Название", "Понятное пользователю название подключения."), max_length=120)
+    host = models.CharField(**vn("Хост", "Имя хоста или IP-адрес сервера базы данных."), max_length=255)
+    port = models.PositiveIntegerField(**vn("Порт", "TCP-порт сервера базы данных."), default=5432)
+    database = models.CharField(**vn("База данных", "Имя целевой базы данных для мониторинга."), max_length=120)
+    username = models.CharField(**vn("Пользователь", "Имя пользователя целевой базы данных."), max_length=120)
+    password = models.CharField(**vn("Пароль", "Зашифрованный пароль пользователя целевой базы данных."), max_length=255)
+    db_type = models.CharField(**vn("Тип базы данных", "Тип подключаемой PostgreSQL-совместимой СУБД."), max_length=20, choices=DATABASE_TYPES, default=POSTGRESQL)
+    created_user = models.ForeignKey(to="db_statistics.DBUser", **vn("Создатель подключения", "Пользователь DB STAT, создавший подключение."), related_name="created_user_db_connection", on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         db_table = "db_connection"
@@ -197,10 +197,10 @@ class DBAudit(models.Model):
         ("explain_analyze", "EXPLAIN ANALYZE таблицы"),
     ]
 
-    username = models.CharField(**vn("Пользователь"), max_length=200)
-    action_type = models.CharField(**vn("Действие"), max_length=32, choices=ACTION_TYPES)
-    info = models.TextField(**vn("Информация"))
-    created = models.DateTimeField(**vn("Дата действия"))
+    username = models.CharField(**vn("Пользователь", "Логин пользователя, выполнившего действие."), max_length=200)
+    action_type = models.CharField(**vn("Действие", "Тип события, сохранённого в журнале аудита."), max_length=32, choices=ACTION_TYPES)
+    info = models.TextField(**vn("Информация", "Подробное безопасное описание выполненного действия."))
+    created = models.DateTimeField(**vn("Дата действия", "Дата и время выполнения действия."))
 
     def __str__(self):
         return f"{self.username} - {self.action_type}"
@@ -228,21 +228,26 @@ class MaintenanceJob(models.Model):
         ("explain_analyze", "EXPLAIN ANALYZE"),
     ]
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(DBUser, on_delete=models.SET_NULL, null=True, related_name="maintenance_jobs")
-    connection = models.ForeignKey(DBConnection, on_delete=models.CASCADE, related_name="maintenance_jobs")
-    operation = models.CharField(max_length=32, choices=OPERATION_CHOICES)
-    schema_name = models.CharField(max_length=255)
-    table_name = models.CharField(max_length=255)
-    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="queued", db_index=True)
-    message = models.TextField(default="Операция ожидает выполнения")
-    details = models.JSONField(default=list, blank=True)
-    statistics = models.JSONField(null=True, blank=True)
-    duration_seconds = models.FloatField(null=True, blank=True)
-    created = models.DateTimeField(auto_now_add=True, db_index=True)
-    started = models.DateTimeField(null=True, blank=True)
-    finished = models.DateTimeField(null=True, blank=True)
+    id = models.UUIDField(**vn("Идентификатор", "Уникальный идентификатор фоновой задачи."), primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(DBUser, **vn("Пользователь", "Пользователь, запустивший операцию обслуживания."), on_delete=models.SET_NULL, null=True, related_name="maintenance_jobs")
+    connection = models.ForeignKey(DBConnection, **vn("Подключение", "Подключение к базе данных, где выполняется операция."), on_delete=models.CASCADE, related_name="maintenance_jobs")
+    operation = models.CharField(**vn("Операция", "Команда обслуживания, помещённая в очередь."), max_length=32, choices=OPERATION_CHOICES)
+    schema_name = models.CharField(**vn("Схема", "Имя схемы обслуживаемой таблицы."), max_length=255)
+    table_name = models.CharField(**vn("Таблица", "Имя обслуживаемой таблицы."), max_length=255)
+    status = models.CharField(**vn("Статус", "Текущее состояние задачи в устойчивой очереди."), max_length=16, choices=STATUS_CHOICES, default="queued", db_index=True)
+    message = models.TextField(**vn("Сообщение", "Текущее или итоговое сообщение исполнителя."), default="Операция ожидает выполнения")
+    details = models.JSONField(**vn("Подробности", "Дополнительные строки результата, включая план EXPLAIN."), default=list, blank=True)
+    statistics = models.JSONField(**vn("Статистика", "Снимок статистики таблицы после выполнения операции."), null=True, blank=True)
+    duration_seconds = models.FloatField(**vn("Длительность, с", "Продолжительность выполнения операции в секундах."), null=True, blank=True)
+    created = models.DateTimeField(**vn("Дата создания", "Дата и время постановки задачи в очередь."), auto_now_add=True, db_index=True)
+    started = models.DateTimeField(**vn("Дата запуска", "Дата и время начала выполнения задачи."), null=True, blank=True)
+    finished = models.DateTimeField(**vn("Дата завершения", "Дата и время успешного или ошибочного завершения задачи."), null=True, blank=True)
 
     class Meta:
         db_table = "maintenance_job"
+        verbose_name = "Фоновая операция обслуживания"
+        verbose_name_plural = "Фоновые операции обслуживания"
         ordering = ("-created",)
+
+    def __str__(self):
+        return f"{self.get_operation_display()} {self.schema_name}.{self.table_name} — {self.get_status_display()}"
