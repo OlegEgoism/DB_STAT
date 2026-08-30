@@ -773,6 +773,12 @@ body {
     color: var(--text-primary);
 }
 
+.background-jobs-manager {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
 .background-jobs-indicator {
     display: inline-flex;
     align-items: center;
