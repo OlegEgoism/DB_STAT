@@ -3,6 +3,7 @@ import json
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -11,6 +12,7 @@ from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
 
 from db_statistics.licensing import LicenseError, activation_hash, canonical_payload, verify_license
+from scripts.create_license import main as create_license_interactively
 
 
 class LicensingTests(SimpleTestCase):
@@ -86,3 +88,20 @@ class LicensingTests(SimpleTestCase):
 
         self.assertEqual(activation_response.status_code, 403)
         self.assertContains(activation_response, "Срок действия лицензии истёк", status_code=403)
+
+    def test_interactive_script_creates_keys_and_license(self):
+        private_key = self.directory / "issuer" / "private.pem"
+        public_key = self.directory / "public-created.pem"
+        output = self.directory / "customer.license"
+        answers = iter([str(private_key), "", str(public_key), "ООО Интерактив", "2026-01-01", "2026-12-31", str(output)])
+
+        with patch("builtins.input", side_effect=lambda _prompt: next(answers)), patch("getpass.getpass", side_effect=["strong-password", "strong-password"]):
+            result = create_license_interactively()
+
+        self.assertEqual(result, 0)
+        self.assertTrue(private_key.is_file())
+        self.assertTrue(public_key.is_file())
+        self.assertTrue(output.is_file())
+        with override_settings(LICENSE_PUBLIC_KEY_FILE=public_key):
+            status = verify_license(output.read_bytes(), now=datetime(2026, 6, 1, tzinfo=UTC))
+        self.assertEqual(status.organization, "ООО Интерактив")
