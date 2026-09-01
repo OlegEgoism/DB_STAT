@@ -54,6 +54,18 @@ class LicensingTests(SimpleTestCase):
         with self.assertRaisesRegex(LicenseError, "истёк"):
             verify_license(self._license(valid_from=now - timedelta(days=2), valid_until=now - timedelta(days=1)))
 
+    def test_license_end_date_is_inclusive_and_next_day_is_rejected(self):
+        document = json.loads(self._license())
+        document["payload"]["valid_from"] = "2020-01-01"
+        document["payload"]["valid_until"] = "2026-01-01"
+        document["activation_hash"] = activation_hash(document["payload"])
+        document["signature"] = base64.urlsafe_b64encode(self.private_key.sign(canonical_payload(document["payload"]))).decode("ascii")
+        data = json.dumps(document).encode()
+
+        self.assertTrue(verify_license(data, now=datetime(2026, 1, 1, 23, 59, 59, tzinfo=UTC)).valid)
+        with self.assertRaisesRegex(LicenseError, "истёк"):
+            verify_license(data, now=datetime(2026, 1, 2, tzinfo=UTC))
+
     def test_first_start_redirects_to_activation_and_upload_installs_file(self):
         response = self.client.get(reverse("home"))
         self.assertRedirects(response, reverse("license_activation"), fetch_redirect_response=False)
@@ -63,3 +75,14 @@ class LicensingTests(SimpleTestCase):
         self.assertRedirects(response, reverse("home"), fetch_redirect_response=False)
         self.assertTrue(self.license_path.is_file())
         self.assertEqual(self.license_path.stat().st_mode & 0o777, 0o600)
+
+    def test_expired_installed_license_blocks_application_with_403(self):
+        now = datetime.now(UTC)
+        self.license_path.write_bytes(self._license(valid_from=now - timedelta(days=2), valid_until=now - timedelta(days=1)))
+
+        response = self.client.get(reverse("home"))
+        self.assertRedirects(response, reverse("license_activation"), fetch_redirect_response=False)
+        activation_response = self.client.get(reverse("license_activation"))
+
+        self.assertEqual(activation_response.status_code, 403)
+        self.assertContains(activation_response, "Срок действия лицензии истёк", status_code=403)

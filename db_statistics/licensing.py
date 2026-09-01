@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -38,9 +38,16 @@ def activation_hash(payload):
     return hashlib.sha256(canonical_payload(payload)).hexdigest()
 
 
-def _parse_datetime(value, field_name):
+def _parse_datetime(value, field_name, *, inclusive_end=False):
+    """Разбирает ISO-дату или datetime; конечная календарная дата включается целиком."""
+    text = str(value)
     try:
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if len(text) == 10:
+            parsed = datetime.combine(datetime.strptime(text, "%Y-%m-%d").date(), time.min, tzinfo=UTC)
+            if inclusive_end:
+                parsed += timedelta(days=1)
+        else:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
     except (TypeError, ValueError) as exc:
         raise LicenseError(f"Поле {field_name} содержит некорректную дату") from exc
     if parsed.tzinfo is None:
@@ -71,7 +78,7 @@ def verify_license(data, *, now=None):
     if document.get("activation_hash") != expected_hash:
         raise LicenseError("Уникальный хеш лицензии повреждён")
     valid_from = _parse_datetime(payload.get("valid_from"), "valid_from")
-    valid_until = _parse_datetime(payload.get("valid_until"), "valid_until")
+    valid_until = _parse_datetime(payload.get("valid_until"), "valid_until", inclusive_end=True)
     if valid_until <= valid_from:
         raise LicenseError("Дата окончания должна быть позже даты начала")
     current_time = now or datetime.now(UTC)
@@ -79,7 +86,7 @@ def verify_license(data, *, now=None):
         raise LicenseError("Срок действия лицензии ещё не наступил")
     if current_time >= valid_until:
         raise LicenseError("Срок действия лицензии истёк")
-    return LicenseStatus(True, True, "Лицензия активна", str(payload.get("organization", "")), valid_from.isoformat(), valid_until.isoformat(), expected_hash)
+    return LicenseStatus(True, True, "Лицензия активна", str(payload.get("organization", "")), str(payload.get("valid_from", "")), str(payload.get("valid_until", "")), expected_hash)
 
 
 def license_status():
