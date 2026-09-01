@@ -90,13 +90,14 @@ class LicensingTests(SimpleTestCase):
         self.assertContains(activation_response, "Срок действия лицензии истёк", status_code=403)
 
     def test_interactive_script_creates_keys_and_license(self):
-        private_key = self.directory / "issuer" / "private.pem"
+        issuer_dir = self.directory / "issuer"
+        private_key = issuer_dir / "db-stat-private.pem"
         public_key = self.directory / "public-created.pem"
-        output = self.directory / "customer.license"
-        answers = iter([str(private_key), "", str(public_key), "ООО Интерактив", "2026-01-01", "2026-12-31", str(output)])
+        output = self.directory / "ООО-Интерактив-2026-12-31.license"
+        answers = iter(["ООО Интерактив", "2026-01-01", "2026-12-31"])
 
-        with patch("builtins.input", side_effect=lambda _prompt: next(answers)), patch("getpass.getpass", side_effect=["strong-password", "strong-password"]):
-            result = create_license_interactively()
+        with patch("builtins.input", side_effect=lambda _prompt: next(answers)):
+            result = create_license_interactively(scripts_dir=self.directory, issuer_dir=issuer_dir, public_key=public_key)
 
         self.assertEqual(result, 0)
         self.assertTrue(private_key.is_file())
