@@ -167,9 +167,50 @@
         <div class="glass-card sidebar-settings-card">
             <div class="card-header">
                 <span><i class="fas fa-cog"></i> Настройки</span>
-                <span class="card-meta">Настройки сайдбара</span>
+                <span class="card-meta">Лицензия и интерфейс</span>
             </div>
             <div class="card-body">
+                <div class="settings-tabs nav nav-pills" id="settingsTabs" role="tablist" aria-label="Разделы настроек">
+                    <button class="nav-link active" id="settingsLicenseTab" data-bs-toggle="pill" data-bs-target="#settingsLicensePane" type="button" role="tab" aria-controls="settingsLicensePane" aria-selected="true"><i class="fas fa-key"></i> Лицензия</button>
+                    <button class="nav-link" id="settingsThemeTab" data-bs-toggle="pill" data-bs-target="#settingsThemePane" type="button" role="tab" aria-controls="settingsThemePane" aria-selected="false"><i class="fas fa-palette"></i> Темы</button>
+                    <button class="nav-link" id="settingsLanguageTab" data-bs-toggle="pill" data-bs-target="#settingsLanguagePane" type="button" role="tab" aria-controls="settingsLanguagePane" aria-selected="false"><i class="fas fa-language"></i> Язык</button>
+                    <button class="nav-link" id="settingsMenuTab" data-bs-toggle="pill" data-bs-target="#settingsMenuPane" type="button" role="tab" aria-controls="settingsMenuPane" aria-selected="false"><i class="fas fa-bars"></i> Настройки меню</button>
+                </div>
+                <div class="tab-content settings-tab-content" id="settingsTabsContent">
+                <div class="tab-pane fade show active" id="settingsLicensePane" role="tabpanel" aria-labelledby="settingsLicenseTab" tabindex="0">
+                <section class="settings-section license-setting" aria-labelledby="licenseSettingTitle">
+                    <div class="settings-section__heading">
+                        <div>
+                            <h5 id="licenseSettingTitle"><i class="fas fa-key"></i> Лицензия</h5>
+                            <p>Сведения о текущей лицензии DB STAT и её сроке действия.</p>
+                        </div>
+                        <span class="badge {% if license_status.valid %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if license_status.valid %}Активна{% else %}Недействительна{% endif %}
+                        </span>
+                    </div>
+                    <div class="license-setting__details">
+                        <div><span>Организация</span><strong>{{ license_status.organization|default:"—" }}</strong></div>
+                        <div><span>Действует с</span><strong>{{ license_status.valid_from|default:"—" }}</strong></div>
+                        <div><span>Действует по</span><strong>{{ license_status.valid_until|default:"—" }}</strong></div>
+                        <div><span>Осталось дней</span><strong>{{ license_status.days_remaining }}</strong></div>
+                    </div>
+                    <div class="license-setting__actions{% if db_user.role != 'Администратор' %} license-setting__actions--single{% endif %}">
+                        <div class="license-setting__hash"><span>Хеш активации</span><code>{{ license_status.activation_hash|default:"—" }}</code></div>
+                    {% if db_user.role == 'Администратор' %}
+                    <form class="license-setting__upload" method="post" action="{% url 'license_activation' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <label class="form-label" for="settingsLicenseFile">Загрузить новый ключ лицензии</label>
+                        <div class="input-group">
+                            <input class="form-control" id="settingsLicenseFile" name="license_file" type="file" accept=".license,application/json" required>
+                            <button class="btn btn-primary" type="submit"><i class="fas fa-upload"></i> Загрузить</button>
+                        </div>
+                        <div class="form-text">Новая лицензия заменит текущую только после успешной проверки подписи и срока действия.</div>
+                    </form>
+                    {% endif %}
+                    </div>
+                </section>
+                </div>
+                <div class="tab-pane fade" id="settingsThemePane" role="tabpanel" aria-labelledby="settingsThemeTab" tabindex="0">
                 <section class="settings-section theme-setting" aria-labelledby="themeSettingTitle">
                     <div class="settings-section__heading">
                         <div>
@@ -216,19 +257,38 @@
                         </label>
                     </div>
                 </section>
-                <div class="sidebar-language-setting settings-section">
+                </div>
+                <div class="tab-pane fade" id="settingsLanguagePane" role="tabpanel" aria-labelledby="settingsLanguageTab" tabindex="0">
+                <div class="sidebar-language-setting settings-section settings-section--standalone">
+                    <div class="settings-section__heading">
+                        <div>
+                            <h5><i class="fas fa-language"></i> Язык интерфейса</h5>
+                            <p>Выберите язык всех элементов интерфейса DB STAT.</p>
+                        </div>
+                    </div>
                     <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
                     <select class="form-select" id="interfaceLanguage">
                         <option value="ru">Русский (RU)</option>
                         <option value="en">English (EN)</option>
                     </select>
                     <div class="form-text">Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</div>
+                    <button type="button" class="btn btn-primary mt-3" id="languageSettingsSaveBtn">Сохранить язык</button>
+                </div>
+                </div>
+                <div class="tab-pane fade" id="settingsMenuPane" role="tabpanel" aria-labelledby="settingsMenuTab" tabindex="0">
+                <div class="settings-section__heading">
+                    <div>
+                        <h5><i class="fas fa-bars"></i> Настройки меню</h5>
+                        <p>Настройте видимость и порядок разделов бокового меню.</p>
+                    </div>
                 </div>
                 <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню. Перетаскивайте вкладки внутри блоков, а сами блоки — за заголовок, чтобы настроить последовательность их отображения.</p>
                 <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
                 <div class="sidebar-settings-footer">
                     <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
                     <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+                </div>
+                </div>
                 </div>
             </div>
         </div>

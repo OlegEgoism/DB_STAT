@@ -498,8 +498,15 @@ def _list_query_params(payload, sort_columns, default_sort, *, default_page_size
 
     Возвращает (page, page_size, offset, search, sort_column, direction).
     """
-    page_size = int(payload.get("page_size") or default_page_size)
-    page = max(int(payload.get("page") or 1), 1)
+    try:
+        page_size = int(payload.get("page_size") or default_page_size)
+        page = int(payload.get("page") or 1)
+    except (TypeError, ValueError):
+        page_size = default_page_size
+        page = 1
+    # Не даём ошибочным или злонамеренным параметрам снять ограничение LIMIT.
+    page_size = min(max(page_size, 1), 500)
+    page = max(page, 1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
     sort = payload.get("sort") or default_sort

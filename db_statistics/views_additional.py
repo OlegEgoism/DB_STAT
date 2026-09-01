@@ -9,6 +9,7 @@ from django.utils import timezone, translation
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.licensing import LicenseError, install_license, license_status
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser
 from db_statistics.view_helpers import (
     _audit_action_label,
@@ -44,6 +45,39 @@ def page_not_found(request, exception=None):
 
 
 @ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def license_activation(request):
+    """Устанавливает подписанный файл лицензии при первом запуске."""
+    status = license_status()
+    error = ""
+    if request.method == "POST":
+        db_user = _current_db_user(request)
+        if status.valid and (not db_user or db_user.role != settings.ADMIN_ROLE):
+            return JsonResponse(
+                {"ok": False, "message": "Заменить лицензию может только Администратор"},
+                status=403,
+            )
+        uploaded_file = request.FILES.get("license_file")
+        if not uploaded_file:
+            error = "Выберите файл лицензии"
+        elif uploaded_file.size > settings.LICENSE_MAX_UPLOAD_BYTES:
+            error = "Файл лицензии слишком большой"
+        else:
+            try:
+                status = install_license(uploaded_file.read())
+            except LicenseError as exc:
+                error = str(exc)
+            else:
+                return redirect("home")
+    return render(
+        request,
+        "license_activation.html",
+        {"license_status": status, "error": error},
+        status=403 if status.installed and not status.valid else 200,
+    )
+
+
+@ensure_csrf_cookie
 def home(request):
     """Главная страница мониторинга БД"""
     db_user = _current_db_user(request)
@@ -60,6 +94,7 @@ def home(request):
                 settings.SESSION_EXPIRES_AT_KEY, 0
             )
             * 1000,
+            "license_status": license_status(),
         },
     )
 
@@ -71,6 +106,15 @@ def _lockout_message(lockout_until, is_english):
     if is_english:
         return f"Too many failed attempts. Try again in {remaining_minutes} min."
     return f"Слишком много неверных попыток. Повторите через {remaining_minutes} мин."
+
+
+def _parse_port(value):
+    """Возвращает допустимый TCP-порт или ``None`` для некорректного ввода."""
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    return port if 1 <= port <= 65535 else None
 
 
 @ensure_csrf_cookie
@@ -360,7 +404,12 @@ def audit_events(request):
         audit_queryset = audit_queryset.filter(action_type=action_type)
 
     page_size = 100
-    page = max(int(request.GET.get("page") or 1), 1)
+    try:
+        page = max(int(request.GET.get("page") or 1), 1)
+    except (TypeError, ValueError):
+        return JsonResponse(
+            {"ok": False, "message": "Некорректный номер страницы"}, status=400
+        )
     offset = (page - 1) * page_size
     order_by = sort
     if sort == "action_type":
@@ -423,6 +472,13 @@ def connections(request):
             {"ok": False, "message": "Заполните все обязательные поля"}, status=400
         )
 
+    port = _parse_port(payload.get("port"))
+    if port is None:
+        return JsonResponse(
+            {"ok": False, "message": "Порт должен быть числом от 1 до 65535"},
+            status=400,
+        )
+
     defaults = {
         "username": payload["user"].strip(),
         "db_type": payload.get("db_type") or "PostgreSQL",
@@ -439,7 +495,7 @@ def connections(request):
             return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
-        connection.port = int(payload["port"])
+        connection.port = port
         connection.database = payload["database"].strip()
         for field, value in defaults.items():
             setattr(connection, field, value)
@@ -460,7 +516,7 @@ def connections(request):
     lookup = {
         "name": payload["name"].strip(),
         "host": payload["host"].strip(),
-        "port": int(payload["port"]),
+        "port": port,
         "database": payload["database"].strip(),
         "username": defaults["username"],
     }
@@ -506,12 +562,20 @@ def test_connection(request):
     ) and not _can_manage_connections(request):
         return _connection_permission_error()
 
+    if has_inline_connection_data:
+        port = _parse_port(payload.get("port"))
+        if port is None:
+            return JsonResponse(
+                {"ok": False, "message": "Порт должен быть числом от 1 до 65535"},
+                status=400,
+            )
+
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
             params = {
                 "host": payload["host"].strip(),
-                "port": int(payload["port"]),
+                "port": port,
                 "database": payload["database"].strip(),
                 "username": payload["user"].strip(),
                 "password": payload.get("password") or connection.get_password(),
@@ -536,7 +600,7 @@ def test_connection(request):
             )
         params = {
             "host": payload["host"].strip(),
-            "port": int(payload["port"]),
+            "port": port,
             "database": payload["database"].strip(),
             "username": payload["user"].strip(),
             "password": payload.get("password", ""),
