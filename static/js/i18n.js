@@ -20,6 +20,8 @@
         'Язык интерфейса': 'Interface language', 'Русский (RU)': 'Russian (RU)',
         'Лицензия': 'License', 'Сведения о текущей лицензии DB STAT и её сроке действия.': 'Current DB STAT license and validity period.',
         'Темы': 'Themes', 'Язык': 'Language', 'Настройки меню': 'Menu settings', 'Разделы настроек': 'Settings sections', 'Сохранить язык': 'Save language',
+        'Лицензия и интерфейс': 'License and interface', 'Выберите язык всех элементов интерфейса DB STAT.': 'Choose the language for all DB STAT interface elements.',
+        'Настройте видимость и порядок разделов бокового меню.': 'Configure the visibility and order of the sidebar sections.',
         'Язык интерфейса сохранён': 'Interface language saved', 'Не удалось сохранить язык интерфейса': 'Could not save the interface language',
         'Активна': 'Active', 'Недействительна': 'Invalid', 'Организация': 'Organization', 'Действует с': 'Valid from',
         'Действует по': 'Valid through', 'Осталось дней': 'Days remaining', 'Хеш активации': 'Activation hash',
