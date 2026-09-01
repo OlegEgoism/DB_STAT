@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from db_statistics import views_additional, views_administration, views_data, views_infrastructure, views_performance
 
 urlpatterns = [
+    path("license/", views_additional.license_activation, name="license_activation"),
     path("", views_additional.home, name="home"),
     path("login/", views_additional.login, name="login"),
     path("logout/", views_additional.logout, name="logout"),

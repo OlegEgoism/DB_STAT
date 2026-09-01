@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="container py-5" style="max-width: 680px">
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h1 class="h3 mb-3">Активация DB STAT</h1>
+            <p class="text-muted">Для первого запуска загрузите подписанный файл лицензии.</p>
+            {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+            {% if license_status.installed and not license_status.valid %}<div class="alert alert-warning">{{ license_status.message }}</div>{% endif %}
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label class="form-label" for="licenseFile">Файл лицензии</label>
+                <input class="form-control mb-3" id="licenseFile" name="license_file" type="file" accept=".license,application/json" required>
+                <button class="btn btn-primary" type="submit">Загрузить и активировать</button>
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}

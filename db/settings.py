@@ -63,6 +63,7 @@ AUTH_USER_MODEL = "db_statistics.DBUser"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "db_statistics.middleware.LicenseRequiredMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -107,6 +108,12 @@ USE_I18N = True
 USE_TZ = True
 
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
+
+LICENSE_FILE = Path(os.getenv("LICENSE_FILE", BASE_DIR / "data" / "db-stat.license"))
+LICENSE_PUBLIC_KEY_FILE = Path(
+    os.getenv("LICENSE_PUBLIC_KEY_FILE", BASE_DIR / "license-public.pem")
+)
+LICENSE_MAX_UPLOAD_BYTES = 64 * 1024
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]

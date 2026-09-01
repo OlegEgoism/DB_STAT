@@ -9,6 +9,7 @@ from django.utils import timezone, translation
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.licensing import LicenseError, install_license, license_status
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser
 from db_statistics.view_helpers import (
     _audit_action_label,
@@ -41,6 +42,33 @@ from db_statistics.view_helpers import (
 def page_not_found(request, exception=None):
     """Показывает фирменную страницу для неизвестных адресов"""
     return render(request, "404.html", status=404)
+
+
+@ensure_csrf_cookie
+@require_http_methods(["GET", "POST"])
+def license_activation(request):
+    """Устанавливает подписанный файл лицензии при первом запуске."""
+    status = license_status()
+    error = ""
+    if request.method == "POST":
+        uploaded_file = request.FILES.get("license_file")
+        if not uploaded_file:
+            error = "Выберите файл лицензии"
+        elif uploaded_file.size > settings.LICENSE_MAX_UPLOAD_BYTES:
+            error = "Файл лицензии слишком большой"
+        else:
+            try:
+                status = install_license(uploaded_file.read())
+            except LicenseError as exc:
+                error = str(exc)
+            else:
+                return redirect("home")
+    return render(
+        request,
+        "license_activation.html",
+        {"license_status": status, "error": error},
+        status=403 if status.installed and not status.valid else 200,
+    )
 
 
 @ensure_csrf_cookie
