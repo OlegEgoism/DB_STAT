@@ -8,10 +8,11 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import SimpleTestCase, override_settings
+from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.urls import reverse
 
-from db_statistics.licensing import LicenseError, activation_hash, canonical_payload, verify_license
+from db_statistics.licensing import LicenseError, LicenseStatus, activation_hash, canonical_payload, verify_license
+from db_statistics.views_additional import license_activation
 from scripts.create_license import main as create_license_interactively
 
 
@@ -68,6 +69,19 @@ class LicensingTests(SimpleTestCase):
         with self.assertRaisesRegex(LicenseError, "истёк"):
             verify_license(data, now=datetime(2026, 1, 2, tzinfo=UTC))
 
+    def test_license_status_includes_remaining_days(self):
+        now = datetime(2026, 1, 1, 12, tzinfo=UTC)
+        document = json.loads(self._license())
+        document["payload"]["valid_from"] = "2026-01-01"
+        document["payload"]["valid_until"] = "2026-01-10"
+        document["activation_hash"] = activation_hash(document["payload"])
+        document["signature"] = base64.urlsafe_b64encode(self.private_key.sign(canonical_payload(document["payload"]))).decode("ascii")
+
+        status = verify_license(json.dumps(document).encode(), now=now)
+
+        self.assertEqual(status.days_remaining, 10)
+        self.assertEqual(status.valid_until, "2026-01-10")
+
     def test_first_start_redirects_to_activation_and_upload_installs_file(self):
         response = self.client.get(reverse("home"))
         self.assertRedirects(response, reverse("license_activation"), fetch_redirect_response=False)
@@ -88,6 +102,16 @@ class LicensingTests(SimpleTestCase):
 
         self.assertEqual(activation_response.status_code, 403)
         self.assertContains(activation_response, "Срок действия лицензии истёк", status_code=403)
+
+    def test_only_administrator_can_replace_active_license(self):
+        request = RequestFactory().post(reverse("license_activation"), {"license_file": SimpleUploadedFile("replacement.license", self._license())})
+        active_status = LicenseStatus(True, True, "Лицензия активна")
+
+        with patch("db_statistics.views_additional.license_status", return_value=active_status), patch("db_statistics.views_additional._current_db_user", return_value=None):
+            response = license_activation(request)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("только Администратор", json.loads(response.content)["message"])
 
     def test_interactive_script_creates_keys_and_license(self):
         issuer_dir = self.directory / "issuer"

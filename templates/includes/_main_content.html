@@ -170,6 +170,35 @@
                 <span class="card-meta">Настройки сайдбара</span>
             </div>
             <div class="card-body">
+                <section class="settings-section license-setting" aria-labelledby="licenseSettingTitle">
+                    <div class="settings-section__heading">
+                        <div>
+                            <h5 id="licenseSettingTitle"><i class="fas fa-key"></i> Лицензия</h5>
+                            <p>Сведения о текущей лицензии DB STAT и её сроке действия.</p>
+                        </div>
+                        <span class="badge {% if license_status.valid %}bg-success{% else %}bg-danger{% endif %}">
+                            {% if license_status.valid %}Активна{% else %}Недействительна{% endif %}
+                        </span>
+                    </div>
+                    <div class="license-setting__details">
+                        <div><span>Организация</span><strong>{{ license_status.organization|default:"—" }}</strong></div>
+                        <div><span>Действует с</span><strong>{{ license_status.valid_from|default:"—" }}</strong></div>
+                        <div><span>Действует по</span><strong>{{ license_status.valid_until|default:"—" }}</strong></div>
+                        <div><span>Осталось дней</span><strong>{{ license_status.days_remaining }}</strong></div>
+                        <div class="license-setting__hash"><span>Хеш активации</span><code>{{ license_status.activation_hash|default:"—" }}</code></div>
+                    </div>
+                    {% if db_user.role == 'Администратор' %}
+                    <form class="license-setting__upload" method="post" action="{% url 'license_activation' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <label class="form-label" for="settingsLicenseFile">Загрузить новый ключ лицензии</label>
+                        <div class="input-group">
+                            <input class="form-control" id="settingsLicenseFile" name="license_file" type="file" accept=".license,application/json" required>
+                            <button class="btn btn-primary" type="submit"><i class="fas fa-upload"></i> Загрузить</button>
+                        </div>
+                        <div class="form-text">Новая лицензия заменит текущую только после успешной проверки подписи и срока действия.</div>
+                    </form>
+                    {% endif %}
+                </section>
                 <section class="settings-section theme-setting" aria-labelledby="themeSettingTitle">
                     <div class="settings-section__heading">
                         <div>

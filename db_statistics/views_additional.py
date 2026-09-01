@@ -51,6 +51,12 @@ def license_activation(request):
     status = license_status()
     error = ""
     if request.method == "POST":
+        db_user = _current_db_user(request)
+        if status.valid and (not db_user or db_user.role != settings.ADMIN_ROLE):
+            return JsonResponse(
+                {"ok": False, "message": "Заменить лицензию может только Администратор"},
+                status=403,
+            )
         uploaded_file = request.FILES.get("license_file")
         if not uploaded_file:
             error = "Выберите файл лицензии"
@@ -88,6 +94,7 @@ def home(request):
                 settings.SESSION_EXPIRES_AT_KEY, 0
             )
             * 1000,
+            "license_status": license_status(),
         },
     )
 

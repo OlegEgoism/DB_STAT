@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import math
 import os
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
@@ -26,6 +27,7 @@ class LicenseStatus:
     valid_from: str = ""
     valid_until: str = ""
     activation_hash: str = ""
+    days_remaining: int = 0
 
 
 def canonical_payload(payload):
@@ -86,7 +88,8 @@ def verify_license(data, *, now=None):
         raise LicenseError("Срок действия лицензии ещё не наступил")
     if current_time >= valid_until:
         raise LicenseError("Срок действия лицензии истёк")
-    return LicenseStatus(True, True, "Лицензия активна", str(payload.get("organization", "")), str(payload.get("valid_from", "")), str(payload.get("valid_until", "")), expected_hash)
+    days_remaining = max(0, math.ceil((valid_until - current_time).total_seconds() / 86400))
+    return LicenseStatus(True, True, "Лицензия активна", str(payload.get("organization", "")), str(payload.get("valid_from", "")), str(payload.get("valid_until", "")), expected_hash, days_remaining)
 
 
 def license_status():

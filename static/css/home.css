@@ -3530,6 +3530,46 @@ body.sidebar-collapsed .nav-item .nav-icon {
     font-size: 13px;
 }
 
+.license-setting__details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.license-setting .settings-section__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.license-setting__details > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.license-setting__details span {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.license-setting__hash {
+    grid-column: 1 / -1;
+}
+
+.license-setting__hash code {
+    overflow-wrap: anywhere;
+}
+
+.license-setting__upload {
+    margin-top: 18px;
+}
+
 .theme-options {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
