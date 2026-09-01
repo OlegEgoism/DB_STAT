@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
@@ -61,23 +62,39 @@ def verify_license(data, *, now=None):
     """Проверяет подпись, идентификатор, продукт и срок лицензии."""
     try:
         document = json.loads(data.decode("utf-8"))
-        payload = document["payload"]
         signature = base64.urlsafe_b64decode(document["signature"].encode("ascii"))
     except (AttributeError, KeyError, TypeError, ValueError, UnicodeError, json.JSONDecodeError) as exc:
         raise LicenseError("Некорректный формат файла лицензии") from exc
-    if not isinstance(payload, dict) or payload.get("product") != "db-stat" or payload.get("schema_version") != 1:
-        raise LicenseError("Файл предназначен для другого продукта или версии")
+    if "payload" in document:
+        # Совместимость с лицензиями первого формата.
+        payload = document["payload"]
+        if not isinstance(payload, dict) or payload.get("product") != "db-stat" or payload.get("schema_version") != 1:
+            raise LicenseError("Файл предназначен для другого продукта или версии")
+        signed_data = payload
+        expected_hash = activation_hash(payload)
+        hash_matches = document.get("activation_hash") == expected_hash
+    else:
+        required_fields = {"organization", "valid_from", "valid_until", "activation_hash", "signature"}
+        if not isinstance(document, dict) or set(document) != required_fields:
+            raise LicenseError("Некорректная структура файла лицензии")
+        expected_hash = document["activation_hash"]
+        if not isinstance(expected_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+            raise LicenseError("Уникальный хеш лицензии повреждён")
+        payload = {field: document[field] for field in ("organization", "valid_from", "valid_until")}
+        if not isinstance(payload["organization"], str) or not payload["organization"].strip():
+            raise LicenseError("Название организации не указано")
+        signed_data = {**payload, "activation_hash": expected_hash}
+        hash_matches = True
     public_key_path = Path(settings.LICENSE_PUBLIC_KEY_FILE)
     try:
         public_key = serialization.load_pem_public_key(public_key_path.read_bytes())
     except (OSError, ValueError) as exc:
         raise LicenseError("Открытый ключ лицензирования не настроен") from exc
     try:
-        public_key.verify(signature, canonical_payload(payload))
+        public_key.verify(signature, canonical_payload(signed_data))
     except (InvalidSignature, TypeError, ValueError) as exc:
         raise LicenseError("Цифровая подпись лицензии недействительна") from exc
-    expected_hash = activation_hash(payload)
-    if document.get("activation_hash") != expected_hash:
+    if not hash_matches:
         raise LicenseError("Уникальный хеш лицензии повреждён")
     valid_from = _parse_datetime(payload.get("valid_from"), "valid_from")
     valid_until = _parse_datetime(payload.get("valid_until"), "valid_until", inclusive_end=True)

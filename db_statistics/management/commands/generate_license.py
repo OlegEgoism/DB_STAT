@@ -1,14 +1,14 @@
 import base64
 import json
 import os
+import secrets
 from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 from cryptography.hazmat.primitives import serialization
 from django.core.management.base import BaseCommand, CommandError
 
-from db_statistics.licensing import activation_hash, canonical_payload
+from db_statistics.licensing import canonical_payload
 
 
 class Command(BaseCommand):
@@ -37,12 +37,13 @@ class Command(BaseCommand):
             private_key = serialization.load_pem_private_key(Path(options["private_key"]).read_bytes(), password=password)
         except (OSError, ValueError) as exc:
             raise CommandError("Не удалось прочитать закрытый ключ") from exc
-        payload = {"schema_version": 1, "license_id": str(uuid4()), "product": "db-stat", "organization": options["organization"].strip(), "issued_at": datetime.now(UTC).isoformat(), "valid_from": valid_from.date().isoformat(), "valid_until": valid_until.date().isoformat()}
-        if not payload["organization"]:
+        organization = options["organization"].strip()
+        if not organization:
             raise CommandError("Название организации не может быть пустым")
-        signature = private_key.sign(canonical_payload(payload))
-        unique_hash = activation_hash(payload)
-        document = {"payload": payload, "activation_hash": unique_hash, "signature": base64.urlsafe_b64encode(signature).decode("ascii")}
+        unique_hash = secrets.token_hex(32)
+        signed_data = {"organization": organization, "valid_from": valid_from.date().isoformat(), "valid_until": valid_until.date().isoformat(), "activation_hash": unique_hash}
+        signature = private_key.sign(canonical_payload(signed_data))
+        document = {**signed_data, "signature": base64.urlsafe_b64encode(signature).decode("ascii")}
         output = Path(options["output"])
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(document, ensure_ascii=False, indent=2), encoding="utf-8")

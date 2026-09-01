@@ -134,6 +134,11 @@ class LicensingTests(SimpleTestCase):
         self.assertTrue(private_key.is_file())
         self.assertTrue(public_key.is_file())
         self.assertTrue(output.is_file())
+        self.assertEqual(set(json.loads(output.read_bytes())), {"organization", "valid_from", "valid_until", "activation_hash", "signature"})
         with override_settings(LICENSE_PUBLIC_KEY_FILE=public_key):
             status = verify_license(output.read_bytes(), now=datetime(2026, 6, 1, tzinfo=UTC))
+            modified_document = json.loads(output.read_bytes())
+            modified_document["organization"] = "Изменённая организация"
+            with self.assertRaisesRegex(LicenseError, "подпись"):
+                verify_license(json.dumps(modified_document).encode(), now=datetime(2026, 6, 1, tzinfo=UTC))
         self.assertEqual(status.organization, "ООО Интерактив")
