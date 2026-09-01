@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% load i18n %}
+{% get_current_language as CURRENT_LANGUAGE %}
 
 {% block content %}
 <main class="container py-5" style="max-width: 680px">
@@ -10,7 +12,7 @@
             {% if license_status.installed and not license_status.valid %}<div class="alert alert-warning">{{ license_status.message }}</div>{% endif %}
             {% if license_status.valid %}
             <div class="alert alert-success">
-                Лицензия активна для {{ license_status.organization }} до {{ license_status.valid_until }} включительно.
+                {% if CURRENT_LANGUAGE == 'en' %}License for {{ license_status.organization }} is valid through {{ license_status.valid_until }}.{% else %}Лицензия активна для {{ license_status.organization }} до {{ license_status.valid_until }} включительно.{% endif %}
             </div>
             {% endif %}
             <form method="post" enctype="multipart/form-data">

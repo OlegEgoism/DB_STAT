@@ -113,6 +113,13 @@ class LicensingTests(SimpleTestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn("только Администратор", json.loads(response.content)["message"])
 
+    def test_license_interface_has_english_translations(self):
+        source = (Path(__file__).resolve().parents[2] / "static" / "js" / "i18n.js").read_text(encoding="utf-8")
+
+        self.assertIn("'Активация DB STAT': 'DB STAT activation'", source)
+        self.assertIn("'Срок действия лицензии истёк': 'The license has expired'", source)
+        self.assertIn("'Загрузить новый ключ лицензии': 'Upload a new license key'", source)
+
     def test_interactive_script_creates_keys_and_license(self):
         issuer_dir = self.directory / "issuer"
         private_key = issuer_dir / "db-stat-private.pem"
