@@ -73,6 +73,15 @@ def _lockout_message(lockout_until, is_english):
     return f"Слишком много неверных попыток. Повторите через {remaining_minutes} мин."
 
 
+def _parse_port(value):
+    """Возвращает допустимый TCP-порт или ``None`` для некорректного ввода."""
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    return port if 1 <= port <= 65535 else None
+
+
 @ensure_csrf_cookie
 @require_http_methods(["GET", "POST"])
 def login(request):
@@ -360,7 +369,12 @@ def audit_events(request):
         audit_queryset = audit_queryset.filter(action_type=action_type)
 
     page_size = 100
-    page = max(int(request.GET.get("page") or 1), 1)
+    try:
+        page = max(int(request.GET.get("page") or 1), 1)
+    except (TypeError, ValueError):
+        return JsonResponse(
+            {"ok": False, "message": "Некорректный номер страницы"}, status=400
+        )
     offset = (page - 1) * page_size
     order_by = sort
     if sort == "action_type":
@@ -423,6 +437,13 @@ def connections(request):
             {"ok": False, "message": "Заполните все обязательные поля"}, status=400
         )
 
+    port = _parse_port(payload.get("port"))
+    if port is None:
+        return JsonResponse(
+            {"ok": False, "message": "Порт должен быть числом от 1 до 65535"},
+            status=400,
+        )
+
     defaults = {
         "username": payload["user"].strip(),
         "db_type": payload.get("db_type") or "PostgreSQL",
@@ -439,7 +460,7 @@ def connections(request):
             return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
-        connection.port = int(payload["port"])
+        connection.port = port
         connection.database = payload["database"].strip()
         for field, value in defaults.items():
             setattr(connection, field, value)
@@ -460,7 +481,7 @@ def connections(request):
     lookup = {
         "name": payload["name"].strip(),
         "host": payload["host"].strip(),
-        "port": int(payload["port"]),
+        "port": port,
         "database": payload["database"].strip(),
         "username": defaults["username"],
     }
@@ -506,12 +527,20 @@ def test_connection(request):
     ) and not _can_manage_connections(request):
         return _connection_permission_error()
 
+    if has_inline_connection_data:
+        port = _parse_port(payload.get("port"))
+        if port is None:
+            return JsonResponse(
+                {"ok": False, "message": "Порт должен быть числом от 1 до 65535"},
+                status=400,
+            )
+
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
             params = {
                 "host": payload["host"].strip(),
-                "port": int(payload["port"]),
+                "port": port,
                 "database": payload["database"].strip(),
                 "username": payload["user"].strip(),
                 "password": payload.get("password") or connection.get_password(),
@@ -536,7 +565,7 @@ def test_connection(request):
             )
         params = {
             "host": payload["host"].strip(),
-            "port": int(payload["port"]),
+            "port": port,
             "database": payload["database"].strip(),
             "username": payload["user"].strip(),
             "password": payload.get("password", ""),
