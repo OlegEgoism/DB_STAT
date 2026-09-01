@@ -3511,10 +3511,54 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 /* ========== APPEARANCE SETTINGS ========== */
+.settings-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: var(--space-5);
+    padding: 6px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-soft);
+}
+
+.settings-tabs .nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    color: var(--text-secondary);
+    border-radius: calc(var(--radius-md) - 4px);
+    font-weight: 700;
+}
+
+.settings-tabs .nav-link.active {
+    color: #fff;
+    background: var(--accent-blue);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-blue) 25%, transparent);
+}
+
+.settings-tab-content > .tab-pane {
+    min-height: 220px;
+}
+
 .settings-section {
     margin-bottom: var(--space-5);
     padding-bottom: var(--space-5);
     border-bottom: 1px solid var(--sidebar-border);
+}
+
+.settings-tab-content .settings-section {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+@media (max-width: 768px) {
+    .settings-tabs {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .settings-section__heading h5 {

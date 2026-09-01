@@ -119,6 +119,14 @@ class LicensingTests(SimpleTestCase):
         self.assertIn("'Активация DB STAT': 'DB STAT activation'", source)
         self.assertIn("'Срок действия лицензии истёк': 'The license has expired'", source)
         self.assertIn("'Загрузить новый ключ лицензии': 'Upload a new license key'", source)
+        self.assertIn("'Настройки меню': 'Menu settings'", source)
+
+    def test_settings_are_split_into_four_logical_tabs(self):
+        source = (Path(__file__).resolve().parents[2] / "templates" / "includes" / "_main_content.html").read_text(encoding="utf-8")
+
+        self.assertEqual(source.count('class="tab-pane fade'), 4)
+        for pane_id in ("settingsLicensePane", "settingsThemePane", "settingsLanguagePane", "settingsMenuPane"):
+            self.assertIn(f'id="{pane_id}"', source)
 
     def test_interactive_script_creates_keys_and_license(self):
         issuer_dir = self.directory / "issuer"

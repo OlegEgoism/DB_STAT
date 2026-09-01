@@ -170,6 +170,14 @@
                 <span class="card-meta">Настройки сайдбара</span>
             </div>
             <div class="card-body">
+                <div class="settings-tabs nav nav-pills" id="settingsTabs" role="tablist" aria-label="Разделы настроек">
+                    <button class="nav-link active" id="settingsLicenseTab" data-bs-toggle="pill" data-bs-target="#settingsLicensePane" type="button" role="tab" aria-controls="settingsLicensePane" aria-selected="true"><i class="fas fa-key"></i> Лицензия</button>
+                    <button class="nav-link" id="settingsThemeTab" data-bs-toggle="pill" data-bs-target="#settingsThemePane" type="button" role="tab" aria-controls="settingsThemePane" aria-selected="false"><i class="fas fa-palette"></i> Темы</button>
+                    <button class="nav-link" id="settingsLanguageTab" data-bs-toggle="pill" data-bs-target="#settingsLanguagePane" type="button" role="tab" aria-controls="settingsLanguagePane" aria-selected="false"><i class="fas fa-language"></i> Язык</button>
+                    <button class="nav-link" id="settingsMenuTab" data-bs-toggle="pill" data-bs-target="#settingsMenuPane" type="button" role="tab" aria-controls="settingsMenuPane" aria-selected="false"><i class="fas fa-bars"></i> Настройки меню</button>
+                </div>
+                <div class="tab-content settings-tab-content" id="settingsTabsContent">
+                <div class="tab-pane fade show active" id="settingsLicensePane" role="tabpanel" aria-labelledby="settingsLicenseTab" tabindex="0">
                 <section class="settings-section license-setting" aria-labelledby="licenseSettingTitle">
                     <div class="settings-section__heading">
                         <div>
@@ -199,6 +207,8 @@
                     </form>
                     {% endif %}
                 </section>
+                </div>
+                <div class="tab-pane fade" id="settingsThemePane" role="tabpanel" aria-labelledby="settingsThemeTab" tabindex="0">
                 <section class="settings-section theme-setting" aria-labelledby="themeSettingTitle">
                     <div class="settings-section__heading">
                         <div>
@@ -245,19 +255,26 @@
                         </label>
                     </div>
                 </section>
-                <div class="sidebar-language-setting settings-section">
+                </div>
+                <div class="tab-pane fade" id="settingsLanguagePane" role="tabpanel" aria-labelledby="settingsLanguageTab" tabindex="0">
+                <div class="sidebar-language-setting settings-section settings-section--standalone">
                     <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
                     <select class="form-select" id="interfaceLanguage">
                         <option value="ru">Русский (RU)</option>
                         <option value="en">English (EN)</option>
                     </select>
                     <div class="form-text">Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</div>
+                    <button type="button" class="btn btn-primary mt-3" id="languageSettingsSaveBtn">Сохранить язык</button>
                 </div>
+                </div>
+                <div class="tab-pane fade" id="settingsMenuPane" role="tabpanel" aria-labelledby="settingsMenuTab" tabindex="0">
                 <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню. Перетаскивайте вкладки внутри блоков, а сами блоки — за заголовок, чтобы настроить последовательность их отображения.</p>
                 <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
                 <div class="sidebar-settings-footer">
                     <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
                     <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+                </div>
+                </div>
                 </div>
             </div>
         </div>

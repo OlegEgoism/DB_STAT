@@ -708,6 +708,17 @@
         if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         renderSidebarSettingsList();
 
+        document.getElementById('languageSettingsSaveBtn')?.addEventListener('click', function () {
+            const selectedLanguage = languageSelect?.value || 'ru';
+            if (selectedLanguage === (window.DBStatI18n?.language || 'ru')) {
+                showToast('✅ Язык интерфейса сохранён');
+                return;
+            }
+            connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
+                .then(() => window.location.reload())
+                .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить язык интерфейса'}`));
+        });
+
         let draggedItem = null;
         let draggedGroup = null;
         settingsList.addEventListener('dragstart', function (event) {
@@ -796,18 +807,8 @@
                 return;
             }
 
-            const selectedLanguage = languageSelect?.value || 'ru';
-            const languageChanged = selectedLanguage !== (window.DBStatI18n?.language || 'ru');
-            const languageRequest = languageChanged
-                ? connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
-                : Promise.resolve();
-
-            Promise.all([saveSidebarSettings(selectedPages, sectionOrder), languageRequest])
+            saveSidebarSettings(selectedPages, sectionOrder)
                 .then(() => {
-                    if (languageChanged) {
-                        window.location.reload();
-                        return;
-                    }
                     applySidebarPageOrder(currentDbUser.sidebar_visible_tabs);
                     applySidebarSectionOrder(currentDbUser.sidebar_section_order);
                     updateSidebarForConnection();
