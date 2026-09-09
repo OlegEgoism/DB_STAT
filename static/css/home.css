@@ -2360,11 +2360,37 @@ body {
     white-space: nowrap;
 }
 
-.audit-date-range input {
+.audit-date-input {
+    position: relative;
+    flex: 1 1 auto;
     min-width: 0;
 }
 
-.audit-date-range input::-webkit-calendar-picker-indicator {
+.audit-date-input::after {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    color: var(--text-primary);
+    content: attr(data-placeholder);
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.audit-date-input.has-value::after {
+    content: none;
+}
+
+.audit-date-input input {
+    min-width: 0;
+}
+
+.audit-date-input:not(.has-value) input {
+    color: transparent;
+}
+
+.audit-date-input input::-webkit-calendar-picker-indicator {
     cursor: pointer;
     filter: var(--date-picker-filter, none);
 }

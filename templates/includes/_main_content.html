@@ -1653,12 +1653,16 @@
                 <div class="search-box audit-filter-box audit-date-range">
                     <i class="fas fa-calendar-alt"></i>
                     <label for="auditDateFrom">{% if CURRENT_LANGUAGE == 'en' %}From{% else %}С{% endif %}</label>
-                    <input type="datetime-local" id="auditDateFrom" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time from{% else %}Дата и время с{% endif %}">
+                    <span class="audit-date-input" data-placeholder="{% if CURRENT_LANGUAGE == 'en' %}mm/dd/yyyy --:--:--{% else %}дд.мм.гггг --:--:--{% endif %}">
+                        <input type="datetime-local" id="auditDateFrom" step="1" lang="{% if CURRENT_LANGUAGE == 'en' %}en-US{% else %}ru-RU{% endif %}" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time from{% else %}Дата и время с{% endif %}">
+                    </span>
                 </div>
                 <div class="search-box audit-filter-box audit-date-range">
                     <i class="fas fa-calendar-alt"></i>
                     <label for="auditDateTo">{% if CURRENT_LANGUAGE == 'en' %}To{% else %}По{% endif %}</label>
-                    <input type="datetime-local" id="auditDateTo" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time to{% else %}Дата и время по{% endif %}">
+                    <span class="audit-date-input" data-placeholder="{% if CURRENT_LANGUAGE == 'en' %}mm/dd/yyyy --:--:--{% else %}дд.мм.гггг --:--:--{% endif %}">
+                        <input type="datetime-local" id="auditDateTo" step="1" lang="{% if CURRENT_LANGUAGE == 'en' %}en-US{% else %}ru-RU{% endif %}" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time to{% else %}Дата и время по{% endif %}">
+                    </span>
                 </div>
             </div>
             <div class="card-body p-0">

@@ -3944,7 +3944,11 @@
             refreshAuditEvents();
         });
         ['auditDateFrom', 'auditDateTo'].forEach(inputId => {
-            document.getElementById(inputId)?.addEventListener('change', function () {
+            const input = document.getElementById(inputId);
+            const updateDatePlaceholder = () => input?.parentElement?.classList.toggle('has-value', Boolean(input.value));
+            input?.addEventListener('input', updateDatePlaceholder);
+            input?.addEventListener('change', function () {
+                updateDatePlaceholder();
                 const dateFrom = document.getElementById('auditDateFrom');
                 const dateTo = document.getElementById('auditDateTo');
                 if (dateFrom && dateTo) {
@@ -3954,6 +3958,7 @@
                 auditState.page = 1;
                 refreshAuditEvents();
             });
+            updateDatePlaceholder();
         });
         document.querySelectorAll('[data-audit-sort]').forEach(button => {
             button.addEventListener('click', function () {
