@@ -3530,6 +3530,12 @@ body.sidebar-collapsed .nav-item .nav-icon {
     gap: var(--space-2);
 }
 
+#paginationSettingSaveBtn {
+    flex: 0 0 auto;
+    min-width: 132px;
+    white-space: nowrap;
+}
+
 .pagination-settings-list {
     display: grid;
     gap: var(--space-2);
