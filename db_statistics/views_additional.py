@@ -28,6 +28,7 @@ from db_statistics.view_helpers import (
     _get_connection_for_request,
     _normalize_sidebar_sections,
     _normalize_sidebar_tabs,
+    _pagination_page_sizes,
     _read_json_body,
     _session_duration_seconds,
     _sidebar_settings_audit_info,
@@ -50,6 +51,12 @@ def home(request):
     db_user = _current_db_user(request)
     if not db_user:
         return redirect("login")
+    pagination_page_sizes = _pagination_page_sizes()
+    pagination_default_page_size = (
+        settings.PAGINATION_DEFAULT_PAGE_SIZE
+        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
+        else pagination_page_sizes[0]
+    )
     return render(
         request,
         "home.html",
@@ -57,6 +64,10 @@ def home(request):
             "db_user": db_user,
             "db_user_payload": _user_payload(db_user),
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
+            "pagination_config": {
+                "default": pagination_default_page_size,
+                "options": pagination_page_sizes,
+            },
             "session_expires_at_ms": request.session.get(
                 settings.SESSION_EXPIRES_AT_KEY, 0
             )
@@ -397,7 +408,13 @@ def audit_events(request):
         requested_page_size = int(request.GET.get("page_size") or settings.PAGINATION_DEFAULT_PAGE_SIZE)
     except (TypeError, ValueError):
         requested_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
-    page_size = requested_page_size if requested_page_size in settings.PAGINATION_PAGE_SIZE_OPTIONS else settings.PAGINATION_DEFAULT_PAGE_SIZE
+    pagination_page_sizes = _pagination_page_sizes()
+    default_page_size = (
+        settings.PAGINATION_DEFAULT_PAGE_SIZE
+        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
+        else pagination_page_sizes[0]
+    )
+    page_size = requested_page_size if requested_page_size in pagination_page_sizes else default_page_size
     page = max(int(request.GET.get("page") or 1), 1)
     offset = (page - 1) * page_size
     order_by = sort

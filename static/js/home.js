@@ -1,3 +1,9 @@
+    const paginationConfigElement = document.getElementById('paginationConfig');
+    const paginationConfig = paginationConfigElement ? JSON.parse(paginationConfigElement.textContent) : {};
+    const paginationPageSizeOptions = (paginationConfig.options || []).map(Number).filter(size => Number.isInteger(size) && size > 0).slice(0, 5);
+    if (!paginationPageSizeOptions.length) paginationPageSizeOptions.push(20, 50);
+    const defaultPaginationPageSize = paginationPageSizeOptions.includes(Number(paginationConfig.default)) ? Number(paginationConfig.default) : paginationPageSizeOptions[0];
+
 // ============================
     // STATE
     // ============================
@@ -9,14 +15,14 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
-    let schemaSizesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let tableSizesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let schemaSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let tableSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let tableSizesRequestId = 0;
-    let viewsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
+    let viewsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
-    let functionsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
+    let functionsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
     let functionsRequestId = 0;
-    let tempTablesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
@@ -35,17 +41,17 @@
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
-    let maintenanceStatsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
+    let maintenanceStatsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     const maintenanceJobs = new Map();
-    let usersState = {page: 1, pageSize: 20, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
+    let usersState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
     let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
-    let auditState = {page: 1, pageSize: 20, totalCount: 0, sort: 'created', direction: 'desc'};
+    let auditState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'created', direction: 'desc'};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -2157,7 +2163,7 @@
         const count = document.getElementById('usersCount');
         usersState.totalCount = Number(data.total_count) || 0;
         usersState.page = Number(data.page) || 1;
-        usersState.pageSize = Number(data.page_size) || 20;
+        usersState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateUsersSortIndicators();
         updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
         const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
@@ -2405,7 +2411,7 @@
         const tables = data.tables || [];
         maintenanceStatsState.totalCount = Number(data.total_count) || 0;
         maintenanceStatsState.page = Number(data.page) || 1;
-        maintenanceStatsState.pageSize = Number(data.page_size) || 20;
+        maintenanceStatsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
         if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
@@ -2768,7 +2774,7 @@
         if (!tbody) return;
         schemaSizesState.totalCount = Number(data.total_count) || 0;
         schemaSizesState.page = Number(data.page) || 1;
-        schemaSizesState.pageSize = Number(data.page_size) || 20;
+        schemaSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateSchemaSortIndicators();
         updateSchemaDistributionChart(data.schema_distribution || data.schemas || []);
         const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
@@ -2955,7 +2961,7 @@
         if (!tbody) return;
         tableSizesState.totalCount = Number(data.total_count) || 0;
         tableSizesState.page = Number(data.page) || 1;
-        tableSizesState.pageSize = Number(data.page_size) || 20;
+        tableSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateTableSortIndicators();
         updateTableDistributionChart(data.table_distribution || data.tables || []);
         const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
@@ -3106,7 +3112,7 @@
         if (!tbody) return;
         viewsState.totalCount = Number(data.total_count) || 0;
         viewsState.page = Number(data.page) || 1;
-        viewsState.pageSize = Number(data.page_size) || 20;
+        viewsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateViewSortIndicators();
         updateViewsSummaryChart(data.summary || null, data.views || []);
         const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
@@ -3237,7 +3243,7 @@
         if (!tbody) return;
         functionsState.totalCount = Number(data.total_count) || 0;
         functionsState.page = Number(data.page) || 1;
-        functionsState.pageSize = Number(data.page_size) || 20;
+        functionsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
         document.getElementById('functionsCount').textContent = `${data.functions?.length || 0} из ${functionsState.totalCount} функций`;
         document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
@@ -3699,7 +3705,7 @@
         if (!tbody) return;
         tempTablesState.totalCount = Number(data.total_count) || 0;
         tempTablesState.page = Number(data.page) || 1;
-        tempTablesState.pageSize = Number(data.page_size) || 20;
+        tempTablesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateTempTableSortIndicators();
         updateTempTableDistributionChart(data.temp_table_distribution || data.temp_tables || []);
         const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
@@ -3814,10 +3820,10 @@
             if (!info) return;
             const storageKey = `db_stat_page_size_${storageSuffix}`;
             const storedPageSize = Number(localStorage.getItem(storageKey));
-            if ([20, 50].includes(storedPageSize)) state.pageSize = storedPageSize;
+            if (paginationPageSizeOptions.includes(storedPageSize)) state.pageSize = storedPageSize;
             const label = document.createElement('label');
             label.className = 'pagination-page-size';
-            label.innerHTML = `<span>${labelText}</span><select aria-label="${labelText}"><option value="20">20</option><option value="50">50</option></select>`;
+            label.innerHTML = `<span>${labelText}</span><select aria-label="${labelText}">${paginationPageSizeOptions.map(size => `<option value="${size}">${size}</option>`).join('')}</select>`;
             const select = label.querySelector('select');
             select.value = String(state.pageSize);
             select.addEventListener('change', () => {

@@ -13,6 +13,7 @@
 {% include 'includes/_main_content.html' %}
 {% include 'includes/_modals.html' %}
 {{ db_user_payload|json_script:"dbUserData" }}
+{{ pagination_config|json_script:"paginationConfig" }}
 {% endblock %}
 
 {% block extra_scripts %}

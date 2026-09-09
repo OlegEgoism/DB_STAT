@@ -12,13 +12,13 @@ from decimal import Decimal, InvalidOperation
 
 import psycopg2
 from django.conf import settings
-from django.db import close_old_connections
+from django.db import OperationalError, ProgrammingError, close_old_connections
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from psycopg2 import sql
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser, DBUserSidebarSettings, MaintenanceJob
 
 logger = logging.getLogger(__name__)
 
@@ -493,6 +493,17 @@ def _query_or_error(action_description, fn):
         )
 
 
+def _pagination_page_sizes():
+    """Возвращает размеры страниц из БД или безопасные значения первого запуска."""
+    try:
+        configured_sizes = list(
+            DBPaginationSettings.objects.order_by("size").values_list("size", flat=True)
+        )
+    except (OperationalError, ProgrammingError):
+        configured_sizes = []
+    return configured_sizes or list(settings.PAGINATION_PAGE_SIZE_OPTIONS)
+
+
 def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=None):
     """Разбирает общие параметры пагинации, поиска и сортировки для списковых запросов.
 
@@ -500,11 +511,14 @@ def _list_query_params(payload, sort_columns, default_sort, *, default_page_size
     """
     if default_page_size is None:
         default_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
+    allowed_page_sizes = _pagination_page_sizes()
+    if default_page_size != 10000 and default_page_size not in allowed_page_sizes:
+        default_page_size = allowed_page_sizes[0]
     try:
         requested_page_size = int(payload.get("page_size") or default_page_size)
     except (TypeError, ValueError):
         requested_page_size = default_page_size
-    page_size = requested_page_size if requested_page_size in settings.PAGINATION_PAGE_SIZE_OPTIONS else default_page_size
+    page_size = requested_page_size if requested_page_size in allowed_page_sizes else default_page_size
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
