@@ -2388,6 +2388,16 @@ body {
 
 .audit-date-input:not(.has-value) input {
     color: transparent;
+    caret-color: transparent;
+}
+
+.audit-date-input:not(.has-value) input::-webkit-datetime-edit {
+    opacity: 0;
+}
+
+.audit-date-input:not(.has-value) input::selection {
+    color: transparent;
+    background: transparent;
 }
 
 .audit-date-input input::-webkit-calendar-picker-indicator {
