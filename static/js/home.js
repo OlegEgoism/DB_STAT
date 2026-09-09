@@ -85,6 +85,7 @@
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
     const paginationSettingsApiUrl = '/settings/pagination/';
+    const activeSettingsTabStorageKey = 'db_stat_settings_tab';
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
@@ -741,6 +742,8 @@
         if (!tabs.length || !panels.length) return;
 
         const activateTab = tabName => {
+            if (!tabs.some(tab => tab.dataset.settingsTab === tabName)) return;
+
             tabs.forEach(tab => {
                 const active = tab.dataset.settingsTab === tabName;
                 tab.classList.toggle('active', active);
@@ -752,6 +755,7 @@
                 panel.classList.toggle('active', active);
                 panel.hidden = !active;
             });
+            sessionStorage.setItem(activeSettingsTabStorageKey, tabName);
         };
 
         tabs.forEach((tab, index) => {
@@ -768,11 +772,11 @@
                 tabs[nextIndex].focus();
             });
         });
-        const requestedTab = sessionStorage.getItem('db_stat_settings_tab');
-        if (requestedTab && tabs.some(tab => tab.dataset.settingsTab === requestedTab)) {
-            activateTab(requestedTab);
-            sessionStorage.removeItem('db_stat_settings_tab');
-        }
+        const requestedTab = sessionStorage.getItem(activeSettingsTabStorageKey);
+        const initialTab = tabs.some(tab => tab.dataset.settingsTab === requestedTab)
+            ? requestedTab
+            : tabs.find(tab => tab.classList.contains('active'))?.dataset.settingsTab || tabs[0].dataset.settingsTab;
+        activateTab(initialTab);
     }
 
     function initPaginationSettingsEditor() {
@@ -787,7 +791,6 @@
             bootstrap.Modal.getOrCreateInstance(document.getElementById('paginationValidationModal')).show();
         };
         const reloadPaginationSettings = () => {
-            sessionStorage.setItem('db_stat_settings_tab', 'pagination');
             window.location.reload();
         };
         const resetForm = () => {

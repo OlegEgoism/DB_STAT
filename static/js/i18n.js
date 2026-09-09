@@ -44,6 +44,8 @@
         'Параметр': 'Parameter', 'Значение': 'Value', 'Статус': 'Status', 'Состояние': 'State', 'Размер': 'Size', 'Всего': 'Total', 'Все записи': 'All records', 'Только избранные': 'Favorites only',
         'Схема': 'Schema', 'Таблица': 'Table', 'Индексы': 'Indexes', 'Строк': 'Rows', 'Длительность': 'Duration', 'Тип объекта': 'Object type', 'Объект': 'Object', 'Идентификатор объекта': 'Object identifier',
         'Дата': 'Date', 'Действие': 'Action', 'Действия': 'Actions', 'Информация': 'Information', 'События аудита не найдены': 'No audit events found',
+        'С': 'From', 'По': 'To', 'Дата и время с': 'Date and time from', 'Дата и время по': 'Date and time to',
+        'Фильтр пользователей аудита': 'Audit user filter', 'дд.мм.гггг --:--:--': 'mm/dd/yyyy --:--:--',
         'Страница 1 из 1': 'Page 1 of 1', 'Страница 1': 'Page 1', 'Настройки пагинации': 'Pagination settings', 'Открыть настройки пагинации': 'Open pagination settings',
         'Создавайте и редактируйте доступные размеры страниц. Допускается не более пяти вариантов.': 'Create and edit available page sizes. Up to five options are allowed.',
         'Количество записей на странице': 'Rows per page', 'Редактировать': 'Edit', 'Удалить настройку пагинации?': 'Delete pagination setting?', 'Ошибка настройки пагинации': 'Pagination setting error', 'Свернуть график': 'Collapse chart',
@@ -177,6 +179,11 @@
         'Ошибка запроса': 'Request error', 'Ошибка': 'Error', 'Успешно': 'Successful', 'Неизвестный пользователь': 'Unknown user',
         'Неизвестный тип действия': 'Unknown action type', 'Некорректный JSON': 'Invalid JSON', 'Подключение не выбрано': 'No connection selected',
         'Требуется вход в приложение': 'Sign-in required', 'Заполните все обязательные поля': 'Fill in all required fields',
+        'Доступ разрешён только администратору': 'Administrator access is required',
+        'Должен остаться хотя бы один размер страницы': 'At least one page size must remain',
+        'Укажите корректный размер страницы': 'Enter a valid page size',
+        'Некорректная дата и время': 'Invalid date and time',
+        'Дата «с» не может быть позже даты «по»': 'The start date cannot be later than the end date',
         'Выход из приложения: активный пользователь не найден': 'Signed out: no active user was found',
         'Поддерживаются только языки RU и EN': 'Only RU and EN are supported',
         'Редактировать подключение может только его создатель': 'Only the connection creator can edit it',
@@ -233,6 +240,7 @@
         'Простаивающие транзакции, длительность транзакции и простоя.': 'Idle transactions, transaction duration, and idle duration.',
         'Размеры таблиц, индексы, количество строк и сортировка по метрикам.': 'Table and index sizes, row counts, and metric sorting.',
         'Состояние и конфигурация сегментов Greenplum.': 'Greenplum segment health and configuration.',
+        'Состояние и конфигурация сегментов Greenplum/Greengage.': 'Greenplum/Greengage segment health and configuration.',
         'Список схем, владельцы, количество таблиц и распределение размера.': 'Schemas, owners, table counts, and size distribution.',
         'Статистика VACUUM/ANALYZE, живые и мёртвые строки.': 'VACUUM/ANALYZE statistics and live/dead rows.'
     });
@@ -243,6 +251,7 @@
 
     const patterns = [
         [/^Страница (\d+) из (\d+)$/, 'Page $1 of $2'], [/^(\d+) из (\d+) записей$/, '$1 of $2 records'],
+        [/^Можно создать не более (\d+) настроек пагинации\.$/, 'You can create no more than $1 pagination settings.'],
         [/^(\d+) из (\d+)$/, '$1 of $2'],
         [/^(\d+) записей$/, '$1 records'], [/^(\d+) объект(?:а|ов)?$/, '$1 objects'], [/^(\d+) пользователей$/, '$1 users'], [/^(\d+) групп$/, '$1 groups'],
         [/^(\d+) таблиц$/, '$1 tables'], [/^(\d+) схем$/, '$1 schemas'], [/^(\d+) сегментов$/, '$1 segments'],
@@ -353,7 +362,7 @@
     }
 
     function translateAttributes(element) {
-        ['title', 'aria-label', 'placeholder'].forEach(attribute => {
+        ['title', 'aria-label', 'placeholder', 'data-placeholder'].forEach(attribute => {
             if (!element.hasAttribute(attribute)) return;
             const current = element.getAttribute(attribute);
             const translated = translateText(current);
@@ -373,10 +382,10 @@
         if (root.closest('[data-i18n-skip]')) return;
         translateAttributes(root);
         // translateAttributes(root) above only covers the root element itself; without this,
-        // every title/aria-label/placeholder on a DESCENDANT element (i.e. virtually every
+        // every translatable attribute on a DESCENDANT element (i.e. virtually every
         // static attribute rendered by the server, plus anything built via innerHTML) would
         // never be inspected, since the TreeWalker below only visits text nodes, not elements.
-        root.querySelectorAll('[title], [aria-label], [placeholder]').forEach(element => {
+        root.querySelectorAll('[title], [aria-label], [placeholder], [data-placeholder]').forEach(element => {
             if (element.closest('[data-i18n-skip]')) return;
             translateAttributes(element);
         });
@@ -395,6 +404,6 @@
         new MutationObserver(mutations => mutations.forEach(mutation => {
             mutation.addedNodes.forEach(translateElement);
             if (mutation.type === 'attributes' || mutation.type === 'characterData') translateElement(mutation.target);
-        })).observe(document.body, {attributes: true, attributeFilter: ['title', 'aria-label', 'placeholder'], characterData: true, childList: true, subtree: true});
+        })).observe(document.body, {attributes: true, attributeFilter: ['title', 'aria-label', 'placeholder', 'data-placeholder'], characterData: true, childList: true, subtree: true});
     });
 }());
