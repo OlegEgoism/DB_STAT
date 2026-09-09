@@ -393,7 +393,11 @@ def audit_events(request):
     if date_bounds.get("created_to"):
         audit_queryset = audit_queryset.filter(created__lte=date_bounds["created_to"])
 
-    page_size = 100
+    try:
+        requested_page_size = int(request.GET.get("page_size") or settings.PAGINATION_DEFAULT_PAGE_SIZE)
+    except (TypeError, ValueError):
+        requested_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
+    page_size = requested_page_size if requested_page_size in settings.PAGINATION_PAGE_SIZE_OPTIONS else settings.PAGINATION_DEFAULT_PAGE_SIZE
     page = max(int(request.GET.get("page") or 1), 1)
     offset = (page - 1) * page_size
     order_by = sort

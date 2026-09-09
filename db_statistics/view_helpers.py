@@ -493,12 +493,18 @@ def _query_or_error(action_description, fn):
         )
 
 
-def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=100):
+def _list_query_params(payload, sort_columns, default_sort, *, default_page_size=None):
     """Разбирает общие параметры пагинации, поиска и сортировки для списковых запросов.
 
     Возвращает (page, page_size, offset, search, sort_column, direction).
     """
-    page_size = int(payload.get("page_size") or default_page_size)
+    if default_page_size is None:
+        default_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
+    try:
+        requested_page_size = int(payload.get("page_size") or default_page_size)
+    except (TypeError, ValueError):
+        requested_page_size = default_page_size
+    page_size = requested_page_size if requested_page_size in settings.PAGINATION_PAGE_SIZE_OPTIONS else default_page_size
     page = max(int(payload.get("page") or 1), 1)
     offset = (page - 1) * page_size
     search = (payload.get("search") or "").strip()
@@ -847,7 +853,7 @@ def _database_roles_list(request, *, can_login):
             "member_count": "member_count",
         },
         "name",
-        default_page_size=100 if can_login else 10000,
+        default_page_size=settings.PAGINATION_DEFAULT_PAGE_SIZE if can_login else 10000,
     )
     role_type_message = "пользователей" if can_login else "групп"
 

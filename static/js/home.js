@@ -9,14 +9,14 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
-    let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let schemaSizesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let tableSizesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let tableSizesRequestId = 0;
-    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
+    let viewsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
-    let functionsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
+    let functionsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
     let functionsRequestId = 0;
-    let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let tempTablesState = {page: 1, pageSize: 20, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
@@ -35,17 +35,17 @@
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
-    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
+    let maintenanceStatsState = {page: 1, pageSize: 20, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     const maintenanceJobs = new Map();
-    let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
+    let usersState = {page: 1, pageSize: 20, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
     let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
-    let auditState = {page: 1, pageSize: 100, totalCount: 0, sort: 'created', direction: 'desc'};
+    let auditState = {page: 1, pageSize: 20, totalCount: 0, sort: 'created', direction: 'desc'};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -386,6 +386,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         initSettingsTabs();
         initThemeSettings();
+        initPaginationPageSizeControls();
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
@@ -2156,7 +2157,7 @@
         const count = document.getElementById('usersCount');
         usersState.totalCount = Number(data.total_count) || 0;
         usersState.page = Number(data.page) || 1;
-        usersState.pageSize = Number(data.page_size) || 100;
+        usersState.pageSize = Number(data.page_size) || 20;
         updateUsersSortIndicators();
         updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
         const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
@@ -2176,6 +2177,7 @@
         connectionRequest(usersListApiUrl, {
             id: conn.id,
             page: usersState.page,
+            page_size: usersState.pageSize,
             search: usersState.search,
             sort: usersState.sort,
             direction: usersState.direction,
@@ -2403,7 +2405,7 @@
         const tables = data.tables || [];
         maintenanceStatsState.totalCount = Number(data.total_count) || 0;
         maintenanceStatsState.page = Number(data.page) || 1;
-        maintenanceStatsState.pageSize = Number(data.page_size) || 100;
+        maintenanceStatsState.pageSize = Number(data.page_size) || 20;
         const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
         if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
@@ -2621,6 +2623,7 @@
         connectionRequest(maintenanceStatsApiUrl, {
             id: conn.id,
             page: maintenanceStatsState.page,
+            page_size: maintenanceStatsState.pageSize,
             search: maintenanceStatsState.search,
             sort: maintenanceStatsState.sort,
             direction: maintenanceStatsState.direction
@@ -2765,7 +2768,7 @@
         if (!tbody) return;
         schemaSizesState.totalCount = Number(data.total_count) || 0;
         schemaSizesState.page = Number(data.page) || 1;
-        schemaSizesState.pageSize = Number(data.page_size) || 100;
+        schemaSizesState.pageSize = Number(data.page_size) || 20;
         updateSchemaSortIndicators();
         updateSchemaDistributionChart(data.schema_distribution || data.schemas || []);
         const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
@@ -2839,6 +2842,7 @@
         connectionRequest(databaseSchemasApiUrl, {
             id: conn.id,
             page: schemaSizesState.page,
+            page_size: schemaSizesState.pageSize,
             search: schemaSizesState.search,
             sort: schemaSizesState.sort,
             direction: schemaSizesState.direction,
@@ -2951,7 +2955,7 @@
         if (!tbody) return;
         tableSizesState.totalCount = Number(data.total_count) || 0;
         tableSizesState.page = Number(data.page) || 1;
-        tableSizesState.pageSize = Number(data.page_size) || 100;
+        tableSizesState.pageSize = Number(data.page_size) || 20;
         updateTableSortIndicators();
         updateTableDistributionChart(data.table_distribution || data.tables || []);
         const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
@@ -2987,6 +2991,7 @@
         connectionRequest(tableSizesApiUrl, {
             id: conn.id,
             page: tableSizesState.page,
+            page_size: tableSizesState.pageSize,
             search: tableSizesState.search,
             sort: tableSizesState.sort,
             direction: tableSizesState.direction,
@@ -3101,7 +3106,7 @@
         if (!tbody) return;
         viewsState.totalCount = Number(data.total_count) || 0;
         viewsState.page = Number(data.page) || 1;
-        viewsState.pageSize = Number(data.page_size) || 100;
+        viewsState.pageSize = Number(data.page_size) || 20;
         updateViewSortIndicators();
         updateViewsSummaryChart(data.summary || null, data.views || []);
         const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
@@ -3137,6 +3142,7 @@
         connectionRequest(viewsListApiUrl, {
             id: conn.id,
             page: viewsState.page,
+            page_size: viewsState.pageSize,
             search: viewsState.search,
             view_type: viewsState.viewType,
             sort: viewsState.sort,
@@ -3231,7 +3237,7 @@
         if (!tbody) return;
         functionsState.totalCount = Number(data.total_count) || 0;
         functionsState.page = Number(data.page) || 1;
-        functionsState.pageSize = Number(data.page_size) || 100;
+        functionsState.pageSize = Number(data.page_size) || 20;
         const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
         document.getElementById('functionsCount').textContent = `${data.functions?.length || 0} из ${functionsState.totalCount} функций`;
         document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
@@ -3257,7 +3263,7 @@
             return;
         }
         renderFunctionsWarning('Загрузка функций...');
-        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
+        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, page_size: functionsState.pageSize, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
             .then(data => { if (requestId === functionsRequestId) renderFunctions(data); })
             .catch(error => { if (requestId === functionsRequestId) renderFunctionsWarning(error.message || 'Не удалось получить функции'); });
     }
@@ -3693,7 +3699,7 @@
         if (!tbody) return;
         tempTablesState.totalCount = Number(data.total_count) || 0;
         tempTablesState.page = Number(data.page) || 1;
-        tempTablesState.pageSize = Number(data.page_size) || 100;
+        tempTablesState.pageSize = Number(data.page_size) || 20;
         updateTempTableSortIndicators();
         updateTempTableDistributionChart(data.temp_table_distribution || data.temp_tables || []);
         const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
@@ -3725,6 +3731,7 @@
         connectionRequest(tempTablesApiUrl, {
             id: conn.id,
             page: tempTablesState.page,
+            page_size: tempTablesState.pageSize,
             search: tempTablesState.search,
             sort: tempTablesState.sort,
             direction: tempTablesState.direction
@@ -3788,6 +3795,39 @@
         if (info) info.textContent = `Страница ${page} из ${totalPages}`;
         if (prev) prev.disabled = page <= 1;
         if (next) next.disabled = page >= totalPages;
+    }
+
+    function initPaginationPageSizeControls() {
+        const configurations = [
+            ['schemaPaginationInfo', 'schemas', schemaSizesState, refreshSchemaSizesForConnection],
+            ['tablePaginationInfo', 'tables', tableSizesState, refreshTableSizesForConnection],
+            ['viewPaginationInfo', 'views', viewsState, refreshViewsForConnection],
+            ['functionPaginationInfo', 'functions', functionsState, refreshFunctionsForConnection],
+            ['tempTablePaginationInfo', 'temp-tables', tempTablesState, refreshTempTablesForConnection],
+            ['usersPaginationInfo', 'users', usersState, refreshUsersForConnection],
+            ['maintenancePageInfo', 'maintenance', maintenanceStatsState, refreshMaintenanceStatsForConnection],
+            ['auditPaginationInfo', 'audit', auditState, refreshAuditEvents]
+        ];
+        const labelText = window.DB_STAT_LANGUAGE === 'en' ? 'Rows:' : 'Записей:';
+        configurations.forEach(([infoId, storageSuffix, state, refresh]) => {
+            const info = document.getElementById(infoId);
+            if (!info) return;
+            const storageKey = `db_stat_page_size_${storageSuffix}`;
+            const storedPageSize = Number(localStorage.getItem(storageKey));
+            if ([20, 50].includes(storedPageSize)) state.pageSize = storedPageSize;
+            const label = document.createElement('label');
+            label.className = 'pagination-page-size';
+            label.innerHTML = `<span>${labelText}</span><select aria-label="${labelText}"><option value="20">20</option><option value="50">50</option></select>`;
+            const select = label.querySelector('select');
+            select.value = String(state.pageSize);
+            select.addEventListener('change', () => {
+                state.pageSize = Number(select.value);
+                state.page = 1;
+                localStorage.setItem(storageKey, select.value);
+                refresh();
+            });
+            info.parentElement?.insertBefore(label, info);
+        });
     }
 
     function renderAuditWarning(message) {
@@ -3910,7 +3950,7 @@
         const username = document.getElementById('auditUserFilter')?.value || '';
         const createdFrom = document.getElementById('auditDateFrom')?.value || '';
         const createdTo = document.getElementById('auditDateTo')?.value || '';
-        const params = new URLSearchParams({page: String(auditState.page), sort: auditState.sort, direction: auditState.direction});
+        const params = new URLSearchParams({page: String(auditState.page), page_size: String(auditState.pageSize), sort: auditState.sort, direction: auditState.direction});
         if (actionType) params.set('action_type', actionType);
         if (username) params.set('username', username);
         if (createdFrom) params.set('created_from', createdFrom);
