@@ -2343,6 +2343,10 @@ body {
     justify-content: flex-start;
 }
 
+.audit-table-toolbar .audit-filter-box {
+    height: 40px;
+}
+
 .audit-date-range {
     width: min(280px, 100%);
     flex-wrap: nowrap;
