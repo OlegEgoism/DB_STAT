@@ -3908,9 +3908,13 @@
         const requestId = ++auditRequestId;
         const actionType = document.getElementById('auditActionFilter')?.value || '';
         const username = document.getElementById('auditUserFilter')?.value || '';
+        const createdFrom = document.getElementById('auditDateFrom')?.value || '';
+        const createdTo = document.getElementById('auditDateTo')?.value || '';
         const params = new URLSearchParams({page: String(auditState.page), sort: auditState.sort, direction: auditState.direction});
         if (actionType) params.set('action_type', actionType);
         if (username) params.set('username', username);
+        if (createdFrom) params.set('created_from', createdFrom);
+        if (createdTo) params.set('created_to', createdTo);
         const url = `${auditEventsApiUrl}?${params.toString()}`;
         renderAuditWarning('Загрузка аудита...');
         fetch(url)
@@ -3938,6 +3942,18 @@
         document.getElementById('auditUserFilter')?.addEventListener('change', function () {
             auditState.page = 1;
             refreshAuditEvents();
+        });
+        ['auditDateFrom', 'auditDateTo'].forEach(inputId => {
+            document.getElementById(inputId)?.addEventListener('change', function () {
+                const dateFrom = document.getElementById('auditDateFrom');
+                const dateTo = document.getElementById('auditDateTo');
+                if (dateFrom && dateTo) {
+                    dateFrom.max = dateTo.value;
+                    dateTo.min = dateFrom.value;
+                }
+                auditState.page = 1;
+                refreshAuditEvents();
+            });
         });
         document.querySelectorAll('[data-audit-sort]').forEach(button => {
             button.addEventListener('click', function () {

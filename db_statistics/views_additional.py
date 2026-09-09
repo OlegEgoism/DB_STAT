@@ -6,6 +6,7 @@ from django.db.models import Case, CharField, F, Q, Value, When
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone, translation
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
@@ -332,6 +333,8 @@ def audit_events(request):
 
     action_type = (request.GET.get("action_type") or "").strip()
     username = (request.GET.get("username") or "").strip()
+    created_from_value = (request.GET.get("created_from") or "").strip()
+    created_to_value = (request.GET.get("created_to") or "").strip()
     sort = (request.GET.get("sort") or "created").strip()
     direction = (request.GET.get("direction") or "desc").strip().lower()
     available_actions = [
@@ -342,6 +345,31 @@ def audit_events(request):
         return JsonResponse(
             {"ok": False, "message": "Некорректные параметры сортировки"}, status=400
         )
+
+    date_bounds = {}
+    for parameter, value in (
+        ("created_from", created_from_value),
+        ("created_to", created_to_value),
+    ):
+        if not value:
+            continue
+        parsed_value = parse_datetime(value)
+        if parsed_value is None:
+            return JsonResponse(
+                {"ok": False, "message": "Некорректная дата и время"}, status=400
+            )
+        if timezone.is_naive(parsed_value):
+            parsed_value = timezone.make_aware(
+                parsed_value, timezone.get_current_timezone()
+            )
+        date_bounds[parameter] = parsed_value
+
+    if date_bounds.get("created_from") and date_bounds.get("created_to"):
+        if date_bounds["created_from"] > date_bounds["created_to"]:
+            return JsonResponse(
+                {"ok": False, "message": "Дата «с» не может быть позже даты «по»"},
+                status=400,
+            )
 
     audit_queryset = DBAudit.objects.all()
     available_users = list(
@@ -358,6 +386,12 @@ def audit_events(request):
                 {"ok": False, "message": "Неизвестный тип действия"}, status=400
             )
         audit_queryset = audit_queryset.filter(action_type=action_type)
+    if date_bounds.get("created_from"):
+        audit_queryset = audit_queryset.filter(
+            created__gte=date_bounds["created_from"]
+        )
+    if date_bounds.get("created_to"):
+        audit_queryset = audit_queryset.filter(created__lte=date_bounds["created_to"])
 
     page_size = 100
     page = max(int(request.GET.get("page") or 1), 1)
