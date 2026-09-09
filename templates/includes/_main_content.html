@@ -1650,17 +1650,15 @@
                         <option value="">{% if CURRENT_LANGUAGE == 'en' %}All users{% else %}Все пользователи{% endif %}</option>
                     </select>
                 </div>
-                <div class="search-box audit-filter-box audit-date-range" role="group" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time range{% else %}Диапазон даты и времени{% endif %}">
+                <div class="search-box audit-filter-box audit-date-range">
                     <i class="fas fa-calendar-alt"></i>
-                    <label class="audit-date-filter" for="auditDateFrom">
-                        <span>{% if CURRENT_LANGUAGE == 'en' %}From{% else %}С{% endif %}</span>
-                        <input type="datetime-local" id="auditDateFrom" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time from{% else %}Дата и время с{% endif %}">
-                    </label>
-                    <span class="audit-date-separator" aria-hidden="true">—</span>
-                    <label class="audit-date-filter" for="auditDateTo">
-                        <span>{% if CURRENT_LANGUAGE == 'en' %}To{% else %}По{% endif %}</span>
-                        <input type="datetime-local" id="auditDateTo" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time to{% else %}Дата и время по{% endif %}">
-                    </label>
+                    <label for="auditDateFrom">{% if CURRENT_LANGUAGE == 'en' %}From{% else %}С{% endif %}</label>
+                    <input type="datetime-local" id="auditDateFrom" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time from{% else %}Дата и время с{% endif %}">
+                </div>
+                <div class="search-box audit-filter-box audit-date-range">
+                    <i class="fas fa-calendar-alt"></i>
+                    <label for="auditDateTo">{% if CURRENT_LANGUAGE == 'en' %}To{% else %}По{% endif %}</label>
+                    <input type="datetime-local" id="auditDateTo" step="1" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Date and time to{% else %}Дата и время по{% endif %}">
                 </div>
             </div>
             <div class="card-body p-0">

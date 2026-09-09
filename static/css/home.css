@@ -2344,34 +2344,23 @@ body {
 }
 
 .audit-date-range {
-    width: min(560px, 100%);
+    width: min(280px, 100%);
     flex-wrap: nowrap;
 }
 
-.audit-date-filter {
-    display: flex;
-    flex: 1 1 0;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-}
-
-.audit-date-filter span {
+.audit-date-range label {
+    margin: 0;
     color: var(--text-muted);
     font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
 }
 
-.audit-date-filter input {
+.audit-date-range input {
     min-width: 0;
 }
 
-.audit-date-separator {
-    color: var(--text-muted);
-}
-
-.audit-date-filter input::-webkit-calendar-picker-indicator {
+.audit-date-range input::-webkit-calendar-picker-indicator {
     cursor: pointer;
     filter: var(--date-picker-filter, none);
 }
