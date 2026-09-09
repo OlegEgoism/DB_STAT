@@ -1,7 +1,7 @@
     const paginationConfigElement = document.getElementById('paginationConfig');
     const paginationConfig = paginationConfigElement ? JSON.parse(paginationConfigElement.textContent) : {};
     const paginationPageSizeOptions = (paginationConfig.options || []).map(Number).filter(size => Number.isInteger(size) && size > 0).slice(0, 5);
-    if (!paginationPageSizeOptions.length) paginationPageSizeOptions.push(20, 50);
+    if (!paginationPageSizeOptions.length) paginationPageSizeOptions.push(10, 20, 50);
     const defaultPaginationPageSize = paginationPageSizeOptions.includes(Number(paginationConfig.default)) ? Number(paginationConfig.default) : paginationPageSizeOptions[0];
 
 // ============================
@@ -46,7 +46,7 @@
     const maintenanceJobs = new Map();
     let usersState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
-    let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
+    let groupsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
@@ -87,6 +87,7 @@
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
+    let favoritesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0};
     let favoritesSortState = {column: 'object', direction: 'asc'};
 
     const pageTitles = {
@@ -264,6 +265,7 @@
     }
 
     function loadFavorites(connectionId = activeConnectionId) {
+        favoritesState.page = 1;
         if (!connectionId) {
             favoriteItems = [];
             favoriteKeys = new Set();
@@ -284,7 +286,16 @@
     function renderFavoritesPage() {
         const tbody = document.getElementById('favoritesObjectsTableBody');
         const count = document.getElementById('favoritesObjectsCount');
+        favoritesState.totalCount = favoriteItems.length;
+        const totalPages = Math.max(Math.ceil(favoritesState.totalCount / favoritesState.pageSize), 1);
+        favoritesState.page = Math.min(favoritesState.page, totalPages);
         if (count) count.textContent = activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных';
+        const paginationInfo = document.getElementById('favoritesPaginationInfo');
+        if (paginationInfo) paginationInfo.textContent = `Страница ${favoritesState.page} из ${totalPages}`;
+        const previousButton = document.getElementById('favoritesPrevPageBtn');
+        const nextButton = document.getElementById('favoritesNextPageBtn');
+        if (previousButton) previousButton.disabled = favoritesState.page <= 1;
+        if (nextButton) nextButton.disabled = favoritesState.page >= totalPages;
         if (!tbody) return;
         if (!activeConnectionId) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>';
@@ -304,7 +315,8 @@
             return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), 'ru', {numeric: true, sensitivity: 'base'});
         });
         updateFavoritesSortIndicators();
-        tbody.innerHTML = sortedItems.map(item => {
+        const offset = (favoritesState.page - 1) * favoritesState.pageSize;
+        tbody.innerHTML = sortedItems.slice(offset, offset + favoritesState.pageSize).map(item => {
             const keyParts = String(item.object_key || '').split('\u001f');
             const label = item.object_type === 'function'
                 ? `${keyParts[0] || ''}.${keyParts[1] || ''}(${keyParts[2] || ''})`
@@ -351,6 +363,18 @@
     }
 
     function initFavoriteControls() {
+        document.getElementById('favoritesPrevPageBtn')?.addEventListener('click', () => {
+            if (favoritesState.page > 1) {
+                favoritesState.page -= 1;
+                renderFavoritesPage();
+            }
+        });
+        document.getElementById('favoritesNextPageBtn')?.addEventListener('click', () => {
+            if (favoritesState.page * favoritesState.pageSize < favoritesState.totalCount) {
+                favoritesState.page += 1;
+                renderFavoritesPage();
+            }
+        });
         document.querySelectorAll('[data-favorites-sort]').forEach(button => {
             button.addEventListener('click', function () {
                 const column = this.dataset.favoritesSort;
@@ -2249,6 +2273,8 @@
         renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Загрузка групп...');
         connectionRequest(groupsListApiUrl, {
             id: conn.id,
+            page: groupsState.page,
+            page_size: groupsState.pageSize,
             search: groupsState.search,
             sort: groupsState.sort,
             direction: groupsState.direction,
@@ -2257,6 +2283,13 @@
             .then(data => {
                 if (requestId !== groupsRequestId) return;
                 updateGroupsSortIndicators();
+                groupsState.page = Number(data.page) || 1;
+                groupsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
+                groupsState.totalCount = Number(data.total_count) || 0;
+                const totalPages = Math.max(Math.ceil(groupsState.totalCount / groupsState.pageSize), 1);
+                document.getElementById('groupsPaginationInfo').textContent = `Страница ${groupsState.page} из ${totalPages}`;
+                document.getElementById('groupsPrevPageBtn').disabled = groupsState.page <= 1;
+                document.getElementById('groupsNextPageBtn').disabled = groupsState.page >= totalPages;
                 updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
                 renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
             })
@@ -2273,6 +2306,7 @@
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
                 groupsState.search = this.value.trim();
+                groupsState.page = 1;
                 refreshGroupsForConnection();
             }, 300);
         });
@@ -2285,10 +2319,13 @@
                     groupsState.sort = sort;
                     groupsState.direction = ['connection_limit', 'valid_until', 'member_count'].includes(sort) ? 'desc' : 'asc';
                 }
+                groupsState.page = 1;
                 refreshGroupsForConnection();
             });
         });
-        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; refreshGroupsForConnection(); });
+        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; groupsState.page = 1; refreshGroupsForConnection(); });
+        document.getElementById('groupsPrevPageBtn')?.addEventListener('click', () => { if (groupsState.page > 1) { groupsState.page -= 1; refreshGroupsForConnection(); } });
+        document.getElementById('groupsNextPageBtn')?.addEventListener('click', () => { if (groupsState.page * groupsState.pageSize < groupsState.totalCount) { groupsState.page += 1; refreshGroupsForConnection(); } });
         updateGroupsSortIndicators();
     }
 
@@ -3811,6 +3848,8 @@
             ['functionPaginationInfo', 'functions', functionsState, refreshFunctionsForConnection],
             ['tempTablePaginationInfo', 'temp-tables', tempTablesState, refreshTempTablesForConnection],
             ['usersPaginationInfo', 'users', usersState, refreshUsersForConnection],
+            ['groupsPaginationInfo', 'groups', groupsState, refreshGroupsForConnection],
+            ['favoritesPaginationInfo', 'favorites', favoritesState, renderFavoritesPage],
             ['maintenancePageInfo', 'maintenance', maintenanceStatsState, refreshMaintenanceStatsForConnection],
             ['auditPaginationInfo', 'audit', auditState, refreshAuditEvents]
         ];

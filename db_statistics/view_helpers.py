@@ -867,7 +867,7 @@ def _database_roles_list(request, *, can_login):
             "member_count": "member_count",
         },
         "name",
-        default_page_size=settings.PAGINATION_DEFAULT_PAGE_SIZE if can_login else 10000,
+        default_page_size=settings.PAGINATION_DEFAULT_PAGE_SIZE,
     )
     role_type_message = "пользователей" if can_login else "групп"
 

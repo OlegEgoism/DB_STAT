@@ -185,11 +185,25 @@ class DBPaginationSettingsAdmin(BaseAdmin):
     fields = ("size", "created", "updated")
     ordering = ("size",)
 
+    @staticmethod
+    def _is_app_admin(request):
+        return getattr(request.user, "role", None) == settings.ADMIN_ROLE
+
     def has_add_permission(self, request):
         return (
-            DBPaginationSettings.objects.count() < DBPaginationSettings.MAX_RECORDS
+            self._is_app_admin(request)
+            and DBPaginationSettings.objects.count() < DBPaginationSettings.MAX_RECORDS
             and super().has_add_permission(request)
         )
+
+    def has_view_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_view_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_delete_permission(request, obj)
 
 
 @admin.register(MaintenanceJob)

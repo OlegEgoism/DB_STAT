@@ -185,8 +185,8 @@ SIDEBAR_TAB_LABELS = {
 SUPPORTED_LANGUAGES = {"ru", "en"}
 
 # Единые размеры страниц для всех списков с пагинацией.
-PAGINATION_DEFAULT_PAGE_SIZE = 20
-PAGINATION_PAGE_SIZE_OPTIONS = (20, 50)
+PAGINATION_DEFAULT_PAGE_SIZE = 10
+PAGINATION_PAGE_SIZE_OPTIONS = (10, 20, 50)
 
 # Каждый процесс приложения (в том числе каждый воркер WSGI-сервера при
 # многопроцессном запуске) держит свой собственный пул из 4 потоков и на

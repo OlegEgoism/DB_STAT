@@ -183,6 +183,12 @@
                         <i class="fas fa-bars" aria-hidden="true"></i>
                         <span>Боковое меню</span>
                     </button>
+                    {% if db_user.role == 'Администратор' %}
+                    <button class="settings-tab" id="settingsPaginationTab" type="button" role="tab" aria-selected="false" aria-controls="settingsPaginationPanel" data-settings-tab="pagination" tabindex="-1">
+                        <i class="fas fa-list-ol" aria-hidden="true"></i>
+                        <span>Настройки пагинации</span>
+                    </button>
+                    {% endif %}
                 </div>
 
                 <section class="settings-tab-panel active" id="settingsThemePanel" role="tabpanel" aria-labelledby="settingsThemeTab" data-settings-panel="theme">
@@ -253,6 +259,17 @@
                         <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
                     </div>
                 </section>
+                {% if db_user.role == 'Администратор' %}
+                <section class="settings-tab-panel" id="settingsPaginationPanel" role="tabpanel" aria-labelledby="settingsPaginationTab" data-settings-panel="pagination" hidden>
+                    <div class="settings-section__heading">
+                        <h5>Настройки пагинации</h5>
+                        <p>Создавайте и редактируйте доступные размеры страниц. Допускается не более пяти вариантов.</p>
+                    </div>
+                    <a class="btn btn-primary" href="{% url 'admin:db_statistics_dbpaginationsettings_changelist' %}">
+                        <i class="fas fa-external-link-alt"></i> Открыть настройки пагинации
+                    </a>
+                </section>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -280,6 +297,11 @@
                         <tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="table-pagination">
+                    <button class="btn-conn secondary" type="button" id="favoritesPrevPageBtn"><i class="fas fa-chevron-left"></i> Назад</button>
+                    <span id="favoritesPaginationInfo">Страница 1 из 1</span>
+                    <button class="btn-conn secondary" type="button" id="favoritesNextPageBtn">Далее <i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -1532,6 +1554,11 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <div class="table-pagination">
+                <button class="btn-conn secondary" type="button" id="groupsPrevPageBtn"><i class="fas fa-chevron-left"></i> Назад</button>
+                <span id="groupsPaginationInfo">Страница 1 из 1</span>
+                <button class="btn-conn secondary" type="button" id="groupsNextPageBtn">Далее <i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
