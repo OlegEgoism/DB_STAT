@@ -2344,14 +2344,16 @@ body {
 }
 
 .audit-date-range {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
+    width: min(560px, 100%);
+    flex-wrap: nowrap;
 }
 
 .audit-date-filter {
-    width: auto;
-    min-width: 245px;
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
 .audit-date-filter span {
@@ -2362,7 +2364,11 @@ body {
 }
 
 .audit-date-filter input {
-    min-width: 185px;
+    min-width: 0;
+}
+
+.audit-date-separator {
+    color: var(--text-muted);
 }
 
 .audit-date-filter input::-webkit-calendar-picker-indicator {
