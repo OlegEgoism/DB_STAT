@@ -2694,6 +2694,11 @@ body {
     opacity: 0.55;
 }
 
+.table-pagination--top {
+    border-top: 0;
+    border-bottom: 1px solid rgba(233, 236, 239, 0.7);
+}
+
 .pagination-page-size {
     display: inline-flex;
     align-items: center;
