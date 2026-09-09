@@ -419,7 +419,7 @@ def audit_events(request):
             "action_type": audit.action_type,
             "action_label": _audit_action_label(audit.action_type),
             "info": audit.info,
-            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
+            "created": timezone.localtime(audit.created).strftime("%d.%m.%Y %H:%M:%S"),
         }
         for audit in audit_queryset[offset : offset + page_size]
     ]
