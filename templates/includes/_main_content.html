@@ -167,10 +167,25 @@
         <div class="glass-card sidebar-settings-card">
             <div class="card-header">
                 <span><i class="fas fa-cog"></i> Настройки</span>
-                <span class="card-meta">Настройки сайдбара</span>
+                <span class="card-meta">Интерфейс и боковое меню</span>
             </div>
             <div class="card-body">
-                <section class="settings-section theme-setting" aria-labelledby="themeSettingTitle">
+                <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
+                    <button class="settings-tab active" id="settingsThemeTab" type="button" role="tab" aria-selected="true" aria-controls="settingsThemePanel" data-settings-tab="theme">
+                        <i class="fas fa-palette" aria-hidden="true"></i>
+                        <span>Тема оформления</span>
+                    </button>
+                    <button class="settings-tab" id="settingsLanguageTab" type="button" role="tab" aria-selected="false" aria-controls="settingsLanguagePanel" data-settings-tab="language" tabindex="-1">
+                        <i class="fas fa-language" aria-hidden="true"></i>
+                        <span>Язык интерфейса</span>
+                    </button>
+                    <button class="settings-tab" id="settingsSidebarTab" type="button" role="tab" aria-selected="false" aria-controls="settingsSidebarPanel" data-settings-tab="sidebar" tabindex="-1">
+                        <i class="fas fa-bars" aria-hidden="true"></i>
+                        <span>Боковое меню</span>
+                    </button>
+                </div>
+
+                <section class="settings-tab-panel active" id="settingsThemePanel" role="tabpanel" aria-labelledby="settingsThemeTab" data-settings-panel="theme">
                     <div class="settings-section__heading">
                         <div>
                             <h5 id="themeSettingTitle">Тема оформления</h5>
@@ -216,20 +231,28 @@
                         </label>
                     </div>
                 </section>
-                <div class="sidebar-language-setting settings-section">
-                    <label class="form-label" for="interfaceLanguage">Язык интерфейса</label>
+                <section class="settings-tab-panel" id="settingsLanguagePanel" role="tabpanel" aria-labelledby="settingsLanguageTab" data-settings-panel="language" hidden>
+                    <div class="settings-section__heading">
+                        <h5>Язык интерфейса</h5>
+                        <p>Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</p>
+                    </div>
+                    <label class="form-label" for="interfaceLanguage">Выберите язык</label>
                     <select class="form-select" id="interfaceLanguage">
                         <option value="ru">Русский (RU)</option>
                         <option value="en">English (EN)</option>
                     </select>
-                    <div class="form-text">Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</div>
-                </div>
-                <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню. Перетаскивайте вкладки внутри блоков, а сами блоки — за заголовок, чтобы настроить последовательность их отображения.</p>
-                <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
-                <div class="sidebar-settings-footer">
-                    <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
-                    <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
-                </div>
+                    <div class="settings-panel-footer">
+                        <button type="button" class="btn btn-primary" id="interfaceLanguageSaveBtn">Сохранить</button>
+                    </div>
+                </section>
+                <section class="settings-tab-panel" id="settingsSidebarPanel" role="tabpanel" aria-labelledby="settingsSidebarTab" data-settings-panel="sidebar" hidden>
+                    <p class="sidebar-settings-help">Выберите вкладки, которые нужно показывать в боковом меню. Перетаскивайте вкладки внутри блоков, а сами блоки — за заголовок, чтобы настроить последовательность их отображения.</p>
+                    <div class="sidebar-settings-list" id="sidebarSettingsList"></div>
+                    <div class="sidebar-settings-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
+                        <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>

@@ -3378,6 +3378,65 @@ body.sidebar-collapsed .nav-item .nav-icon {
     width: 100%;
 }
 
+.settings-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 0 0 var(--space-5);
+    padding: 5px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-soft);
+}
+
+.settings-tab {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 42px;
+    padding: 9px 14px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 700;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.settings-tab:hover {
+    background: var(--surface-hover);
+    color: var(--accent-blue);
+}
+
+.settings-tab.active {
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-card);
+    color: var(--accent-blue);
+}
+
+.settings-tab:focus-visible {
+    outline: 3px solid var(--glow-blue);
+    outline-offset: 1px;
+}
+
+.settings-tab-panel {
+    min-height: 180px;
+}
+
+.settings-tab-panel .form-select {
+    max-width: 320px;
+}
+
+.settings-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--sidebar-border);
+}
+
 .sidebar-settings-help {
     color: var(--text-secondary);
     font-size: 14px;
@@ -3505,6 +3564,15 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 @media (max-width: 768px) {
+    .settings-tabs {
+        flex-direction: column;
+    }
+
+    .settings-tab {
+        flex: none;
+        justify-content: flex-start;
+    }
+
     .sidebar-settings-list {
         grid-template-columns: 1fr;
     }

@@ -103,7 +103,7 @@
         'maintenance': 'Обслуживание <small>Очистка / анализ</small>',
         'audit': 'Аудит <small>Действия пользователя</small>',
         'favorites': 'Избранные объекты <small>Сохранённые объекты подключения</small>',
-        'settings': 'Настройки <small>Настройки сайдбара</small>'
+        'settings': 'Настройки <small>Интерфейс и меню</small>'
     };
 
 
@@ -384,6 +384,7 @@
     // INIT
     // ============================
     document.addEventListener('DOMContentLoaded', function () {
+        initSettingsTabs();
         initThemeSettings();
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
@@ -414,6 +415,7 @@
         initFavoriteControls();
         initAuditControls();
         initSidebarSettings();
+        initLanguageSettings();
         initLogoutForm();
         initSessionCountdown();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
@@ -700,12 +702,45 @@
         });
     }
 
+    function initSettingsTabs() {
+        const tabs = Array.from(document.querySelectorAll('[data-settings-tab]'));
+        const panels = Array.from(document.querySelectorAll('[data-settings-panel]'));
+        if (!tabs.length || !panels.length) return;
+
+        const activateTab = tabName => {
+            tabs.forEach(tab => {
+                const active = tab.dataset.settingsTab === tabName;
+                tab.classList.toggle('active', active);
+                tab.setAttribute('aria-selected', String(active));
+                tab.tabIndex = active ? 0 : -1;
+            });
+            panels.forEach(panel => {
+                const active = panel.dataset.settingsPanel === tabName;
+                panel.classList.toggle('active', active);
+                panel.hidden = !active;
+            });
+        };
+
+        tabs.forEach((tab, index) => {
+            tab.addEventListener('click', () => activateTab(tab.dataset.settingsTab));
+            tab.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                let nextIndex = index;
+                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                if (event.key === 'Home') nextIndex = 0;
+                if (event.key === 'End') nextIndex = tabs.length - 1;
+                activateTab(tabs[nextIndex].dataset.settingsTab);
+                tabs[nextIndex].focus();
+            });
+        });
+    }
+
     function initSidebarSettings() {
         const settingsList = document.getElementById('sidebarSettingsList');
         if (!settingsList) return;
 
-        const languageSelect = document.getElementById('interfaceLanguage');
-        if (languageSelect) languageSelect.value = window.DBStatI18n?.language || 'ru';
         renderSidebarSettingsList();
 
         let draggedItem = null;
@@ -796,18 +831,8 @@
                 return;
             }
 
-            const selectedLanguage = languageSelect?.value || 'ru';
-            const languageChanged = selectedLanguage !== (window.DBStatI18n?.language || 'ru');
-            const languageRequest = languageChanged
-                ? connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
-                : Promise.resolve();
-
-            Promise.all([saveSidebarSettings(selectedPages, sectionOrder), languageRequest])
+            saveSidebarSettings(selectedPages, sectionOrder)
                 .then(() => {
-                    if (languageChanged) {
-                        window.location.reload();
-                        return;
-                    }
                     applySidebarPageOrder(currentDbUser.sidebar_visible_tabs);
                     applySidebarSectionOrder(currentDbUser.sidebar_section_order);
                     updateSidebarForConnection();
@@ -818,6 +843,24 @@
                     showToast('✅ Настройки сайдбара сохранены');
                 })
                 .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить настройки сайдбара'}`));
+        });
+    }
+
+    function initLanguageSettings() {
+        const languageSelect = document.getElementById('interfaceLanguage');
+        const saveButton = document.getElementById('interfaceLanguageSaveBtn');
+        if (!languageSelect || !saveButton) return;
+
+        languageSelect.value = window.DBStatI18n?.language || 'ru';
+        saveButton.addEventListener('click', function () {
+            const selectedLanguage = languageSelect.value || 'ru';
+            if (selectedLanguage === (window.DBStatI18n?.language || 'ru')) {
+                showToast('✅ Язык интерфейса сохранён');
+                return;
+            }
+            connectionRequest(languageSettingsApiUrl, {language: selectedLanguage})
+                .then(() => window.location.reload())
+                .catch(error => showToast(`❌ ${error.message || 'Не удалось сохранить язык интерфейса'}`));
         });
     }
 
