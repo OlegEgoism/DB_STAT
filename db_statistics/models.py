@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 ENCRYPTED_PASSWORD_PREFIX = "enc$"
@@ -280,6 +282,39 @@ class DBAudit(models.Model):
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
         ordering = ("-created",)
+
+
+class DBPaginationSettings(DateStamp):
+    """Доступный размер страницы для таблиц с пагинацией."""
+
+    MAX_RECORDS = 5
+
+    size = models.PositiveIntegerField(
+        **vn("Размер пагинации", "Количество записей на одной странице."),
+        default=10,
+        unique=True,
+        validators=(MinValueValidator(1), MaxValueValidator(1000)),
+    )
+
+    class Meta:
+        db_table = "db_pagination_settings"
+        verbose_name = "Настройки пагинации"
+        verbose_name_plural = "Настройки пагинации"
+        ordering = ("size",)
+
+    def clean(self):
+        super().clean()
+        if self.pk is None and type(self).objects.count() >= self.MAX_RECORDS:
+            raise ValidationError(
+                f"Можно создать не более {self.MAX_RECORDS} настроек пагинации."
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return str(self.size)
 
 
 class MaintenanceJob(models.Model):

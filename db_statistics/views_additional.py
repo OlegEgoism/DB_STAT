@@ -2,14 +2,16 @@ from datetime import timedelta
 
 import psycopg2
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Case, CharField, F, Q, Value, When
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone, translation
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser
 from db_statistics.view_helpers import (
     _audit_action_label,
     _audit_username,
@@ -27,6 +29,7 @@ from db_statistics.view_helpers import (
     _get_connection_for_request,
     _normalize_sidebar_sections,
     _normalize_sidebar_tabs,
+    _pagination_page_sizes,
     _read_json_body,
     _session_duration_seconds,
     _sidebar_settings_audit_info,
@@ -49,6 +52,12 @@ def home(request):
     db_user = _current_db_user(request)
     if not db_user:
         return redirect("login")
+    pagination_page_sizes = _pagination_page_sizes()
+    pagination_default_page_size = (
+        settings.PAGINATION_DEFAULT_PAGE_SIZE
+        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
+        else pagination_page_sizes[0]
+    )
     return render(
         request,
         "home.html",
@@ -56,6 +65,10 @@ def home(request):
             "db_user": db_user,
             "db_user_payload": _user_payload(db_user),
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
+            "pagination_config": {
+                "default": pagination_default_page_size,
+                "options": pagination_page_sizes,
+            },
             "session_expires_at_ms": request.session.get(
                 settings.SESSION_EXPIRES_AT_KEY, 0
             )
@@ -227,6 +240,64 @@ def sidebar_settings(request):
     )
 
 
+@require_http_methods(["GET", "POST", "DELETE"])
+def pagination_settings(request):
+    """Управляет вариантами размера страниц для администратора приложения."""
+    db_user = _current_db_user(request)
+    if not db_user or db_user.role != settings.ADMIN_ROLE:
+        return JsonResponse(
+            {"ok": False, "message": "Доступ разрешён только администратору"},
+            status=403,
+        )
+
+    if request.method == "GET":
+        return JsonResponse(
+            {
+                "ok": True,
+                "settings": list(
+                    DBPaginationSettings.objects.values("id", "size")
+                ),
+                "max_records": DBPaginationSettings.MAX_RECORDS,
+            }
+        )
+
+    payload = _read_json_body(request)
+    setting_id = payload.get("id")
+    if request.method == "DELETE":
+        pagination_setting = get_object_or_404(DBPaginationSettings, pk=setting_id)
+        if DBPaginationSettings.objects.count() <= 1:
+            return JsonResponse(
+                {"ok": False, "message": "Должен остаться хотя бы один размер страницы"},
+                status=400,
+            )
+        pagination_setting.delete()
+        return JsonResponse({"ok": True})
+
+    try:
+        size = int(payload.get("size"))
+    except (TypeError, ValueError):
+        return JsonResponse(
+            {"ok": False, "message": "Укажите корректный размер страницы"},
+            status=400,
+        )
+    pagination_setting = (
+        get_object_or_404(DBPaginationSettings, pk=setting_id)
+        if setting_id
+        else DBPaginationSettings()
+    )
+    pagination_setting.size = size
+    try:
+        pagination_setting.save()
+    except ValidationError as error:
+        return JsonResponse(
+            {"ok": False, "message": "; ".join(error.messages)}, status=400
+        )
+    return JsonResponse(
+        {"ok": True, "setting": {"id": pagination_setting.pk, "size": size}},
+        status=200 if setting_id else 201,
+    )
+
+
 @require_http_methods(["GET", "POST"])
 def favorites(request):
     """Возвращает избранное пользователя или изменяет состояние одного объекта"""
@@ -332,6 +403,8 @@ def audit_events(request):
 
     action_type = (request.GET.get("action_type") or "").strip()
     username = (request.GET.get("username") or "").strip()
+    created_from_value = (request.GET.get("created_from") or "").strip()
+    created_to_value = (request.GET.get("created_to") or "").strip()
     sort = (request.GET.get("sort") or "created").strip()
     direction = (request.GET.get("direction") or "desc").strip().lower()
     available_actions = [
@@ -342,6 +415,31 @@ def audit_events(request):
         return JsonResponse(
             {"ok": False, "message": "Некорректные параметры сортировки"}, status=400
         )
+
+    date_bounds = {}
+    for parameter, value in (
+        ("created_from", created_from_value),
+        ("created_to", created_to_value),
+    ):
+        if not value:
+            continue
+        parsed_value = parse_datetime(value)
+        if parsed_value is None:
+            return JsonResponse(
+                {"ok": False, "message": "Некорректная дата и время"}, status=400
+            )
+        if timezone.is_naive(parsed_value):
+            parsed_value = timezone.make_aware(
+                parsed_value, timezone.get_current_timezone()
+            )
+        date_bounds[parameter] = parsed_value
+
+    if date_bounds.get("created_from") and date_bounds.get("created_to"):
+        if date_bounds["created_from"] > date_bounds["created_to"]:
+            return JsonResponse(
+                {"ok": False, "message": "Дата «с» не может быть позже даты «по»"},
+                status=400,
+            )
 
     audit_queryset = DBAudit.objects.all()
     available_users = list(
@@ -358,8 +456,24 @@ def audit_events(request):
                 {"ok": False, "message": "Неизвестный тип действия"}, status=400
             )
         audit_queryset = audit_queryset.filter(action_type=action_type)
+    if date_bounds.get("created_from"):
+        audit_queryset = audit_queryset.filter(
+            created__gte=date_bounds["created_from"]
+        )
+    if date_bounds.get("created_to"):
+        audit_queryset = audit_queryset.filter(created__lte=date_bounds["created_to"])
 
-    page_size = 100
+    try:
+        requested_page_size = int(request.GET.get("page_size") or settings.PAGINATION_DEFAULT_PAGE_SIZE)
+    except (TypeError, ValueError):
+        requested_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
+    pagination_page_sizes = _pagination_page_sizes()
+    default_page_size = (
+        settings.PAGINATION_DEFAULT_PAGE_SIZE
+        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
+        else pagination_page_sizes[0]
+    )
+    page_size = requested_page_size if requested_page_size in pagination_page_sizes else default_page_size
     page = max(int(request.GET.get("page") or 1), 1)
     offset = (page - 1) * page_size
     order_by = sort
@@ -385,7 +499,7 @@ def audit_events(request):
             "action_type": audit.action_type,
             "action_label": _audit_action_label(audit.action_type),
             "info": audit.info,
-            "created": timezone.localtime(audit.created).strftime("%Y-%m-%d %H:%M:%S"),
+            "created": timezone.localtime(audit.created).strftime("%d.%m.%Y %H:%M:%S"),
         }
         for audit in audit_queryset[offset : offset + page_size]
     ]

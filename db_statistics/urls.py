@@ -15,6 +15,11 @@ urlpatterns = [
         views_additional.language_settings,
         name="language_settings",
     ),
+    path(
+        "settings/pagination/",
+        views_additional.pagination_settings,
+        name="pagination_settings",
+    ),
     path("favorites/", views_additional.favorites, name="favorites"),
     path("connections/", views_additional.connections, name="connections"),
     path("connections/test/", views_additional.test_connection, name="test_connection"),

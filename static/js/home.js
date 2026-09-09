@@ -1,3 +1,9 @@
+    const paginationConfigElement = document.getElementById('paginationConfig');
+    const paginationConfig = paginationConfigElement ? JSON.parse(paginationConfigElement.textContent) : {};
+    const paginationPageSizeOptions = (paginationConfig.options || []).map(Number).filter(size => Number.isInteger(size) && size > 0).slice(0, 5);
+    if (!paginationPageSizeOptions.length) paginationPageSizeOptions.push(10, 20, 50);
+    const defaultPaginationPageSize = paginationPageSizeOptions.includes(Number(paginationConfig.default)) ? Number(paginationConfig.default) : paginationPageSizeOptions[0];
+
 // ============================
     // STATE
     // ============================
@@ -9,14 +15,14 @@
     let currentSegments = [];
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
-    let schemaSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let tableSizesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let schemaSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let tableSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let tableSizesRequestId = 0;
-    let viewsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
+    let viewsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
     let viewsRequestId = 0;
-    let functionsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
+    let functionsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
     let functionsRequestId = 0;
-    let tempTablesState = {page: 1, pageSize: 100, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    let tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
@@ -35,17 +41,17 @@
     let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
     let idleTransactionsRequestId = 0;
     let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
-    let maintenanceStatsState = {page: 1, pageSize: 100, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
+    let maintenanceStatsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     const maintenanceJobs = new Map();
-    let usersState = {page: 1, pageSize: 100, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
+    let usersState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
-    let groupsState = {sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
+    let groupsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
-    let auditState = {page: 1, pageSize: 100, totalCount: 0, sort: 'created', direction: 'desc'};
+    let auditState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'created', direction: 'desc'};
     const activePageStorageKey = 'gp_active_page';
     const activeConnectionStorageKey = 'gp_active_connection';
     const sidebarCollapsedStorageKey = 'gp_sidebar_collapsed';
@@ -78,9 +84,11 @@
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
+    const paginationSettingsApiUrl = '/settings/pagination/';
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
+    let favoritesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0};
     let favoritesSortState = {column: 'object', direction: 'asc'};
 
     const pageTitles = {
@@ -258,6 +266,7 @@
     }
 
     function loadFavorites(connectionId = activeConnectionId) {
+        favoritesState.page = 1;
         if (!connectionId) {
             favoriteItems = [];
             favoriteKeys = new Set();
@@ -278,7 +287,16 @@
     function renderFavoritesPage() {
         const tbody = document.getElementById('favoritesObjectsTableBody');
         const count = document.getElementById('favoritesObjectsCount');
+        favoritesState.totalCount = favoriteItems.length;
+        const totalPages = Math.max(Math.ceil(favoritesState.totalCount / favoritesState.pageSize), 1);
+        favoritesState.page = Math.min(favoritesState.page, totalPages);
         if (count) count.textContent = activeConnectionId ? `${favoriteItems.length} объектов` : 'Нет данных';
+        const paginationInfo = document.getElementById('favoritesPaginationInfo');
+        if (paginationInfo) paginationInfo.textContent = `Страница ${favoritesState.page} из ${totalPages}`;
+        const previousButton = document.getElementById('favoritesPrevPageBtn');
+        const nextButton = document.getElementById('favoritesNextPageBtn');
+        if (previousButton) previousButton.disabled = favoritesState.page <= 1;
+        if (nextButton) nextButton.disabled = favoritesState.page >= totalPages;
         if (!tbody) return;
         if (!activeConnectionId) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Выберите подключение для просмотра избранных объектов</td></tr>';
@@ -298,7 +316,8 @@
             return favoriteId(first.object_type, first.object_key).localeCompare(favoriteId(second.object_type, second.object_key), 'ru', {numeric: true, sensitivity: 'base'});
         });
         updateFavoritesSortIndicators();
-        tbody.innerHTML = sortedItems.map(item => {
+        const offset = (favoritesState.page - 1) * favoritesState.pageSize;
+        tbody.innerHTML = sortedItems.slice(offset, offset + favoritesState.pageSize).map(item => {
             const keyParts = String(item.object_key || '').split('\u001f');
             const label = item.object_type === 'function'
                 ? `${keyParts[0] || ''}.${keyParts[1] || ''}(${keyParts[2] || ''})`
@@ -345,6 +364,18 @@
     }
 
     function initFavoriteControls() {
+        document.getElementById('favoritesPrevPageBtn')?.addEventListener('click', () => {
+            if (favoritesState.page > 1) {
+                favoritesState.page -= 1;
+                renderFavoritesPage();
+            }
+        });
+        document.getElementById('favoritesNextPageBtn')?.addEventListener('click', () => {
+            if (favoritesState.page * favoritesState.pageSize < favoritesState.totalCount) {
+                favoritesState.page += 1;
+                renderFavoritesPage();
+            }
+        });
         document.querySelectorAll('[data-favorites-sort]').forEach(button => {
             button.addEventListener('click', function () {
                 const column = this.dataset.favoritesSort;
@@ -386,6 +417,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         initSettingsTabs();
         initThemeSettings();
+        initPaginationPageSizeControls();
+        initPaginationSettingsEditor();
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
@@ -735,6 +768,77 @@
                 tabs[nextIndex].focus();
             });
         });
+        const requestedTab = sessionStorage.getItem('db_stat_settings_tab');
+        if (requestedTab && tabs.some(tab => tab.dataset.settingsTab === requestedTab)) {
+            activateTab(requestedTab);
+            sessionStorage.removeItem('db_stat_settings_tab');
+        }
+    }
+
+    function initPaginationSettingsEditor() {
+        const form = document.getElementById('paginationSettingsForm');
+        const list = document.getElementById('paginationSettingsList');
+        if (!form || !list) return;
+        const idInput = document.getElementById('paginationSettingId');
+        const sizeInput = document.getElementById('paginationSettingSize');
+        const cancelButton = document.getElementById('paginationSettingCancelBtn');
+        const showValidationError = message => {
+            document.getElementById('paginationValidationModalMessage').textContent = translateInterfaceText(message);
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('paginationValidationModal')).show();
+        };
+        const reloadPaginationSettings = () => {
+            sessionStorage.setItem('db_stat_settings_tab', 'pagination');
+            window.location.reload();
+        };
+        const resetForm = () => {
+            form.reset();
+            idInput.value = '';
+            cancelButton.hidden = true;
+        };
+        const request = (method, payload) => fetch(paginationSettingsApiUrl, {
+            method,
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: payload ? JSON.stringify(payload) : undefined
+        }).then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) throw new Error(data.message || 'Ошибка запроса');
+            return data;
+        });
+        const loadSettings = () => request('GET').then(data => {
+            list.innerHTML = (data.settings || []).map(item => `
+                <div class="pagination-settings-item">
+                    <strong>${escapeHtml(item.size)}</strong>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-pagination-edit="${item.id}" data-pagination-size="${item.size}"><i class="fas fa-edit"></i> Редактировать</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-pagination-delete="${item.id}"><i class="fas fa-trash"></i> Удалить</button>
+                    </div>
+                </div>`).join('');
+            if ((data.settings || []).length >= data.max_records) sizeInput.disabled = !idInput.value;
+            window.setTimeout(translateRenderedInterface, 0);
+        }).catch(error => { list.innerHTML = `<div class="text-danger">${escapeHtml(error.message)}</div>`; });
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            request('POST', {id: idInput.value || null, size: sizeInput.value})
+                .then(reloadPaginationSettings)
+                .catch(error => showValidationError(error.message));
+        });
+        cancelButton.addEventListener('click', () => { resetForm(); loadSettings(); });
+        list.addEventListener('click', event => {
+            const editButton = event.target.closest('[data-pagination-edit]');
+            const deleteButton = event.target.closest('[data-pagination-delete]');
+            if (editButton) {
+                idInput.value = editButton.dataset.paginationEdit;
+                sizeInput.value = editButton.dataset.paginationSize;
+                sizeInput.disabled = false;
+                cancelButton.hidden = false;
+                sizeInput.focus();
+            } else if (deleteButton && window.confirm(translateInterfaceText('Удалить настройку пагинации?'))) {
+                request('DELETE', {id: deleteButton.dataset.paginationDelete})
+                    .then(reloadPaginationSettings)
+                    .catch(error => showValidationError(error.message));
+            }
+        });
+        loadSettings();
     }
 
     function initSidebarSettings() {
@@ -2156,7 +2260,7 @@
         const count = document.getElementById('usersCount');
         usersState.totalCount = Number(data.total_count) || 0;
         usersState.page = Number(data.page) || 1;
-        usersState.pageSize = Number(data.page_size) || 100;
+        usersState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateUsersSortIndicators();
         updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
         const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
@@ -2176,6 +2280,7 @@
         connectionRequest(usersListApiUrl, {
             id: conn.id,
             page: usersState.page,
+            page_size: usersState.pageSize,
             search: usersState.search,
             sort: usersState.sort,
             direction: usersState.direction,
@@ -2241,6 +2346,8 @@
         renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Загрузка групп...');
         connectionRequest(groupsListApiUrl, {
             id: conn.id,
+            page: groupsState.page,
+            page_size: groupsState.pageSize,
             search: groupsState.search,
             sort: groupsState.sort,
             direction: groupsState.direction,
@@ -2249,6 +2356,13 @@
             .then(data => {
                 if (requestId !== groupsRequestId) return;
                 updateGroupsSortIndicators();
+                groupsState.page = Number(data.page) || 1;
+                groupsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
+                groupsState.totalCount = Number(data.total_count) || 0;
+                const totalPages = Math.max(Math.ceil(groupsState.totalCount / groupsState.pageSize), 1);
+                document.getElementById('groupsPaginationInfo').textContent = `Страница ${groupsState.page} из ${totalPages}`;
+                document.getElementById('groupsPrevPageBtn').disabled = groupsState.page <= 1;
+                document.getElementById('groupsNextPageBtn').disabled = groupsState.page >= totalPages;
                 updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
                 renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
             })
@@ -2265,6 +2379,7 @@
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
                 groupsState.search = this.value.trim();
+                groupsState.page = 1;
                 refreshGroupsForConnection();
             }, 300);
         });
@@ -2277,10 +2392,13 @@
                     groupsState.sort = sort;
                     groupsState.direction = ['connection_limit', 'valid_until', 'member_count'].includes(sort) ? 'desc' : 'asc';
                 }
+                groupsState.page = 1;
                 refreshGroupsForConnection();
             });
         });
-        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; refreshGroupsForConnection(); });
+        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; groupsState.page = 1; refreshGroupsForConnection(); });
+        document.getElementById('groupsPrevPageBtn')?.addEventListener('click', () => { if (groupsState.page > 1) { groupsState.page -= 1; refreshGroupsForConnection(); } });
+        document.getElementById('groupsNextPageBtn')?.addEventListener('click', () => { if (groupsState.page * groupsState.pageSize < groupsState.totalCount) { groupsState.page += 1; refreshGroupsForConnection(); } });
         updateGroupsSortIndicators();
     }
 
@@ -2403,7 +2521,7 @@
         const tables = data.tables || [];
         maintenanceStatsState.totalCount = Number(data.total_count) || 0;
         maintenanceStatsState.page = Number(data.page) || 1;
-        maintenanceStatsState.pageSize = Number(data.page_size) || 100;
+        maintenanceStatsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
         if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
@@ -2621,6 +2739,7 @@
         connectionRequest(maintenanceStatsApiUrl, {
             id: conn.id,
             page: maintenanceStatsState.page,
+            page_size: maintenanceStatsState.pageSize,
             search: maintenanceStatsState.search,
             sort: maintenanceStatsState.sort,
             direction: maintenanceStatsState.direction
@@ -2765,7 +2884,7 @@
         if (!tbody) return;
         schemaSizesState.totalCount = Number(data.total_count) || 0;
         schemaSizesState.page = Number(data.page) || 1;
-        schemaSizesState.pageSize = Number(data.page_size) || 100;
+        schemaSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateSchemaSortIndicators();
         updateSchemaDistributionChart(data.schema_distribution || data.schemas || []);
         const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
@@ -2839,6 +2958,7 @@
         connectionRequest(databaseSchemasApiUrl, {
             id: conn.id,
             page: schemaSizesState.page,
+            page_size: schemaSizesState.pageSize,
             search: schemaSizesState.search,
             sort: schemaSizesState.sort,
             direction: schemaSizesState.direction,
@@ -2951,7 +3071,7 @@
         if (!tbody) return;
         tableSizesState.totalCount = Number(data.total_count) || 0;
         tableSizesState.page = Number(data.page) || 1;
-        tableSizesState.pageSize = Number(data.page_size) || 100;
+        tableSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateTableSortIndicators();
         updateTableDistributionChart(data.table_distribution || data.tables || []);
         const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
@@ -2987,6 +3107,7 @@
         connectionRequest(tableSizesApiUrl, {
             id: conn.id,
             page: tableSizesState.page,
+            page_size: tableSizesState.pageSize,
             search: tableSizesState.search,
             sort: tableSizesState.sort,
             direction: tableSizesState.direction,
@@ -3101,7 +3222,7 @@
         if (!tbody) return;
         viewsState.totalCount = Number(data.total_count) || 0;
         viewsState.page = Number(data.page) || 1;
-        viewsState.pageSize = Number(data.page_size) || 100;
+        viewsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateViewSortIndicators();
         updateViewsSummaryChart(data.summary || null, data.views || []);
         const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
@@ -3137,6 +3258,7 @@
         connectionRequest(viewsListApiUrl, {
             id: conn.id,
             page: viewsState.page,
+            page_size: viewsState.pageSize,
             search: viewsState.search,
             view_type: viewsState.viewType,
             sort: viewsState.sort,
@@ -3231,7 +3353,7 @@
         if (!tbody) return;
         functionsState.totalCount = Number(data.total_count) || 0;
         functionsState.page = Number(data.page) || 1;
-        functionsState.pageSize = Number(data.page_size) || 100;
+        functionsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
         document.getElementById('functionsCount').textContent = `${data.functions?.length || 0} из ${functionsState.totalCount} функций`;
         document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
@@ -3257,7 +3379,7 @@
             return;
         }
         renderFunctionsWarning('Загрузка функций...');
-        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
+        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, page_size: functionsState.pageSize, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
             .then(data => { if (requestId === functionsRequestId) renderFunctions(data); })
             .catch(error => { if (requestId === functionsRequestId) renderFunctionsWarning(error.message || 'Не удалось получить функции'); });
     }
@@ -3693,7 +3815,7 @@
         if (!tbody) return;
         tempTablesState.totalCount = Number(data.total_count) || 0;
         tempTablesState.page = Number(data.page) || 1;
-        tempTablesState.pageSize = Number(data.page_size) || 100;
+        tempTablesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
         updateTempTableSortIndicators();
         updateTempTableDistributionChart(data.temp_table_distribution || data.temp_tables || []);
         const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
@@ -3725,6 +3847,7 @@
         connectionRequest(tempTablesApiUrl, {
             id: conn.id,
             page: tempTablesState.page,
+            page_size: tempTablesState.pageSize,
             search: tempTablesState.search,
             sort: tempTablesState.sort,
             direction: tempTablesState.direction
@@ -3788,6 +3911,72 @@
         if (info) info.textContent = `Страница ${page} из ${totalPages}`;
         if (prev) prev.disabled = page <= 1;
         if (next) next.disabled = page >= totalPages;
+    }
+
+    function initPaginationPageSizeControls() {
+        const configurations = [
+            ['schemaPaginationInfo', 'schemas', schemaSizesState, refreshSchemaSizesForConnection],
+            ['tablePaginationInfo', 'tables', tableSizesState, refreshTableSizesForConnection],
+            ['viewPaginationInfo', 'views', viewsState, refreshViewsForConnection],
+            ['functionPaginationInfo', 'functions', functionsState, refreshFunctionsForConnection],
+            ['tempTablePaginationInfo', 'temp-tables', tempTablesState, refreshTempTablesForConnection],
+            ['usersPaginationInfo', 'users', usersState, refreshUsersForConnection],
+            ['groupsPaginationInfo', 'groups', groupsState, refreshGroupsForConnection],
+            ['favoritesPaginationInfo', 'favorites', favoritesState, renderFavoritesPage],
+            ['maintenancePageInfo', 'maintenance', maintenanceStatsState, refreshMaintenanceStatsForConnection],
+            ['auditPaginationInfo', 'audit', auditState, refreshAuditEvents]
+        ];
+        const labelText = window.DB_STAT_LANGUAGE === 'en' ? 'Rows:' : 'Записей:';
+        configurations.forEach(([infoId, storageSuffix, state, refresh]) => {
+            const info = document.getElementById(infoId);
+            if (!info) return;
+            const storageKey = `db_stat_page_size_${storageSuffix}`;
+            const storedPageSize = Number(localStorage.getItem(storageKey));
+            if (paginationPageSizeOptions.includes(storedPageSize)) state.pageSize = storedPageSize;
+            const label = document.createElement('label');
+            label.className = 'pagination-page-size';
+            label.innerHTML = `<span>${labelText}</span><select aria-label="${labelText}">${paginationPageSizeOptions.map(size => `<option value="${size}">${size}</option>`).join('')}</select>`;
+            const select = label.querySelector('select');
+            select.value = String(state.pageSize);
+            select.addEventListener('change', () => {
+                state.pageSize = Number(select.value);
+                state.page = 1;
+                localStorage.setItem(storageKey, select.value);
+                refresh();
+            });
+            info.parentElement?.insertBefore(label, info);
+
+            const bottomPagination = info.closest('.table-pagination');
+            const table = bottomPagination?.parentElement?.querySelector('.table-responsive');
+            if (!bottomPagination || !table) return;
+            const topPagination = bottomPagination.cloneNode(true);
+            topPagination.classList.add('table-pagination--top');
+            topPagination.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+            const bottomButtons = bottomPagination.querySelectorAll('.btn-conn');
+            const topButtons = topPagination.querySelectorAll('.btn-conn');
+            const topInfo = Array.from(topPagination.children).find(element => element.tagName === 'SPAN');
+            const topSelect = topPagination.querySelector('.pagination-page-size select');
+            const syncTopPagination = () => {
+                if (topButtons[0]) topButtons[0].disabled = bottomButtons[0]?.disabled ?? true;
+                if (topButtons[1]) topButtons[1].disabled = bottomButtons[1]?.disabled ?? true;
+                if (topInfo) topInfo.textContent = info.textContent;
+                if (topSelect) topSelect.value = select.value;
+            };
+            topButtons[0]?.addEventListener('click', () => bottomButtons[0]?.click());
+            topButtons[1]?.addEventListener('click', () => bottomButtons[1]?.click());
+            topSelect?.addEventListener('change', () => {
+                select.value = topSelect.value;
+                select.dispatchEvent(new Event('change'));
+            });
+            new MutationObserver(syncTopPagination).observe(bottomPagination, {
+                attributes: true,
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+            syncTopPagination();
+            table.parentElement.insertBefore(topPagination, table);
+        });
     }
 
     function renderAuditWarning(message) {
@@ -3908,9 +4097,13 @@
         const requestId = ++auditRequestId;
         const actionType = document.getElementById('auditActionFilter')?.value || '';
         const username = document.getElementById('auditUserFilter')?.value || '';
-        const params = new URLSearchParams({page: String(auditState.page), sort: auditState.sort, direction: auditState.direction});
+        const createdFrom = document.getElementById('auditDateFrom')?.value || '';
+        const createdTo = document.getElementById('auditDateTo')?.value || '';
+        const params = new URLSearchParams({page: String(auditState.page), page_size: String(auditState.pageSize), sort: auditState.sort, direction: auditState.direction});
         if (actionType) params.set('action_type', actionType);
         if (username) params.set('username', username);
+        if (createdFrom) params.set('created_from', createdFrom);
+        if (createdTo) params.set('created_to', createdTo);
         const url = `${auditEventsApiUrl}?${params.toString()}`;
         renderAuditWarning('Загрузка аудита...');
         fetch(url)
@@ -3938,6 +4131,23 @@
         document.getElementById('auditUserFilter')?.addEventListener('change', function () {
             auditState.page = 1;
             refreshAuditEvents();
+        });
+        ['auditDateFrom', 'auditDateTo'].forEach(inputId => {
+            const input = document.getElementById(inputId);
+            const updateDatePlaceholder = () => input?.parentElement?.classList.toggle('has-value', Boolean(input.value));
+            input?.addEventListener('input', updateDatePlaceholder);
+            input?.addEventListener('change', function () {
+                updateDatePlaceholder();
+                const dateFrom = document.getElementById('auditDateFrom');
+                const dateTo = document.getElementById('auditDateTo');
+                if (dateFrom && dateTo) {
+                    dateFrom.max = dateTo.value;
+                    dateTo.min = dateFrom.value;
+                }
+                auditState.page = 1;
+                refreshAuditEvents();
+            });
+            updateDatePlaceholder();
         });
         document.querySelectorAll('[data-audit-sort]').forEach(button => {
             button.addEventListener('click', function () {

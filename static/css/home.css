@@ -2343,6 +2343,68 @@ body {
     justify-content: flex-start;
 }
 
+.audit-table-toolbar .audit-filter-box {
+    height: 40px;
+}
+
+.audit-date-range {
+    width: min(280px, 100%);
+    flex-wrap: nowrap;
+}
+
+.audit-date-range label {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.audit-date-input {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.audit-date-input::after {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    color: var(--text-primary);
+    content: attr(data-placeholder);
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    transform: translateY(-50%);
+}
+
+.audit-date-input.has-value::after {
+    content: none;
+}
+
+.audit-date-input input {
+    min-width: 0;
+}
+
+.audit-date-input:not(.has-value) input {
+    color: transparent;
+    caret-color: transparent;
+}
+
+.audit-date-input:not(.has-value) input::-webkit-datetime-edit {
+    opacity: 0;
+}
+
+.audit-date-input:not(.has-value) input::selection {
+    color: transparent;
+    background: transparent;
+}
+
+.audit-date-input input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: var(--date-picker-filter, none);
+}
+
 .toolbar-filter {
     display: flex;
     align-items: center;
@@ -2613,6 +2675,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: var(--space-3);
     padding: 14px 16px;
     border-top: 1px solid rgba(233, 236, 239, 0.7);
@@ -2629,6 +2692,31 @@ body {
 .table-pagination .btn-conn:disabled {
     cursor: not-allowed;
     opacity: 0.55;
+}
+
+.table-pagination--top {
+    border-top: 0;
+    border-bottom: 1px solid rgba(233, 236, 239, 0.7);
+}
+
+.pagination-page-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.pagination-page-size select {
+    height: 32px;
+    padding: 0 28px 0 10px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    outline: none;
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
 }
 
 .current-db-user {
@@ -3427,6 +3515,39 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .settings-tab-panel .form-select {
     max-width: 320px;
+}
+
+.pagination-settings-form {
+    max-width: 520px;
+    margin-bottom: var(--space-4);
+}
+
+.pagination-settings-form__controls,
+.pagination-settings-item,
+.pagination-settings-item > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+#paginationSettingSaveBtn {
+    flex: 0 0 auto;
+    min-width: 132px;
+    white-space: nowrap;
+}
+
+.pagination-settings-list {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 520px;
+}
+
+.pagination-settings-item {
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
 }
 
 .settings-panel-footer {

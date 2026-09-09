@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.urls import reverse
 from django.utils.html import format_html_join
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser, DBUserSidebarSettings, MaintenanceJob
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser, DBUserSidebarSettings, MaintenanceJob
 
 SIDEBAR_TAB_LABELS = settings.SIDEBAR_TAB_LABELS
 
@@ -175,6 +175,35 @@ class DBAuditAdmin(admin.ModelAdmin):
     @admin.display(description="Информация")
     def short_info(self, obj):
         return obj.info[:120] + ("…" if len(obj.info) > 120 else "")
+
+
+@admin.register(DBPaginationSettings)
+class DBPaginationSettingsAdmin(BaseAdmin):
+    """Допустимые размеры страниц приложения."""
+
+    list_display = ("size", "created", "updated")
+    fields = ("size", "created", "updated")
+    ordering = ("size",)
+
+    @staticmethod
+    def _is_app_admin(request):
+        return getattr(request.user, "role", None) == settings.ADMIN_ROLE
+
+    def has_add_permission(self, request):
+        return (
+            self._is_app_admin(request)
+            and DBPaginationSettings.objects.count() < DBPaginationSettings.MAX_RECORDS
+            and super().has_add_permission(request)
+        )
+
+    def has_view_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_view_permission(request, obj)
+
+    def has_change_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self._is_app_admin(request) and super().has_delete_permission(request, obj)
 
 
 @admin.register(MaintenanceJob)
