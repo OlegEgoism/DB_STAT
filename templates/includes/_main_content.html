@@ -265,9 +265,16 @@
                         <h5>Настройки пагинации</h5>
                         <p>Создавайте и редактируйте доступные размеры страниц. Допускается не более пяти вариантов.</p>
                     </div>
-                    <a class="btn btn-primary" href="{% url 'admin:db_statistics_dbpaginationsettings_changelist' %}">
-                        <i class="fas fa-external-link-alt"></i> Открыть настройки пагинации
-                    </a>
+                    <form class="pagination-settings-form" id="paginationSettingsForm">
+                        <input type="hidden" id="paginationSettingId">
+                        <label class="form-label" for="paginationSettingSize">Количество записей на странице</label>
+                        <div class="pagination-settings-form__controls">
+                            <input class="form-control" id="paginationSettingSize" type="number" min="1" required>
+                            <button class="btn btn-primary" type="submit" id="paginationSettingSaveBtn"><i class="fas fa-save"></i> Сохранить</button>
+                            <button class="btn btn-outline-secondary" type="button" id="paginationSettingCancelBtn" hidden>Отмена</button>
+                        </div>
+                    </form>
+                    <div class="pagination-settings-list" id="paginationSettingsList"></div>
                 </section>
                 {% endif %}
             </div>

@@ -84,6 +84,7 @@
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
+    const paginationSettingsApiUrl = '/settings/pagination/';
     const favoritesApiUrl = '/favorites/';
     let favoriteKeys = new Set();
     let favoriteItems = [];
@@ -417,6 +418,7 @@
         initSettingsTabs();
         initThemeSettings();
         initPaginationPageSizeControls();
+        initPaginationSettingsEditor();
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
@@ -766,6 +768,64 @@
                 tabs[nextIndex].focus();
             });
         });
+    }
+
+    function initPaginationSettingsEditor() {
+        const form = document.getElementById('paginationSettingsForm');
+        const list = document.getElementById('paginationSettingsList');
+        if (!form || !list) return;
+        const idInput = document.getElementById('paginationSettingId');
+        const sizeInput = document.getElementById('paginationSettingSize');
+        const cancelButton = document.getElementById('paginationSettingCancelBtn');
+        const resetForm = () => {
+            form.reset();
+            idInput.value = '';
+            cancelButton.hidden = true;
+        };
+        const request = (method, payload) => fetch(paginationSettingsApiUrl, {
+            method,
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: payload ? JSON.stringify(payload) : undefined
+        }).then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.ok === false) throw new Error(data.message || 'Ошибка запроса');
+            return data;
+        });
+        const loadSettings = () => request('GET').then(data => {
+            list.innerHTML = (data.settings || []).map(item => `
+                <div class="pagination-settings-item">
+                    <strong>${escapeHtml(item.size)}</strong>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-pagination-edit="${item.id}" data-pagination-size="${item.size}"><i class="fas fa-edit"></i> Редактировать</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-pagination-delete="${item.id}"><i class="fas fa-trash"></i> Удалить</button>
+                    </div>
+                </div>`).join('');
+            if ((data.settings || []).length >= data.max_records) sizeInput.disabled = !idInput.value;
+            window.setTimeout(translateRenderedInterface, 0);
+        }).catch(error => { list.innerHTML = `<div class="text-danger">${escapeHtml(error.message)}</div>`; });
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            request('POST', {id: idInput.value || null, size: sizeInput.value})
+                .then(() => window.location.reload())
+                .catch(error => window.alert(translateInterfaceText(error.message)));
+        });
+        cancelButton.addEventListener('click', () => { resetForm(); loadSettings(); });
+        list.addEventListener('click', event => {
+            const editButton = event.target.closest('[data-pagination-edit]');
+            const deleteButton = event.target.closest('[data-pagination-delete]');
+            if (editButton) {
+                idInput.value = editButton.dataset.paginationEdit;
+                sizeInput.value = editButton.dataset.paginationSize;
+                sizeInput.disabled = false;
+                cancelButton.hidden = false;
+                sizeInput.focus();
+            } else if (deleteButton && window.confirm(translateInterfaceText('Удалить настройку пагинации?'))) {
+                request('DELETE', {id: deleteButton.dataset.paginationDelete})
+                    .then(() => window.location.reload())
+                    .catch(error => window.alert(translateInterfaceText(error.message)));
+            }
+        });
+        loadSettings();
     }
 
     function initSidebarSettings() {

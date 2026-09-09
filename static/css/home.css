@@ -3512,6 +3512,33 @@ body.sidebar-collapsed .nav-item .nav-icon {
     max-width: 320px;
 }
 
+.pagination-settings-form {
+    max-width: 520px;
+    margin-bottom: var(--space-4);
+}
+
+.pagination-settings-form__controls,
+.pagination-settings-item,
+.pagination-settings-item > div {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.pagination-settings-list {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 520px;
+}
+
+.pagination-settings-item {
+    justify-content: space-between;
+    padding: 10px 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+}
+
 .settings-panel-footer {
     display: flex;
     justify-content: flex-end;

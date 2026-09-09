@@ -2,15 +2,16 @@ from datetime import timedelta
 
 import psycopg2
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db.models import Case, CharField, F, Q, Value, When
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone, translation
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBUser
+from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser
 from db_statistics.view_helpers import (
     _audit_action_label,
     _audit_username,
@@ -236,6 +237,64 @@ def sidebar_settings(request):
             "visible_tabs": visible_tabs,
             "section_order": section_order,
         }
+    )
+
+
+@require_http_methods(["GET", "POST", "DELETE"])
+def pagination_settings(request):
+    """Управляет вариантами размера страниц для администратора приложения."""
+    db_user = _current_db_user(request)
+    if not db_user or db_user.role != settings.ADMIN_ROLE:
+        return JsonResponse(
+            {"ok": False, "message": "Доступ разрешён только администратору"},
+            status=403,
+        )
+
+    if request.method == "GET":
+        return JsonResponse(
+            {
+                "ok": True,
+                "settings": list(
+                    DBPaginationSettings.objects.values("id", "size")
+                ),
+                "max_records": DBPaginationSettings.MAX_RECORDS,
+            }
+        )
+
+    payload = _read_json_body(request)
+    setting_id = payload.get("id")
+    if request.method == "DELETE":
+        pagination_setting = get_object_or_404(DBPaginationSettings, pk=setting_id)
+        if DBPaginationSettings.objects.count() <= 1:
+            return JsonResponse(
+                {"ok": False, "message": "Должен остаться хотя бы один размер страницы"},
+                status=400,
+            )
+        pagination_setting.delete()
+        return JsonResponse({"ok": True})
+
+    try:
+        size = int(payload.get("size"))
+    except (TypeError, ValueError):
+        return JsonResponse(
+            {"ok": False, "message": "Укажите корректный размер страницы"},
+            status=400,
+        )
+    pagination_setting = (
+        get_object_or_404(DBPaginationSettings, pk=setting_id)
+        if setting_id
+        else DBPaginationSettings()
+    )
+    pagination_setting.size = size
+    try:
+        pagination_setting.save()
+    except ValidationError as error:
+        return JsonResponse(
+            {"ok": False, "message": "; ".join(error.messages)}, status=400
+        )
+    return JsonResponse(
+        {"ok": True, "setting": {"id": pagination_setting.pk, "size": size}},
+        status=200 if setting_id else 201,
     )
 
 
