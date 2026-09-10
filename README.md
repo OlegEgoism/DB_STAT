@@ -58,6 +58,10 @@ LANGUAGE_CODE=ru
 
 DB_CONNECTION_ENCRYPTION_KEY=
 
+INITIAL_ADMIN_LOGIN=admin
+INITIAL_ADMIN_EMAIL=admin@example.com
+INITIAL_ADMIN_PASSWORD=
+
 # Хост, на который перенаправляются localhost и ::1 в подключениях приложения
 LOCALHOST_DB_HOST=127.0.0.1
 
@@ -102,7 +106,7 @@ python manage.py migrate
 Admin (`/admin/`). Отдельного суперпользователя Django создавать не нужно.
 
 ```bash
-python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create_superuser('admin', 'admin@example.com', 'admin', role='Администратор')"
+python manage.py ensure_initial_admin
 ```
 
 `create_superuser` задаёт `is_staff=True` и `is_superuser=True` (доступ к
@@ -180,7 +184,8 @@ PostgreSQL на хосте должен принимать подключени�
 Единый пользователь (вход в приложение и в Django Admin — /admin/):
 - логин: admin
 - почта: admin@example.com
-- пароль: admin
+- пароль задаётся через `INITIAL_ADMIN_PASSWORD`; если переменная не задана,
+  безопасный случайный пароль однократно выводится в журнал контейнера
 
 Если после сборки есть ошибка подключения к `172.17.0.1` или `192.168.0.1`, значит запущен старый Docker-образ. 
 Пересоберите образ и запустите контейнер заново.
@@ -195,5 +200,3 @@ entrypoint попал в образ с Windows-переносами строк �
 ## Скачать образ из hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat
-
-

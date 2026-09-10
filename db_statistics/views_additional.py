@@ -31,6 +31,7 @@ from db_statistics.view_helpers import (
     _normalize_sidebar_tabs,
     _pagination_page_sizes,
     _read_json_body,
+    _safe_db_error_message,
     _session_duration_seconds,
     _sidebar_settings_audit_info,
     _sidebar_settings_for_user,
@@ -536,6 +537,15 @@ def connections(request):
         return JsonResponse(
             {"ok": False, "message": "Заполните все обязательные поля"}, status=400
         )
+    try:
+        port = int(payload["port"])
+    except (TypeError, ValueError, OverflowError):
+        port = 0
+    if not 1 <= port <= 65535:
+        return JsonResponse(
+            {"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"},
+            status=400,
+        )
 
     defaults = {
         "username": payload["user"].strip(),
@@ -553,7 +563,7 @@ def connections(request):
             return _connection_edit_permission_error()
         connection.name = payload["name"].strip()
         connection.host = payload["host"].strip()
-        connection.port = int(payload["port"])
+        connection.port = port
         connection.database = payload["database"].strip()
         for field, value in defaults.items():
             setattr(connection, field, value)
@@ -574,7 +584,7 @@ def connections(request):
     lookup = {
         "name": payload["name"].strip(),
         "host": payload["host"].strip(),
-        "port": int(payload["port"]),
+        "port": port,
         "database": payload["database"].strip(),
         "username": defaults["username"],
     }
@@ -620,12 +630,23 @@ def test_connection(request):
     ) and not _can_manage_connections(request):
         return _connection_permission_error()
 
+    if not connection_id or has_inline_connection_data:
+        try:
+            port = int(payload.get("port"))
+        except (TypeError, ValueError, OverflowError):
+            port = 0
+        if not 1 <= port <= 65535:
+            return JsonResponse(
+                {"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"},
+                status=400,
+            )
+
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
             params = {
                 "host": payload["host"].strip(),
-                "port": int(payload["port"]),
+                "port": port,
                 "database": payload["database"].strip(),
                 "username": payload["user"].strip(),
                 "password": payload.get("password") or connection.get_password(),
@@ -650,7 +671,7 @@ def test_connection(request):
             )
         params = {
             "host": payload["host"].strip(),
-            "port": int(payload["port"]),
+            "port": port,
             "database": payload["database"].strip(),
             "username": payload["user"].strip(),
             "password": payload.get("password", ""),
@@ -663,19 +684,20 @@ def test_connection(request):
     try:
         _test_connection_params(**params)
     except psycopg2.Error as exc:
+        safe_error = _safe_db_error_message(f"Не удалось подключиться к {name}", exc)
         if audit_connection:
             info = _connection_audit_info(
-                "Проверка подключения", audit_connection, result="Ошибка", error=exc
+                "Проверка подключения", audit_connection, result="Ошибка", error=safe_error
             )
         else:
             info = (
                 f"Действие: Проверка нового подключения; Подключение: {name}; "
                 f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
-                f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {exc}"
+                f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {safe_error}"
             )
         _write_audit("connection_test", info, db_user=audit_user)
         return JsonResponse(
-            {"ok": False, "message": f"Не удалось подключиться к {name}: {exc}"},
+            {"ok": False, "message": safe_error},
             status=400,
         )
 

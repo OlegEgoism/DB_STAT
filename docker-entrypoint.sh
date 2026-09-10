@@ -7,10 +7,10 @@ mkdir -p "$(dirname "${SQLITE_NAME:-/app/data/db.sqlite3}")"
 python manage.py migrate --noinput --fake-initial
 python manage.py recover_maintenance_jobs
 
-# Preserve the image's documented first-run account without baking a mutable
-# SQLite file into an image layer. Idempotent. DBUser is AUTH_USER_MODEL, so
-# this single account logs into both the app itself and Django admin (/admin/).
-python manage.py shell -c "from db_statistics.models import DBUser; DBUser.objects.filter(login='admin').exists() or DBUser.objects.create_superuser('admin', 'admin@example.com', 'admin', role='Администратор')"
+# Create the first account without a publicly known default password. When
+# INITIAL_ADMIN_PASSWORD is omitted, the command prints a random password once
+# to the container log. Existing databases are never modified.
+python manage.py ensure_initial_admin
 
 # Docker Desktop provides host.docker.internal automatically. On native Linux
 # Docker it is not always present, so derive Docker's default gateway at runtime

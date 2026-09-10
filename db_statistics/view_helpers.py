@@ -401,9 +401,11 @@ def _connection_to_dict(connection):
 def _read_json_body(request):
     """Безопасно читает JSON-объект из тела запроса"""
     try:
-        return json.loads(request.body.decode("utf-8") or "{}")
+        payload = json.loads(request.body.decode("utf-8") or "{}")
     except (UnicodeDecodeError, json.JSONDecodeError):
         return {}
+    # JSON также допускает массивы и скаляры, но API ожидает только объект.
+    return payload if isinstance(payload, dict) else {}
 
 
 def _parse_pg_size_to_bytes(value, default_unit="B"):
@@ -519,9 +521,12 @@ def _list_query_params(payload, sort_columns, default_sort, *, default_page_size
     except (TypeError, ValueError):
         requested_page_size = default_page_size
     page_size = requested_page_size if requested_page_size in allowed_page_sizes else default_page_size
-    page = max(int(payload.get("page") or 1), 1)
+    try:
+        page = max(int(payload.get("page") or 1), 1)
+    except (TypeError, ValueError, OverflowError):
+        page = 1
     offset = (page - 1) * page_size
-    search = (payload.get("search") or "").strip()
+    search = str(payload.get("search") or "").strip()
     sort = payload.get("sort") or default_sort
     direction = "ASC" if payload.get("direction") == "asc" else "DESC"
     sort_column = sort_columns.get(sort, default_sort)
