@@ -5,7 +5,7 @@
 ## Project description
 
 ```
-A web application for monitoring and diagnosing PostgreSQL/Greenplum databases.
+A web application for monitoring and diagnosing PostgreSQL/Greenplum/Greengage databases.
 The project helps evaluate the status of connected databases through a single interface.
 The application allows you to monitor databases.
 The main goal of DB STAT is to simplify daily database health checks.
@@ -42,7 +42,7 @@ The main goal of DB STAT is to simplify daily database health checks.
 
 ## Environment setup
 
-- Python version 3.12
+- Python version 3.12+
 
 - `.env` file
 
@@ -68,54 +68,36 @@ SQLITE_NAME=db.sqlite3
 STATIC_URL=static/
 ```
 
-The application's own state (users, saved connections, audit records, and
-sessions) is stored exclusively in SQLite. Set the database file path with
-`SQLITE_NAME`; it defaults to `db.sqlite3` in the project root. Selecting a
-different Django database backend through environment variables is not
-supported. PostgreSQL, Greenplum, and Greengage remain monitoring targets and
-are configured through the connection form in the UI.
+The application's internal data (users, saved connections, audit records, and sessions) is stored exclusively in SQLite.
+The file path is configured with `SQLITE_NAME`; by default, `db.sqlite3` in the project root is used.
+Environment variables for selecting another Django backend are not supported.
+PostgreSQL, Greenplum, and Greengage remain the monitored target databases and are configured through the connection form in the interface.
 
 ## Running the project in development mode
 
 - Install dependencies from `requirements.txt`
 
-`psycopg2` is built from source and links against the system `libpq`, so
-outside Docker you need the PostgreSQL headers installed first, e.g.
-`sudo apt install libpq-dev` (Debian/Ubuntu) or `brew install postgresql`
-(macOS). The Docker image already has the build dependencies covered.
-
 ```bash
 pip install -r requirements.txt
 ```
 
-- Apply migrations (also run this command after updating the project)
+- Apply migrations
 
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-In particular, this creates the `db_favorite` table required by favorites. The migration supports both new databases and existing databases whose tables were previously created with `run-syncdb`.
-
 - Create a user
 
-`DBUser` is the single, unified user model (`AUTH_USER_MODEL`): the same
-account logs into the application itself and into Django Admin (`/admin/`).
-There is no separate Django superuser to create.
+`DBUser` is the unified user model (`AUTH_USER_MODEL`): the same account is used to log in both to the application itself and to Django Admin (`/admin/`).
 
 ```bash
 python manage.py ensure_initial_admin
 ```
 
-`create_superuser` sets `is_staff=True` and `is_superuser=True` (full access
-to `/admin/`). For a user without Django Admin access, use
-`DBUser.objects.create_user(login=..., email=..., password=..., role=...)` —
-`is_staff` defaults to `False`.
-
-Login is password-protected: after 5 consecutive failed attempts, login is
-locked for that user for 5 minutes. Users created before the password field
-existed (an empty or unusable `password`) cannot log in until a password is
-set — use the same reset command:
+Login to the application is password-protected: after 5 consecutive failed attempts, the user is locked out for 5 minutes.
+Users created before the password was introduced (the `password` field is empty or unusable) cannot log in until a password is set — run the following reset command:
 
 ```bash
 python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('NEW_PASSWORD'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
@@ -159,17 +141,19 @@ docker run --name db-stat --rm -p 8000:8000 \
 ```
 
 The `db-stat-data` named volume preserves the single internal SQLite database
-file across container restarts and upgrades. On startup, the container applies
-the versioned migrations committed to the project; generating migrations in
-the image or running a separate application database server is unnecessary.
+file across container restarts and upgrades. On startup, the container
+automatically applies the migrations committed to the project; generating
+migrations in the image or running a separate internal database server is not
+required.
 
-Enter `localhost` in the connection form. Inside the image, the application
-automatically routes that connection to the Docker host. This works both in
-Docker Desktop and native Docker on Linux without an extra `--add-host` option.
+Enter `localhost` in the connection form: inside the image, the application
+automatically routes such a connection to the Docker host. This works both in
+Docker Desktop and regular Docker on Linux without an additional `--add-host`
+option.
 
-The image no longer defaults `ALLOWED_HOSTS` to `*`; it falls back to the
-application's own default (`localhost, 127.0.0.1`), which is enough for the
-command above. If the container is reached through another hostname or a
+By default, the image does not set `ALLOWED_HOSTS` and uses the list from the
+application settings (`localhost, 127.0.0.1`), which is sufficient for the
+command above. If the container is accessed through another hostname or a
 reverse proxy, pass it explicitly: `-e ALLOWED_HOSTS=example.com`.
 
 PostgreSQL on the host must listen on more than its Unix socket and allow the
