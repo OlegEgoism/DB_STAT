@@ -58,7 +58,7 @@ DB_CONNECTION_ENCRYPTION_KEY=
 
 INITIAL_ADMIN_LOGIN=admin
 INITIAL_ADMIN_EMAIL=admin@example.com
-INITIAL_ADMIN_PASSWORD=
+INITIAL_ADMIN_PASSWORD=admin
 
 # Target used for localhost and ::1 in application database connections
 LOCALHOST_DB_HOST=127.0.0.1
@@ -181,8 +181,7 @@ Available at: http://localhost:8000
 Single account (logs into the app and into Django Admin — /admin/):
 - login: admin
 - email: admin@example.com
-- set the password through `INITIAL_ADMIN_PASSWORD`; if it is not set, a secure
-  random password is printed to the container log once
+- password: admin 
 
 If there is a connection error to `172.17.0.1` or `192.168.0.1` after building, an old Docker image is running.
 Rebuild the image and run the container again.

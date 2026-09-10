@@ -60,7 +60,7 @@ DB_CONNECTION_ENCRYPTION_KEY=
 
 INITIAL_ADMIN_LOGIN=admin
 INITIAL_ADMIN_EMAIL=admin@example.com
-INITIAL_ADMIN_PASSWORD=
+INITIAL_ADMIN_PASSWORD=admin
 
 # Хост, на который перенаправляются localhost и ::1 в подключениях приложения
 LOCALHOST_DB_HOST=127.0.0.1
