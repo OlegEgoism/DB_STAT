@@ -84,13 +84,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "db.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3"),
-        "OPTIONS": {"timeout": 20},
-    }
-}
+DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3"), "OPTIONS": {"timeout": 20}}}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -128,38 +122,10 @@ LOGIN_MAX_FAILED_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 5 * 60
 
 LOCALHOST_NAMES = {"localhost", "::1"}
-LOCALHOST_DB_HOST = (
-    os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
-)
+LOCALHOST_DB_HOST = os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
 
-SIDEBAR_TAB_IDS = [
-    "database-overview",
-    "segments",
-    "databases",
-    "tables",
-    "views",
-    "functions",
-    "temp-tables",
-    "distribution",
-    "queries",
-    "sessions",
-    "locks",
-    "transactions",
-    "memory",
-    "users",
-    "groups",
-    "maintenance",
-    "favorites",
-    "audit",
-    "settings",
-]
-SIDEBAR_SECTION_IDS = [
-    "infrastructure",
-    "data",
-    "performance",
-    "administration",
-    "additional",
-]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "functions", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
 FIXED_SIDEBAR_TAB_IDS = {"settings"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
@@ -196,6 +162,4 @@ PAGINATION_PAGE_SIZE_OPTIONS = (10, 20, 50)
 # только один процесс/поток успешно переводит задачу в "running", остальные
 # получают 0 обновлённых строк и выходят. WAL-режим SQLite (см. apps.py)
 # снижает вероятность "database is locked" при таких конкурентных обновлениях.
-MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(
-    max_workers=4, thread_name_prefix="db-stat-vacuum"
-)
+MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="db-stat-vacuum")

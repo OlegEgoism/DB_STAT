@@ -16,7 +16,7 @@ class Command(BaseCommand):
 
         login = os.getenv("INITIAL_ADMIN_LOGIN", "admin").strip()
         email = os.getenv("INITIAL_ADMIN_EMAIL", "admin@example.com").strip()
-        configured_password = os.getenv("INITIAL_ADMIN_PASSWORD")
+        configured_password = os.getenv("INITIAL_ADMIN_PASSWORD", "admin").strip()
         password = configured_password or secrets.token_urlsafe(18)
         if not login or not email:
             raise CommandError("INITIAL_ADMIN_LOGIN and INITIAL_ADMIN_EMAIL cannot be empty")

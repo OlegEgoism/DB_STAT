@@ -54,11 +54,7 @@ def home(request):
     if not db_user:
         return redirect("login")
     pagination_page_sizes = _pagination_page_sizes()
-    pagination_default_page_size = (
-        settings.PAGINATION_DEFAULT_PAGE_SIZE
-        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
-        else pagination_page_sizes[0]
-    )
+    pagination_default_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes else pagination_page_sizes[0]
     return render(
         request,
         "home.html",
@@ -66,14 +62,8 @@ def home(request):
             "db_user": db_user,
             "db_user_payload": _user_payload(db_user),
             "user_can_manage_connections": db_user.role == settings.ADMIN_ROLE,
-            "pagination_config": {
-                "default": pagination_default_page_size,
-                "options": pagination_page_sizes,
-            },
-            "session_expires_at_ms": request.session.get(
-                settings.SESSION_EXPIRES_AT_KEY, 0
-            )
-            * 1000,
+            "pagination_config": {"default": pagination_default_page_size, "options": pagination_page_sizes},
+            "session_expires_at_ms": request.session.get(settings.SESSION_EXPIRES_AT_KEY, 0) * 1000,
         },
     )
 
@@ -102,17 +92,10 @@ def login(request):
     if request.method == "POST":
         identifier_value = (request.POST.get("identifier") or "").strip()
         password_value = request.POST.get("password") or ""
-        session_duration_value = (
-            request.POST.get("session_duration")
-            or str(settings.DEFAULT_SESSION_DURATION_HOURS)
-        ).strip()
+        session_duration_value = (request.POST.get("session_duration") or str(settings.DEFAULT_SESSION_DURATION_HOURS)).strip()
         session_duration_seconds = _session_duration_seconds(session_duration_value)
 
-        invalid_credentials_message = (
-            "Invalid login, email or password"
-            if is_english
-            else "Неверный логин, почта или пароль"
-        )
+        invalid_credentials_message = "Invalid login, email or password" if is_english else "Неверный логин, почта или пароль"
 
         if session_duration_seconds is None:
             if is_english:
@@ -120,10 +103,7 @@ def login(request):
             else:
                 error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
         else:
-            candidate = DBUser.objects.filter(
-                Q(login=identifier_value) | Q(email=identifier_value),
-                is_active=True,
-            ).first()
+            candidate = DBUser.objects.filter(Q(login=identifier_value) | Q(email=identifier_value), is_active=True).first()
             if candidate and candidate.lockout_until and candidate.lockout_until > timezone.now():
                 error = _lockout_message(candidate.lockout_until, is_english)
             elif candidate and candidate.check_password(password_value):
@@ -138,30 +118,17 @@ def login(request):
                     attempt_number = candidate.failed_login_attempts
                     if attempt_number >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
                         candidate.failed_login_attempts = 0
-                        candidate.lockout_until = timezone.now() + timedelta(
-                            seconds=settings.LOGIN_LOCKOUT_SECONDS
-                        )
+                        candidate.lockout_until = timezone.now() + timedelta(seconds=settings.LOGIN_LOCKOUT_SECONDS)
                         error = _lockout_message(candidate.lockout_until, is_english)
                     candidate.save(update_fields=["failed_login_attempts", "lockout_until"])
-                    _write_audit(
-                        "login",
-                        f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; "
-                        f"попытка №{attempt_number}",
-                        db_user=candidate,
-                    )
+                    _write_audit("login", f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; " f"попытка №{attempt_number}", db_user=candidate)
 
         if not error and db_user:
             request.session.cycle_key()
             request.session[settings.SESSION_USER_ID_KEY] = db_user.pk
-            request.session[settings.SESSION_EXPIRES_AT_KEY] = (
-                int(timezone.now().timestamp()) + session_duration_seconds
-            )
+            request.session[settings.SESSION_EXPIRES_AT_KEY] = int(timezone.now().timestamp()) + session_duration_seconds
             request.session.set_expiry(session_duration_seconds)
-            _write_audit(
-                "login",
-                f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_seconds}s",
-                db_user=db_user,
-            )
+            _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_seconds}s", db_user=db_user)
             return redirect("home")
 
     return render(
@@ -197,48 +164,23 @@ def sidebar_settings(request):
     """Получает или сохраняет персональные настройки бокового меню"""
     db_user = _current_db_user(request)
     if not db_user:
-        return JsonResponse(
-            {"ok": False, "message": "Требуется вход в приложение"}, status=401
-        )
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     settings = _sidebar_settings_for_user(db_user)
-    current_tabs, current_section_order = _sidebar_settings_values_for_user(
-        settings, db_user
-    )
+    current_tabs, current_section_order = _sidebar_settings_values_for_user(settings, db_user)
     available_tabs = _available_sidebar_tabs_for_user(db_user)
     if request.method == "GET":
-        return JsonResponse(
-            {
-                "ok": True,
-                "available_tabs": available_tabs,
-                "visible_tabs": current_tabs,
-                "section_order": current_section_order,
-            }
-        )
+        return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": current_tabs, "section_order": current_section_order})
 
     payload = _read_json_body(request)
     previous_tabs = current_tabs
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     visible_tabs = [tab_id for tab_id in visible_tabs if tab_id in available_tabs]
     section_order = _normalize_sidebar_sections(payload.get("section_order"))
-    settings.visible_tabs = {
-        "visible_tabs": visible_tabs,
-        "section_order": section_order,
-    }
+    settings.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
     settings.save(update_fields=["visible_tabs", "updated"])
-    _write_audit(
-        "sidebar_settings",
-        _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs),
-        db_user=db_user,
-    )
-    return JsonResponse(
-        {
-            "ok": True,
-            "available_tabs": available_tabs,
-            "visible_tabs": visible_tabs,
-            "section_order": section_order,
-        }
-    )
+    _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
+    return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": visible_tabs, "section_order": section_order})
 
 
 @require_http_methods(["GET", "POST", "DELETE"])
@@ -246,57 +188,31 @@ def pagination_settings(request):
     """Управляет вариантами размера страниц для администратора приложения."""
     db_user = _current_db_user(request)
     if not db_user or db_user.role != settings.ADMIN_ROLE:
-        return JsonResponse(
-            {"ok": False, "message": "Доступ разрешён только администратору"},
-            status=403,
-        )
+        return JsonResponse({"ok": False, "message": "Доступ разрешён только администратору"}, status=403)
 
     if request.method == "GET":
-        return JsonResponse(
-            {
-                "ok": True,
-                "settings": list(
-                    DBPaginationSettings.objects.values("id", "size")
-                ),
-                "max_records": DBPaginationSettings.MAX_RECORDS,
-            }
-        )
+        return JsonResponse({"ok": True, "settings": list(DBPaginationSettings.objects.values("id", "size")), "max_records": DBPaginationSettings.MAX_RECORDS})
 
     payload = _read_json_body(request)
     setting_id = payload.get("id")
     if request.method == "DELETE":
         pagination_setting = get_object_or_404(DBPaginationSettings, pk=setting_id)
         if DBPaginationSettings.objects.count() <= 1:
-            return JsonResponse(
-                {"ok": False, "message": "Должен остаться хотя бы один размер страницы"},
-                status=400,
-            )
+            return JsonResponse({"ok": False, "message": "Должен остаться хотя бы один размер страницы"}, status=400)
         pagination_setting.delete()
         return JsonResponse({"ok": True})
 
     try:
         size = int(payload.get("size"))
     except (TypeError, ValueError):
-        return JsonResponse(
-            {"ok": False, "message": "Укажите корректный размер страницы"},
-            status=400,
-        )
-    pagination_setting = (
-        get_object_or_404(DBPaginationSettings, pk=setting_id)
-        if setting_id
-        else DBPaginationSettings()
-    )
+        return JsonResponse({"ok": False, "message": "Укажите корректный размер страницы"}, status=400)
+    pagination_setting = get_object_or_404(DBPaginationSettings, pk=setting_id) if setting_id else DBPaginationSettings()
     pagination_setting.size = size
     try:
         pagination_setting.save()
     except ValidationError as error:
-        return JsonResponse(
-            {"ok": False, "message": "; ".join(error.messages)}, status=400
-        )
-    return JsonResponse(
-        {"ok": True, "setting": {"id": pagination_setting.pk, "size": size}},
-        status=200 if setting_id else 201,
-    )
+        return JsonResponse({"ok": False, "message": "; ".join(error.messages)}, status=400)
+    return JsonResponse({"ok": True, "setting": {"id": pagination_setting.pk, "size": size}}, status=200 if setting_id else 201)
 
 
 @require_http_methods(["GET", "POST"])
@@ -304,73 +220,29 @@ def favorites(request):
     """Возвращает избранное пользователя или изменяет состояние одного объекта"""
     db_user = _current_db_user(request)
     if not db_user:
-        return JsonResponse(
-            {"ok": False, "message": "Требуется вход в приложение"}, status=401
-        )
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
     payload = request.GET if request.method == "GET" else _read_json_body(request)
     connection_id = payload.get("id")
     if not connection_id:
-        return JsonResponse(
-            {"ok": False, "message": "Подключение не выбрано"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
     connection = _get_connection_for_request(request, connection_id)
     queryset = DBFavorite.objects.filter(user=db_user, connection=connection)
     if request.method == "GET":
-        return JsonResponse(
-            {
-                "ok": True,
-                "favorites": [
-                    {"object_type": item.object_type, "object_key": item.object_key}
-                    for item in queryset
-                ],
-            }
-        )
+        return JsonResponse({"ok": True, "favorites": [{"object_type": item.object_type, "object_key": item.object_key} for item in queryset]})
 
     object_type = str(payload.get("object_type") or "").strip()
     object_key = str(payload.get("object_key") or "").strip()
     valid_types = {value for value, _label in DBFavorite.OBJECT_TYPES}
     if object_type not in valid_types or not object_key or len(object_key) > 512:
-        return JsonResponse(
-            {"ok": False, "message": "Некорректный объект избранного"}, status=400
-        )
-    favorite, created = DBFavorite.objects.get_or_create(
-        user=db_user,
-        connection=connection,
-        object_type=object_type,
-        object_key=object_key,
-    )
+        return JsonResponse({"ok": False, "message": "Некорректный объект избранного"}, status=400)
+    favorite, created = DBFavorite.objects.get_or_create(user=db_user, connection=connection, object_type=object_type, object_key=object_key)
     if not created:
         favorite.delete()
-        _write_audit(
-            "favorite_remove",
-            _favorite_audit_info(
-                "Объект удалён из избранных объектов",
-                connection,
-                object_type,
-                object_key,
-            ),
-            db_user=db_user,
-        )
+        _write_audit("favorite_remove", _favorite_audit_info("Объект удалён из избранных объектов", connection, object_type, object_key), db_user=db_user)
     else:
-        _write_audit(
-            "favorite_add",
-            _favorite_audit_info(
-                "Объект добавлен в избранные объекты",
-                connection,
-                object_type,
-                object_key,
-            ),
-            db_user=db_user,
-        )
-    return JsonResponse(
-        {
-            "ok": True,
-            "is_favorite": created,
-            "object_type": object_type,
-            "object_key": object_key,
-        }
-    )
+        _write_audit("favorite_add", _favorite_audit_info("Объект добавлен в избранные объекты", connection, object_type, object_key), db_user=db_user)
+    return JsonResponse({"ok": True, "is_favorite": created, "object_type": object_type, "object_key": object_key})
 
 
 @require_http_methods(["POST"])
@@ -379,19 +251,12 @@ def language_settings(request):
     payload = _read_json_body(request)
     language = str(payload.get("language", "")).lower()
     if language not in settings.SUPPORTED_LANGUAGES:
-        return JsonResponse(
-            {"ok": False, "message": "Поддерживаются только языки RU и EN"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Поддерживаются только языки RU и EN"}, status=400)
 
     translation.activate(language)
     request.session["django_language"] = language
     response = JsonResponse({"ok": True, "language": language})
-    response.set_cookie(
-        settings.LANGUAGE_COOKIE_NAME,
-        language,
-        max_age=60 * 60 * 24 * 365,
-        samesite="Lax",
-    )
+    response.set_cookie(settings.LANGUAGE_COOKIE_NAME, language, max_age=60 * 60 * 24 * 365, samesite="Lax")
     return response
 
 
@@ -408,59 +273,37 @@ def audit_events(request):
     created_to_value = (request.GET.get("created_to") or "").strip()
     sort = (request.GET.get("sort") or "created").strip()
     direction = (request.GET.get("direction") or "desc").strip().lower()
-    available_actions = [
-        {"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES
-    ]
+    available_actions = [{"value": value, "label": label} for value, label in DBAudit.ACTION_TYPES]
     available_sorts = {"created", "username", "action_type", "info"}
     if sort not in available_sorts or direction not in {"asc", "desc"}:
-        return JsonResponse(
-            {"ok": False, "message": "Некорректные параметры сортировки"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Некорректные параметры сортировки"}, status=400)
 
     date_bounds = {}
-    for parameter, value in (
-        ("created_from", created_from_value),
-        ("created_to", created_to_value),
-    ):
+    for parameter, value in (("created_from", created_from_value), ("created_to", created_to_value)):
         if not value:
             continue
         parsed_value = parse_datetime(value)
         if parsed_value is None:
-            return JsonResponse(
-                {"ok": False, "message": "Некорректная дата и время"}, status=400
-            )
+            return JsonResponse({"ok": False, "message": "Некорректная дата и время"}, status=400)
         if timezone.is_naive(parsed_value):
-            parsed_value = timezone.make_aware(
-                parsed_value, timezone.get_current_timezone()
-            )
+            parsed_value = timezone.make_aware(parsed_value, timezone.get_current_timezone())
         date_bounds[parameter] = parsed_value
 
     if date_bounds.get("created_from") and date_bounds.get("created_to"):
         if date_bounds["created_from"] > date_bounds["created_to"]:
-            return JsonResponse(
-                {"ok": False, "message": "Дата «с» не может быть позже даты «по»"},
-                status=400,
-            )
+            return JsonResponse({"ok": False, "message": "Дата «с» не может быть позже даты «по»"}, status=400)
 
     audit_queryset = DBAudit.objects.all()
-    available_users = list(
-        audit_queryset.order_by("username")
-        .values_list("username", flat=True)
-        .distinct()
-    )
+    available_users = list(audit_queryset.order_by("username").values_list("username", flat=True).distinct())
     if username:
         audit_queryset = audit_queryset.filter(username=username)
     if action_type:
         valid_action_types = {value for value, _label in DBAudit.ACTION_TYPES}
         if action_type not in valid_action_types:
-            return JsonResponse(
-                {"ok": False, "message": "Неизвестный тип действия"}, status=400
-            )
+            return JsonResponse({"ok": False, "message": "Неизвестный тип действия"}, status=400)
         audit_queryset = audit_queryset.filter(action_type=action_type)
     if date_bounds.get("created_from"):
-        audit_queryset = audit_queryset.filter(
-            created__gte=date_bounds["created_from"]
-        )
+        audit_queryset = audit_queryset.filter(created__gte=date_bounds["created_from"])
     if date_bounds.get("created_to"):
         audit_queryset = audit_queryset.filter(created__lte=date_bounds["created_to"])
 
@@ -469,54 +312,22 @@ def audit_events(request):
     except (TypeError, ValueError):
         requested_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE
     pagination_page_sizes = _pagination_page_sizes()
-    default_page_size = (
-        settings.PAGINATION_DEFAULT_PAGE_SIZE
-        if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes
-        else pagination_page_sizes[0]
-    )
+    default_page_size = settings.PAGINATION_DEFAULT_PAGE_SIZE if settings.PAGINATION_DEFAULT_PAGE_SIZE in pagination_page_sizes else pagination_page_sizes[0]
     page_size = requested_page_size if requested_page_size in pagination_page_sizes else default_page_size
     page = max(int(request.GET.get("page") or 1), 1)
     offset = (page - 1) * page_size
     order_by = sort
     if sort == "action_type":
-        action_label_order = Case(
-            *[
-                When(action_type=value, then=Value(label))
-                for value, label in DBAudit.ACTION_TYPES
-            ],
-            default=F("action_type"),
-            output_field=CharField(),
-        )
+        action_label_order = Case(*[When(action_type=value, then=Value(label)) for value, label in DBAudit.ACTION_TYPES], default=F("action_type"), output_field=CharField())
         audit_queryset = audit_queryset.annotate(action_label_order=action_label_order)
         order_by = "action_label_order"
-    audit_queryset = audit_queryset.order_by(
-        f"-{order_by}" if direction == "desc" else order_by, "-id"
-    )
+    audit_queryset = audit_queryset.order_by(f"-{order_by}" if direction == "desc" else order_by, "-id")
     total_count = audit_queryset.count()
     events = [
-        {
-            "id": audit.pk,
-            "username": audit.username,
-            "action_type": audit.action_type,
-            "action_label": _audit_action_label(audit.action_type),
-            "info": audit.info,
-            "created": timezone.localtime(audit.created).strftime("%d.%m.%Y %H:%M:%S"),
-        }
+        {"id": audit.pk, "username": audit.username, "action_type": audit.action_type, "action_label": _audit_action_label(audit.action_type), "info": audit.info, "created": timezone.localtime(audit.created).strftime("%d.%m.%Y %H:%M:%S")}
         for audit in audit_queryset[offset : offset + page_size]
     ]
-    return JsonResponse(
-        {
-            "ok": True,
-            "events": events,
-            "actions": available_actions,
-            "users": available_users,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-            "sort": sort,
-            "direction": direction,
-        }
-    )
+    return JsonResponse({"ok": True, "events": events, "actions": available_actions, "users": available_users, "page": page, "page_size": page_size, "total_count": total_count, "sort": sort, "direction": direction})
 
 
 @require_http_methods(["GET", "POST"])
@@ -524,9 +335,7 @@ def connections(request):
     """Возвращает список или сохраняет подключение к базе данных."""
     if request.method == "GET":
         items = _available_connections(request).order_by("name", "host")
-        return JsonResponse(
-            {"connections": [_connection_to_dict(item) for item in items]}
-        )
+        return JsonResponse({"connections": [_connection_to_dict(item) for item in items]})
 
     if not _can_manage_connections(request):
         return _connection_permission_error()
@@ -534,24 +343,15 @@ def connections(request):
     payload = _read_json_body(request)
     required_fields = ["name", "host", "port", "database", "user"]
     if any(not payload.get(field) for field in required_fields):
-        return JsonResponse(
-            {"ok": False, "message": "Заполните все обязательные поля"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
     try:
         port = int(payload["port"])
     except (TypeError, ValueError, OverflowError):
         port = 0
     if not 1 <= port <= 65535:
-        return JsonResponse(
-            {"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"},
-            status=400,
-        )
+        return JsonResponse({"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"}, status=400)
 
-    defaults = {
-        "username": payload["user"].strip(),
-        "db_type": payload.get("db_type") or "PostgreSQL",
-        "is_active": True,
-    }
+    defaults = {"username": payload["user"].strip(), "db_type": payload.get("db_type") or "PostgreSQL", "is_active": True}
     if payload.get("password"):
         defaults["password"] = payload["password"]
 
@@ -568,53 +368,22 @@ def connections(request):
         for field, value in defaults.items():
             setattr(connection, field, value)
         connection.save()
-        _write_audit(
-            "connection_update",
-            _connection_audit_info("Изменение подключения", connection),
-            db_user=_current_db_user(request),
-        )
-        return JsonResponse(
-            {
-                "ok": True,
-                "created": False,
-                "connection": _connection_to_dict(connection),
-            }
-        )
+        _write_audit("connection_update", _connection_audit_info("Изменение подключения", connection), db_user=_current_db_user(request))
+        return JsonResponse({"ok": True, "created": False, "connection": _connection_to_dict(connection)})
 
-    lookup = {
-        "name": payload["name"].strip(),
-        "host": payload["host"].strip(),
-        "port": port,
-        "database": payload["database"].strip(),
-        "username": defaults["username"],
-    }
+    lookup = {"name": payload["name"].strip(), "host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": defaults["username"]}
     existing_connection = DBConnection.objects.filter(**lookup).first()
-    if (
-        existing_connection
-        and existing_connection.created_user_id is not None
-        and (not db_user or existing_connection.created_user_id != db_user.pk)
-    ):
+    if existing_connection and existing_connection.created_user_id is not None and (not db_user or existing_connection.created_user_id != db_user.pk):
         return _connection_edit_permission_error()
 
-    connection, created = DBConnection.objects.update_or_create(
-        defaults=defaults, **lookup
-    )
+    connection, created = DBConnection.objects.update_or_create(defaults=defaults, **lookup)
     if db_user:
         if created or connection.created_user_id is None:
             connection.created_user = db_user
             connection.save(update_fields=["created_user", "updated"])
         db_user.connections.add(connection)
-    _write_audit(
-        "connection_create" if created else "connection_update",
-        _connection_audit_info(
-            "Создание подключения" if created else "Изменение подключения", connection
-        ),
-        db_user=db_user,
-    )
-    return JsonResponse(
-        {"ok": True, "created": created, "connection": _connection_to_dict(connection)},
-        status=201 if created else 200,
-    )
+    _write_audit("connection_create" if created else "connection_update", _connection_audit_info("Создание подключения" if created else "Изменение подключения", connection), db_user=db_user)
+    return JsonResponse({"ok": True, "created": created, "connection": _connection_to_dict(connection)}, status=201 if created else 200)
 
 
 @require_http_methods(["POST"])
@@ -622,12 +391,8 @@ def test_connection(request):
     """Проверяет доступность нового или сохранённого подключения."""
     payload = _read_json_body(request)
     connection_id = payload.get("id")
-    has_inline_connection_data = all(
-        payload.get(field) for field in ["name", "host", "port", "database", "user"]
-    )
-    if (
-        not connection_id or has_inline_connection_data
-    ) and not _can_manage_connections(request):
+    has_inline_connection_data = all(payload.get(field) for field in ["name", "host", "port", "database", "user"])
+    if (not connection_id or has_inline_connection_data) and not _can_manage_connections(request):
         return _connection_permission_error()
 
     if not connection_id or has_inline_connection_data:
@@ -636,47 +401,21 @@ def test_connection(request):
         except (TypeError, ValueError, OverflowError):
             port = 0
         if not 1 <= port <= 65535:
-            return JsonResponse(
-                {"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"},
-                status=400,
-            )
+            return JsonResponse({"ok": False, "message": "Порт должен быть целым числом от 1 до 65535"}, status=400)
 
     if connection_id:
         connection = _get_connection_for_request(request, connection_id)
         if has_inline_connection_data:
-            params = {
-                "host": payload["host"].strip(),
-                "port": port,
-                "database": payload["database"].strip(),
-                "username": payload["user"].strip(),
-                "password": payload.get("password") or connection.get_password(),
-                "ssl": payload.get("ssl", True),
-            }
+            params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password") or connection.get_password(), "ssl": payload.get("ssl", True)}
             name = payload["name"].strip()
         else:
-            params = {
-                "host": connection.host,
-                "port": connection.port,
-                "database": connection.database,
-                "username": connection.username,
-                "password": connection.get_password(),
-                "ssl": payload.get("ssl", True),
-            }
+            params = {"host": connection.host, "port": connection.port, "database": connection.database, "username": connection.username, "password": connection.get_password(), "ssl": payload.get("ssl", True)}
             name = connection.name
     else:
         required_fields = ["name", "host", "port", "database", "user"]
         if any(not payload.get(field) for field in required_fields):
-            return JsonResponse(
-                {"ok": False, "message": "Заполните все обязательные поля"}, status=400
-            )
-        params = {
-            "host": payload["host"].strip(),
-            "port": port,
-            "database": payload["database"].strip(),
-            "username": payload["user"].strip(),
-            "password": payload.get("password", ""),
-            "ssl": payload.get("ssl", True),
-        }
+            return JsonResponse({"ok": False, "message": "Заполните все обязательные поля"}, status=400)
+        params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
         name = payload["name"].strip()
 
     audit_user = _current_db_user(request)
@@ -686,31 +425,16 @@ def test_connection(request):
     except psycopg2.Error as exc:
         safe_error = _safe_db_error_message(f"Не удалось подключиться к {name}", exc)
         if audit_connection:
-            info = _connection_audit_info(
-                "Проверка подключения", audit_connection, result="Ошибка", error=safe_error
-            )
+            info = _connection_audit_info("Проверка подключения", audit_connection, result="Ошибка", error=safe_error)
         else:
-            info = (
-                f"Действие: Проверка нового подключения; Подключение: {name}; "
-                f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
-                f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {safe_error}"
-            )
+            info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {safe_error}"
         _write_audit("connection_test", info, db_user=audit_user)
-        return JsonResponse(
-            {"ok": False, "message": safe_error},
-            status=400,
-        )
+        return JsonResponse({"ok": False, "message": safe_error}, status=400)
 
     if audit_connection:
-        info = _connection_audit_info(
-            "Проверка подключения", audit_connection, result="Успешно"
-        )
+        info = _connection_audit_info("Проверка подключения", audit_connection, result="Успешно")
     else:
-        info = (
-            f"Действие: Проверка нового подключения; Подключение: {name}; "
-            f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; "
-            f"Пользователь БД: {params['username']}; Результат: Успешно"
-        )
+        info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Успешно"
     _write_audit("connection_test", info, db_user=audit_user)
     return JsonResponse({"ok": True, "message": f"Подключение к {name} успешно"})
 
@@ -724,9 +448,7 @@ def delete_connection(request):
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     if not connection_id:
-        return JsonResponse(
-            {"ok": False, "message": "Подключение не выбрано"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
 
     connection = _get_connection_for_request(request, connection_id)
     db_user = _current_db_user(request)
@@ -737,6 +459,4 @@ def delete_connection(request):
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
     _write_audit("connection_delete", audit_info, db_user=db_user)
-    return JsonResponse(
-        {"ok": True, "message": f"Подключение {connection.name} удалено"}
-    )
+    return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})

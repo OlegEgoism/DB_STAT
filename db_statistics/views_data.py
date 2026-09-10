@@ -21,27 +21,10 @@ from db_statistics.view_helpers import (
 )
 
 SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
-TABLE_SEARCH_COLUMNS = (
-    "namespace.nspname",
-    "table_class.relname",
-    "(namespace.nspname || '.' || table_class.relname)",
-)
-VIEW_SEARCH_COLUMNS = (
-    "namespace.nspname",
-    "view_class.relname",
-    "(namespace.nspname || '.' || view_class.relname)",
-)
-FUNCTION_SEARCH_COLUMNS = (
-    "namespace.nspname",
-    "procedure.proname",
-    "pg_catalog.pg_get_function_result(procedure.oid)",
-    "pg_catalog.pg_get_function_arguments(procedure.oid)",
-)
-TEMP_TABLE_SEARCH_COLUMNS = (
-    "namespace.nspname",
-    "table_class.relname",
-    "(namespace.nspname || '.' || table_class.relname)",
-)
+TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
+VIEW_SEARCH_COLUMNS = ("namespace.nspname", "view_class.relname", "(namespace.nspname || '.' || view_class.relname)")
+FUNCTION_SEARCH_COLUMNS = ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_result(procedure.oid)", "pg_catalog.pg_get_function_arguments(procedure.oid)")
+TEMP_TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
 
 
 @require_http_methods(["POST"])
@@ -51,31 +34,14 @@ def database_schema_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schema_name",
-            "schema_owner": "schema_owner",
-            "table_count": "table_count",
-            "size_bytes": "size_bytes",
-        },
-        "size_bytes",
-    )
+    page, page_size, offset, search, sort_column, direction = _list_query_params(payload, {"schema_name": "schema_name", "schema_owner": "schema_owner", "table_count": "table_count", "size_bytes": "size_bytes"}, "size_bytes")
 
     where_sql = ""
     params = []
     if search:
-        where_sql, search_params = _multi_column_search_filter(
-            search, SCHEMA_SEARCH_COLUMNS
-        )
+        where_sql, search_params = _multi_column_search_filter(search, SCHEMA_SEARCH_COLUMNS)
         params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(
-        payload,
-        _current_db_user(request),
-        db_connection,
-        "schema",
-        ("namespace.nspname",),
-    )
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "schema", ("namespace.nspname",))
     where_sql += f" {favorite_sql}"
     params.extend(favorite_params)
 
@@ -133,43 +99,15 @@ def database_schema_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC;
     """
 
-    result, error_response = _query_or_error(
-        "Не удалось получить размеры схем",
-        lambda: _fetch_db_resultsets(
-            db_connection,
-            (schema_sizes_query, [*params, page_size, offset]),
-            (schema_distribution_query, params),
-        ),
-    )
+    result, error_response = _query_or_error("Не удалось получить размеры схем", lambda: _fetch_db_resultsets(db_connection, (schema_sizes_query, [*params, page_size, offset]), (schema_distribution_query, params)))
     if error_response:
         return error_response
     rows, distribution_rows = result
 
-    schemas = [
-        {
-            "schema_name": row[0],
-            "schema_owner": row[1],
-            "table_count": int(row[2]),
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-        }
-        for row in rows
-    ]
-    schema_distribution = [
-        {"schema_name": row[0], "size_bytes": int(row[1] or 0), "table_size": row[2]}
-        for row in distribution_rows
-    ]
+    schemas = [{"schema_name": row[0], "schema_owner": row[1], "table_count": int(row[2]), "size_bytes": int(row[3]), "table_size": row[4]} for row in rows]
+    schema_distribution = [{"schema_name": row[0], "size_bytes": int(row[1] or 0), "table_size": row[2]} for row in distribution_rows]
     total_count = int(rows[0][5]) if rows else len(schema_distribution)
-    return JsonResponse(
-        {
-            "ok": True,
-            "schemas": schemas,
-            "schema_distribution": schema_distribution,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    return JsonResponse({"ok": True, "schemas": schemas, "schema_distribution": schema_distribution, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -180,34 +118,15 @@ def database_table_sizes(request):
     if error_response:
         return error_response
     page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schema_name",
-            "table_name": "table_name",
-            "table_owner": "table_owner",
-            "size_bytes": "size_bytes",
-            "index_size_bytes": "index_size_bytes",
-            "index_count": "index_count",
-            "row_count": "row_count",
-        },
-        "size_bytes",
+        payload, {"schema_name": "schema_name", "table_name": "table_name", "table_owner": "table_owner", "size_bytes": "size_bytes", "index_size_bytes": "index_size_bytes", "index_count": "index_count", "row_count": "row_count"}, "size_bytes"
     )
 
     where_sql = ""
     params = []
     if search:
-        where_sql, search_params = _multi_column_search_filter(
-            search,
-            TABLE_SEARCH_COLUMNS,
-        )
+        where_sql, search_params = _multi_column_search_filter(search, TABLE_SEARCH_COLUMNS)
         params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(
-        payload,
-        _current_db_user(request),
-        db_connection,
-        "table",
-        ("namespace.nspname", "table_class.relname"),
-    )
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "table", ("namespace.nspname", "table_class.relname"))
     where_sql += f" {favorite_sql}"
     params.extend(favorite_params)
 
@@ -274,52 +193,15 @@ def database_table_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC, table_name ASC;
     """
 
-    result, error_response = _query_or_error(
-        "Не удалось получить размеры таблиц",
-        lambda: _fetch_db_resultsets(
-            db_connection,
-            (table_sizes_query, [*params, page_size, offset]),
-            (table_distribution_query, params),
-        ),
-    )
+    result, error_response = _query_or_error("Не удалось получить размеры таблиц", lambda: _fetch_db_resultsets(db_connection, (table_sizes_query, [*params, page_size, offset]), (table_distribution_query, params)))
     if error_response:
         return error_response
     rows, distribution_rows = result
 
-    tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "table_owner": row[2],
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-            "index_size_bytes": int(row[5]),
-            "index_size": row[6],
-            "index_count": int(row[7]),
-            "row_count": int(row[8]),
-        }
-        for row in rows
-    ]
-    table_distribution = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "size_bytes": int(row[2] or 0),
-            "table_size": row[3],
-        }
-        for row in distribution_rows
-    ]
+    tables = [{"schema_name": row[0], "table_name": row[1], "table_owner": row[2], "size_bytes": int(row[3]), "table_size": row[4], "index_size_bytes": int(row[5]), "index_size": row[6], "index_count": int(row[7]), "row_count": int(row[8])} for row in rows]
+    table_distribution = [{"schema_name": row[0], "table_name": row[1], "size_bytes": int(row[2] or 0), "table_size": row[3]} for row in distribution_rows]
     total_count = int(rows[0][9]) if rows else len(table_distribution)
-    return JsonResponse(
-        {
-            "ok": True,
-            "tables": tables,
-            "table_distribution": table_distribution,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    return JsonResponse({"ok": True, "tables": tables, "table_distribution": table_distribution, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -330,17 +212,7 @@ def database_views_list(request):
     if error_response:
         return error_response
     page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schema_name",
-            "view_name": "view_name",
-            "view_owner": "view_owner",
-            "view_type": "view_type",
-            "size_bytes": "size_bytes",
-            "index_size_bytes": "index_size_bytes",
-            "row_count": "row_count",
-        },
-        "schema_name",
+        payload, {"schema_name": "schema_name", "view_name": "view_name", "view_owner": "view_owner", "view_type": "view_type", "size_bytes": "size_bytes", "index_size_bytes": "index_size_bytes", "row_count": "row_count"}, "schema_name"
     )
     view_type = payload.get("view_type") or ""
 
@@ -352,18 +224,9 @@ def database_views_list(request):
     elif view_type == "materialized":
         type_sql = "AND view_class.relkind = 'm'"
     if search:
-        where_sql, search_params = _multi_column_search_filter(
-            search,
-            VIEW_SEARCH_COLUMNS,
-        )
+        where_sql, search_params = _multi_column_search_filter(search, VIEW_SEARCH_COLUMNS)
         params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(
-        payload,
-        _current_db_user(request),
-        db_connection,
-        "view",
-        ("namespace.nspname", "view_class.relname"),
-    )
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "view", ("namespace.nspname", "view_class.relname"))
     where_sql += f" {favorite_sql}"
     params.extend(favorite_params)
 
@@ -410,47 +273,17 @@ def database_views_list(request):
         LIMIT %s OFFSET %s;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить представления",
-        lambda: _fetch_db_rows(db_connection, views_query, [*params, page_size, offset]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить представления", lambda: _fetch_db_rows(db_connection, views_query, [*params, page_size, offset]))
     if error_response:
         return error_response
 
-    items = [
-        {
-            "schema_name": row[0],
-            "view_name": row[1],
-            "view_owner": row[2],
-            "view_type": row[3],
-            "size_bytes": int(row[4]),
-            "view_size": row[5],
-            "index_size_bytes": int(row[6]),
-            "index_size": row[7],
-            "row_count": int(row[8]),
-        }
-        for row in rows
-    ]
+    items = [{"schema_name": row[0], "view_name": row[1], "view_owner": row[2], "view_type": row[3], "size_bytes": int(row[4]), "view_size": row[5], "index_size_bytes": int(row[6]), "index_size": row[7], "row_count": int(row[8])} for row in rows]
     total_count = int(rows[0][9]) if rows else 0
     materialized_count = int(rows[0][10]) if rows else 0
     ordinary_count = int(rows[0][11]) if rows else 0
     materialized_size_bytes = int(rows[0][12]) if rows else 0
-    summary = {
-        "materialized_count": materialized_count,
-        "ordinary_count": ordinary_count,
-        "materialized_size_bytes": materialized_size_bytes,
-        "materialized_size": _format_bytes(materialized_size_bytes),
-    }
-    return JsonResponse(
-        {
-            "ok": True,
-            "views": items,
-            "summary": summary,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    summary = {"materialized_count": materialized_count, "ordinary_count": ordinary_count, "materialized_size_bytes": materialized_size_bytes, "materialized_size": _format_bytes(materialized_size_bytes)}
+    return JsonResponse({"ok": True, "views": items, "summary": summary, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -461,35 +294,13 @@ def database_functions_list(request):
     if error_response:
         return error_response
 
-    page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schema_name",
-            "function_name": "function_name",
-            "return_type": "return_type",
-            "arguments": "arguments",
-        },
-        "schema_name",
-    )
+    page, page_size, offset, search, sort_column, direction = _list_query_params(payload, {"schema_name": "schema_name", "function_name": "function_name", "return_type": "return_type", "arguments": "arguments"}, "schema_name")
 
     where_sql = ""
     params = []
     if search:
-        where_sql, params = _multi_column_search_filter(
-            search,
-            FUNCTION_SEARCH_COLUMNS,
-        )
-    favorite_sql, favorite_params = _favorite_filter(
-        payload,
-        _current_db_user(request),
-        db_connection,
-        "function",
-        (
-            "namespace.nspname",
-            "procedure.proname",
-            "pg_catalog.pg_get_function_arguments(procedure.oid)",
-        ),
-    )
+        where_sql, params = _multi_column_search_filter(search, FUNCTION_SEARCH_COLUMNS)
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "function", ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_arguments(procedure.oid)"))
     where_sql += f" {favorite_sql}"
     params.extend(favorite_params)
 
@@ -513,32 +324,13 @@ def database_functions_list(request):
         LIMIT %s OFFSET %s;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить функции",
-        lambda: _fetch_db_rows(db_connection, functions_query, [*params, page_size, offset]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить функции", lambda: _fetch_db_rows(db_connection, functions_query, [*params, page_size, offset]))
     if error_response:
         return error_response
 
-    functions = [
-        {
-            "schema_name": row[0],
-            "function_name": row[1],
-            "return_type": row[2],
-            "arguments": row[3],
-        }
-        for row in rows
-    ]
+    functions = [{"schema_name": row[0], "function_name": row[1], "return_type": row[2], "arguments": row[3]} for row in rows]
     total_count = int(rows[0][4]) if rows else 0
-    return JsonResponse(
-        {
-            "ok": True,
-            "functions": functions,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    return JsonResponse({"ok": True, "functions": functions, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -566,17 +358,11 @@ def distribution_tables(request):
         ORDER BY namespace.nspname ASC, table_class.relname ASC;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить список таблиц",
-        lambda: _fetch_db_rows(db_connection, tables_query),
-    )
+    rows, error_response = _query_or_error("Не удалось получить список таблиц", lambda: _fetch_db_rows(db_connection, tables_query))
     if error_response:
         return error_response
 
-    tables = [
-        {"schema_name": row[0], "table_name": row[1], "object_type": row[2]}
-        for row in rows
-    ]
+    tables = [{"schema_name": row[0], "table_name": row[1], "object_type": row[2]} for row in rows]
     return JsonResponse({"ok": True, "tables": tables})
 
 
@@ -588,9 +374,7 @@ def distribution_info(request):
     schema_name = (payload.get("schema_name") or "").strip()
     table_name = (payload.get("table_name") or "").strip()
     if not connection_id:
-        return JsonResponse(
-            {"ok": False, "message": "Подключение не выбрано"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Подключение не выбрано"}, status=400)
     if not schema_name or not table_name:
         return JsonResponse({"ok": False, "message": "Таблица не выбрана"}, status=400)
 
@@ -623,15 +407,11 @@ def distribution_info(request):
                 cursor.execute(distribution_query)
                 return cursor.fetchall()
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить распределение", _fetch_distribution_rows
-    )
+    rows, error_response = _query_or_error("Не удалось получить распределение", _fetch_distribution_rows)
     if error_response:
         return error_response
     if rows is None:
-        return JsonResponse(
-            {"ok": False, "message": "Выбранная таблица не найдена"}, status=404
-        )
+        return JsonResponse({"ok": False, "message": "Выбранная таблица не найдена"}, status=404)
 
     segments = [{"segment_id": int(row[0]), "row_count": int(row[1])} for row in rows]
     counts = [item["row_count"] for item in segments]
@@ -640,31 +420,11 @@ def distribution_info(request):
     min_rows = min(counts) if counts else 0
     max_rows = max(counts) if counts else 0
     avg_rows = round(total_rows / len(counts), 2) if counts else 0
-    skew_ratio = (
-        round(max_rows / min_rows, 2)
-        if min_rows
-        else (float(max_rows) if max_rows else 0)
-    )
-    status = (
-        "высокий" if skew_ratio >= 1.5 else "средний" if skew_ratio >= 1.2 else "норм."
-    )
+    skew_ratio = round(max_rows / min_rows, 2) if min_rows else (float(max_rows) if max_rows else 0)
+    status = "высокий" if skew_ratio >= 1.5 else "средний" if skew_ratio >= 1.2 else "норм."
 
     return JsonResponse(
-        {
-            "ok": True,
-            "schema_name": schema_name,
-            "table_name": table_name,
-            "segments": segments,
-            "metrics": {
-                "total_rows": total_rows,
-                "used_segments": used_segments,
-                "min_rows": min_rows,
-                "max_rows": max_rows,
-                "avg_rows": avg_rows,
-                "skew_ratio": skew_ratio,
-                "status": status,
-            },
-        }
+        {"ok": True, "schema_name": schema_name, "table_name": table_name, "segments": segments, "metrics": {"total_rows": total_rows, "used_segments": used_segments, "min_rows": min_rows, "max_rows": max_rows, "avg_rows": avg_rows, "skew_ratio": skew_ratio, "status": status}}
     )
 
 
@@ -675,25 +435,12 @@ def database_temp_table_sizes(request):
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schema_name",
-            "table_name": "table_name",
-            "table_owner": "table_owner",
-            "size_bytes": "size_bytes",
-            "session_label": "session_label",
-        },
-        "size_bytes",
-    )
+    page, page_size, offset, search, sort_column, direction = _list_query_params(payload, {"schema_name": "schema_name", "table_name": "table_name", "table_owner": "table_owner", "size_bytes": "size_bytes", "session_label": "session_label"}, "size_bytes")
 
     where_sql = ""
     params = []
     if search:
-        where_sql, params = _multi_column_search_filter(
-            search,
-            TEMP_TABLE_SEARCH_COLUMNS,
-        )
+        where_sql, params = _multi_column_search_filter(search, TEMP_TABLE_SEARCH_COLUMNS)
 
     temp_table_sizes_query = f"""
         WITH temp_table_sizes AS (
@@ -755,46 +502,12 @@ def database_temp_table_sizes(request):
         ORDER BY size_bytes DESC, schema_name ASC, table_name ASC;
     """
 
-    result, error_response = _query_or_error(
-        "Не удалось получить временные таблицы",
-        lambda: _fetch_db_resultsets(
-            db_connection,
-            (temp_table_sizes_query, [*params, page_size, offset]),
-            (temp_table_distribution_query, params),
-        ),
-    )
+    result, error_response = _query_or_error("Не удалось получить временные таблицы", lambda: _fetch_db_resultsets(db_connection, (temp_table_sizes_query, [*params, page_size, offset]), (temp_table_distribution_query, params)))
     if error_response:
         return error_response
     rows, distribution_rows = result
 
-    temp_tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "table_owner": row[2],
-            "size_bytes": int(row[3]),
-            "table_size": row[4],
-            "session_label": row[5],
-        }
-        for row in rows
-    ]
-    temp_table_distribution = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "size_bytes": int(row[2] or 0),
-            "table_size": row[3],
-        }
-        for row in distribution_rows
-    ]
+    temp_tables = [{"schema_name": row[0], "table_name": row[1], "table_owner": row[2], "size_bytes": int(row[3]), "table_size": row[4], "session_label": row[5]} for row in rows]
+    temp_table_distribution = [{"schema_name": row[0], "table_name": row[1], "size_bytes": int(row[2] or 0), "table_size": row[3]} for row in distribution_rows]
     total_count = int(rows[0][6]) if rows else len(temp_table_distribution)
-    return JsonResponse(
-        {
-            "ok": True,
-            "temp_tables": temp_tables,
-            "temp_table_distribution": temp_table_distribution,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    return JsonResponse({"ok": True, "temp_tables": temp_tables, "temp_table_distribution": temp_table_distribution, "page": page, "page_size": page_size, "total_count": total_count})

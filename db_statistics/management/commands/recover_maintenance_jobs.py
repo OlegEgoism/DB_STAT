@@ -7,9 +7,5 @@ class Command(BaseCommand):
     help = "Возвращает прерванные фоновые операции обслуживания в очередь"
 
     def handle(self, *args, **options):
-        recovered = MaintenanceJob.objects.filter(status="running").update(
-            status="queued",
-            message="Операция восстановлена после перезапуска",
-            started=None,
-        )
+        recovered = MaintenanceJob.objects.filter(status="running").update(status="queued", message="Операция восстановлена после перезапуска", started=None)
         self.stdout.write(self.style.SUCCESS(f"Восстановлено задач: {recovered}"))

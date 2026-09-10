@@ -40,11 +40,7 @@ class DbStatisticsConfig(AppConfig):
                 # _run_maintenance_operation защищает только от повторного
                 # запуска уже выполняющейся задачи, а не от восстановления
                 # прерванной.
-                MaintenanceJob.objects.filter(status="running").update(
-                    status="queued",
-                    message="Операция восстановлена после перезапуска",
-                    started=None,
-                )
+                MaintenanceJob.objects.filter(status="running").update(status="queued", message="Операция восстановлена после перезапуска", started=None)
                 job_ids = list(MaintenanceJob.objects.filter(status="queued").values_list("pk", flat=True))
             except (OperationalError, ProgrammingError):
                 return

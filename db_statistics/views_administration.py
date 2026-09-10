@@ -65,52 +65,17 @@ def memory_overview(request):
         FROM relation_sizes;
     """
 
-    row, error_response = _query_or_error(
-        "Не удалось получить параметры памяти",
-        lambda: _fetch_db_row(
-            db_connection, memory_query, [db_connection.database, db_connection.database]
-        ),
-    )
+    row, error_response = _query_or_error("Не удалось получить параметры памяти", lambda: _fetch_db_row(db_connection, memory_query, [db_connection.database, db_connection.database]))
     if error_response:
         return error_response
 
     settings = [
-        {
-            "key": "gp_vmem_protect_limit",
-            "label": "Лимит виртуальной памяти сегмента",
-            "value": row[0] or "—",
-            "role": "Защита OOM",
-        },
-        {
-            "key": "shared_buffers",
-            "label": "Кэш данных",
-            "value": row[1] or "—",
-            "role": "Буферы",
-        },
-        {
-            "key": "work_mem",
-            "label": "Память операций",
-            "value": row[2] or "—",
-            "role": "Сортировка/Hash",
-        },
-        {
-            "key": "maintenance_work_mem",
-            "label": "Память обслуживания",
-            "value": row[3] or "—",
-            "role": "Очистка / создание индекса",
-        },
-        {
-            "key": "statement_mem",
-            "label": "Память запроса",
-            "value": row[4] or "—",
-            "role": "Лимит запроса",
-        },
-        {
-            "key": "max_statement_mem",
-            "label": "Максимальная память запроса",
-            "value": row[5] or "—",
-            "role": "Макс. лимит",
-        },
+        {"key": "gp_vmem_protect_limit", "label": "Лимит виртуальной памяти сегмента", "value": row[0] or "—", "role": "Защита OOM"},
+        {"key": "shared_buffers", "label": "Кэш данных", "value": row[1] or "—", "role": "Буферы"},
+        {"key": "work_mem", "label": "Память операций", "value": row[2] or "—", "role": "Сортировка/Hash"},
+        {"key": "maintenance_work_mem", "label": "Память обслуживания", "value": row[3] or "—", "role": "Очистка / создание индекса"},
+        {"key": "statement_mem", "label": "Память запроса", "value": row[4] or "—", "role": "Лимит запроса"},
+        {"key": "max_statement_mem", "label": "Максимальная память запроса", "value": row[5] or "—", "role": "Макс. лимит"},
     ]
 
     sizes = {
@@ -128,56 +93,22 @@ def memory_overview(request):
         used = sizes.get(used_key)
         limit = sizes.get(limit_key)
         percent = round((used * 100 / limit), 2) if used is not None and limit else 0
-        return {
-            "label": label,
-            "used": _format_bytes(used),
-            "limit": _format_bytes(limit),
-            "usage_percent": percent,
-        }
+        return {"label": label, "used": _format_bytes(used), "limit": _format_bytes(limit), "usage_percent": percent}
 
     usage = [
         usage_row("Память запроса", "statement_mem", "max_statement_mem"),
-        usage_row(
-            "Максимальная память запроса", "max_statement_mem", "gp_vmem_protect_limit"
-        ),
+        usage_row("Максимальная память запроса", "max_statement_mem", "gp_vmem_protect_limit"),
         usage_row("Память операций", "work_mem", "max_statement_mem"),
         usage_row("Кэш данных", "shared_buffers", "gp_vmem_protect_limit"),
     ]
     size_metrics = [
-        {
-            "key": "total",
-            "label": "Общий размер БД",
-            "size_bytes": int(row[6] or 0),
-            "value": _format_bytes(int(row[6] or 0)),
-        },
-        {
-            "key": "indexes",
-            "label": "Размер индексов",
-            "size_bytes": int(row[7] or 0),
-            "value": _format_bytes(int(row[7] or 0)),
-        },
-        {
-            "key": "data_without_indexes",
-            "label": "Размер БД без индексов",
-            "size_bytes": int(row[8] or 0),
-            "value": _format_bytes(int(row[8] or 0)),
-        },
-        {
-            "key": "temp_tables",
-            "label": "Размер временных таблиц",
-            "size_bytes": int(row[9] or 0),
-            "value": _format_bytes(int(row[9] or 0)),
-        },
-        {
-            "key": "materialized_views",
-            "label": "Размер материализованных представлений",
-            "size_bytes": int(row[10] or 0),
-            "value": _format_bytes(int(row[10] or 0)),
-        },
+        {"key": "total", "label": "Общий размер БД", "size_bytes": int(row[6] or 0), "value": _format_bytes(int(row[6] or 0))},
+        {"key": "indexes", "label": "Размер индексов", "size_bytes": int(row[7] or 0), "value": _format_bytes(int(row[7] or 0))},
+        {"key": "data_without_indexes", "label": "Размер БД без индексов", "size_bytes": int(row[8] or 0), "value": _format_bytes(int(row[8] or 0))},
+        {"key": "temp_tables", "label": "Размер временных таблиц", "size_bytes": int(row[9] or 0), "value": _format_bytes(int(row[9] or 0))},
+        {"key": "materialized_views", "label": "Размер материализованных представлений", "size_bytes": int(row[10] or 0), "value": _format_bytes(int(row[10] or 0))},
     ]
-    return JsonResponse(
-        {"ok": True, "settings": settings, "usage": usage, "size_metrics": size_metrics}
-    )
+    return JsonResponse({"ok": True, "settings": settings, "usage": usage, "size_metrics": size_metrics})
 
 
 @require_http_methods(["POST"])
@@ -200,25 +131,13 @@ def maintenance_stats(request):
     if error_response:
         return error_response
     page, page_size, offset, search, sort_column, direction = _list_query_params(
-        payload,
-        {
-            "schema_name": "schemaname",
-            "table_name": "relname",
-            "live_rows": "live_rows",
-            "dead_rows": "dead_rows",
-            "dead_percent": "dead_percent",
-            "last_vacuum": "last_vacuum_at",
-            "last_analyze": "last_analyze_at",
-        },
-        "dead_rows",
+        payload, {"schema_name": "schemaname", "table_name": "relname", "live_rows": "live_rows", "dead_rows": "dead_rows", "dead_percent": "dead_percent", "last_vacuum": "last_vacuum_at", "last_analyze": "last_analyze_at"}, "dead_rows"
     )
     where_sql = ""
     params = []
     if search:
         search_pattern = f"%{_escape_like_pattern(search)}%"
-        where_sql = (
-            "WHERE schemaname ILIKE %s ESCAPE '!' OR relname ILIKE %s ESCAPE '!'"
-        )
+        where_sql = "WHERE schemaname ILIKE %s ESCAPE '!' OR relname ILIKE %s ESCAPE '!'"
         params.extend([search_pattern, search_pattern])
 
     maintenance_query = f"""
@@ -259,10 +178,7 @@ def maintenance_stats(request):
         LIMIT %s OFFSET %s;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить статистику обслуживания",
-        lambda: _fetch_db_rows(db_connection, maintenance_query, [*params, page_size, offset]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить статистику обслуживания", lambda: _fetch_db_rows(db_connection, maintenance_query, [*params, page_size, offset]))
     if error_response:
         return error_response
 
@@ -270,28 +186,9 @@ def maintenance_stats(request):
         """Форматирует дату и время статистики обслуживания."""
         return value.strftime("%Y-%m-%d %H:%M:%S") if value else "Никогда"
 
-    tables = [
-        {
-            "schema_name": row[0],
-            "table_name": row[1],
-            "live_rows": int(row[2] or 0),
-            "dead_rows": int(row[3] or 0),
-            "dead_percent": float(row[4] or 0),
-            "last_vacuum": format_datetime(row[5]),
-            "last_analyze": format_datetime(row[6]),
-        }
-        for row in rows
-    ]
+    tables = [{"schema_name": row[0], "table_name": row[1], "live_rows": int(row[2] or 0), "dead_rows": int(row[3] or 0), "dead_percent": float(row[4] or 0), "last_vacuum": format_datetime(row[5]), "last_analyze": format_datetime(row[6])} for row in rows]
     total_count = int(rows[0][7]) if rows else 0
-    return JsonResponse(
-        {
-            "ok": True,
-            "tables": tables,
-            "page": page,
-            "page_size": page_size,
-            "total_count": total_count,
-        }
-    )
+    return JsonResponse({"ok": True, "tables": tables, "page": page, "page_size": page_size, "total_count": total_count})
 
 
 @require_http_methods(["POST"])
@@ -304,14 +201,9 @@ def maintenance_operation(request):
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
-        job = MaintenanceJob.objects.select_related("connection", "user").filter(
-            pk=payload["job_id"], user=db_user
-        ).first()
+        job = MaintenanceJob.objects.select_related("connection", "user").filter(pk=payload["job_id"], user=db_user).first()
         if not job:
-            return JsonResponse(
-                {"ok": False, "message": "Задача обслуживания не найдена"},
-                status=404,
-            )
+            return JsonResponse({"ok": False, "message": "Задача обслуживания не найдена"}, status=404)
         return JsonResponse({"ok": True, "job": _serialize_maintenance_job(job)})
 
     db_connection, error_response = _require_payload_connection(request, payload)
@@ -321,40 +213,14 @@ def maintenance_operation(request):
     table_name = str(payload.get("table_name") or "").strip()
     operation = str(payload.get("operation") or "vacuum").lower()
     if not schema_name or not table_name:
-        return JsonResponse(
-            {"ok": False, "message": "Не выбрана таблица для обслуживания"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Не выбрана таблица для обслуживания"}, status=400)
     if operation not in {"vacuum", "vacuum_full", "analyze", "explain_analyze"}:
-        return JsonResponse(
-            {"ok": False, "message": "Неизвестная операция обслуживания"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Неизвестная операция обслуживания"}, status=400)
 
-    job = MaintenanceJob.objects.create(
-        user=db_user,
-        connection=db_connection,
-        operation=operation,
-        schema_name=schema_name,
-        table_name=table_name,
-    )
-    _write_audit(
-        operation,
-        _maintenance_operation_audit_info(
-            operation,
-            db_connection,
-            schema_name,
-            table_name,
-            "запущено в фоновом режиме",
-        ),
-        db_user=db_user,
-    )
+    job = MaintenanceJob.objects.create(user=db_user, connection=db_connection, operation=operation, schema_name=schema_name, table_name=table_name)
+    _write_audit(operation, _maintenance_operation_audit_info(operation, db_connection, schema_name, table_name, "запущено в фоновом режиме"), db_user=db_user)
     _submit_maintenance_job(job.pk)
-    return JsonResponse(
-        {
-            "ok": True,
-            "job": _serialize_maintenance_job(job),
-        },
-        status=202,
-    )
+    return JsonResponse({"ok": True, "job": _serialize_maintenance_job(job)}, status=202)
 
 
 @require_http_methods(["GET", "POST"])

@@ -59,35 +59,15 @@ def active_queries(request):
         ORDER BY duration DESC;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить активные запросы",
-        lambda: _fetch_db_rows(db_connection, active_queries_query, [username, username_pattern]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить активные запросы", lambda: _fetch_db_rows(db_connection, active_queries_query, [username, username_pattern]))
     if error_response:
         return error_response
 
     queries = []
     for row in rows:
         duration = row[4]
-        queries.append(
-            {
-                "pid": row[0],
-                "username": row[1] or "—",
-                "relation_name": row[2] or "—",
-                "state": row[3] or "—",
-                "duration": _format_duration(duration),
-                "duration_seconds": _duration_seconds(duration),
-                "sql": row[5] or "—",
-            }
-        )
-    return JsonResponse(
-        {
-            "ok": True,
-            "queries": queries,
-            "total_count": len(queries),
-            "username": username,
-        }
-    )
+        queries.append({"pid": row[0], "username": row[1] or "—", "relation_name": row[2] or "—", "state": row[3] or "—", "duration": _format_duration(duration), "duration_seconds": _duration_seconds(duration), "sql": row[5] or "—"})
+    return JsonResponse({"ok": True, "queries": queries, "total_count": len(queries), "username": username})
 
 
 @require_http_methods(["POST"])
@@ -106,9 +86,7 @@ def terminate_active_query(request):
         if pid <= 0:
             raise ValueError
     except (TypeError, ValueError):
-        return JsonResponse(
-            {"ok": False, "message": "Указан некорректный PID запроса"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Указан некорректный PID запроса"}, status=400)
 
     terminate_query = """
         SELECT
@@ -135,34 +113,17 @@ def terminate_active_query(request):
           AND activity.state = 'active'
           AND activity.pid <> pg_backend_pid();
     """
-    row, error_response = _query_or_error(
-        f"Не удалось завершить запрос с PID {pid}",
-        lambda: _fetch_db_row(db_connection, terminate_query, [pid]),
-    )
+    row, error_response = _query_or_error(f"Не удалось завершить запрос с PID {pid}", lambda: _fetch_db_row(db_connection, terminate_query, [pid]))
     if error_response:
         return error_response
 
     if not row:
-        return JsonResponse(
-            {"ok": False, "message": f"Активный запрос с PID {pid} не найден"},
-            status=404,
-        )
+        return JsonResponse({"ok": False, "message": f"Активный запрос с PID {pid} не найден"}, status=404)
     if not row[0]:
-        return JsonResponse(
-            {"ok": False, "message": f"Не удалось завершить запрос с PID {pid}"},
-            status=409,
-        )
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить запрос с PID {pid}"}, status=409)
 
-    _write_audit(
-        "query_terminate",
-        _backend_termination_audit_info(
-            "Завершение активного запроса", db_connection, row
-        ),
-        db_user=_current_db_user(request),
-    )
-    return JsonResponse(
-        {"ok": True, "message": f"Запрос с PID {pid} завершён", "pid": pid}
-    )
+    _write_audit("query_terminate", _backend_termination_audit_info("Завершение активного запроса", db_connection, row), db_user=_current_db_user(request))
+    return JsonResponse({"ok": True, "message": f"Запрос с PID {pid} завершён", "pid": pid})
 
 
 @require_http_methods(["POST"])
@@ -202,10 +163,7 @@ def active_sessions(request):
             backend_start DESC;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить активные сессии и подключения",
-        lambda: _fetch_db_rows(db_connection, sessions_query, [username, username_pattern, state, state]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить активные сессии и подключения", lambda: _fetch_db_rows(db_connection, sessions_query, [username, username_pattern, state, state]))
     if error_response:
         return error_response
 
@@ -230,14 +188,9 @@ def active_sessions(request):
                 "application_name": row[3] or "—",
                 "client_addr": row_client,
                 "client_port": row[5] if row[5] is not None else "—",
-                "backend_start": (
-                    timezone.localtime(row[6]).strftime("%Y-%m-%d %H:%M:%S")
-                    if row[6]
-                    else "—"
-                ),
+                "backend_start": (timezone.localtime(row[6]).strftime("%Y-%m-%d %H:%M:%S") if row[6] else "—"),
                 "state": row_state,
-                "wait_event": " / ".join([part for part in [row[11], row[12]] if part])
-                or "—",
+                "wait_event": " / ".join([part for part in [row[11], row[12]] if part]) or "—",
                 "backend_type": row[13] or "—",
                 "session_duration": _format_duration(session_duration),
                 "session_duration_seconds": _duration_seconds(session_duration),
@@ -254,21 +207,9 @@ def active_sessions(request):
         "idle_in_transaction": state_counts.get("idle in transaction", 0),
         "users": len(user_counts),
         "clients": len(client_counts),
-        "states": [
-            {"state": key, "count": value}
-            for key, value in sorted(state_counts.items())
-        ],
+        "states": [{"state": key, "count": value} for key, value in sorted(state_counts.items())],
     }
-    return JsonResponse(
-        {
-            "ok": True,
-            "sessions": sessions,
-            "summary": summary,
-            "total_count": len(sessions),
-            "username": username,
-            "state": state,
-        }
-    )
+    return JsonResponse({"ok": True, "sessions": sessions, "summary": summary, "total_count": len(sessions), "username": username, "state": state})
 
 
 @require_http_methods(["POST"])
@@ -287,9 +228,7 @@ def terminate_active_session(request):
         if pid <= 0:
             raise ValueError
     except (TypeError, ValueError):
-        return JsonResponse(
-            {"ok": False, "message": "Указан некорректный PID сессии"}, status=400
-        )
+        return JsonResponse({"ok": False, "message": "Указан некорректный PID сессии"}, status=400)
 
     terminate_query = """
         SELECT
@@ -315,33 +254,17 @@ def terminate_active_session(request):
         WHERE activity.pid = %s
           AND activity.pid <> pg_backend_pid();
     """
-    row, error_response = _query_or_error(
-        f"Не удалось завершить сессию с PID {pid}",
-        lambda: _fetch_db_row(db_connection, terminate_query, [pid]),
-    )
+    row, error_response = _query_or_error(f"Не удалось завершить сессию с PID {pid}", lambda: _fetch_db_row(db_connection, terminate_query, [pid]))
     if error_response:
         return error_response
 
     if not row:
-        return JsonResponse(
-            {"ok": False, "message": f"Сессия с PID {pid} не найдена"}, status=404
-        )
+        return JsonResponse({"ok": False, "message": f"Сессия с PID {pid} не найдена"}, status=404)
     if not row[0]:
-        return JsonResponse(
-            {"ok": False, "message": f"Не удалось завершить сессию с PID {pid}"},
-            status=409,
-        )
+        return JsonResponse({"ok": False, "message": f"Не удалось завершить сессию с PID {pid}"}, status=409)
 
-    _write_audit(
-        "session_terminate",
-        _backend_termination_audit_info(
-            "Завершение активной сессии", db_connection, row
-        ),
-        db_user=_current_db_user(request),
-    )
-    return JsonResponse(
-        {"ok": True, "message": f"Сессия с PID {pid} завершена", "pid": pid}
-    )
+    _write_audit("session_terminate", _backend_termination_audit_info("Завершение активной сессии", db_connection, row), db_user=_current_db_user(request))
+    return JsonResponse({"ok": True, "message": f"Сессия с PID {pid} завершена", "pid": pid})
 
 
 @require_http_methods(["POST"])
@@ -388,14 +311,7 @@ def blocking_locks(request):
           AND (%s = '' OR blocker.usename ILIKE %s ESCAPE '!');
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить блокировки",
-        lambda: _fetch_db_rows(
-            db_connection,
-            blocking_locks_query,
-            [blocked_username, blocked_username_pattern, blocker_username, blocker_username_pattern],
-        ),
-    )
+    rows, error_response = _query_or_error("Не удалось получить блокировки", lambda: _fetch_db_rows(db_connection, blocking_locks_query, [blocked_username, blocked_username_pattern, blocker_username, blocker_username_pattern]))
     if error_response:
         return error_response
 
@@ -415,15 +331,7 @@ def blocking_locks(request):
                 "blocker_query": row[7] or "—",
             }
         )
-    return JsonResponse(
-        {
-            "ok": True,
-            "locks": locks,
-            "total_count": len(locks),
-            "blocked_username": blocked_username,
-            "blocker_username": blocker_username,
-        }
-    )
+    return JsonResponse({"ok": True, "locks": locks, "total_count": len(locks), "blocked_username": blocked_username, "blocker_username": blocker_username})
 
 
 @require_http_methods(["POST"])
@@ -451,10 +359,7 @@ def idle_transactions(request):
         ORDER BY xact_start;
     """
 
-    rows, error_response = _query_or_error(
-        "Не удалось получить транзакции",
-        lambda: _fetch_db_rows(db_connection, idle_transactions_query, [username, username_pattern]),
-    )
+    rows, error_response = _query_or_error("Не удалось получить транзакции", lambda: _fetch_db_rows(db_connection, idle_transactions_query, [username, username_pattern]))
     if error_response:
         return error_response
 
@@ -474,11 +379,4 @@ def idle_transactions(request):
                 "sql": row[7] or "—",
             }
         )
-    return JsonResponse(
-        {
-            "ok": True,
-            "transactions": transactions,
-            "total_count": len(transactions),
-            "username": username,
-        }
-    )
+    return JsonResponse({"ok": True, "transactions": transactions, "total_count": len(transactions), "username": username})

@@ -31,12 +31,7 @@ def _connection_encryption_secret():
 
 def _connection_password_cipher():
     """Создаёт экземпляр шифра на основе ключа, растянутого через PBKDF2"""
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=_CONNECTION_PASSWORD_KDF_SALT,
-        iterations=_CONNECTION_PASSWORD_KDF_ITERATIONS,
-    )
+    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=_CONNECTION_PASSWORD_KDF_SALT, iterations=_CONNECTION_PASSWORD_KDF_ITERATIONS)
     key = base64.urlsafe_b64encode(kdf.derive(_connection_encryption_secret().encode("utf-8")))
     return Fernet(key)
 
@@ -69,7 +64,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX):].encode("utf-8")
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :].encode("utf-8")
     try:
         return _connection_password_cipher().decrypt(token).decode("utf-8")
     except InvalidToken:
@@ -164,7 +159,7 @@ class DBUser(AbstractBaseUser, PermissionsMixin, DateStamp, Active):
 
 
 class DBUserSidebarSettings(DateStamp):
-    """Настройки сайдбара """
+    """Настройки сайдбара"""
 
     user = models.OneToOneField(to="db_statistics.DBUser", **vn("Пользователь", "Пользователь, которому принадлежат настройки бокового меню"), related_name="user_db_user_sidebar_settings", on_delete=models.CASCADE)
     visible_tabs = models.JSONField(**vn("Видимые вкладки", "Сохранённый порядок и набор доступных вкладок бокового меню"), default=list, blank=True)
@@ -181,14 +176,7 @@ class DBUserSidebarSettings(DateStamp):
 class DBFavorite(DateStamp):
     """Избранные объекты"""
 
-    OBJECT_TYPES = [(value, label) for value, label in [
-        ("schema", "Схема"),
-        ("table", "Таблица"),
-        ("view", "Представление"),
-        ("function", "Функция"),
-        ("user", "Пользователь"),
-        ("group", "Группа")
-    ]]
+    OBJECT_TYPES = [(value, label) for value, label in [("schema", "Схема"), ("table", "Таблица"), ("view", "Представление"), ("function", "Функция"), ("user", "Пользователь"), ("group", "Группа")]]
 
     user = models.ForeignKey(to="db_statistics.DBUser", **vn("Пользователь", "Пользователь, добавивший объект в избранное"), related_name="user_db_favorite", on_delete=models.CASCADE)
     connection = models.ForeignKey(to="db_statistics.DBConnection", **vn("Подключение", "Подключение, в котором находится избранный объект"), related_name="connection_db_favorite", on_delete=models.CASCADE)
@@ -289,12 +277,7 @@ class DBPaginationSettings(DateStamp):
 
     MAX_RECORDS = 5
 
-    size = models.PositiveIntegerField(
-        **vn("Размер пагинации", "Количество записей на одной странице."),
-        default=10,
-        unique=True,
-        validators=(MinValueValidator(1), MaxValueValidator(1000)),
-    )
+    size = models.PositiveIntegerField(**vn("Размер пагинации", "Количество записей на одной странице."), default=10, unique=True, validators=(MinValueValidator(1), MaxValueValidator(1000)))
 
     class Meta:
         db_table = "db_pagination_settings"
@@ -305,9 +288,7 @@ class DBPaginationSettings(DateStamp):
     def clean(self):
         super().clean()
         if self.pk is None and type(self).objects.count() >= self.MAX_RECORDS:
-            raise ValidationError(
-                f"Можно создать не более {self.MAX_RECORDS} настроек пагинации."
-            )
+            raise ValidationError(f"Можно создать не более {self.MAX_RECORDS} настроек пагинации.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -320,18 +301,8 @@ class DBPaginationSettings(DateStamp):
 class MaintenanceJob(models.Model):
     """Фоновые операции обслуживания"""
 
-    STATUS_CHOICES = [
-        ("queued", "В очереди"),
-        ("running", "Выполняется"),
-        ("completed", "Завершено"),
-        ("failed", "Ошибка"),
-    ]
-    OPERATION_CHOICES = [
-        ("vacuum", "VACUUM"),
-        ("vacuum_full", "VACUUM FULL"),
-        ("analyze", "ANALYZE"),
-        ("explain_analyze", "EXPLAIN ANALYZE"),
-    ]
+    STATUS_CHOICES = [("queued", "В очереди"), ("running", "Выполняется"), ("completed", "Завершено"), ("failed", "Ошибка")]
+    OPERATION_CHOICES = [("vacuum", "VACUUM"), ("vacuum_full", "VACUUM FULL"), ("analyze", "ANALYZE"), ("explain_analyze", "EXPLAIN ANALYZE")]
 
     id = models.UUIDField(**vn("Идентификатор", "Уникальный идентификатор фоновой задачи."), primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(DBUser, **vn("Пользователь", "Пользователь, запустивший операцию обслуживания."), on_delete=models.SET_NULL, null=True, related_name="maintenance_jobs")

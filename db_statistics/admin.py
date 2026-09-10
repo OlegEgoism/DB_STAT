@@ -21,15 +21,8 @@ class BaseAdmin(admin.ModelAdmin):
 class DBUserAdminForm(forms.ModelForm):
     """Форма пользователя с явным заданием пароля вместо прямого редактирования хэша"""
 
-    password1 = forms.CharField(
-        label="Пароль",
-        widget=forms.PasswordInput,
-        required=False,
-        help_text="Обязателен для нового пользователя. При редактировании оставьте пустым, чтобы не менять текущий пароль.",
-    )
-    password2 = forms.CharField(
-        label="Подтверждение пароля", widget=forms.PasswordInput, required=False
-    )
+    password1 = forms.CharField(label="Пароль", widget=forms.PasswordInput, required=False, help_text="Обязателен для нового пользователя. При редактировании оставьте пустым, чтобы не менять текущий пароль.")
+    password2 = forms.CharField(label="Подтверждение пароля", widget=forms.PasswordInput, required=False)
 
     class Meta:
         model = DBUser
@@ -44,9 +37,7 @@ class DBUserAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if not cleaned_data.get("password1") and (
-            self.instance.pk is None or not self.instance.password
-        ):
+        if not cleaned_data.get("password1") and (self.instance.pk is None or not self.instance.password):
             self.add_error("password1", "Укажите пароль для нового пользователя")
         return cleaned_data
 
@@ -129,14 +120,7 @@ class DBConnectionAdmin(BaseAdmin):
         users = obj.dbuser_set.all()
         if not users:
             return "—"
-        return format_html_join(
-            ", ",
-            '<a href="{}">{}</a>',
-            (
-                (reverse("admin:db_statistics_dbuser_change", args=(user.pk,)), user.login)
-                for user in users
-            ),
-        )
+        return format_html_join(", ", '<a href="{}">{}</a>', ((reverse("admin:db_statistics_dbuser_change", args=(user.pk,)), user.login) for user in users))
 
     @admin.display(description="Количество пользователей")
     def users_count(self, obj):
@@ -190,11 +174,7 @@ class DBPaginationSettingsAdmin(BaseAdmin):
         return getattr(request.user, "role", None) == settings.ADMIN_ROLE
 
     def has_add_permission(self, request):
-        return (
-            self._is_app_admin(request)
-            and DBPaginationSettings.objects.count() < DBPaginationSettings.MAX_RECORDS
-            and super().has_add_permission(request)
-        )
+        return self._is_app_admin(request) and DBPaginationSettings.objects.count() < DBPaginationSettings.MAX_RECORDS and super().has_add_permission(request)
 
     def has_view_permission(self, request, obj=None):
         return self._is_app_admin(request) and super().has_view_permission(request, obj)
@@ -209,6 +189,7 @@ class DBPaginationSettingsAdmin(BaseAdmin):
 @admin.register(MaintenanceJob)
 class MaintenanceJobAdmin(admin.ModelAdmin):
     """Фоновые операции обслуживания"""
+
     list_display = ("id", "operation", "connection", "schema_name", "table_name", "user", "status", "created", "finished")
     list_filter = ("status", "operation", "connection")
     search_fields = ("schema_name", "table_name", "user__login", "connection__name")
