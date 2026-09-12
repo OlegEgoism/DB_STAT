@@ -3296,7 +3296,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 42%);
     align-items: center;
     gap: 12px;
     padding: 22px;
@@ -3312,12 +3312,14 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hdd-animation {
     position: relative;
-    width: 240px;
-    min-height: 240px;
+    width: 100%;
+    min-height: 270px;
     justify-self: end;
     overflow: hidden;
     border-radius: calc(var(--radius-lg) - 4px);
-    background: radial-gradient(circle at center, rgba(79, 140, 255, 0.13), rgba(139, 92, 246, 0.03) 48%, transparent 72%);
+    background:
+        radial-gradient(circle at 38% 52%, rgba(121, 200, 255, 0.16), transparent 32%),
+        linear-gradient(135deg, rgba(4, 17, 29, 0.96), rgba(12, 35, 52, 0.88));
 }
 
 .home-hdd-animation canvas {
@@ -3428,16 +3430,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
     }
 
     .home-hdd-animation {
-        width: 220px;
-        min-height: 220px;
+        width: min(100%, 520px);
+        min-height: 250px;
         justify-self: center;
     }
 }
 
 @media (max-width: 576px) {
     .home-hdd-animation {
-        width: 200px;
-        min-height: 200px;
+        width: 100%;
+        min-height: 210px;
     }
 }
 
