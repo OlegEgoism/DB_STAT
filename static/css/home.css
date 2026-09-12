@@ -3296,7 +3296,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hero {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 42%);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
     align-items: center;
     gap: 12px;
     padding: 22px;
@@ -3312,8 +3312,8 @@ body.sidebar-collapsed .nav-item .nav-icon {
 
 .home-hdd-animation {
     position: relative;
-    width: 100%;
-    min-height: 270px;
+    width: min(100%, 380px);
+    aspect-ratio: 1 / 1;
     justify-self: end;
     overflow: hidden;
     border-radius: calc(var(--radius-lg) - 4px);
@@ -3446,16 +3446,14 @@ body.sidebar-collapsed .nav-item .nav-icon {
     }
 
     .home-hdd-animation {
-        width: min(100%, 520px);
-        min-height: 250px;
+        width: min(100%, 380px);
         justify-self: center;
     }
 }
 
 @media (max-width: 576px) {
     .home-hdd-animation {
-        width: 100%;
-        min-height: 210px;
+        width: min(100%, 320px);
     }
 }
 
