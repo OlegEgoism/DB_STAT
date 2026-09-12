@@ -3330,6 +3330,20 @@ body.sidebar-collapsed .nav-item .nav-icon {
     display: block;
 }
 
+.home-hdd-animation__brand {
+    position: absolute;
+    right: 18px;
+    bottom: 15px;
+    z-index: 1;
+    color: rgba(240, 248, 255, 0.92);
+    font-size: clamp(15px, 1.8vw, 22px);
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+}
+
 .home-hero h3 {
     margin: 0 0 8px;
     font-size: 28px;

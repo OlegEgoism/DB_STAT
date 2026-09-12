@@ -189,6 +189,22 @@
         ctx.restore();
     }
 
+    function drawAmbientDust(now) {
+        ctx.save();
+        for (let index = 0; index < 42; index += 1) {
+            const x = random(index, 21) * width;
+            const baseY = random(index, 22) * height;
+            const y = (baseY + now * (0.002 + random(index, 23) * 0.004)) % height;
+            const radius = 0.35 + random(index, 24) * 1.25;
+            ctx.globalAlpha = 0.08 + random(index, 25) * 0.2;
+            ctx.fillStyle = '#d9e8f1';
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, TAU);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
     function progress(now) {
         if (reduceMotion.matches) return 0.38;
         const elapsed = (now - startedAt) % 7200;
@@ -202,8 +218,10 @@
     function draw(now) {
         ctx.clearRect(0, 0, width, height);
         const dissolve = progress(now);
+        drawAmbientDust(now);
         ctx.save();
-        ctx.translate(width * 0.39, height * 0.53);
+        // The low-left drive and upper-right dust plume follow the supplied photo's composition.
+        ctx.translate(width * 0.34, height * 0.58);
         ctx.scale(scale, scale);
         drawDrive(dissolve);
         drawDust(dissolve, now);
