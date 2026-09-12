@@ -30,9 +30,20 @@
                 <input class="form-control" id="passwordInput" name="password" type="password" autocomplete="current-password" required>
             </div>
             <div class="form-field">
-                <label class="form-label" for="sessionDurationInput">{% if LANGUAGE_CODE == 'en' %}Session duration (hours){% else %}Время сессии (часы){% endif %}</label>
-                <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="any" inputmode="decimal" required aria-describedby="sessionDurationHelp">
-                <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_minutes }} minutes to {{ max_session_duration_hours }} hours. Fractions are allowed, for example 0.5 = 30 minutes.{% else %}От {{ min_session_duration_minutes }} минут до {{ max_session_duration_hours }} часов. Можно использовать дробные значения, например 0,5 = 30 минут.{% endif %}</div>
+                <div class="row g-3">
+                    <div class="col-md-7">
+                        <label class="form-label" for="sessionDurationInput">{% if LANGUAGE_CODE == 'en' %}Session duration (hours){% else %}Время сессии (часы){% endif %}</label>
+                        <input class="form-control" id="sessionDurationInput" name="session_duration" type="number" value="{{ session_duration_value }}" min="{{ min_session_duration_hours }}" max="{{ max_session_duration_hours }}" step="any" inputmode="decimal" required aria-describedby="sessionDurationHelp">
+                        <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_minutes }} minutes to {{ max_session_duration_hours }} hours.{% else %}От {{ min_session_duration_minutes }} минут до {{ max_session_duration_hours }} часов.{% endif %}</div>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label" for="loginLanguageSelect">{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}</label>
+                        <select class="form-select" id="loginLanguageSelect" aria-label="{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}">
+                            <option value="ru" {% if LANGUAGE_CODE != 'en' %}selected{% endif %}>Русский</option>
+                            <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
+                        </select>
+                    </div>
+                </div>
             </div>
             <button class="btn btn-primary w-100" type="submit">
                 <i class="fas fa-sign-in-alt"></i> {% if LANGUAGE_CODE == 'en' %}Sign in{% else %}Войти{% endif %}
@@ -44,3 +55,35 @@
 
 {# The login template is localized on the server; running the DOM translator here can duplicate labels from stale cached markup. #}
 {% block i18n_scripts %}{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return '';
+    }
+
+    const select = document.getElementById('loginLanguageSelect');
+    if (!select) return;
+
+    select.addEventListener('change', function () {
+        const language = select.value;
+        fetch('/settings/language/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({language: language})
+        }).then(function () {
+            window.location.reload();
+        });
+    });
+}());
+</script>
+{% endblock %}
