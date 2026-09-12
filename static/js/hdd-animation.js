@@ -76,6 +76,22 @@
         ctx.arc(platterX, platterY, radius, 0, TAU);
         ctx.fill();
 
+        // Fine anisotropic reflections make the platter read as brushed aluminium.
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.22;
+        const sheen = ctx.createLinearGradient(platterX - radius, platterY - radius, platterX + radius, platterY + radius);
+        sheen.addColorStop(0, 'rgba(255,255,255,0)');
+        sheen.addColorStop(0.42, 'rgba(255,255,255,0.05)');
+        sheen.addColorStop(0.5, 'rgba(255,255,255,0.9)');
+        sheen.addColorStop(0.58, 'rgba(255,255,255,0.04)');
+        sheen.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = sheen;
+        ctx.beginPath();
+        ctx.arc(platterX, platterY, radius - 2, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+
         ctx.globalAlpha = 0.24;
         ctx.strokeStyle = '#30404c';
         ctx.lineWidth = 0.8;
@@ -120,6 +136,18 @@
         ctx.lineWidth = 2;
         roundedRect(-113, -93, 226, 186, 10);
         ctx.stroke();
+
+        ctx.save();
+        ctx.globalAlpha = 0.23;
+        ctx.strokeStyle = '#d6e2e8';
+        ctx.lineWidth = 0.7;
+        for (let line = 0; line < 9; line += 1) {
+            ctx.beginPath();
+            ctx.moveTo(-105, -70 + line * 17);
+            ctx.lineTo(105, -70 + line * 17);
+            ctx.stroke();
+        }
+        ctx.restore();
 
         drawPlatter(dissolve);
 
@@ -171,6 +199,17 @@
         const palette = ['#f4f8fa', '#bdcbd3', '#718491', '#dce6eb'];
         ctx.save();
         ctx.rotate(-0.13);
+        const plume = ctx.createLinearGradient(55, -30, 300, -95);
+        plume.addColorStop(0, `rgba(211, 228, 238, ${0.13 * dissolve})`);
+        plume.addColorStop(0.45, `rgba(125, 151, 168, ${0.07 * dissolve})`);
+        plume.addColorStop(1, 'rgba(58, 82, 98, 0)');
+        ctx.fillStyle = plume;
+        ctx.beginPath();
+        ctx.moveTo(42, -75);
+        ctx.bezierCurveTo(130, -150, 238, -138, 330, -103);
+        ctx.bezierCurveTo(240, -42, 140, 24, 49, 53);
+        ctx.closePath();
+        ctx.fill();
         grains.forEach((grain) => {
             const trigger = clamp((grain.x + 91) / 209 + grain.delay * 0.24);
             const travel = smoothstep((dissolve - trigger) / 0.34);
@@ -185,6 +224,15 @@
             ctx.beginPath();
             ctx.arc(x, y, grain.size * (1 - travel * 0.35), 0, TAU);
             ctx.fill();
+            if (grain.size > 1.65 && travel > 0.15) {
+                ctx.globalAlpha = fade * 0.38;
+                ctx.strokeStyle = palette[grain.tone];
+                ctx.lineWidth = Math.max(0.35, grain.size * 0.28);
+                ctx.beginPath();
+                ctx.moveTo(x - Math.min(15, distance * 0.12), y - grain.lift * 0.025);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
         });
         ctx.restore();
     }
