@@ -136,6 +136,26 @@ python -m ruff check . --fix
 python -m ruff format .
 ```
 
+## Make commands
+
+The main steps above are also available as `Makefile` targets — see the full list with `make help` or `make` (default).
+
+| Command | What it does |
+| --- | --- |
+| `make install` | Install dependencies from requirements.txt |
+| `make migrations` | Generate migrations from model changes |
+| `make migrate` | Apply migrations to the database |
+| `make run` | Start the development server |
+| `make shell` | Open an interactive Django shell |
+| `make admin` | Create the first administrator (see `INITIAL_ADMIN_*` in `.env`) |
+| `make lint` / `make lint-fix` | Check code style (report only / auto-fix) |
+| `make format` | Format the code |
+| `make collectstatic` | Collect static files (same as during the Docker image build) |
+| `make docker-build` | Build the Docker image |
+| `make docker-run` / `make docker-stop` | Start / stop the Docker container |
+| `make clean` | Remove caches and locally collected static files |
+| `make reset-db` | DANGEROUS: delete the SQLite database and all `db_statistics` migrations (except `__init__.py`), with a confirmation prompt |
+
 ## Running the project in Docker
 
 - Build the Docker image
