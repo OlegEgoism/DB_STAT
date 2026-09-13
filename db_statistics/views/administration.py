@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
@@ -189,7 +190,12 @@ def maintenance_operation(request):
 
     payload = _read_json_body(request)
     if payload.get("job_id"):
-        job = MaintenanceJob.objects.select_related("connection", "user").filter(pk=payload["job_id"], user=db_user).first()
+        try:
+            job = MaintenanceJob.objects.select_related("connection", "user").filter(pk=payload["job_id"], user=db_user).first()
+        except (ValueError, ValidationError):
+            # job_id is a UUIDField — a malformed value raises here instead of
+            # just not matching, which would otherwise surface as a 500.
+            job = None
         if not job:
             return JsonResponse({"ok": False, "message": "Задача обслуживания не найдена"}, status=404)
         return JsonResponse({"ok": True, "job": _serialize_maintenance_job(job)})

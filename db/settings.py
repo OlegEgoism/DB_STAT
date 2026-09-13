@@ -108,15 +108,6 @@ USE_TZ = True
 
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
 
-# Intentionally not a hard fail-fast: DB_CONNECTION_ENCRYPTION_KEY derives the
-# Fernet key that protects every stored target-DB password (see
-# encrypt_connection_password in models.py), so running with the default
-# SECRET_KEY means those passwords are encrypted under a well-known,
-# guessable value and can be decrypted offline by anyone with the source.
-# This is a deliberate, informed trade-off for a working out-of-the-box
-# default — see db_statistics.checks.check_secret_key_default for the
-# non-blocking startup warning that keeps the risk visible instead.
-
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -220,9 +211,6 @@ LOGGING = {
     "loggers": {
         "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
         "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
-        # Покрывает все логгеры приложения через точечную иерархию имён
-        # (например db_statistics.views.helpers) — они наследуют этот
-        # обработчик, не имея своего собственного.
         "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }

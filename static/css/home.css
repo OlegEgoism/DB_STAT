@@ -210,16 +210,6 @@ body {
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.sidebar-language-setting {
-    margin-bottom: var(--space-4);
-    padding-bottom: var(--space-4);
-    border-bottom: 1px solid var(--sidebar-border);
-}
-
-.sidebar-language-setting .form-select {
-    max-width: 320px;
-}
-
 /* ========== 404 ERROR PAGE ========== */
 .error-page {
     position: relative;
@@ -825,7 +815,10 @@ body {
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
     box-shadow: var(--shadow-card-hover);
-    z-index: 1200;
+    /* Below Bootstrap's .modal-backdrop (1050)/.modal (1055): this panel
+       lives in the topbar, not inside a modal, so an open modal must still
+       cover it instead of this panel floating on top of the dialog. */
+    z-index: 1040;
 }
 
 .background-jobs-list { margin-top: 8px; display: grid; gap: 7px; }
@@ -852,7 +845,9 @@ body {
     transform: translateY(-4px);
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
-    z-index: 1100;
+    /* Same reasoning as .background-jobs-panel above: stay below Bootstrap's
+       modal (1055) since this tooltip lives in the topbar, not in a modal. */
+    z-index: 1040;
 }
 
 .connection-manager:hover .connection-info-tooltip,
@@ -933,6 +928,10 @@ body {
 
 .btn-conn.primary:hover {
     background: rgba(79, 140, 255, 0.08);
+}
+
+.logout-icon {
+    color: var(--accent-red);
 }
 
 .conn-divider {

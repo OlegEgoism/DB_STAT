@@ -6,7 +6,7 @@
     <!-- Top Bar -->
     <div class="topbar">
         <div class="topbar-left">
-            <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+            <button class="menu-toggle" id="menuToggle" aria-label="Показать/скрыть боковое меню"><i class="fas fa-bars" aria-hidden="true"></i></button>
             <h4 id="pageTitle">База данных <small>Размеры и структура</small></h4>
         </div>
         <div class="topbar-right">
@@ -96,7 +96,7 @@
                 <form method="post" action="{% url 'logout' %}" id="logoutForm">
                     {% csrf_token %}
                     <button type="submit" class="btn-conn" title="Выйти">
-                        <i class="fas fa-sign-out-alt" style="color: red"></i>
+                        <i class="fas fa-sign-out-alt logout-icon"></i>
                     </button>
                 </form>
             </div>

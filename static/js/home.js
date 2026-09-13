@@ -32,15 +32,15 @@
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
-    let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: ''};
+    let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', inFlight: false};
     const terminatedActiveQueryKeys = new Set();
     let activeSessionsRequestId = 0;
-    let activeSessionsState = {sort: 'session_duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', state: ''};
+    let activeSessionsState = {sort: 'session_duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', state: '', inFlight: false};
     const terminatedActiveSessionKeys = new Set();
     let blockingLocksRequestId = 0;
-    let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: ''};
+    let blockingLocksState = {refreshInterval: 0, timer: null, blockedUsername: '', blockerUsername: '', inFlight: false};
     let idleTransactionsRequestId = 0;
-    let idleTransactionsState = {refreshInterval: 0, timer: null, username: ''};
+    let idleTransactionsState = {refreshInterval: 0, timer: null, username: '', inFlight: false};
     let maintenanceStatsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     const maintenanceJobs = new Map();
@@ -825,7 +825,6 @@
                     </div>
                 </div>`).join('');
             if ((data.settings || []).length >= data.max_records) sizeInput.disabled = !idInput.value;
-            window.setTimeout(translateRenderedInterface, 0);
         }).catch(error => { list.innerHTML = `<div class="text-danger">${escapeHtml(error.message)}</div>`; });
         form.addEventListener('submit', event => {
             event.preventDefault();
@@ -1157,10 +1156,6 @@
         return window.DBStatI18n?.translate(String(value ?? '')) ?? String(value ?? '');
     }
 
-    function translateRenderedInterface() {
-        window.DBStatI18n?.translateElement(document.body);
-    }
-
     function getConnectionSlotValue(connectionSlots, key) {
         const item = connectionSlots.find(slot => slot.key === key);
         return item ? item.value : null;
@@ -1444,7 +1439,12 @@
         }
         if (!activeQueriesState.refreshInterval) return;
         activeQueriesState.timer = setInterval(() => {
-            if (!document.hidden && document.getElementById('page-queries')?.classList.contains('active')) {
+            // Without this guard, a query slower than the poll interval means
+            // the next tick fires another request on top of it instead of
+            // waiting — piling up overlapping requests against the shared
+            // connection pool (db/settings.py DB_CONNECTION_POOL_MAX_CONN)
+            // instead of just running a bit behind schedule.
+            if (!activeQueriesState.inFlight && !document.hidden && document.getElementById('page-queries')?.classList.contains('active')) {
                 refreshActiveQueriesForConnection(undefined, {silent: true});
             }
         }, activeQueriesState.refreshInterval * 1000);
@@ -1592,6 +1592,7 @@
         }
         syncActiveQueriesUserFilter();
         const requestId = ++activeQueriesRequestId;
+        activeQueriesState.inFlight = true;
         if (!options.silent) renderActiveQueriesWarning('Загрузка активных запросов...');
         connectionRequest(activeQueriesApiUrl, {id: conn.id, username: activeQueriesState.username})
             .then(data => {
@@ -1601,7 +1602,8 @@
             .catch(error => {
                 if (requestId !== activeQueriesRequestId) return;
                 renderActiveQueriesWarning(error.message || 'Не удалось получить активные запросы');
-            });
+            })
+            .finally(() => { activeQueriesState.inFlight = false; });
     }
 
 
@@ -1715,7 +1717,7 @@
         }
         if (!activeSessionsState.refreshInterval) return;
         activeSessionsState.timer = setInterval(() => {
-            if (!document.hidden && document.getElementById('page-sessions')?.classList.contains('active')) {
+            if (!activeSessionsState.inFlight && !document.hidden && document.getElementById('page-sessions')?.classList.contains('active')) {
                 refreshActiveSessionsForConnection(undefined, {silent: true});
             }
         }, activeSessionsState.refreshInterval * 1000);
@@ -1799,6 +1801,7 @@
         }
         syncActiveSessionsFilters();
         const requestId = ++activeSessionsRequestId;
+        activeSessionsState.inFlight = true;
         if (!options.silent) renderActiveSessionsWarning('Загрузка активных сессий и подключений...');
         connectionRequest(activeSessionsApiUrl, {id: conn.id, username: activeSessionsState.username, state: activeSessionsState.state})
             .then(data => {
@@ -1808,7 +1811,8 @@
             .catch(error => {
                 if (requestId !== activeSessionsRequestId) return;
                 renderActiveSessionsWarning(error.message || 'Не удалось получить активные сессии и подключения');
-            });
+            })
+            .finally(() => { activeSessionsState.inFlight = false; });
     }
 
     function syncBlockingLocksUserFilters() {
@@ -1866,7 +1870,7 @@
         }
         if (!blockingLocksState.refreshInterval) return;
         blockingLocksState.timer = setInterval(() => {
-            if (!document.hidden && document.getElementById('page-locks')?.classList.contains('active')) {
+            if (!blockingLocksState.inFlight && !document.hidden && document.getElementById('page-locks')?.classList.contains('active')) {
                 refreshBlockingLocksForConnection(undefined, {silent: true});
             }
         }, blockingLocksState.refreshInterval * 1000);
@@ -1900,6 +1904,7 @@
         }
         syncBlockingLocksUserFilters();
         const requestId = ++blockingLocksRequestId;
+        blockingLocksState.inFlight = true;
         if (!options.silent) renderBlockingLocksWarning('Загрузка блокировок...');
         connectionRequest(blockingLocksApiUrl, {
             id: conn.id,
@@ -1913,7 +1918,8 @@
             .catch(error => {
                 if (requestId !== blockingLocksRequestId) return;
                 renderBlockingLocksWarning(error.message || 'Не удалось получить блокировки');
-            });
+            })
+            .finally(() => { blockingLocksState.inFlight = false; });
     }
 
     function syncIdleTransactionsUserFilter() {
@@ -1961,7 +1967,7 @@
         }
         if (!idleTransactionsState.refreshInterval) return;
         idleTransactionsState.timer = setInterval(() => {
-            if (!document.hidden && document.getElementById('page-transactions')?.classList.contains('active')) {
+            if (!idleTransactionsState.inFlight && !document.hidden && document.getElementById('page-transactions')?.classList.contains('active')) {
                 refreshIdleTransactionsForConnection(undefined, {silent: true});
             }
         }, idleTransactionsState.refreshInterval * 1000);
@@ -1993,6 +1999,7 @@
         }
         syncIdleTransactionsUserFilter();
         const requestId = ++idleTransactionsRequestId;
+        idleTransactionsState.inFlight = true;
         if (!options.silent) renderIdleTransactionsWarning('Загрузка транзакций...');
         connectionRequest(idleTransactionsApiUrl, {id: conn.id, username: idleTransactionsState.username})
             .then(data => {
@@ -2002,7 +2009,8 @@
             .catch(error => {
                 if (requestId !== idleTransactionsRequestId) return;
                 renderIdleTransactionsWarning(error.message || 'Не удалось получить транзакции');
-            });
+            })
+            .finally(() => { idleTransactionsState.inFlight = false; });
     }
 
 
@@ -2854,7 +2862,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateSchemaDistributionChart([]);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
         }
         updateSchemaPaginationButtons();
     }
@@ -3185,7 +3193,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateViewsSummaryChart(null, []);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateViewPaginationButtons();
     }
 
@@ -3769,7 +3777,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateTempTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateTempTablePaginationButtons();
     }
 
@@ -4183,7 +4191,6 @@
             if (!response.ok || data.ok === false) {
                 throw new Error(data.message || 'Ошибка запроса');
             }
-            window.setTimeout(translateRenderedInterface, 0);
             return data;
         });
     }
@@ -4369,8 +4376,8 @@
             <div class="segment-warning">
                 <i class="fas fa-exclamation-triangle"></i>
                 <div>
-                    <strong>${warning.title}</strong>
-                    <span>${warning.text}</span>
+                    <strong>${escapeHtml(warning.title)}</strong>
+                    <span>${escapeHtml(warning.text)}</span>
                 </div>
             </div>
         `;

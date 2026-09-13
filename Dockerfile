@@ -39,12 +39,10 @@ RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
 # Bakes hashed, compressed static files (whitenoise) into the image so the
 # app server never has to serve raw STATICFILES_DIRS itself. DEBUG defaults to
 # False (see db/settings.py), which is what selects the manifest storage.
-# settings.py refuses to import at all under DEBUG=False without a real
-# SECRET_KEY — ARG (not ENV) keeps this placeholder out of the final image, so
-# the running container still has none baked in and must get a real one at
-# `docker run` time.
-ARG COLLECTSTATIC_DJANGO_SETTINGS_PLACEHOLDER=collectstatic-build-time-only-placeholder
-RUN SECRET_KEY="$COLLECTSTATIC_DJANGO_SETTINGS_PLACEHOLDER" python manage.py collectstatic --noinput
+# No SECRET_KEY is set here on purpose: the running container still has none
+# baked in and must get a real one at `docker run` time (see checks.py's W002
+# warning), and collectstatic itself doesn't need one either way.
+RUN python manage.py collectstatic --noinput
 
 RUN mkdir -p /app/data
 

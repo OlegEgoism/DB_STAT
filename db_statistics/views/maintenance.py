@@ -5,6 +5,7 @@ because both are admin-triggered, audited actions against the target DB that
 run through the connection pool.
 """
 
+import logging
 import time
 
 import psycopg2
@@ -18,7 +19,9 @@ from db_statistics.models import DBConnection, MaintenanceJob
 from db_statistics.views.audit import MAINTENANCE_OPERATION_LABELS, _backend_termination_audit_info, _maintenance_operation_audit_info, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _require_payload_connection
 from db_statistics.views.helpers import _read_json_body
-from db_statistics.views.pool import _fetch_db_row, _open_database_connection, _query_or_error
+from db_statistics.views.pool import _fetch_db_row, _open_database_connection, _query_or_error, _safe_db_error_message
+
+logger = logging.getLogger(__name__)
 
 
 def _terminate_backend(request, *, require_active, invalid_pid_message, not_found_message, failed_message, success_message, audit_action_type, audit_label):
@@ -171,7 +174,20 @@ def _run_maintenance_operation(job_id):
                     else None
                 )
     except psycopg2.Error as exc:
-        result = {"status": "failed", "message": str(exc), "details": []}
+        # Routed through _safe_db_error_message (like every other DB-facing
+        # endpoint) instead of the raw str(exc): the admin who owns this job
+        # can still see the full driver error in the server log this logs to.
+        action_description = f"Не удалось выполнить {MAINTENANCE_OPERATION_LABELS.get(operation, operation.upper())} для {schema_name}.{table_name}"
+        result = {"status": "failed", "message": _safe_db_error_message(action_description, exc), "details": []}
+    except Exception:
+        # This runs on a background thread (ThreadPoolExecutor) with no caller
+        # waiting on the Future — anything other than psycopg2.Error used to
+        # propagate into the discarded Future and vanish with no log line and
+        # no status update, leaving the job stuck in "running" forever (only
+        # apps.py's startup recovery would ever notice). Catch-all here so a
+        # bug always still marks the job failed and gets logged.
+        logger.exception("Непредвиденная ошибка при выполнении задачи обслуживания job_id=%s", job_id)
+        result = {"status": "failed", "message": "Внутренняя ошибка при выполнении операции. Подробности см. в журнале сервера приложения", "details": []}
     else:
         result = {"status": "completed", "message": "Операция успешно завершена", "details": details, "statistics": statistics}
     result["duration_seconds"] = round(time.monotonic() - started_at, 3)

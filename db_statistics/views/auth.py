@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.cache import cache
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -115,7 +115,14 @@ def _available_connections(request):
 
 def _get_connection_for_request(request, connection_id):
     """Получает доступное пользователю подключение по идентификатору"""
-    return get_object_or_404(_available_connections(request), pk=connection_id)
+    try:
+        return get_object_or_404(_available_connections(request), pk=connection_id)
+    except (ValueError, TypeError) as exc:
+        # A non-numeric id (pk is an IntegerField) raises ValueError before
+        # get_object_or_404 gets a chance to turn "missing" into a clean 404 —
+        # re-raising as Http404 keeps every caller's behavior the same for a
+        # malformed id as for one that's simply not found, instead of a 500.
+        raise Http404("Некорректный идентификатор подключения") from exc
 
 
 def _require_payload_connection(request, payload):

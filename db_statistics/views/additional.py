@@ -166,8 +166,8 @@ def sidebar_settings(request):
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
 
-    settings = _sidebar_settings_for_user(db_user)
-    current_tabs, current_section_order = _sidebar_settings_values_for_user(settings, db_user)
+    sidebar_prefs = _sidebar_settings_for_user(db_user)
+    current_tabs, current_section_order = _sidebar_settings_values_for_user(sidebar_prefs, db_user)
     available_tabs = _available_sidebar_tabs_for_user(db_user)
     if request.method == "GET":
         return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": current_tabs, "section_order": current_section_order})
@@ -177,8 +177,8 @@ def sidebar_settings(request):
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     visible_tabs = [tab_id for tab_id in visible_tabs if tab_id in available_tabs]
     section_order = _normalize_sidebar_sections(payload.get("section_order"))
-    settings.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
-    settings.save(update_fields=["visible_tabs", "updated"])
+    sidebar_prefs.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
+    sidebar_prefs.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": visible_tabs, "section_order": section_order})
 

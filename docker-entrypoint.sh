@@ -15,9 +15,9 @@ chown -R appuser:appuser "$sqlite_dir"
 runuser -u appuser -- python manage.py migrate --noinput --fake-initial
 runuser -u appuser -- python manage.py recover_maintenance_jobs
 
-# Create the first account without a publicly known default password. When
-# INITIAL_ADMIN_PASSWORD is omitted, the command prints a random password once
-# to the container log. Existing databases are never modified.
+# Creates the first account (INITIAL_ADMIN_PASSWORD defaults to "admin" if
+# left unset — see ensure_initial_admin.py and the same note in .env.example).
+# Existing databases are never modified.
 runuser -u appuser -- python manage.py ensure_initial_admin
 
 # Docker Desktop provides host.docker.internal automatically. On native Linux
@@ -51,5 +51,12 @@ PY
 fi
 
 # Concurrency is tunable per-deployment without rebuilding the image or
-# overriding the whole CMD — exec-form CMD can't expand env vars itself.
-exec runuser -u appuser -- "$@" --workers "${GUNICORN_WORKERS:-3}" --threads "${GUNICORN_THREADS:-2}" --timeout "${GUNICORN_TIMEOUT:-60}"
+# overriding the whole CMD — exec-form CMD can't expand env vars itself. Only
+# append these gunicorn-specific flags when gunicorn is actually the command
+# being run: an unconditional append here would corrupt any other CMD
+# override (`docker run ... manage.py shell`, `manage.py check`, etc.) with
+# flags it doesn't recognize instead of just running it as given.
+if [ "${1:-}" = "gunicorn" ]; then
+    set -- "$@" --workers "${GUNICORN_WORKERS:-3}" --threads "${GUNICORN_THREADS:-2}" --timeout "${GUNICORN_TIMEOUT:-60}"
+fi
+exec runuser -u appuser -- "$@"

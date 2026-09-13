@@ -9,9 +9,9 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     env:
-      # settings.py refuses to start with DEBUG=False (the default with no
-      # .env file, as here) unless a real SECRET_KEY is provided — this is a
-      # throwaway CI-only value, not a production secret.
+      # Without this, `manage.py check`/`test` would run against the insecure
+      # default SECRET_KEY and trip db_statistics.checks' W002 warning — this
+      # is a throwaway CI-only value, not a production secret.
       SECRET_KEY: ci-only-secret-key-not-used-in-production
     steps:
       - uses: actions/checkout@v4
