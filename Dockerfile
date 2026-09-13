@@ -36,6 +36,11 @@ COPY . .
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
     && chmod +x /app/docker-entrypoint.sh
 
+# Bakes hashed, compressed static files (whitenoise) into the image so the
+# app server never has to serve raw STATICFILES_DIRS itself. DEBUG defaults to
+# False (see db/settings.py), which is what selects the manifest storage.
+RUN python manage.py collectstatic --noinput
+
 RUN mkdir -p /app/data
 
 VOLUME ["/app/data"]
@@ -43,6 +48,7 @@ VOLUME ["/app/data"]
 EXPOSE 8000
 
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
-# --insecure: DEBUG defaults to False (see db/settings.py), and without it the
-# dev server stops serving STATIC_URL entirely, breaking every page's CSS/JS.
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000", "--insecure"]
+# gunicorn: a real multi-worker WSGI server instead of Django's single-process
+# dev server; whitenoise (added to MIDDLEWARE) serves the collected static
+# files, so no separate nginx/static container is needed.
+CMD ["gunicorn", "db.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "60"]

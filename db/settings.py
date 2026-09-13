@@ -55,13 +55,14 @@ if _env_bool("SECURE_PROXY_SSL_HEADER", False):
 INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "db_statistics.apps.DbStatisticsConfig"]
 
 # DBUser — единый пользователь и для входа в само приложение (см. собственную
-# сессионную аутентификацию в view_helpers._current_db_user), и для входа в
+# сессионную аутентификацию в views.helpers._current_db_user), и для входа в
 # Django admin (через стандартный django.contrib.auth). Обычный auth.User
 # больше не используется.
 AUTH_USER_MODEL = "db_statistics.DBUser"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -104,8 +105,31 @@ DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Compressed + hashed filenames only once `collectstatic` has produced a
+# manifest (production/Docker image build). Plain storage locally so
+# `runserver` keeps serving static files straight from STATICFILES_DIRS
+# without requiring a collectstatic step on every change.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 CONNECTION_TIMEOUT_SECONDS = 5
+
+# Пул psycopg2-соединений на каждое сохранённое подключение (см.
+# db_statistics.views.helpers._get_connection_pool), а не новое TCP-соединение
+# и SSL/auth-рукопожатие на каждый запрос — особенно важно для частого поллинга
+# (активные запросы/сессии/блокировки) и для Greenplum, где установка
+# соединения заметно дороже, чем на обычном PostgreSQL. Пул создаётся лениво
+# при первом обращении к конкретному подключению и живёт в памяти воркер-
+# процесса — при нескольких воркерах gunicorn у каждого будет свой пул.
+DB_CONNECTION_POOL_MIN_CONN = int(os.getenv("DB_CONNECTION_POOL_MIN_CONN", "1"))
+DB_CONNECTION_POOL_MAX_CONN = int(os.getenv("DB_CONNECTION_POOL_MAX_CONN", "10"))
+
 ADMIN_ROLE = "Администратор"
 
 SESSION_USER_ID_KEY = "db_user_id"

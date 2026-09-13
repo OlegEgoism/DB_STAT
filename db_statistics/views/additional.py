@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import psycopg2
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import Case, CharField, F, Q, Value, When
 from django.http import JsonResponse
@@ -12,12 +13,13 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser
-from db_statistics.view_helpers import (
+from db_statistics.views.helpers import (
     _audit_action_label,
     _audit_username,
     _available_connections,
     _available_sidebar_tabs_for_user,
     _can_manage_connections,
+    _close_connection_pools_for,
     _connection_audit_info,
     _connection_delete_permission_error,
     _connection_edit_permission_error,
@@ -294,7 +296,12 @@ def audit_events(request):
             return JsonResponse({"ok": False, "message": "Дата «с» не может быть позже даты «по»"}, status=400)
 
     audit_queryset = DBAudit.objects.all()
-    available_users = list(audit_queryset.order_by("username").values_list("username", flat=True).distinct())
+    # Список пользователей для фильтра меняется редко (только когда кто-то
+    # первый раз выполняет действие под новым логином), а полный DISTINCT по
+    # постоянно растущему журналу аудита — не самый дешёвый запрос на каждую
+    # загрузку страницы. Короткий TTL достаточен для этого небольшого
+    # рассинхрона и не требует инвалидации кэша при записи аудита.
+    available_users = cache.get_or_set("db_audit_available_users", lambda: list(DBAudit.objects.order_by("username").values_list("username", flat=True).distinct()), timeout=300)
     if username:
         audit_queryset = audit_queryset.filter(username=username)
     if action_type:
@@ -458,5 +465,6 @@ def delete_connection(request):
     audit_info = _connection_audit_info("Удаление подключения", connection)
     connection.is_active = False
     connection.save(update_fields=["is_active", "updated"])
+    _close_connection_pools_for(connection.pk)
     _write_audit("connection_delete", audit_info, db_user=db_user)
     return JsonResponse({"ok": True, "message": f"Подключение {connection.name} удалено"})

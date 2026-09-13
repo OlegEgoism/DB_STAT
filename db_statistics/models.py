@@ -64,7 +64,7 @@ def decrypt_connection_password(stored_password):
     text = str(stored_password)
     if not text.startswith(ENCRYPTED_PASSWORD_PREFIX):
         return text
-    token = text[len(ENCRYPTED_PASSWORD_PREFIX) :].encode("utf-8")
+    token = text[len(ENCRYPTED_PASSWORD_PREFIX):].encode("utf-8")
     try:
         return _connection_password_cipher().decrypt(token).decode("utf-8")
     except InvalidToken:
@@ -257,19 +257,19 @@ class DBAudit(models.Model):
         ("explain_analyze", "EXPLAIN ANALYZE таблицы"),
     ]
 
-    username = models.CharField(**vn("Пользователь", "Логин пользователя, выполнившего действие."), max_length=200)
-    action_type = models.CharField(**vn("Действие", "Тип события, сохранённого в журнале аудита."), max_length=32, choices=ACTION_TYPES)
+    username = models.CharField(**vn("Пользователь", "Логин пользователя, выполнившего действие."), max_length=200, db_index=True)
+    action_type = models.CharField(**vn("Действие", "Тип события, сохранённого в журнале аудита."), max_length=32, choices=ACTION_TYPES, db_index=True)
     info = models.TextField(**vn("Информация", "Подробное безопасное описание выполненного действия."))
-    created = models.DateTimeField(**vn("Дата действия", "Дата и время выполнения действия."))
-
-    def __str__(self):
-        return f"{self.username} - {self.action_type}"
+    created = models.DateTimeField(**vn("Дата действия", "Дата и время выполнения действия."), db_index=True)
 
     class Meta:
         db_table = "db_audit"
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
         ordering = ("-created",)
+
+    def __str__(self):
+        return f"{self.username} - {self.action_type}"
 
 
 class DBPaginationSettings(DateStamp):

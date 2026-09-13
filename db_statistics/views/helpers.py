@@ -6,6 +6,7 @@ Keeping infrastructure, session, audit, connection and query helpers here makes
 
 import json
 import logging
+import threading
 import time
 from contextlib import closing, contextmanager
 from decimal import Decimal, InvalidOperation
@@ -17,6 +18,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from psycopg2 import sql
+from psycopg2.pool import ThreadedConnectionPool
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser, DBUserSidebarSettings, MaintenanceJob
 
@@ -456,20 +458,72 @@ def _test_connection_params(host, port, database, username, password, ssl):
             cursor.fetchone()
 
 
+_connection_pools = {}
+_connection_pools_lock = threading.Lock()
+
+
+def _pool_key(db_connection, ssl):
+    """Ключ пула: слепок текущих параметров подключения.
+
+    Если пользователь меняет хост/пользователя/пароль сохранённого
+    подключения, ключ меняется вместе с ними, и код ниже сам закрывает пул со
+    старыми параметрами — новые соединения не создаются с устаревшим паролем.
+    """
+    return (db_connection.pk, db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl)
+
+
+def _get_connection_pool(db_connection, ssl):
+    """Возвращает пул psycopg2-соединений для этого подключения, создавая его при необходимости."""
+    key = _pool_key(db_connection, ssl)
+    with _connection_pools_lock:
+        pool = _connection_pools.get(key)
+        if pool is not None:
+            return pool
+        for stale_key in [existing for existing in _connection_pools if existing[0] == db_connection.pk]:
+            _connection_pools.pop(stale_key).closeall()
+        pool = ThreadedConnectionPool(settings.DB_CONNECTION_POOL_MIN_CONN, settings.DB_CONNECTION_POOL_MAX_CONN, **_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl))
+        _connection_pools[key] = pool
+        return pool
+
+
+def _close_connection_pools_for(connection_id):
+    """Закрывает и забывает все пулы соединений для указанного подключения (например, при удалении)."""
+    with _connection_pools_lock:
+        for stale_key in [existing for existing in _connection_pools if existing[0] == connection_id]:
+            _connection_pools.pop(stale_key).closeall()
+
+
 @contextmanager
 def _open_database_connection(db_connection, ssl=True):
-    """Открывает соединение с сохранённой базой данных и гарантированно закрывает его.
+    """Берёт соединение с сохранённой базой данных из пула этого подключения.
 
-    В отличие от использования psycopg2-соединения напрямую как контекстного
-    менеджера (который только коммитит/откатывает транзакцию, но не закрывает
-    сокет), этот менеджер контекста явно закрывает соединение при выходе из
-    блока `with`, независимо от того, как он завершился.
+    Соединение возвращается в пул при выходе из блока `with` вместо того,
+    чтобы закрывать сокет и открывать новый на каждый запрос — это особенно
+    важно для часто опрашиваемых панелей (активные запросы/сессии/блокировки).
+    Если соединение осталось в аварийном состоянии (ошибка внутри блока) или
+    оказалось нежизнеспособным, оно закрывается и не возвращается в пул, чтобы
+    следующий запрос получил заведомо рабочее соединение.
     """
-    connection = psycopg2.connect(**_connection_kwargs(db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl))
+    pool = _get_connection_pool(db_connection, ssl)
+    connection = pool.getconn()
+    discard = False
     try:
         yield connection
+    except Exception:
+        discard = True
+        raise
     finally:
-        connection.close()
+        if connection.closed:
+            discard = True
+        elif not discard:
+            try:
+                if connection.autocommit:
+                    connection.autocommit = False
+                else:
+                    connection.rollback()
+            except psycopg2.Error:
+                discard = True
+        pool.putconn(connection, close=discard)
 
 
 def _fetch_db_rows(db_connection, query, params=None):

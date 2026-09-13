@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.models import MaintenanceJob
-from db_statistics.view_helpers import (
+from db_statistics.views.helpers import (
     EXCLUDED_SYSTEM_SCHEMAS_SQL,
     _current_db_user,
     _database_roles_list,

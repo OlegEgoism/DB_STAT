@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.view_helpers import (
+from db_statistics.views.helpers import (
     _backend_termination_audit_info,
     _current_db_user,
     _destructive_action_permission_error,

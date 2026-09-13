@@ -31,7 +31,7 @@ class DbStatisticsConfig(AppConfig):
 
         def submit_queued_jobs():
             from db_statistics.models import MaintenanceJob
-            from db_statistics.view_helpers import _submit_maintenance_job
+            from db_statistics.views.helpers import _submit_maintenance_job
 
             try:
                 # Задачи, оставшиеся в статусе "running" после аварийного

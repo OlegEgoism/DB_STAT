@@ -44,6 +44,19 @@
 
 - Версия Python 3.12+
 
+- `psycopg2` собирается из исходников и требует системные заголовки PostgreSQL и Python. На Debian/Ubuntu перед `pip install -r requirements.txt` установите (замените `python3.12-dev` на версию, которой создано виртуальное окружение):
+
+```bash
+sudo apt-get install -y gcc libpq-dev python3.12-dev
+```
+
+Типичные ошибки сборки и чего именно не хватает:
+
+| Ошибка при сборке `psycopg2` | Нужен пакет |
+| --- | --- |
+| `fatal error: pg_config.h: Нет такого файла или каталога` | `libpq-dev` |
+| `fatal error: Python.h: Нет такого файла или каталога` | `python3.X-dev` (X — версия Python окружения) |
+
 - Файл .env
 
 ```

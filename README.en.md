@@ -44,6 +44,19 @@ The main goal of DB STAT is to simplify daily database health checks.
 
 - Python version 3.12+
 
+- `psycopg2` is built from source and needs both the PostgreSQL and Python system headers. On Debian/Ubuntu, install these before `pip install -r requirements.txt` (replace `python3.12-dev` with the version your virtualenv was created with):
+
+```bash
+sudo apt-get install -y gcc libpq-dev python3.12-dev
+```
+
+Common build errors and the package that fixes each one:
+
+| Error while building `psycopg2` | Package needed |
+| --- | --- |
+| `fatal error: pg_config.h: No such file or directory` | `libpq-dev` |
+| `fatal error: Python.h: No such file or directory` | `python3.X-dev` (X = your environment's Python version) |
+
 - `.env` file
 
 ```
