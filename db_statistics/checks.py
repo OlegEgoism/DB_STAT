@@ -3,6 +3,27 @@ from django.core.checks import Warning, register
 
 
 @register()
+def check_secret_key_default(app_configs, **kwargs):
+    """Предупреждает (не блокирует запуск), если SECRET_KEY не задан явно.
+
+    DB_CONNECTION_ENCRYPTION_KEY по умолчанию равен SECRET_KEY (см.
+    settings.py) и шифрует сохранённые пароли к подключениям — на дефолтном
+    значении это одинаковый, публично известный ключ у каждой инсталляции из
+    образа. Это осознанный компромисс ради рабочего запуска "из коробки";
+    предупреждение просто делает риск видимым в manage.py check и в логах.
+    """
+    if settings.SECRET_KEY != "django-insecure-dev-only-change-me":
+        return []
+    return [
+        Warning(
+            "SECRET_KEY не задан — используется публичный дефолт из образа.",
+            hint="Сохранённые пароли к подключениям шифруются этим же ключом (DB_CONNECTION_ENCRYPTION_KEY), поэтому на инсталляции, доступной не только вам, задайте свой SECRET_KEY через переменную окружения.",
+            id="db_statistics.W002",
+        )
+    ]
+
+
+@register()
 def check_cookie_transport_security(app_configs, **kwargs):
     """Предупреждает (не блокирует запуск), если куки CSRF/сессии могут уйти по HTTP.
 

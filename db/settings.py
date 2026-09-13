@@ -2,7 +2,6 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -109,13 +108,14 @@ USE_TZ = True
 
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
 
-# A silent fallback here is worse than a crash: DB_CONNECTION_ENCRYPTION_KEY
-# derives the Fernet key that protects every stored target-DB password (see
-# encrypt_connection_password in models.py). Forgetting SECRET_KEY in a real
-# deployment would otherwise mean every connection password is encrypted
-# under a well-known, guessable value and can be decrypted offline.
-if not DEBUG and (SECRET_KEY == "django-insecure-dev-only-change-me" or not DB_CONNECTION_ENCRYPTION_KEY):
-    raise ImproperlyConfigured("SECRET_KEY (and, if set separately, DB_CONNECTION_ENCRYPTION_KEY) must be set via environment variables when DEBUG=False — refusing to start with an insecure default.")
+# Intentionally not a hard fail-fast: DB_CONNECTION_ENCRYPTION_KEY derives the
+# Fernet key that protects every stored target-DB password (see
+# encrypt_connection_password in models.py), so running with the default
+# SECRET_KEY means those passwords are encrypted under a well-known,
+# guessable value and can be decrypted offline by anyone with the source.
+# This is a deliberate, informed trade-off for a working out-of-the-box
+# default — see db_statistics.checks.check_secret_key_default for the
+# non-blocking startup warning that keeps the risk visible instead.
 
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]

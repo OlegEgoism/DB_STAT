@@ -975,8 +975,10 @@ body {
     font-size: 14px;
     color: var(--text-primary);
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    row-gap: 8px;
 }
 
 .glass-card .card-header i {
@@ -1218,8 +1220,12 @@ body {
     line-height: 1.2;
 }
 
-@media (max-width: 576px) {
-    .connection-slots-chart {
+@media (max-width: 1100px) {
+    /* Below ~1100px a .col-lg-4 card is too narrow for the fixed 150px
+       donut plus its summary side-by-side without pushing the row (and
+       .page.active's horizontal scrollbar) wider than the page. */
+    .connection-slots-chart,
+    .db-activity-chart {
         align-items: flex-start;
         flex-direction: column;
     }
@@ -1621,8 +1627,12 @@ body {
 }
 
 .maintenance-actions {
-    min-width: 510px;
-    white-space: nowrap;
+    white-space: normal;
+}
+
+.maintenance-actions .btn {
+    white-space: normal;
+    margin-bottom: 6px;
 }
 
 .backend-terminate-actions {
@@ -1678,6 +1688,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
     border: 0;
     background: transparent;
     color: inherit;
@@ -1686,6 +1697,7 @@ body {
     text-transform: inherit;
     padding: 0;
     cursor: pointer;
+    overflow-wrap: break-word;
 }
 
 .table-sort-btn i {
@@ -1900,6 +1912,13 @@ body {
 .page {
     display: none;
     animation: pageFade 0.4s ease;
+    /* Bootstrap's .row.g-3 (see .page .row below) applies a -8px margin on
+       each side to counteract its columns' own gutter padding — normally
+       absorbed by a .container's matching padding, but .page has none.
+       Since .page.active is overflow-x:auto (the page's single scroll
+       container), that unabsorbed -8px bleed became a real, if tiny,
+       horizontal scrollbar on every page with a top-level .row. */
+    padding: 0 8px;
 }
 
 .page.active {
@@ -2852,16 +2871,22 @@ body {
     width: 100%;
     max-width: 100%;
     /* Must stay overflow:visible on BOTH axes: .page.active is the only
-       scroll container (vertical and, for wide tables, horizontal too).
-       Setting overflow-x here would force overflow-y away from visible per
-       the CSS spec and make this element — not .page.active — the nearest
-       scrolling ancestor, breaking the sticky thead below. */
+       scroll container (vertical). Setting overflow-x here would force
+       overflow-y away from visible per the CSS spec and make this element —
+       not .page.active — the nearest scrolling ancestor, breaking the
+       sticky thead below. */
     overflow: visible;
 }
 
 .page .table-responsive > .table {
     width: 100%;
     margin-bottom: 0;
+    /* auto layout only wraps a cell once its column's ideal (unbroken)
+       content width no longer fits — with many columns of Russian text
+       that's often never, so the table silently grows past its 100% width
+       and .page.active's horizontal scrollbar kicks in. Fixed layout makes
+       the 100% width a hard cap instead of a hint, forcing wrap. */
+    table-layout: fixed;
 }
 
 .page .table-responsive thead th {
@@ -2947,11 +2972,6 @@ body {
     box-shadow: inset 0 -1px 0 var(--sidebar-border);
 }
 
-.active-sessions-table {
-    min-width: 1320px;
-    table-layout: fixed;
-}
-
 .active-sessions-table th,
 .active-sessions-table td {
     overflow: hidden;
@@ -2959,17 +2979,20 @@ body {
     white-space: nowrap;
 }
 
-.active-sessions-col-pid { width: 80px; }
-.active-sessions-col-user { width: 130px; }
-.active-sessions-col-db { width: 120px; }
-.active-sessions-col-app { width: 160px; }
-.active-sessions-col-client { width: 150px; }
-.active-sessions-col-state { width: 140px; }
-.active-sessions-col-wait { width: 150px; }
-.active-sessions-col-type { width: 160px; }
-.active-sessions-col-session-duration { width: 130px; }
-.active-sessions-col-sql { width: 300px; }
-.active-sessions-col-actions { width: 130px; }
+/* Percentages (not px) so the 11 columns always sum to the table's own
+   100% width instead of forcing it past the page and into horizontal
+   scroll — proportions kept close to the original 80-300px column widths. */
+.active-sessions-col-pid { width: 5%; }
+.active-sessions-col-user { width: 8%; }
+.active-sessions-col-db { width: 7%; }
+.active-sessions-col-app { width: 9%; }
+.active-sessions-col-client { width: 8%; }
+.active-sessions-col-state { width: 7%; }
+.active-sessions-col-wait { width: 8%; }
+.active-sessions-col-type { width: 9%; }
+.active-sessions-col-session-duration { width: 7%; }
+.active-sessions-col-sql { width: 17%; }
+.active-sessions-col-actions { width: 15%; }
 
 .active-session-terminate-btn {
     white-space: nowrap;
