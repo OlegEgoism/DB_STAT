@@ -1627,12 +1627,16 @@ body {
 }
 
 .maintenance-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
     white-space: normal;
 }
 
 .maintenance-actions .btn {
+    margin: 0;
+    min-width: 0;
     white-space: normal;
-    margin-bottom: 6px;
 }
 
 .backend-terminate-actions {
@@ -1640,15 +1644,11 @@ body {
     white-space: nowrap;
 }
 
-.maintenance-actions .btn + .btn {
-    margin-left: 6px;
-}
-
 .maintenance-job-running {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    margin-left: 8px;
+    grid-column: 1 / -1;
     color: var(--text-muted);
     font-size: 12px;
 }
