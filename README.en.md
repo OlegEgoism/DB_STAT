@@ -210,6 +210,26 @@ run `docker pull` again.
 ```
 
 
+## Backups
+
+The named volume `db-stat-data` is the only place the app's own data lives (users, saved connections, favorites, audit log). None of this is backed up automatically by the image — backing up and restoring the volume is a manual step.
+
+- Take a backup (the container can stay running):
+
+```bash
+docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \
+  tar czf /backup/db-stat-backup-$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+```
+
+- Restore from a backup (stop the container first, so you don't write over an open database file):
+
+```bash
+docker stop db-stat
+docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/db-stat-backup-FILE.tar.gz -C /data"
+docker start db-stat
+```
+
 ## Download image from hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load static %}
+{% load versioned_static %}
 
 
 {% block extra_head %}
@@ -17,5 +17,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/home.js' %}?v=27"></script>
+<script src="{% static_versioned 'js/home.js' %}"></script>
 {% endblock %}

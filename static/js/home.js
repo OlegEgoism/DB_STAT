@@ -44,6 +44,7 @@
     let maintenanceStatsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'dead_rows', direction: 'desc', search: '', selectedTableKey: ''};
     let maintenanceStatsRequestId = 0;
     const maintenanceJobs = new Map();
+    let backgroundJobsErrorNotified = false;
     let usersState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let usersRequestId = 0;
     let groupsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
@@ -194,6 +195,16 @@
         }
     }
 
+    function updateSortHeaderState(button, isActive, direction) {
+        // Keeps aria-sort on the <th> in sync with the icon swap every sort
+        // indicator function already does, so screen readers see the same
+        // sort state sighted users see from the icon.
+        const header = button.closest('th');
+        if (header) header.setAttribute('aria-sort', isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none');
+        const icon = button.querySelector('i');
+        if (icon) icon.className = isActive ? `fas fa-sort-${direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+    }
+
     function escapeHtml(value) {
         return String(value ?? '')
             .replace(/&/g, '&amp;')
@@ -331,11 +342,8 @@
     function updateFavoritesSortIndicators() {
         document.querySelectorAll('[data-favorites-sort]').forEach(button => {
             const isActive = button.dataset.favoritesSort === favoritesSortState.column;
-            const header = button.closest('th');
             button.classList.toggle('active', isActive);
-            if (header) header.setAttribute('aria-sort', isActive ? (favoritesSortState.direction === 'asc' ? 'ascending' : 'descending') : 'none');
-            const icon = button.querySelector('i');
-            if (icon) icon.className = isActive ? `fas fa-sort-${favoritesSortState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, favoritesSortState.direction);
         });
     }
 
@@ -407,7 +415,7 @@
                     applyFavoriteChange(data);
                     refreshFavoriteFilteredTable(data.object_type);
                 })
-                .catch(error => window.alert(translateInterfaceText(error.message)))
+                .catch(error => showToast(`❌ ${error.message || 'Не удалось изменить избранное'}`))
                 .finally(() => setFavoriteButtonsDisabled(objectType, objectKey, false));
         });
     }
@@ -1309,7 +1317,7 @@
                 connectionTbody.innerHTML = connectionInfo.map(item => `
                     <tr>
                         <td>${escapeHtml(translateInterfaceText(item.label))}</td>
-                        <td><strong>${item.value ?? '—'}</strong></td>
+                        <td><strong>${escapeHtml(item.value ?? '—')}</strong></td>
                     </tr>
                 `).join('');
             }
@@ -1336,7 +1344,7 @@
                 memoryTbody.innerHTML = memorySettings.map(item => `
                     <tr>
                         <td>${escapeHtml(translateInterfaceText(item.label))}</td>
-                        <td><strong>${item.value}</strong></td>
+                        <td><strong>${escapeHtml(item.value)}</strong></td>
                     </tr>
                 `).join('');
             }
@@ -1379,7 +1387,7 @@
                     return `
                     <tr>
                         <td>${escapeHtml(translateInterfaceText(item.label))}</td>
-                        <td><strong>${value}</strong></td>
+                        <td><strong>${escapeHtml(value)}</strong></td>
                     </tr>
                 `;
                 }).join('');
@@ -1423,13 +1431,9 @@
 
     function updateActiveQueriesSortIndicators() {
         document.querySelectorAll('[data-active-query-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.activeQuerySort === activeQueriesState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${activeQueriesState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, activeQueriesState.direction);
         });
     }
 
@@ -1440,7 +1444,7 @@
         }
         if (!activeQueriesState.refreshInterval) return;
         activeQueriesState.timer = setInterval(() => {
-            if (document.getElementById('page-queries')?.classList.contains('active')) {
+            if (!document.hidden && document.getElementById('page-queries')?.classList.contains('active')) {
                 refreshActiveQueriesForConnection(undefined, {silent: true});
             }
         }, activeQueriesState.refreshInterval * 1000);
@@ -1633,13 +1637,9 @@
 
     function updateActiveSessionsSortIndicators() {
         document.querySelectorAll('[data-active-session-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.activeSessionSort === activeSessionsState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${activeSessionsState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, activeSessionsState.direction);
         });
     }
 
@@ -1715,7 +1715,7 @@
         }
         if (!activeSessionsState.refreshInterval) return;
         activeSessionsState.timer = setInterval(() => {
-            if (document.getElementById('page-sessions')?.classList.contains('active')) {
+            if (!document.hidden && document.getElementById('page-sessions')?.classList.contains('active')) {
                 refreshActiveSessionsForConnection(undefined, {silent: true});
             }
         }, activeSessionsState.refreshInterval * 1000);
@@ -1866,7 +1866,7 @@
         }
         if (!blockingLocksState.refreshInterval) return;
         blockingLocksState.timer = setInterval(() => {
-            if (document.getElementById('page-locks')?.classList.contains('active')) {
+            if (!document.hidden && document.getElementById('page-locks')?.classList.contains('active')) {
                 refreshBlockingLocksForConnection(undefined, {silent: true});
             }
         }, blockingLocksState.refreshInterval * 1000);
@@ -1961,7 +1961,7 @@
         }
         if (!idleTransactionsState.refreshInterval) return;
         idleTransactionsState.timer = setInterval(() => {
-            if (document.getElementById('page-transactions')?.classList.contains('active')) {
+            if (!document.hidden && document.getElementById('page-transactions')?.classList.contains('active')) {
                 refreshIdleTransactionsForConnection(undefined, {silent: true});
             }
         }, idleTransactionsState.refreshInterval * 1000);
@@ -2131,25 +2131,17 @@
 
     function updateUsersSortIndicators() {
         document.querySelectorAll('[data-users-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.usersSort === usersState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${usersState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, usersState.direction);
         });
     }
 
     function updateGroupsSortIndicators() {
         document.querySelectorAll('[data-groups-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.groupsSort === groupsState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${groupsState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, groupsState.direction);
         });
     }
 
@@ -2508,12 +2500,9 @@
 
     function updateMaintenanceSortIndicators() {
         document.querySelectorAll('[data-maintenance-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.maintenanceSort === maintenanceStatsState.sort;
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${maintenanceStatsState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            button.classList.toggle('active', isActive);
+            updateSortHeaderState(button, isActive, maintenanceStatsState.direction);
         });
     }
 
@@ -2618,7 +2607,9 @@
     }
 
     function loadBackgroundJobs() {
+        if (document.hidden) return;
         connectionRequest(maintenanceJobsApiUrl, {}).then(data => {
+            backgroundJobsErrorNotified = false;
             const jobs = data.jobs || [];
             renderBackgroundJobs(jobs);
             jobs.filter(job => ['queued', 'running'].includes(job.status)).forEach(job => {
@@ -2626,7 +2617,15 @@
                 maintenanceJobs.set(job.id, {...job, tableKey: `${job.schema_name}.${job.table_name}`});
                 pollMaintenanceJob(job.id);
             });
-        }).catch(() => renderBackgroundJobs([]));
+        }).catch(error => {
+            renderBackgroundJobs([]);
+            // This poll runs every 10s — only notify once per failure streak so a
+            // dropped session/network blip doesn't spam a toast on every tick.
+            if (!backgroundJobsErrorNotified) {
+                backgroundJobsErrorNotified = true;
+                showToast(`❌ ${error.message || 'Не удалось обновить список фоновых операций'}`);
+            }
+        });
     }
 
     function initBackgroundJobs() {
@@ -2862,13 +2861,9 @@
 
     function updateSchemaSortIndicators() {
         document.querySelectorAll('[data-schema-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.schemaSort === schemaSizesState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${schemaSizesState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, schemaSizesState.direction);
         });
     }
 
@@ -2902,7 +2897,7 @@
             <tr>
                 <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
                 <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
-                <td>${schema.schema_owner || '-'}</td>
+                <td>${escapeHtml(schema.schema_owner || '-')}</td>
                 <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
             </tr>
@@ -3049,13 +3044,9 @@
 
     function updateTableSortIndicators() {
         document.querySelectorAll('[data-table-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.tableSort === tableSizesState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${tableSizesState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, tableSizesState.direction);
         });
     }
 
@@ -3088,9 +3079,9 @@
         tbody.innerHTML = data.tables.map(table => `
             <tr>
                 <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
-                <td>${table.schema_name || '-'}</td>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
-                <td>${table.table_owner || '-'}</td>
+                <td>${escapeHtml(table.table_owner || '-')}</td>
                 <td>${table.table_size || '-'}</td>
                 <td>${table.index_size || '-'}</td>
                 <td>${formatRowCount(table.index_count)}</td>
@@ -3200,13 +3191,9 @@
 
     function updateViewSortIndicators() {
         document.querySelectorAll('[data-view-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.viewSort === viewsState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${viewsState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, viewsState.direction);
         });
     }
 
@@ -3239,9 +3226,9 @@
         tbody.innerHTML = data.views.map(view => `
             <tr>
                 <td class="favorite-column">${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)}</td>
-                <td>${view.schema_name || '-'}</td>
+                <td>${escapeHtml(view.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(view.view_name || '-')}</strong></td>
-                <td>${view.view_owner || '-'}</td>
+                <td>${escapeHtml(view.view_owner || '-')}</td>
                 <td>${view.view_type || '-'}</td>
                 <td>${view.view_size || '-'}</td>
                 <td>${view.index_size || '-'}</td>
@@ -3336,10 +3323,9 @@
 
     function updateFunctionSortIndicators() {
         document.querySelectorAll('[data-function-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const active = button.dataset.functionSort === functionsState.sort;
             button.classList.toggle('active', active);
-            if (icon) icon.className = active ? `fas fa-sort-${functionsState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+            updateSortHeaderState(button, active, functionsState.direction);
         });
     }
 
@@ -3455,13 +3441,9 @@
 
     function updateDistributionSortIndicators() {
         document.querySelectorAll('[data-distribution-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.distributionSort === distributionSortState.column;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${distributionSortState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, distributionSortState.direction);
         });
     }
 
@@ -3793,13 +3775,9 @@
 
     function updateTempTableSortIndicators() {
         document.querySelectorAll('[data-temp-table-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.tempTableSort === tempTablesState.sort;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${tempTablesState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, tempTablesState.direction);
         });
     }
 
@@ -3831,9 +3809,9 @@
         }
         tbody.innerHTML = data.temp_tables.map(table => `
             <tr>
-                <td>${table.schema_name || '-'}</td>
-                <td><strong>${table.table_name || '-'}</strong></td>
-                <td>${table.table_owner || '-'}</td>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td>${escapeHtml(table.table_owner || '-')}</td>
                 <td>${table.table_size || '-'}</td>
             </tr>
         `).join('');
@@ -4027,8 +4005,7 @@
         document.querySelectorAll('[data-audit-sort]').forEach(button => {
             const isActive = button.dataset.auditSort === auditState.sort;
             button.classList.toggle('active', isActive);
-            const icon = button.querySelector('i');
-            if (icon) icon.className = isActive ? `fas fa-sort-${auditState.direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, auditState.direction);
         });
     }
 
@@ -4138,6 +4115,20 @@
         ['auditDateFrom', 'auditDateTo'].forEach(inputId => {
             const input = document.getElementById(inputId);
             const updateDatePlaceholder = () => input?.parentElement?.classList.toggle('has-value', Boolean(input.value));
+            // Clicking a datetime-local input only focuses a segment for typing —
+            // the browser opens the native picker only via its own calendar icon.
+            // Opening it for a click anywhere in the field (not just the icon)
+            // requires calling showPicker() explicitly.
+            input?.parentElement?.addEventListener('click', () => {
+                if (typeof input.showPicker === 'function') {
+                    try {
+                        input.showPicker();
+                    } catch (error) {
+                        // Ignored: some browsers refuse showPicker() outside a
+                        // direct user gesture or when the input is disabled.
+                    }
+                }
+            });
             input?.addEventListener('input', updateDatePlaceholder);
             input?.addEventListener('change', function () {
                 updateDatePlaceholder();
@@ -4279,13 +4270,9 @@
 
     function updateSegmentsSortIndicators() {
         document.querySelectorAll('[data-segments-sort]').forEach(button => {
-            const icon = button.querySelector('i');
             const isActive = button.dataset.segmentsSort === segmentsSortState.column;
             button.classList.toggle('active', isActive);
-            if (!icon) return;
-            icon.className = isActive
-                ? `fas fa-sort-${segmentsSortState.direction === 'asc' ? 'up' : 'down'}`
-                : 'fas fa-sort';
+            updateSortHeaderState(button, isActive, segmentsSortState.direction);
         });
     }
 
@@ -4330,11 +4317,11 @@
         currentSegmentsWarningHtml = '';
         tbody.innerHTML = sortSegments(segments).map(segment => `
             <tr>
-                <td><strong>${segment.segment}</strong></td>
-                <td>${roleLabel(segment.role)}</td>
+                <td><strong>${escapeHtml(segment.segment)}</strong></td>
+                <td>${escapeHtml(roleLabel(segment.role))}</td>
                 <td>${statusBadge(segment.status)}</td>
                 <td>${modeBadge(segment.mode)}</td>
-                <td>${segment.hostname || segment.address || '-'}</td>
+                <td>${escapeHtml(segment.hostname || segment.address || '-')}</td>
             </tr>
         `).join('');
     }
@@ -4575,12 +4562,18 @@
             refreshAuditEvents();
         }
         if (pageId === 'favorites') {
-            loadFavorites(conn?.id || activeConnectionId).catch(() => renderFavoritesPage());
+            loadFavorites(conn?.id || activeConnectionId).catch(error => {
+                renderFavoritesPage();
+                showToast(`❌ ${error.message || 'Не удалось загрузить избранное'}`);
+            });
         }
     }
 
     function refreshActivePageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        if (conn?.id) loadFavorites(conn.id).catch(() => {});
+        // Background prefetch (runs regardless of which page is active) — logged
+        // rather than surfaced to the user, who may be looking at a different
+        // page entirely; the Favorites page itself reports errors when visited.
+        if (conn?.id) loadFavorites(conn.id).catch(error => console.warn('Не удалось предзагрузить избранное:', error));
         refreshPageData(getCurrentActivePageId(), conn);
     }
 
@@ -4977,5 +4970,11 @@
             Object.values(charts).forEach(chart => {
                 if (chart && chart.resize) chart.resize();
             });
+            // Polling loops skip their tick entirely while the tab is hidden (see
+            // their setInterval callbacks and loadBackgroundJobs) to avoid hammering
+            // the app/target DB from a backgrounded tab — catch up immediately
+            // instead of waiting for the next tick so data isn't stale on return.
+            refreshAll();
+            loadBackgroundJobs();
         }
     });

@@ -2,20 +2,11 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.views.helpers import (
-    _backend_termination_audit_info,
-    _current_db_user,
-    _destructive_action_permission_error,
-    _duration_seconds,
-    _fetch_db_row,
-    _fetch_db_rows,
-    _format_duration,
-    _like_search_pattern,
-    _query_or_error,
-    _read_json_body,
-    _require_payload_connection,
-    _write_audit,
-)
+from db_statistics.views.auth import _require_payload_connection
+from db_statistics.views.helpers import _duration_seconds, _format_duration, _read_json_body
+from db_statistics.views.maintenance import _terminate_backend
+from db_statistics.views.pagination import _like_search_pattern
+from db_statistics.views.pool import _fetch_db_rows, _query_or_error
 
 
 @require_http_methods(["POST"])
@@ -73,57 +64,16 @@ def active_queries(request):
 @require_http_methods(["POST"])
 def terminate_active_query(request):
     """Завершает активный запрос по идентификатору процесса."""
-    permission_error = _destructive_action_permission_error(request)
-    if permission_error:
-        return permission_error
-    payload = _read_json_body(request)
-    db_connection, error_response = _require_payload_connection(request, payload)
-    if error_response:
-        return error_response
-
-    try:
-        pid = int(payload.get("pid"))
-        if pid <= 0:
-            raise ValueError
-    except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "message": "Указан некорректный PID запроса"}, status=400)
-
-    terminate_query = """
-        SELECT
-            pg_catalog.pg_terminate_backend(activity.pid),
-            activity.pid,
-            activity.usename,
-            activity.datname,
-            activity.application_name,
-            activity.client_addr,
-            activity.client_port,
-            activity.state,
-            activity.backend_type,
-            activity.backend_start,
-            activity.xact_start,
-            activity.query_start,
-            activity.state_change,
-            activity.wait_event_type,
-            activity.wait_event,
-            now() - activity.backend_start AS session_duration,
-            CASE WHEN activity.query_start IS NULL THEN NULL ELSE now() - activity.query_start END AS query_duration,
-            activity.query
-        FROM pg_catalog.pg_stat_activity AS activity
-        WHERE activity.pid = %s
-          AND activity.state = 'active'
-          AND activity.pid <> pg_backend_pid();
-    """
-    row, error_response = _query_or_error(f"Не удалось завершить запрос с PID {pid}", lambda: _fetch_db_row(db_connection, terminate_query, [pid]))
-    if error_response:
-        return error_response
-
-    if not row:
-        return JsonResponse({"ok": False, "message": f"Активный запрос с PID {pid} не найден"}, status=404)
-    if not row[0]:
-        return JsonResponse({"ok": False, "message": f"Не удалось завершить запрос с PID {pid}"}, status=409)
-
-    _write_audit("query_terminate", _backend_termination_audit_info("Завершение активного запроса", db_connection, row), db_user=_current_db_user(request))
-    return JsonResponse({"ok": True, "message": f"Запрос с PID {pid} завершён", "pid": pid})
+    return _terminate_backend(
+        request,
+        require_active=True,
+        invalid_pid_message="Указан некорректный PID запроса",
+        not_found_message=lambda pid: f"Активный запрос с PID {pid} не найден",
+        failed_message=lambda pid: f"Не удалось завершить запрос с PID {pid}",
+        success_message=lambda pid: f"Запрос с PID {pid} завершён",
+        audit_action_type="query_terminate",
+        audit_label="Завершение активного запроса",
+    )
 
 
 @require_http_methods(["POST"])
@@ -215,56 +165,16 @@ def active_sessions(request):
 @require_http_methods(["POST"])
 def terminate_active_session(request):
     """Завершает пользовательскую сессию базы данных."""
-    permission_error = _destructive_action_permission_error(request)
-    if permission_error:
-        return permission_error
-    payload = _read_json_body(request)
-    db_connection, error_response = _require_payload_connection(request, payload)
-    if error_response:
-        return error_response
-
-    try:
-        pid = int(payload.get("pid"))
-        if pid <= 0:
-            raise ValueError
-    except (TypeError, ValueError):
-        return JsonResponse({"ok": False, "message": "Указан некорректный PID сессии"}, status=400)
-
-    terminate_query = """
-        SELECT
-            pg_catalog.pg_terminate_backend(activity.pid),
-            activity.pid,
-            activity.usename,
-            activity.datname,
-            activity.application_name,
-            activity.client_addr,
-            activity.client_port,
-            activity.state,
-            activity.backend_type,
-            activity.backend_start,
-            activity.xact_start,
-            activity.query_start,
-            activity.state_change,
-            activity.wait_event_type,
-            activity.wait_event,
-            now() - activity.backend_start AS session_duration,
-            CASE WHEN activity.query_start IS NULL THEN NULL ELSE now() - activity.query_start END AS query_duration,
-            activity.query
-        FROM pg_catalog.pg_stat_activity AS activity
-        WHERE activity.pid = %s
-          AND activity.pid <> pg_backend_pid();
-    """
-    row, error_response = _query_or_error(f"Не удалось завершить сессию с PID {pid}", lambda: _fetch_db_row(db_connection, terminate_query, [pid]))
-    if error_response:
-        return error_response
-
-    if not row:
-        return JsonResponse({"ok": False, "message": f"Сессия с PID {pid} не найдена"}, status=404)
-    if not row[0]:
-        return JsonResponse({"ok": False, "message": f"Не удалось завершить сессию с PID {pid}"}, status=409)
-
-    _write_audit("session_terminate", _backend_termination_audit_info("Завершение активной сессии", db_connection, row), db_user=_current_db_user(request))
-    return JsonResponse({"ok": True, "message": f"Сессия с PID {pid} завершена", "pid": pid})
+    return _terminate_backend(
+        request,
+        require_active=False,
+        invalid_pid_message="Указан некорректный PID сессии",
+        not_found_message=lambda pid: f"Сессия с PID {pid} не найдена",
+        failed_message=lambda pid: f"Не удалось завершить сессию с PID {pid}",
+        success_message=lambda pid: f"Сессия с PID {pid} завершена",
+        audit_action_type="session_terminate",
+        audit_label="Завершение активной сессии",
+    )
 
 
 @require_http_methods(["POST"])

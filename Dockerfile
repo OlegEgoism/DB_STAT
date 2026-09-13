@@ -39,16 +39,35 @@ RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
 # Bakes hashed, compressed static files (whitenoise) into the image so the
 # app server never has to serve raw STATICFILES_DIRS itself. DEBUG defaults to
 # False (see db/settings.py), which is what selects the manifest storage.
-RUN python manage.py collectstatic --noinput
+# settings.py refuses to import at all under DEBUG=False without a real
+# SECRET_KEY — ARG (not ENV) keeps this placeholder out of the final image, so
+# the running container still has none baked in and must get a real one at
+# `docker run` time.
+ARG COLLECTSTATIC_DJANGO_SETTINGS_PLACEHOLDER=collectstatic-build-time-only-placeholder
+RUN SECRET_KEY="$COLLECTSTATIC_DJANGO_SETTINGS_PLACEHOLDER" python manage.py collectstatic --noinput
 
 RUN mkdir -p /app/data
+
+# The app itself never needs root — only docker-entrypoint.sh does, briefly, to
+# write /etc/hosts (see below) and reconcile ownership of a volume that may
+# have been created by an older, root-only image version. It drops to this
+# user via `runuser` right before starting gunicorn.
+RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
+    && chown -R appuser:appuser /app
 
 VOLUME ["/app/data"]
 
 EXPOSE 8000
 
+# /healthz/ is a dependency-free liveness check (see db_statistics/views/additional.py)
+# so a container gets marked unhealthy/restarted only for a genuinely dead process.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3)" || exit 1
+
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
 # gunicorn: a real multi-worker WSGI server instead of Django's single-process
 # dev server; whitenoise (added to MIDDLEWARE) serves the collected static
-# files, so no separate nginx/static container is needed.
-CMD ["gunicorn", "db.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--threads", "2", "--timeout", "60"]
+# files, so no separate nginx/static container is needed. Concurrency itself
+# (GUNICORN_WORKERS/THREADS/TIMEOUT) is appended by docker-entrypoint.sh —
+# exec-form CMD can't expand env vars, so it can't live here as `--workers 3`.
+CMD ["gunicorn", "db.wsgi:application", "--bind", "0.0.0.0:8000"]

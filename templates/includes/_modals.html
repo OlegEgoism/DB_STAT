@@ -1,38 +1,38 @@
 {% load static %}
 <!-- ========== CONNECTION MODAL ========== -->
-<div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="connectionModal" tabindex="-1" aria-hidden="true" aria-labelledby="connectionModalTitle">
     <div class="modal-dialog modal-dialog-centered connection-modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="connectionModalTitle"><i class="fas fa-plug me-2 text-accent-blue"></i>Новое подключение</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
             <div class="modal-body">
                 <form id="connectionForm">
                     <input type="hidden" id="connId">
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label">Название <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connName">Название <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="connName" placeholder="Например: Production GP" value="Новое подключение">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Хост <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connHost">Хост <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="connHost" placeholder="localhost" value="localhost">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Порт <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connPort">Порт <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" id="connPort" placeholder="5432" value="5432">
                         </div>
                         <div class="col-12">
-                            <label class="form-label">База данных <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connDatabase">База данных <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="connDatabase" placeholder="postgres" value="postgres">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Пользователь <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connUser">Пользователь <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="connUser" placeholder="postgres" value="postgres">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Тип БД <span class="text-danger">*</span></label>
+                            <label class="form-label" for="connDbTypeToggle">Тип БД <span class="text-danger">*</span></label>
                             <div class="db-type-select">
                                 <select class="visually-hidden" id="connDbType" aria-hidden="true" tabindex="-1">
                                     <option value="PostgreSQL" data-icon="{% static 'img/postgresql-icon.svg' %}">PostgreSQL</option>
@@ -74,7 +74,7 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Пароль</label>
+                            <label class="form-label" for="connPassword">Пароль</label>
                             <input type="password" class="form-control" id="connPassword" placeholder="••••••••">
                         </div>
                     </div>

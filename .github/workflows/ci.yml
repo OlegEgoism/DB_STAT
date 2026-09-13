@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    env:
+      # settings.py refuses to start with DEBUG=False (the default with no
+      # .env file, as here) unless a real SECRET_KEY is provided — this is a
+      # throwaway CI-only value, not a production secret.
+      SECRET_KEY: ci-only-secret-key-not-used-in-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # psycopg2 (non-binary, see requirements.txt) compiles a C extension
+      # against libpq at install time — mirrors the Dockerfile builder stage.
+      - name: Install system build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc libpq-dev
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff check)
+        run: python -m ruff check .
+
+      - name: Format check (ruff format)
+        run: python -m ruff format --check .
+
+      - name: Django system checks
+        run: python manage.py check
+
+      - name: Run tests
+        run: python manage.py test

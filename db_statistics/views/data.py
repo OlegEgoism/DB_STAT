@@ -2,23 +2,10 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.views.helpers import (
-    EXCLUDED_SYSTEM_SCHEMAS_SQL,
-    _current_db_user,
-    _favorite_filter,
-    _fetch_db_resultsets,
-    _fetch_db_rows,
-    _format_bytes,
-    _get_connection_for_request,
-    _greenplum_only_error,
-    _list_query_params,
-    _multi_column_search_filter,
-    _open_database_connection,
-    _query_or_error,
-    _read_json_body,
-    _require_greenplum_connection,
-    _require_payload_connection,
-)
+from db_statistics.views.auth import _current_db_user, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
+from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _format_bytes, _read_json_body
+from db_statistics.views.pagination import _favorite_filter, _list_query_params, _multi_column_search_filter
+from db_statistics.views.pool import _fetch_db_resultsets, _fetch_db_rows, _open_database_connection, _query_or_error
 
 SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
 TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")

@@ -2,6 +2,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -60,6 +61,11 @@ INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib
 # больше не используется.
 AUTH_USER_MODEL = "db_statistics.DBUser"
 
+# Применяет ту же блокировку по неудачным попыткам (LOGIN_MAX_FAILED_ATTEMPTS/
+# LOGIN_LOCKOUT_SECONDS) к Django admin, которая иначе есть только в
+# собственном views.additional.login — иначе /admin/login/ обходил бы её.
+AUTHENTICATION_BACKENDS = ["db_statistics.auth_backends.LockoutAwareModelBackend"]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -103,6 +109,14 @@ USE_TZ = True
 
 DB_CONNECTION_ENCRYPTION_KEY = os.getenv("DB_CONNECTION_ENCRYPTION_KEY", SECRET_KEY)
 
+# A silent fallback here is worse than a crash: DB_CONNECTION_ENCRYPTION_KEY
+# derives the Fernet key that protects every stored target-DB password (see
+# encrypt_connection_password in models.py). Forgetting SECRET_KEY in a real
+# deployment would otherwise mean every connection password is encrypted
+# under a well-known, guessable value and can be decrypted offline.
+if not DEBUG and (SECRET_KEY == "django-insecure-dev-only-change-me" or not DB_CONNECTION_ENCRYPTION_KEY):
+    raise ImproperlyConfigured("SECRET_KEY (and, if set separately, DB_CONNECTION_ENCRYPTION_KEY) must be set via environment variables when DEBUG=False — refusing to start with an insecure default.")
+
 STATIC_URL = os.getenv("STATIC_URL", "static/")
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
@@ -111,12 +125,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # manifest (production/Docker image build). Plain storage locally so
 # `runserver` keeps serving static files straight from STATICFILES_DIRS
 # without requiring a collectstatic step on every change.
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage",
-    },
-}
+STORAGES = {"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}, "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage" if not DEBUG else "django.contrib.staticfiles.storage.StaticFilesStorage"}}
 
 CONNECTION_TIMEOUT_SECONDS = 5
 
@@ -144,6 +153,15 @@ SESSION_EXPIRES_AT_KEY = "session_expires_at"
 # блокируется на LOGIN_LOCKOUT_SECONDS.
 LOGIN_MAX_FAILED_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 5 * 60
+
+# Ограничение частоты (см. views.helpers._rate_limit_exceeded) для действий,
+# которые не защищены блокировкой логина, но всё равно не должны выполняться
+# без ограничений: проверка подключения (потенциальный скан внутренней сети)
+# и запуск обслуживания (VACUUM FULL блокирует таблицу на целевой БД).
+RATE_LIMIT_TEST_CONNECTION_MAX = 10
+RATE_LIMIT_TEST_CONNECTION_WINDOW_SECONDS = 60
+RATE_LIMIT_MAINTENANCE_OPERATION_MAX = 10
+RATE_LIMIT_MAINTENANCE_OPERATION_WINDOW_SECONDS = 60
 
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOCALHOST_DB_HOST = os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
@@ -187,3 +205,24 @@ PAGINATION_PAGE_SIZE_OPTIONS = (10, 20, 50)
 # получают 0 обновлённых строк и выходят. WAL-режим SQLite (см. apps.py)
 # снижает вероятность "database is locked" при таких конкурентных обновлениях.
 MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="db-stat-vacuum")
+
+# Без явной настройки необработанные исключения в проде (DEBUG=False) не
+# попадают никуда: консольный вывод по умолчанию отфильтрован, а
+# AdminEmailHandler молча ничего не делает, потому что ADMINS/EMAIL_BACKEND
+# нигде не заданы. Здесь — простой консольный обработчик: gunicorn перехватывает
+# stdout/stderr, так что трейсбеки становятся видны через `docker logs`.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"verbose": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        # Покрывает все логгеры приложения через точечную иерархию имён
+        # (например db_statistics.views.helpers) — они наследуют этот
+        # обработчик, не имея своего собственного.
+        "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

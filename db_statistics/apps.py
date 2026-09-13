@@ -27,11 +27,13 @@ class DbStatisticsConfig(AppConfig):
 
     def ready(self):
         """Запускает сохранённые задачи после полной инициализации Django"""
+        from db_statistics import checks  # noqa: F401 — регистрирует проверки через @register()
+
         connection_created.connect(_enable_sqlite_wal)
 
         def submit_queued_jobs():
             from db_statistics.models import MaintenanceJob
-            from db_statistics.views.helpers import _submit_maintenance_job
+            from db_statistics.views.maintenance import _submit_maintenance_job
 
             try:
                 # Задачи, оставшиеся в статусе "running" после аварийного

@@ -13,40 +13,38 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser
-from db_statistics.views.helpers import (
-    _audit_action_label,
-    _audit_username,
+from db_statistics.views.audit import _audit_action_label, _audit_username, _connection_audit_info, _favorite_audit_info, _write_audit
+from db_statistics.views.auth import (
     _available_connections,
-    _available_sidebar_tabs_for_user,
     _can_manage_connections,
-    _close_connection_pools_for,
-    _connection_audit_info,
     _connection_delete_permission_error,
     _connection_edit_permission_error,
     _connection_permission_error,
-    _connection_to_dict,
     _current_db_user,
     _destructive_action_permission_error,
-    _favorite_audit_info,
     _get_connection_for_request,
-    _normalize_sidebar_sections,
-    _normalize_sidebar_tabs,
-    _pagination_page_sizes,
-    _read_json_body,
-    _safe_db_error_message,
+    _rate_limit_exceeded,
+    _rate_limit_response,
     _session_duration_seconds,
-    _sidebar_settings_audit_info,
-    _sidebar_settings_for_user,
-    _sidebar_settings_values_for_user,
-    _test_connection_params,
-    _user_payload,
-    _write_audit,
 )
+from db_statistics.views.helpers import _available_sidebar_tabs_for_user, _connection_to_dict, _normalize_sidebar_sections, _normalize_sidebar_tabs, _read_json_body, _sidebar_settings_audit_info, _sidebar_settings_for_user, _sidebar_settings_values_for_user, _user_payload
+from db_statistics.views.pagination import _pagination_page_sizes
+from db_statistics.views.pool import _close_connection_pools_for, _safe_db_error_message, _test_connection_params
 
 
 def page_not_found(request, exception=None):
     """Показывает фирменную страницу для неизвестных адресов"""
     return render(request, "404.html", status=404)
+
+
+@require_http_methods(["GET"])
+def healthz(request):
+    """Лёгкая проверка живости процесса для Docker HEALTHCHECK/оркестратора.
+
+    Намеренно не обращается ни к служебной SQLite, ни к целевым БД — задача
+    пробы только подтвердить, что WSGI-процесс жив и отвечает на HTTP.
+    """
+    return JsonResponse({"status": "ok"})
 
 
 @ensure_csrf_cookie
@@ -396,6 +394,11 @@ def connections(request):
 @require_http_methods(["POST"])
 def test_connection(request):
     """Проверяет доступность нового или сохранённого подключения."""
+    db_user = _current_db_user(request)
+    rate_limit_key = f"rl:test_connection:{db_user.pk if db_user else request.META.get('REMOTE_ADDR', 'unknown')}"
+    if _rate_limit_exceeded(rate_limit_key, settings.RATE_LIMIT_TEST_CONNECTION_MAX, settings.RATE_LIMIT_TEST_CONNECTION_WINDOW_SECONDS):
+        return _rate_limit_response("проверка подключения")
+
     payload = _read_json_body(request)
     connection_id = payload.get("id")
     has_inline_connection_data = all(payload.get(field) for field in ["name", "host", "port", "database", "user"])
@@ -425,7 +428,7 @@ def test_connection(request):
         params = {"host": payload["host"].strip(), "port": port, "database": payload["database"].strip(), "username": payload["user"].strip(), "password": payload.get("password", ""), "ssl": payload.get("ssl", True)}
         name = payload["name"].strip()
 
-    audit_user = _current_db_user(request)
+    audit_user = db_user
     audit_connection = connection if connection_id else None
     try:
         _test_connection_params(**params)

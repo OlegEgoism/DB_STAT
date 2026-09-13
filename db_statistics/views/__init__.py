@@ -31,7 +31,6 @@ __all__ = [
     "maintenance_stats",
     "maintenance_operation",
     "maintenance_jobs",
-    "maintenance_vacuum",
     "page_not_found",
     "home",
     "login",
@@ -44,6 +43,3 @@ __all__ = [
     "test_connection",
     "delete_connection",
 ]
-
-# Обратная совместимость для импортов прежнего VACUUM-only endpoint.
-maintenance_vacuum = maintenance_operation

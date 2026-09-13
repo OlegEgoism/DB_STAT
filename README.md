@@ -207,6 +207,26 @@ entrypoint попал в образ с Windows-переносами строк �
 ```
 
 
+## Резервное копирование
+
+Именованный том `db-stat-data` — единственное место, где хранятся все данные приложения (пользователи, сохранённые подключения, избранное, аудит). Ничего этого не автоматизировано образом — резервное копирование и восстановление тома нужно делать вручную.
+
+- Сделать резервную копию (контейнер может быть при этом запущен):
+
+```bash
+docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \
+  tar czf /backup/db-stat-backup-$(date +%Y%m%d-%H%M%S).tar.gz -C /data .
+```
+
+- Восстановить из резервной копии (сначала остановите контейнер, чтобы не писать поверх открытого файла БД):
+
+```bash
+docker stop db-stat
+docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \
+  sh -c "rm -rf /data/* && tar xzf /backup/db-stat-backup-ФАЙЛ.tar.gz -C /data"
+docker start db-stat
+```
+
 ## Скачать образ из hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat

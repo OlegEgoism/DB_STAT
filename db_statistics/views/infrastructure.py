@@ -1,7 +1,9 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _fetch_db_resultsets, _open_database_connection, _query_or_error, _read_json_body, _require_greenplum_connection, _require_payload_connection
+from db_statistics.views.auth import _require_greenplum_connection, _require_payload_connection
+from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _read_json_body
+from db_statistics.views.pool import _fetch_db_resultsets, _open_database_connection, _query_or_error
 
 
 @require_http_methods(["POST"])
