@@ -8,7 +8,7 @@ from django.utils import timezone
 from db_statistics.models import DBAudit, DBFavorite
 from db_statistics.views.pool import _normalize_database_host
 
-MAINTENANCE_OPERATION_LABELS = {"vacuum": "VACUUM", "vacuum_full": "VACUUM FULL", "analyze": "ANALYZE", "explain_analyze": "EXPLAIN ANALYZE"}
+MAINTENANCE_OPERATION_LABELS = {"vacuum": "VACUUM", "vacuum_full": "VACUUM FULL", "analyze": "ANALYZE", "explain_analyze": "EXPLAIN ANALYZE", "redistribute_current": "Перераспределение по текущему ключу", "redistribute_random": "Случайное перераспределение"}
 
 
 def _audit_username(db_user=None, fallback="Неизвестный пользователь"):

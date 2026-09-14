@@ -212,8 +212,32 @@ def maintenance_operation(request):
     operation = str(payload.get("operation") or "vacuum").lower()
     if not schema_name or not table_name:
         return JsonResponse({"ok": False, "message": "Не выбрана таблица для обслуживания"}, status=400)
-    if operation not in {"vacuum", "vacuum_full", "analyze", "explain_analyze"}:
+    allowed_operations = {"vacuum", "vacuum_full", "analyze", "explain_analyze", "redistribute_current", "redistribute_random"}
+    if operation not in allowed_operations:
         return JsonResponse({"ok": False, "message": "Неизвестная операция обслуживания"}, status=400)
+    if operation.startswith("redistribute_") and not db_connection.is_greenplum_compatible:
+        return JsonResponse({"ok": False, "message": "Перераспределение доступно только для Greenplum или Greengage"}, status=400)
+    if operation.startswith("redistribute_") and payload.get("confirmation") != f"{schema_name}.{table_name}":
+        return JsonResponse({"ok": False, "message": "Для перераспределения необходимо подтвердить полное имя таблицы"}, status=400)
+    if operation.startswith("redistribute_"):
+        relation_query = """
+            SELECT table_class.relkind
+            FROM pg_catalog.pg_class AS table_class
+            JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
+            WHERE namespace.nspname = %s
+              AND table_class.relname = %s
+            LIMIT 1
+        """
+        relation_row, relation_error = _query_or_error("Не удалось проверить таблицу перед перераспределением", lambda: _fetch_db_row(db_connection, relation_query, [schema_name, table_name]))
+        if relation_error:
+            return relation_error
+        if not relation_row:
+            return JsonResponse({"ok": False, "message": "Выбранная таблица не найдена"}, status=404)
+        if relation_row[0] != "r":
+            return JsonResponse({"ok": False, "message": "В первой версии перераспределение доступно только для обычных физических таблиц"}, status=400)
+    has_active_job = MaintenanceJob.objects.filter(connection=db_connection, schema_name=schema_name, table_name=table_name, status__in=["queued", "running"]).exists()
+    if has_active_job:
+        return JsonResponse({"ok": False, "message": "Для выбранной таблицы уже выполняется фоновая операция"}, status=409)
 
     job = MaintenanceJob.objects.create(user=db_user, connection=db_connection, operation=operation, schema_name=schema_name, table_name=table_name)
     _write_audit(operation, _maintenance_operation_audit_info(operation, db_connection, schema_name, table_name, "запущено в фоновом режиме"), db_user=db_user)

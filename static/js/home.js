@@ -29,6 +29,7 @@
     let distributionPickerActiveIndex = -1;
     let currentDistributionSegments = [];
     let currentDistributionTotalRows = 0;
+    let currentDistributionMetrics = {};
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
     let activeQueriesRequestId = 0;
@@ -2581,7 +2582,9 @@
             vacuum: 'VACUUM',
             vacuum_full: 'VACUUM FULL',
             analyze: 'ANALYZE',
-            explain_analyze: 'EXPLAIN ANALYZE'
+            explain_analyze: 'EXPLAIN ANALYZE',
+            redistribute_current: 'Перераспределение по текущему ключу',
+            redistribute_random: 'Случайное перераспределение'
         }[operation] || String(operation || '').toUpperCase();
     }
 
@@ -2702,7 +2705,8 @@
                     const tableLabel = `${job.schema_name}.${job.table_name}`;
                     if (job.status === 'completed') {
                         showToast(`✅ ${operationLabel} для ${tableLabel} завершён`);
-                        refreshMaintenanceStatsForConnection();
+                        if (job.operation.startsWith('redistribute_')) refreshDistributionForSelectedTable();
+                        else refreshMaintenanceStatsForConnection();
                     } else {
                         const failureMessage = translateInterfaceText(job.message || 'операция завершилась с ошибкой');
                         showToast(`❌ ${operationLabel} для ${tableLabel}: ${failureMessage}`);
@@ -2725,12 +2729,14 @@
             return;
         }
         const tableKey = `${schemaName}.${tableName}`;
-        connectionRequest(maintenanceOperationApiUrl, {
+        const payload = {
             id: conn.id,
             schema_name: schemaName,
             table_name: tableName,
             operation
-        })
+        };
+        if (operation.startsWith('redistribute_')) payload.confirmation = tableKey;
+        connectionRequest(maintenanceOperationApiUrl, payload)
             .then(data => {
                 maintenanceJobs.set(data.job.id, {...data.job, tableKey});
                 showToast(`⏳ ${getMaintenanceOperationLabel(operation)} для ${tableKey} запущен в фоне`);
@@ -3417,6 +3423,7 @@
     function renderDistributionWarning(message) {
         currentDistributionSegments = [];
         currentDistributionTotalRows = 0;
+        currentDistributionMetrics = {};
         const tbody = document.getElementById('distributionTableBody');
         const count = document.getElementById('distributionRowsCount');
         const tableName = document.getElementById('distributionSelectedTableName');
@@ -3424,6 +3431,7 @@
         if (tableName) tableName.textContent = 'Выберите таблицу';
         if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
         updateDistributionMetrics();
+        updateDistributionRebalanceButtons();
         updateSegmentDistributionChart([]);
     }
 
@@ -3507,9 +3515,11 @@
         const tableName = document.getElementById('distributionSelectedTableName');
         currentDistributionSegments = data.segments || [];
         currentDistributionTotalRows = Number(data.metrics?.total_rows) || 0;
+        currentDistributionMetrics = data.metrics || {};
         if (tableName) tableName.textContent = `${data.schema_name}.${data.table_name}`;
         if (count) count.textContent = `${currentDistributionSegments.length} сегментов`;
         updateDistributionMetrics(data.metrics || {});
+        updateDistributionRebalanceButtons();
         updateSegmentDistributionChart(currentDistributionSegments);
         renderDistributionRows();
     }
@@ -3710,6 +3720,8 @@
             select?.focus();
         });
         document.getElementById('distributionRefreshBtn')?.addEventListener('click', refreshDistributionForSelectedTable);
+        document.getElementById('distributionRebalanceCurrentBtn')?.addEventListener('click', () => startDistributionRebalance('redistribute_current'));
+        document.getElementById('distributionRebalanceRandomBtn')?.addEventListener('click', () => startDistributionRebalance('redistribute_random'));
         document.addEventListener('click', function(event) {
             if (!event.target.closest('#distributionTablePicker')) closeDistributionTablePicker();
         });
@@ -3725,6 +3737,35 @@
             });
         });
         updateDistributionSortIndicators();
+    }
+
+    function startDistributionRebalance(operation) {
+        if (!canRunDestructiveActions()) {
+            showToast('⛔ Перераспределение доступно только Администратору');
+            return;
+        }
+        if (!selectedDistributionTable) {
+            showToast('⚠️ Выберите таблицу для перераспределения');
+            return;
+        }
+        const tableLabel = distributionTableOptionLabel(selectedDistributionTable);
+        const strategyWarning = operation === 'redistribute_random'
+            ? 'Случайное распределение может увеличить пересылку данных при JOIN.'
+            : 'Будет использован текущий ключ распределения таблицы.';
+        const confirmation = window.prompt(`${strategyWarning}\nОперация может надолго заблокировать таблицу и потребовать дополнительное место.\nДля подтверждения введите ${tableLabel}`);
+        if (confirmation !== tableLabel) {
+            if (confirmation !== null) showToast('⚠️ Полное имя таблицы введено неверно');
+            return;
+        }
+        startMaintenanceOperation(selectedDistributionTable.schema_name, selectedDistributionTable.table_name, operation);
+    }
+
+    function updateDistributionRebalanceButtons() {
+        const isPhysicalTable = selectedDistributionTable?.object_type === 'Таблица';
+        const hasActionableSkew = Number(currentDistributionMetrics.skew_ratio) >= 1.2;
+        const disabled = !isPhysicalTable || !hasActionableSkew;
+        document.getElementById('distributionRebalanceCurrentBtn')?.toggleAttribute('disabled', disabled);
+        document.getElementById('distributionRebalanceRandomBtn')?.toggleAttribute('disabled', disabled);
     }
 
 

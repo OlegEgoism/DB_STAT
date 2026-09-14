@@ -865,6 +865,14 @@
                         <button class="btn-conn primary" type="button" id="distributionRefreshBtn">
                             <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
                         </button>
+                        {% if user_can_manage_connections %}
+                            <button class="btn-conn" type="button" id="distributionRebalanceCurrentBtn" title="Перераспределить строки по текущему ключу" disabled>
+                                <i class="fas fa-shuffle" aria-hidden="true"></i> По текущему ключу
+                            </button>
+                            <button class="btn-conn" type="button" id="distributionRebalanceRandomBtn" title="Перераспределить строки случайно" disabled>
+                                <i class="fas fa-random" aria-hidden="true"></i> Случайно
+                            </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -129,7 +129,33 @@ def _run_maintenance_operation(job_id):
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
         table_identifier = sql.Identifier(schema_name, table_name)
-        if operation in {"vacuum", "vacuum_full"}:
+        if operation in {"redistribute_current", "redistribute_random"}:
+            if not db_connection.is_greenplum_compatible:
+                raise ValueError("Перераспределение доступно только для Greenplum или Greengage")
+            if operation == "redistribute_random":
+                statement = sql.SQL("ALTER TABLE {table} SET WITH (REORGANIZE = true) DISTRIBUTED RANDOMLY").format(table=table_identifier)
+            else:
+                distribution_columns_query = """
+                    SELECT attribute.attname
+                    FROM gp_distribution_policy AS policy
+                    JOIN pg_catalog.pg_class AS table_class ON table_class.oid = policy.localoid
+                    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = table_class.relnamespace
+                    CROSS JOIN LATERAL unnest(policy.attrnums) WITH ORDINALITY AS distribution_key(attnum, position)
+                    JOIN pg_catalog.pg_attribute AS attribute
+                      ON attribute.attrelid = table_class.oid
+                     AND attribute.attnum = distribution_key.attnum
+                    WHERE namespace.nspname = %s
+                      AND table_class.relname = %s
+                    ORDER BY distribution_key.position
+                """
+                with _open_database_connection(db_connection) as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute(distribution_columns_query, [schema_name, table_name])
+                        distribution_columns = [row[0] for row in cursor.fetchall()]
+                if not distribution_columns:
+                    raise ValueError("У таблицы нет текущего ключа распределения; выберите случайное распределение")
+                statement = sql.SQL("ALTER TABLE {table} SET WITH (REORGANIZE = true) DISTRIBUTED BY ({columns})").format(table=table_identifier, columns=sql.SQL(", ").join(sql.Identifier(column) for column in distribution_columns))
+        elif operation in {"vacuum", "vacuum_full"}:
             statement = sql.SQL("VACUUM {mode} {table}").format(mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""), table=table_identifier)
         elif operation == "analyze":
             statement = sql.SQL("ANALYZE {table}").format(table=table_identifier)
@@ -145,7 +171,7 @@ def _run_maintenance_operation(job_id):
                 # После VACUUM принудительно обновляем оценки планировщика.
                 # В Greenplum/Greengage значения pg_stat_user_tables на
                 # coordinator без ANALYZE могут оставаться устаревшими.
-                if operation in {"vacuum", "vacuum_full"}:
+                if operation in {"vacuum", "vacuum_full", "redistribute_current", "redistribute_random"}:
                     cursor.execute(sql.SQL("ANALYZE {table}").format(table=table_identifier))
                 cursor.execute(
                     """
@@ -179,6 +205,8 @@ def _run_maintenance_operation(job_id):
         # can still see the full driver error in the server log this logs to.
         action_description = f"Не удалось выполнить {MAINTENANCE_OPERATION_LABELS.get(operation, operation.upper())} для {schema_name}.{table_name}"
         result = {"status": "failed", "message": _safe_db_error_message(action_description, exc), "details": []}
+    except ValueError as exc:
+        result = {"status": "failed", "message": str(exc), "details": []}
     except Exception:
         # This runs on a background thread (ThreadPoolExecutor) with no caller
         # waiting on the Future — anything other than psycopg2.Error used to

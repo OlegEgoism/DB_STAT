@@ -255,6 +255,8 @@ class DBAudit(models.Model):
         ("vacuum_full", "VACUUM FULL таблицы"),
         ("analyze", "ANALYZE таблицы"),
         ("explain_analyze", "EXPLAIN ANALYZE таблицы"),
+        ("redistribute_current", "Перераспределение по текущему ключу"),
+        ("redistribute_random", "Случайное перераспределение"),
     ]
 
     username = models.CharField(**vn("Пользователь", "Логин пользователя, выполнившего действие."), max_length=200, db_index=True)
@@ -302,7 +304,7 @@ class MaintenanceJob(models.Model):
     """Фоновые операции обслуживания"""
 
     STATUS_CHOICES = [("queued", "В очереди"), ("running", "Выполняется"), ("completed", "Завершено"), ("failed", "Ошибка")]
-    OPERATION_CHOICES = [("vacuum", "VACUUM"), ("vacuum_full", "VACUUM FULL"), ("analyze", "ANALYZE"), ("explain_analyze", "EXPLAIN ANALYZE")]
+    OPERATION_CHOICES = [("vacuum", "VACUUM"), ("vacuum_full", "VACUUM FULL"), ("analyze", "ANALYZE"), ("explain_analyze", "EXPLAIN ANALYZE"), ("redistribute_current", "Перераспределение по текущему ключу"), ("redistribute_random", "Случайное перераспределение")]
 
     id = models.UUIDField(**vn("Идентификатор", "Уникальный идентификатор фоновой задачи."), primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(DBUser, **vn("Пользователь", "Пользователь, запустивший операцию обслуживания."), on_delete=models.SET_NULL, null=True, related_name="maintenance_jobs")
