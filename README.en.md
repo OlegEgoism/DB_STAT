@@ -11,18 +11,6 @@ The application allows you to monitor databases.
 The main goal of DB STAT is to simplify daily database health checks.
 ```
 
-## How the project works
-
-DB STAT separates **application data** from **monitored DBMS data**. Users, sessions, UI preferences, favorites, encrypted connection credentials, maintenance jobs, and audit events are stored in SQLite. Metrics and object details are not copied to SQLite: Django queries the selected PostgreSQL-compatible database directly and returns the result to the browser as JSON.
-
-![DB STAT workflow diagram: user, Django, SQLite, connection pool, target DBMS, and background jobs](docs/architecture.en.svg)
-
-Solid arrows show the primary request path: the browser calls Django, the application checks the session, role, and access in SQLite, borrows a connection from the pool, and runs a parameterized SQL query against the selected DBMS. The result returns to the interface as HTML or JSON, and the connection returns to the pool.
-
-Dashed arrows show management operations. After checking permissions, Django creates a maintenance job, the background executor runs `VACUUM`, `ANALYZE`, or `EXPLAIN ANALYZE`, and the status, result, and audit event are stored in internal SQLite. Operations that change the target database or terminate processes are restricted to the **Administrator** role.
-
-> SQLite is DB STAT's internal database, while PostgreSQL, Greenplum, and Greengage are external monitoring targets. A target connection password is encrypted in SQLite and decrypted only by the application when it opens a connection. Driver errors are logged in detail on the application server, while the client receives a safe message that does not expose the database's internal structure.
-
 ## Project demo
 
 [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA)
