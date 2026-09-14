@@ -4810,11 +4810,9 @@
                 } else {
                     connections.push(savedConnection);
                 }
-                    populateConnectionSelect();
-
-                document.getElementById('connectionSelect').value = savedConnection.id;
                 activeConnectionId = savedConnection.id;
                 persistActiveConnectionId(activeConnectionId);
+                populateConnectionSelect();
                 updateConnectionTooltip(savedConnection);
                 updateSidebarForConnection(savedConnection);
                 activatePage(getDefaultPageForConnection(savedConnection));
