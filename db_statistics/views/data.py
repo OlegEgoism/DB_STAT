@@ -379,10 +379,19 @@ def distribution_info(request):
         LIMIT 1;
     """
     distribution_query = sql.SQL("""
-        SELECT gp_segment_id::int AS segment_id, COUNT(*)::bigint AS row_count
-        FROM {}.{}
-        GROUP BY gp_segment_id
-        ORDER BY gp_segment_id ASC;
+        WITH segment_rows AS (
+            SELECT gp_segment_id::int AS segment_id, COUNT(*)::bigint AS row_count
+            FROM {}.{}
+            GROUP BY gp_segment_id
+        )
+        SELECT
+            segment.content::int AS segment_id,
+            COALESCE(segment_rows.row_count, 0)::bigint AS row_count
+        FROM gp_catalog.gp_segment_configuration AS segment
+        LEFT JOIN segment_rows ON segment_rows.segment_id = segment.content
+        WHERE segment.role = 'p'
+          AND segment.content >= 0
+        ORDER BY segment.content ASC;
     """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
 
     def _fetch_distribution_rows():
@@ -403,15 +412,35 @@ def distribution_info(request):
     segments = [{"segment_id": int(row[0]), "row_count": int(row[1])} for row in rows]
     counts = [item["row_count"] for item in segments]
     total_rows = sum(counts)
+    segment_count = len(counts)
     used_segments = sum(1 for count in counts if count > 0)
+    empty_segments = segment_count - used_segments
     min_rows = min(counts) if counts else 0
     max_rows = max(counts) if counts else 0
-    avg_rows = round(total_rows / len(counts), 2) if counts else 0
-    skew_ratio = round(max_rows / min_rows, 2) if min_rows else (float(max_rows) if max_rows else 0)
+    avg_rows = round(total_rows / segment_count, 2) if segment_count else 0
+    skew_ratio = round(max_rows / avg_rows, 2) if avg_rows else 0
+    max_deviation_percent = round(max((abs(count - avg_rows) / avg_rows * 100 for count in counts), default=0), 2) if avg_rows else 0
     status = "высокий" if skew_ratio >= 1.5 else "средний" if skew_ratio >= 1.2 else "норм."
 
     return JsonResponse(
-        {"ok": True, "schema_name": schema_name, "table_name": table_name, "segments": segments, "metrics": {"total_rows": total_rows, "used_segments": used_segments, "min_rows": min_rows, "max_rows": max_rows, "avg_rows": avg_rows, "skew_ratio": skew_ratio, "status": status}}
+        {
+            "ok": True,
+            "schema_name": schema_name,
+            "table_name": table_name,
+            "segments": segments,
+            "metrics": {
+                "total_rows": total_rows,
+                "segment_count": segment_count,
+                "used_segments": used_segments,
+                "empty_segments": empty_segments,
+                "min_rows": min_rows,
+                "max_rows": max_rows,
+                "avg_rows": avg_rows,
+                "skew_ratio": skew_ratio,
+                "max_deviation_percent": max_deviation_percent,
+                "status": status,
+            },
+        }
     )
 
 

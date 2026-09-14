@@ -3432,8 +3432,20 @@
         const ratio = document.getElementById('distributionSkewRatio');
         const total = document.getElementById('distributionTotalRows');
         const status = document.getElementById('distributionStatus');
-        if (usedSegments) usedSegments.textContent = metrics.used_segments ?? '—';
-        if (ratio) ratio.textContent = metrics.skew_ratio ?? '—';
+        if (usedSegments) {
+            usedSegments.textContent = metrics.used_segments == null
+                ? '—'
+                : `${metrics.used_segments}/${metrics.segment_count ?? metrics.used_segments}`;
+            usedSegments.title = metrics.empty_segments
+                ? `Пустых сегментов: ${metrics.empty_segments}`
+                : 'Все сегменты содержат строки';
+        }
+        if (ratio) {
+            ratio.textContent = metrics.skew_ratio ?? '—';
+            ratio.title = metrics.max_deviation_percent == null
+                ? ''
+                : `Максимальное отклонение от среднего: ${metrics.max_deviation_percent}%`;
+        }
         if (total) total.textContent = metrics.total_rows != null ? formatRowCount(metrics.total_rows) : '—';
         if (status) status.textContent = metrics.status || '—';
     }
