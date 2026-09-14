@@ -387,7 +387,7 @@ def distribution_info(request):
         SELECT
             segment.content::int AS segment_id,
             COALESCE(segment_rows.row_count, 0)::bigint AS row_count
-        FROM gp_catalog.gp_segment_configuration AS segment
+        FROM gp_segment_configuration AS segment
         LEFT JOIN segment_rows ON segment_rows.segment_id = segment.content
         WHERE segment.role = 'p'
           AND segment.content >= 0
