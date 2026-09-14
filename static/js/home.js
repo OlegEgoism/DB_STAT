@@ -65,6 +65,7 @@
     const databaseOverviewApiUrl = '/databases/overview/';
     const databaseSchemasApiUrl = '/databases/schemas/';
     const databaseSchemaTablesApiUrl = '/databases/schemas/tables/';
+    const databaseTableColumnsApiUrl = '/databases/schemas/tables/columns/';
     const tableSizesApiUrl = '/tables/sizes/';
     const viewsListApiUrl = '/views/list/';
     const functionsListApiUrl = '/functions/list/';
@@ -2936,18 +2937,70 @@
             </div>
             <ul class="schema-children-list">
                 ${tables.map(table => `
-                    <li>
-                        <span class="schema-child-table">
+                    <li class="schema-child-item" data-schema-table="${escapeHtml(table.table_name)}">
+                        <button class="schema-child-table" type="button" data-schema-table-toggle="${escapeHtml(table.table_name)}" aria-expanded="false">
+                            <i class="fas fa-chevron-right schema-child-chevron" aria-hidden="true"></i>
                             <i class="fas fa-table" aria-hidden="true"></i>
                             <span class="schema-child-name">${escapeHtml(table.table_name || '—')}</span>
-                        </span>
+                        </button>
                         <span class="schema-child-owner" data-label="Владелец">${escapeHtml(table.table_owner || '—')}</span>
                         <span class="schema-child-size" data-label="Размер">${escapeHtml(table.table_size || `${formatDatabaseSize(table.size_bytes).value} ${formatDatabaseSize(table.size_bytes).unit}`)}</span>
                         <span class="schema-child-columns" data-label="Столбцов">${formatRowCount(table.column_count)}</span>
+                        <div class="schema-columns-panel" hidden></div>
                     </li>
                 `).join('')}
             </ul>
         `;
+    }
+
+    function renderTableColumns(panel, columns) {
+        if (!columns.length) {
+            panel.innerHTML = '<div class="schema-columns-empty">У таблицы нет доступных столбцов</div>';
+            return;
+        }
+        panel.innerHTML = `
+            <div class="schema-columns-header" aria-hidden="true"><span>Столбец</span><span>Тип данных</span><span>Описание</span></div>
+            <ul class="schema-columns-list">
+                ${columns.map(column => `
+                    <li>
+                        <span class="schema-column-name">${escapeHtml(column.column_name || '—')}</span>
+                        <span class="schema-column-type" data-label="Тип данных">${escapeHtml(column.data_type || '—')}</span>
+                        <span class="schema-column-description" data-label="Описание">${escapeHtml(column.description || '—')}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    }
+
+    function toggleTableColumns(button) {
+        const tableItem = button.closest('.schema-child-item');
+        const schemaName = button.closest('[data-schema-children]')?.dataset.schemaChildren;
+        const tableName = button.dataset.schemaTableToggle;
+        const panel = tableItem?.querySelector('.schema-columns-panel');
+        if (!schemaName || !tableName || !panel) return;
+
+        const willExpand = panel.hidden;
+        panel.hidden = !willExpand;
+        button.setAttribute('aria-expanded', String(willExpand));
+        button.querySelector('.schema-child-chevron')?.classList.toggle('fa-chevron-right', !willExpand);
+        button.querySelector('.schema-child-chevron')?.classList.toggle('fa-chevron-down', willExpand);
+        if (!willExpand || panel.dataset.loaded === 'true' || panel.dataset.loading === 'true') return;
+
+        panel.dataset.loading = 'true';
+        panel.innerHTML = '<div class="schema-columns-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Загрузка столбцов...</div>';
+        const connectionId = activeConnectionId;
+        connectionRequest(databaseTableColumnsApiUrl, {id: connectionId, schema_name: schemaName, table_name: tableName})
+            .then(data => {
+                if (String(connectionId) !== String(activeConnectionId) || !panel.isConnected) return;
+                panel.dataset.loading = 'false';
+                panel.dataset.loaded = 'true';
+                renderTableColumns(panel, data.columns || []);
+            })
+            .catch(error => {
+                if (!panel.isConnected) return;
+                panel.dataset.loading = 'false';
+                panel.innerHTML = `<div class="schema-columns-error">${escapeHtml(error.message || 'Не удалось загрузить столбцы таблицы')}</div>`;
+            });
     }
 
     function toggleSchemaChildren(button) {
@@ -2983,6 +3036,14 @@
     function initSchemaSizesControls() {
         let searchTimer = null;
         document.getElementById('schemaSizesTableBody')?.addEventListener('click', event => {
+            let tableButton = event.target.closest('[data-schema-table-toggle]');
+            if (!tableButton && !event.target.closest('.schema-columns-panel')) {
+                tableButton = event.target.closest('.schema-child-item')?.querySelector('[data-schema-table-toggle]');
+            }
+            if (tableButton) {
+                toggleTableColumns(tableButton);
+                return;
+            }
             let button = event.target.closest('[data-schema-toggle]');
             if (!button && !event.target.closest('.favorite-btn')) {
                 button = event.target.closest('.schema-row')?.querySelector('[data-schema-toggle]');

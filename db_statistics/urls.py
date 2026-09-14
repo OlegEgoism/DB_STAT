@@ -18,6 +18,7 @@ urlpatterns = [
     path("databases/overview/", infrastructure.database_overview, name="database_overview"),
     path("databases/schemas/", data.database_schema_sizes, name="database_schema_sizes"),
     path("databases/schemas/tables/", data.database_schema_tables, name="database_schema_tables"),
+    path("databases/schemas/tables/columns/", data.database_table_columns, name="database_table_columns"),
     path("tables/sizes/", data.database_table_sizes, name="database_table_sizes"),
     path("views/list/", data.database_views_list, name="database_views_list"),
     path("functions/list/", data.database_functions_list, name="database_functions_list"),

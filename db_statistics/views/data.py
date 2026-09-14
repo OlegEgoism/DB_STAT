@@ -139,6 +139,43 @@ def database_schema_tables(request):
 
 
 @require_http_methods(["POST"])
+def database_table_columns(request):
+    """Возвращает столбцы выбранной таблицы для вложенного списка."""
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    schema_name = (payload.get("schema_name") or "").strip()
+    table_name = (payload.get("table_name") or "").strip()
+    if not schema_name or not table_name:
+        return JsonResponse({"ok": False, "message": "Не указаны схема или таблица"}, status=400)
+
+    table_columns_query = """
+        SELECT
+            attribute.attname AS column_name,
+            pg_catalog.format_type(attribute.atttypid, attribute.atttypmod) AS data_type,
+            COALESCE(pg_catalog.col_description(table_class.oid, attribute.attnum), '') AS description
+        FROM pg_catalog.pg_attribute AS attribute
+        JOIN pg_catalog.pg_class AS table_class
+            ON table_class.oid = attribute.attrelid
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = table_class.relnamespace
+        WHERE namespace.nspname = %s
+          AND table_class.relname = %s
+          AND table_class.relkind IN ('r', 'p')
+          AND attribute.attnum > 0
+          AND NOT attribute.attisdropped
+        ORDER BY attribute.attnum ASC;
+    """
+    rows, error_response = _query_or_error("Не удалось получить столбцы таблицы", lambda: _fetch_db_rows(db_connection, table_columns_query, [schema_name, table_name]))
+    if error_response:
+        return error_response
+
+    columns = [{"column_name": row[0], "data_type": row[1], "description": row[2]} for row in rows]
+    return JsonResponse({"ok": True, "schema_name": schema_name, "table_name": table_name, "columns": columns, "total_count": len(columns)})
+
+
+@require_http_methods(["POST"])
 def database_table_sizes(request):
     """Возвращает размеры и статистику таблиц базы данных."""
     payload = _read_json_body(request)
