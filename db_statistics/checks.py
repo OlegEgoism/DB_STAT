@@ -16,8 +16,10 @@ def check_secret_key_default(app_configs, **kwargs):
         return []
     return [
         Warning(
-            "SECRET_KEY не задан — используется публичный дефолт из образа.",
-            hint="Сохранённые пароли к подключениям шифруются этим же ключом (DB_CONNECTION_ENCRYPTION_KEY), поэтому на инсталляции, доступной не только вам, задайте свой SECRET_KEY через переменную окружения.",
+            "SECRET_KEY is not configured; the image's public default is in use.",
+            hint="Saved connection passwords are encrypted with this key by default "
+            "(DB_CONNECTION_ENCRYPTION_KEY). Set a private SECRET_KEY environment "
+            "variable for any installation that is not exclusively local.",
             id="db_statistics.W002",
         )
     ]
@@ -40,8 +42,11 @@ def check_cookie_transport_security(app_configs, **kwargs):
         return []
     return [
         Warning(
-            "CSRF_COOKIE_SECURE и/или SESSION_COOKIE_SECURE выключены при DEBUG=False.",
-            hint="Нормально для внутренней инсталляции без TLS. Если сервер доступен из интернета, задайте в .env CSRF_COOKIE_SECURE=True, SESSION_COOKIE_SECURE=True и SECURE_SSL_REDIRECT=True, чтобы куки не уходили по обычному HTTP.",
+            "CSRF_COOKIE_SECURE and/or SESSION_COOKIE_SECURE are disabled while DEBUG=False.",
+            hint="This is acceptable for an internal installation without TLS. If the "
+            "server is internet-facing, set CSRF_COOKIE_SECURE=True, "
+            "SESSION_COOKIE_SECURE=True, and SECURE_SSL_REDIRECT=True in .env so "
+            "cookies are never sent over plain HTTP.",
             id="db_statistics.W001",
         )
     ]

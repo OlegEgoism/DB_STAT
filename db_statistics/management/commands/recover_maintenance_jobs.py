@@ -19,4 +19,4 @@ class Command(BaseCommand):
         # places still only executes once.
         for job_id in job_ids:
             _submit_maintenance_job(job_id)
-        self.stdout.write(self.style.SUCCESS(f"Восстановлено задач: {recovered}"))
+        self.stdout.write(self.style.SUCCESS(f"Recovered maintenance jobs: {recovered}"))
