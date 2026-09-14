@@ -4468,10 +4468,15 @@
 
     function initConnectionSelect() {
         const wrapper = document.querySelector('.connection-select');
+        const manager = wrapper?.closest('.connection-manager');
         const toggle = document.getElementById('connectionSelectToggle');
         const select = document.getElementById('connectionSelect');
         const menu = document.getElementById('connectionSelectMenu');
-        if (!wrapper || !toggle || !select || !menu) return;
+        if (!wrapper || !manager || !toggle || !select || !menu) return;
+
+        const setTooltipSuppressed = suppressed => {
+            manager.classList.toggle('connection-manager--tooltip-suppressed', suppressed);
+        };
 
         const closeMenu = () => {
             wrapper.classList.remove('open');
@@ -4480,6 +4485,7 @@
 
         toggle.addEventListener('click', () => {
             const shouldOpen = !wrapper.classList.contains('open');
+            setTooltipSuppressed(true);
             wrapper.classList.toggle('open', shouldOpen);
             toggle.setAttribute('aria-expanded', String(shouldOpen));
         });
@@ -4493,11 +4499,26 @@
             toggle.focus();
         });
 
+        manager.addEventListener('mouseleave', () => {
+            if (!wrapper.classList.contains('open')) setTooltipSuppressed(false);
+        });
+        manager.addEventListener('focusout', () => {
+            setTimeout(() => {
+                if (!manager.contains(document.activeElement)) setTooltipSuppressed(false);
+            });
+        });
+
         document.addEventListener('click', event => {
-            if (!wrapper.contains(event.target)) closeMenu();
+            if (!wrapper.contains(event.target)) {
+                closeMenu();
+                setTooltipSuppressed(false);
+            }
         });
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') closeMenu();
+            if (event.key === 'Escape') {
+                closeMenu();
+                setTooltipSuppressed(false);
+            }
         });
     }
 

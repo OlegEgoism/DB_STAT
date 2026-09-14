@@ -936,6 +936,14 @@ body {
     transform: translateY(0);
 }
 
+/* The details tooltip must not cover the connection list after the user
+   switches from inspecting the current value to interacting with it. */
+.connection-manager.connection-manager--tooltip-suppressed .connection-info-tooltip {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+}
+
 .connection-info-tooltip::before {
     content: '';
     position: absolute;
