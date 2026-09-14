@@ -12,18 +12,27 @@
         <div class="topbar-right">
             <!-- Connection Manager -->
             <div class="connection-manager">
-                <img
-                    id="connectionSelectIcon"
-                    class="connection-manager__db-icon d-none"
-                    src="{% static 'img/postgresql-icon.svg' %}"
-                    alt=""
-                    data-postgresql-icon="{% static 'img/postgresql-icon.svg' %}"
-                    data-greenplum-icon="{% static 'img/greenplum-icon.svg' %}"
-                    data-greengage-icon="{% static 'img/greengage-icon.svg' %}"
-                >
-                <select id="connectionSelect" onchange="onConnectionChange(this.value)" aria-describedby="connectionSelectInfo">
-                    <option value="">Загрузка подключений...</option>
-                </select>
+                <div class="connection-select">
+                    <select class="visually-hidden" id="connectionSelect" onchange="onConnectionChange(this.value)" aria-hidden="true" tabindex="-1">
+                        <option value="">Загрузка подключений...</option>
+                    </select>
+                    <button class="connection-select__toggle" id="connectionSelectToggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="connectionSelectMenu" aria-describedby="connectionSelectInfo">
+                        <span class="connection-select__value">
+                            <img
+                                id="connectionSelectIcon"
+                                class="connection-manager__db-icon d-none"
+                                src="{% static 'img/postgresql-icon.svg' %}"
+                                alt=""
+                                data-postgresql-icon="{% static 'img/postgresql-icon.svg' %}"
+                                data-greenplum-icon="{% static 'img/greenplum-icon.svg' %}"
+                                data-greengage-icon="{% static 'img/greengage-icon.svg' %}"
+                            >
+                            <span id="connectionSelectLabel">Загрузка подключений...</span>
+                        </span>
+                        <i class="fas fa-chevron-down connection-select__chevron" aria-hidden="true"></i>
+                    </button>
+                    <div class="connection-select__menu" id="connectionSelectMenu" role="listbox" aria-label="Подключение"></div>
+                </div>
                 <div class="connection-info-tooltip" id="connectionSelectInfo" role="tooltip">
                     <div class="connection-info-tooltip-title">Информация о подключении</div>
                     <div class="connection-info-tooltip-row">

@@ -754,21 +754,101 @@ body {
     flex: 0 0 auto;
 }
 
-.connection-manager select {
-    border: none;
+.connection-select {
+    position: relative;
+    min-width: 180px;
+}
+
+.connection-select__toggle {
+    width: 100%;
+    border: 0;
     background: transparent;
-    padding: 6px 4px;
+    padding: 6px 28px 6px 0;
     font-size: 13px;
     font-weight: 500;
     color: var(--text-primary);
     outline: none;
-    min-width: 140px;
     font-family: 'Inter', sans-serif;
     cursor: pointer;
+    text-align: left;
 }
 
-.connection-manager select option {
+.connection-select__value,
+.connection-select__option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.connection-select__option-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}
+
+.connection-select__value span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.connection-select__chevron {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    color: var(--text-muted);
+    font-size: 11px;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: transform 0.2s ease;
+}
+
+.connection-select.open .connection-select__chevron {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.connection-select__menu {
+    position: absolute;
+    top: calc(100% + 9px);
+    left: -16px;
+    display: none;
+    width: max-content;
+    min-width: calc(100% + 24px);
+    max-width: min(360px, 85vw);
     background: var(--bg-secondary);
+    border: 1px solid var(--accent-blue);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card-hover);
+    overflow: hidden;
+    z-index: 1041;
+}
+
+.connection-select.open .connection-select__menu {
+    display: block;
+}
+
+.connection-select__option {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 9px 14px;
+    font-size: 13px;
+    text-align: left;
+}
+
+.connection-select__option:hover,
+.connection-select__option:focus,
+.connection-select__option.is-selected {
+    background: var(--accent-blue);
+    color: #ffffff;
+    outline: 0;
+}
+
+.connection-select__menu:hover .connection-select__option.is-selected:not(:hover),
+.connection-select__menu:focus-within .connection-select__option.is-selected:not(:focus) {
+    background: transparent;
     color: var(--text-primary);
 }
 
@@ -2285,8 +2365,11 @@ body {
         padding: 6px 12px;
     }
 
-    .connection-manager select {
+    .connection-select {
         min-width: 100px;
+    }
+
+    .connection-select__toggle {
         font-size: 12px;
     }
 

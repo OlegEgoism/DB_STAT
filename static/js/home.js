@@ -431,6 +431,7 @@
         applySidebarSectionOrder(currentDbUser?.sidebar_section_order);
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
+        initConnectionSelect();
         initCharts();
         initConnectionActionButtons();
         initNavigation();
@@ -4442,6 +4443,7 @@
         const owner = document.getElementById('connectionTooltipOwner');
         const select = document.getElementById('connectionSelect');
         const icon = document.getElementById('connectionSelectIcon');
+        const label = document.getElementById('connectionSelectLabel');
         const databaseValue = conn?.database || '—';
         const hostValue = conn?.host || '—';
         const portValue = conn?.port || '—';
@@ -4451,21 +4453,70 @@
         if (host) host.textContent = hostValue;
         if (port) port.textContent = portValue;
         if (owner) owner.textContent = ownerValue;
+        if (label) label.textContent = conn?.name || select?.selectedOptions?.[0]?.textContent || 'Нет доступных подключений';
         if (icon) {
             const iconSrc = getConnectionDbTypeIconSrc(conn?.db_type, icon);
             if (conn && iconSrc) icon.src = iconSrc;
             icon.classList.toggle('d-none', !conn);
         }
+        document.querySelectorAll('.connection-select__option').forEach(option => {
+            const isSelected = conn && String(option.dataset.value) === String(conn.id);
+            option.classList.toggle('is-selected', Boolean(isSelected));
+            option.setAttribute('aria-selected', String(Boolean(isSelected)));
+        });
+    }
+
+    function initConnectionSelect() {
+        const wrapper = document.querySelector('.connection-select');
+        const toggle = document.getElementById('connectionSelectToggle');
+        const select = document.getElementById('connectionSelect');
+        const menu = document.getElementById('connectionSelectMenu');
+        if (!wrapper || !toggle || !select || !menu) return;
+
+        const closeMenu = () => {
+            wrapper.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+
+        toggle.addEventListener('click', () => {
+            const shouldOpen = !wrapper.classList.contains('open');
+            wrapper.classList.toggle('open', shouldOpen);
+            toggle.setAttribute('aria-expanded', String(shouldOpen));
+        });
+
+        menu.addEventListener('click', event => {
+            const option = event.target.closest('.connection-select__option');
+            if (!option || option.disabled) return;
+            select.value = option.dataset.value;
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+            closeMenu();
+            toggle.focus();
+        });
+
+        document.addEventListener('click', event => {
+            if (!wrapper.contains(event.target)) closeMenu();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeMenu();
+        });
     }
 
     function populateConnectionSelect() {
         const select = document.getElementById('connectionSelect');
+        const menu = document.getElementById('connectionSelectMenu');
         select.innerHTML = '';
+        menu.innerHTML = '';
         if (!connections.length) {
             const option = document.createElement('option');
             option.value = '';
             option.textContent = 'Нет доступных подключений';
             select.appendChild(option);
+            const menuOption = document.createElement('button');
+            menuOption.className = 'connection-select__option';
+            menuOption.type = 'button';
+            menuOption.disabled = true;
+            menuOption.textContent = option.textContent;
+            menu.appendChild(menuOption);
             select.value = '';
             updateConnectionTooltip(null);
             updateConnectionActionButtons(null);
@@ -4478,6 +4529,24 @@
             option.value = conn.id;
             option.textContent = conn.name;
             select.appendChild(option);
+
+            const menuOption = document.createElement('button');
+            menuOption.className = 'connection-select__option';
+            menuOption.type = 'button';
+            menuOption.setAttribute('role', 'option');
+            menuOption.dataset.value = conn.id;
+            const menuOptionIconSrc = getConnectionDbTypeIconSrc(conn.db_type, document.getElementById('connectionSelectIcon'));
+            if (menuOptionIconSrc) {
+                const menuOptionIcon = document.createElement('img');
+                menuOptionIcon.className = 'connection-select__option-icon';
+                menuOptionIcon.src = menuOptionIconSrc;
+                menuOptionIcon.alt = '';
+                menuOption.appendChild(menuOptionIcon);
+            }
+            const menuOptionLabel = document.createElement('span');
+            menuOptionLabel.textContent = conn.name;
+            menuOption.appendChild(menuOptionLabel);
+            menu.appendChild(menuOption);
         });
         if (activeConnectionId) {
             select.value = activeConnectionId;
