@@ -852,6 +852,28 @@ body {
     color: var(--text-primary);
 }
 
+.connection-info-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.connection-info-toggle:hover,
+.connection-info-toggle:focus-visible,
+.connection-info-toggle[aria-expanded="true"] {
+    background: var(--accent-blue);
+    color: #ffffff;
+    outline: 0;
+}
+
 .background-jobs-manager {
     position: relative;
     display: inline-flex;
@@ -930,18 +952,10 @@ body {
     z-index: 1040;
 }
 
-.connection-manager:hover .connection-info-tooltip,
-.connection-manager:focus-within .connection-info-tooltip {
+.connection-manager.connection-manager--info-open .connection-info-tooltip {
     opacity: 1;
     transform: translateY(0);
-}
-
-/* The details tooltip must not cover the connection list after the user
-   switches from inspecting the current value to interacting with it. */
-.connection-manager.connection-manager--tooltip-suppressed .connection-info-tooltip {
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-4px);
+    pointer-events: auto;
 }
 
 .connection-info-tooltip::before {

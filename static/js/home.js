@@ -432,6 +432,7 @@
         applySidebarPageOrder(getVisibleSidebarPages());
         loadConnections();
         initConnectionSelect();
+        initConnectionInfoTooltip();
         initCharts();
         initConnectionActionButtons();
         initNavigation();
@@ -4474,10 +4475,6 @@
         const menu = document.getElementById('connectionSelectMenu');
         if (!wrapper || !manager || !toggle || !select || !menu) return;
 
-        const setTooltipSuppressed = suppressed => {
-            manager.classList.toggle('connection-manager--tooltip-suppressed', suppressed);
-        };
-
         const closeMenu = () => {
             wrapper.classList.remove('open');
             toggle.setAttribute('aria-expanded', 'false');
@@ -4485,7 +4482,8 @@
 
         toggle.addEventListener('click', () => {
             const shouldOpen = !wrapper.classList.contains('open');
-            setTooltipSuppressed(true);
+            manager.classList.remove('connection-manager--info-open');
+            document.getElementById('connectionInfoToggle')?.setAttribute('aria-expanded', 'false');
             wrapper.classList.toggle('open', shouldOpen);
             toggle.setAttribute('aria-expanded', String(shouldOpen));
         });
@@ -4499,26 +4497,35 @@
             toggle.focus();
         });
 
-        manager.addEventListener('mouseleave', () => {
-            if (!wrapper.classList.contains('open')) setTooltipSuppressed(false);
-        });
-        manager.addEventListener('focusout', () => {
-            setTimeout(() => {
-                if (!manager.contains(document.activeElement)) setTooltipSuppressed(false);
-            });
-        });
-
         document.addEventListener('click', event => {
-            if (!wrapper.contains(event.target)) {
-                closeMenu();
-                setTooltipSuppressed(false);
-            }
+            if (!wrapper.contains(event.target)) closeMenu();
         });
         document.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                closeMenu();
-                setTooltipSuppressed(false);
-            }
+            if (event.key === 'Escape') closeMenu();
+        });
+    }
+
+    function initConnectionInfoTooltip() {
+        const manager = document.querySelector('.connection-manager');
+        const toggle = document.getElementById('connectionInfoToggle');
+        if (!manager || !toggle) return;
+
+        const closeTooltip = () => {
+            manager.classList.remove('connection-manager--info-open');
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+
+        toggle.addEventListener('click', event => {
+            event.stopPropagation();
+            const shouldOpen = !manager.classList.contains('connection-manager--info-open');
+            manager.classList.toggle('connection-manager--info-open', shouldOpen);
+            toggle.setAttribute('aria-expanded', String(shouldOpen));
+        });
+        document.addEventListener('click', event => {
+            if (!manager.contains(event.target)) closeTooltip();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeTooltip();
         });
     }
 
