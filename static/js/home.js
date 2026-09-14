@@ -2929,6 +2929,11 @@
             return;
         }
         container.innerHTML = `
+            <div class="schema-children-toolbar">
+                <span class="schema-children-title"><i class="fas fa-folder-open" aria-hidden="true"></i> Таблицы схемы</span>
+                <span class="schema-tree-count">${formatRowCount(tables.length)}</span>
+                <span class="schema-children-hint">Нажмите на таблицу, чтобы посмотреть столбцы</span>
+            </div>
             <div class="schema-children-header" aria-hidden="true">
                 <span>Таблица</span>
                 <span>Владелец</span>
@@ -2938,7 +2943,7 @@
             <ul class="schema-children-list">
                 ${tables.map(table => `
                     <li class="schema-child-item" data-schema-table="${escapeHtml(table.table_name)}">
-                        <button class="schema-child-table" type="button" data-schema-table-toggle="${escapeHtml(table.table_name)}" aria-expanded="false">
+                        <button class="schema-child-table" type="button" data-schema-table-toggle="${escapeHtml(table.table_name)}" aria-expanded="false" aria-label="Показать столбцы таблицы ${escapeHtml(table.table_name)}">
                             <i class="fas fa-chevron-right schema-child-chevron" aria-hidden="true"></i>
                             <i class="fas fa-table" aria-hidden="true"></i>
                             <span class="schema-child-name">${escapeHtml(table.table_name || '—')}</span>
@@ -2953,12 +2958,19 @@
         `;
     }
 
-    function renderTableColumns(panel, columns) {
+    function renderTableColumns(panel, columns, tableName) {
+        const heading = `
+            <div class="schema-columns-toolbar">
+                <span class="schema-columns-title"><i class="fas fa-columns" aria-hidden="true"></i> Столбцы <strong>${escapeHtml(tableName)}</strong></span>
+                <span class="schema-tree-count">${formatRowCount(columns.length)}</span>
+            </div>
+        `;
         if (!columns.length) {
-            panel.innerHTML = '<div class="schema-columns-empty">У таблицы нет доступных столбцов</div>';
+            panel.innerHTML = `${heading}<div class="schema-columns-empty">У таблицы нет доступных столбцов</div>`;
             return;
         }
         panel.innerHTML = `
+            ${heading}
             <div class="schema-columns-header" aria-hidden="true"><span>Столбец</span><span>Тип данных</span><span>Описание</span></div>
             <ul class="schema-columns-list">
                 ${columns.map(column => `
@@ -2994,7 +3006,7 @@
                 if (String(connectionId) !== String(activeConnectionId) || !panel.isConnected) return;
                 panel.dataset.loading = 'false';
                 panel.dataset.loaded = 'true';
-                renderTableColumns(panel, data.columns || []);
+                renderTableColumns(panel, data.columns || [], tableName);
             })
             .catch(error => {
                 if (!panel.isConnected) return;
