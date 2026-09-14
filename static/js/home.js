@@ -2928,12 +2928,22 @@
             return;
         }
         container.innerHTML = `
+            <div class="schema-children-header" aria-hidden="true">
+                <span>Таблица</span>
+                <span>Владелец</span>
+                <span>Размер</span>
+                <span>Столбцов</span>
+            </div>
             <ul class="schema-children-list">
                 ${tables.map(table => `
                     <li>
-                        <i class="fas fa-table" aria-hidden="true"></i>
-                        <span class="schema-child-name">${escapeHtml(table.table_name || '—')}</span>
-                        <span class="schema-child-owner">${escapeHtml(table.table_owner || '—')}</span>
+                        <span class="schema-child-table">
+                            <i class="fas fa-table" aria-hidden="true"></i>
+                            <span class="schema-child-name">${escapeHtml(table.table_name || '—')}</span>
+                        </span>
+                        <span class="schema-child-owner" data-label="Владелец">${escapeHtml(table.table_owner || '—')}</span>
+                        <span class="schema-child-size" data-label="Размер">${escapeHtml(table.table_size || `${formatDatabaseSize(table.size_bytes).value} ${formatDatabaseSize(table.size_bytes).unit}`)}</span>
+                        <span class="schema-child-columns" data-label="Столбцов">${formatRowCount(table.column_count)}</span>
                     </li>
                 `).join('')}
             </ul>

@@ -111,7 +111,16 @@ def database_schema_tables(request):
     schema_tables_query = """
         SELECT
             table_class.relname AS table_name,
-            COALESCE(owner.rolname, '-') AS table_owner
+            COALESCE(owner.rolname, '-') AS table_owner,
+            pg_total_relation_size(table_class.oid)::bigint AS size_bytes,
+            pg_size_pretty(pg_total_relation_size(table_class.oid)) AS table_size,
+            (
+                SELECT COUNT(*)::bigint
+                FROM pg_catalog.pg_attribute AS attribute
+                WHERE attribute.attrelid = table_class.oid
+                  AND attribute.attnum > 0
+                  AND NOT attribute.attisdropped
+            ) AS column_count
         FROM pg_catalog.pg_class AS table_class
         JOIN pg_catalog.pg_namespace AS namespace
             ON namespace.oid = table_class.relnamespace
@@ -125,7 +134,7 @@ def database_schema_tables(request):
     if error_response:
         return error_response
 
-    tables = [{"table_name": row[0], "table_owner": row[1]} for row in rows]
+    tables = [{"table_name": row[0], "table_owner": row[1], "size_bytes": int(row[2]), "table_size": row[3], "column_count": int(row[4])} for row in rows]
     return JsonResponse({"ok": True, "schema_name": schema_name, "tables": tables, "total_count": len(tables)})
 
 
