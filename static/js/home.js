@@ -64,6 +64,7 @@
     const segmentsInfoApiUrl = '/segments/info/';
     const databaseOverviewApiUrl = '/databases/overview/';
     const databaseSchemasApiUrl = '/databases/schemas/';
+    const databaseSchemaTablesApiUrl = '/databases/schemas/tables/';
     const tableSizesApiUrl = '/tables/sizes/';
     const viewsListApiUrl = '/views/list/';
     const functionsListApiUrl = '/functions/list/';
@@ -2902,19 +2903,82 @@
             return;
         }
         tbody.innerHTML = data.schemas.map(schema => `
-            <tr>
+            <tr class="schema-row" data-schema-name="${escapeHtml(schema.schema_name)}">
                 <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
-                <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
+                <td>
+                    <button class="schema-expand-btn" type="button" data-schema-toggle="${escapeHtml(schema.schema_name)}" aria-expanded="false">
+                        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                        <strong>${escapeHtml(schema.schema_name || '-')}</strong>
+                    </button>
+                </td>
                 <td>${escapeHtml(schema.schema_owner || '-')}</td>
                 <td>${schema.table_count ?? 0}</td>
                 <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
+            </tr>
+            <tr class="schema-children-row" data-schema-children="${escapeHtml(schema.schema_name)}" hidden>
+                <td colspan="5"><div class="schema-children-content"></div></td>
             </tr>
         `).join('');
         updateSchemaPaginationButtons();
     }
 
+    function renderSchemaChildren(container, tables) {
+        if (!tables.length) {
+            container.innerHTML = '<div class="schema-children-empty">В этой схеме нет таблиц</div>';
+            return;
+        }
+        container.innerHTML = `
+            <ul class="schema-children-list">
+                ${tables.map(table => `
+                    <li>
+                        <i class="fas fa-table" aria-hidden="true"></i>
+                        <span class="schema-child-name">${escapeHtml(table.table_name || '—')}</span>
+                        <span class="schema-child-owner">${escapeHtml(table.table_owner || '—')}</span>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    }
+
+    function toggleSchemaChildren(button) {
+        const schemaName = button.dataset.schemaToggle;
+        const childRow = button.closest('tr')?.nextElementSibling;
+        const container = childRow?.querySelector('.schema-children-content');
+        if (!childRow || childRow.dataset.schemaChildren !== schemaName || !container) return;
+
+        const willExpand = childRow.hidden;
+        childRow.hidden = !willExpand;
+        button.setAttribute('aria-expanded', String(willExpand));
+        button.querySelector('i')?.classList.toggle('fa-chevron-right', !willExpand);
+        button.querySelector('i')?.classList.toggle('fa-chevron-down', willExpand);
+        if (!willExpand || childRow.dataset.loaded === 'true' || childRow.dataset.loading === 'true') return;
+
+        childRow.dataset.loading = 'true';
+        container.innerHTML = '<div class="schema-children-loading"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Загрузка таблиц...</div>';
+        const connectionId = activeConnectionId;
+        connectionRequest(databaseSchemaTablesApiUrl, {id: connectionId, schema_name: schemaName})
+            .then(data => {
+                if (String(connectionId) !== String(activeConnectionId) || !childRow.isConnected) return;
+                childRow.dataset.loading = 'false';
+                childRow.dataset.loaded = 'true';
+                renderSchemaChildren(container, data.tables || []);
+            })
+            .catch(error => {
+                if (!childRow.isConnected) return;
+                childRow.dataset.loading = 'false';
+                container.innerHTML = `<div class="schema-children-error">${escapeHtml(error.message || 'Не удалось загрузить таблицы схемы')}</div>`;
+            });
+    }
+
     function initSchemaSizesControls() {
         let searchTimer = null;
+        document.getElementById('schemaSizesTableBody')?.addEventListener('click', event => {
+            let button = event.target.closest('[data-schema-toggle]');
+            if (!button && !event.target.closest('.favorite-btn')) {
+                button = event.target.closest('.schema-row')?.querySelector('[data-schema-toggle]');
+            }
+            if (button) toggleSchemaChildren(button);
+        });
         document.getElementById('schemaSearchInput')?.addEventListener('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {

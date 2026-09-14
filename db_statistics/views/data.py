@@ -98,6 +98,38 @@ def database_schema_sizes(request):
 
 
 @require_http_methods(["POST"])
+def database_schema_tables(request):
+    """Возвращает таблицы выбранной схемы для вложенного списка."""
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    schema_name = (payload.get("schema_name") or "").strip()
+    if not schema_name:
+        return JsonResponse({"ok": False, "message": "Не указано имя схемы"}, status=400)
+
+    schema_tables_query = """
+        SELECT
+            table_class.relname AS table_name,
+            COALESCE(owner.rolname, '-') AS table_owner
+        FROM pg_catalog.pg_class AS table_class
+        JOIN pg_catalog.pg_namespace AS namespace
+            ON namespace.oid = table_class.relnamespace
+        LEFT JOIN pg_catalog.pg_roles AS owner
+            ON owner.oid = table_class.relowner
+        WHERE namespace.nspname = %s
+          AND table_class.relkind IN ('r', 'p')
+        ORDER BY table_class.relname ASC;
+    """
+    rows, error_response = _query_or_error("Не удалось получить таблицы схемы", lambda: _fetch_db_rows(db_connection, schema_tables_query, [schema_name]))
+    if error_response:
+        return error_response
+
+    tables = [{"table_name": row[0], "table_owner": row[1]} for row in rows]
+    return JsonResponse({"ok": True, "schema_name": schema_name, "tables": tables, "total_count": len(tables)})
+
+
+@require_http_methods(["POST"])
 def database_table_sizes(request):
     """Возвращает размеры и статистику таблиц базы данных."""
     payload = _read_json_body(request)
