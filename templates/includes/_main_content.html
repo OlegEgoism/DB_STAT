@@ -12,6 +12,9 @@
         <div class="topbar-right">
             <!-- Connection Manager -->
             <div class="connection-manager">
+                <button class="btn-conn" id="databasePdfReportBtn" type="button" title="Сформировать общий PDF-отчёт" disabled>
+                    <i class="fas fa-file-pdf"></i><span class="database-report-label">PDF-отчёт</span>
+                </button>
                 <div class="connection-select">
                     <select class="visually-hidden" id="connectionSelect" onchange="onConnectionChange(this.value)" aria-hidden="true" tabindex="-1">
                         <option value="">Загрузка подключений...</option>

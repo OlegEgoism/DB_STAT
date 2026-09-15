@@ -206,6 +206,7 @@
         'Не удалось получить активные сессии и подключения': 'Failed to load active sessions and connections',
         'Не удалось получить аудит': 'Failed to load audit events', 'Не удалось получить блокировки': 'Failed to load locks',
         'Не удалось получить временные таблицы': 'Failed to load temporary tables', 'Не удалось удалить временную таблицу': 'Failed to delete the temporary table', 'Действия': 'Actions', 'Не удалось получить параметры памяти': 'Failed to load memory settings',
+        'PDF-отчёт': 'PDF report', 'Сформировать общий PDF-отчёт': 'Generate full PDF report', 'PDF-отчёт сформирован': 'PDF report generated', 'Не удалось сформировать PDF-отчёт': 'Failed to generate PDF report', 'Выберите подключение для формирования отчёта': 'Select a connection to generate a report',
         'Не удалось получить представления': 'Failed to load views', 'Не удалось получить функции': 'Failed to load functions', 'Не удалось получить размеры схем': 'Failed to load schema sizes',
         'Не удалось получить размеры таблиц': 'Failed to load table sizes', 'Не удалось получить распределение': 'Failed to load distribution data',
         'Не удалось получить список групп': 'Failed to load groups', 'Не удалось получить список пользователей': 'Failed to load users',

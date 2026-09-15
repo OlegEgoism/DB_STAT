@@ -69,6 +69,7 @@
     const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const deleteTempTableApiUrl = '/temp-tables/delete/';
+    const databasePdfReportApiUrl = '/reports/database.pdf';
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
@@ -191,9 +192,11 @@
 
     function updateConnectionActionButtons(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const editButton = document.getElementById('connectionEditBtn');
+        const reportButton = document.getElementById('databasePdfReportBtn');
         if (editButton) {
             editButton.classList.toggle('d-none', !canEditConnection(conn));
         }
+        if (reportButton) reportButton.disabled = !conn;
     }
 
     function updateSortHeaderState(button, isActive, direction) {
@@ -436,6 +439,7 @@
         initConnectionInfoTooltip();
         initCharts();
         initConnectionActionButtons();
+        initDatabasePdfReport();
         initNavigation();
         initSidebarCollapse();
         initSidebarSectionToggles();
@@ -4218,6 +4222,46 @@
                 throw new Error(data.message || 'Ошибка запроса');
             }
             return data;
+        });
+    }
+
+    function initDatabasePdfReport() {
+        const button = document.getElementById('databasePdfReportBtn');
+        if (!button) return;
+        button.addEventListener('click', async function () {
+            const conn = connections.find(item => String(item.id) === String(activeConnectionId));
+            if (!conn) {
+                showToast('⚠️ Выберите подключение для формирования отчёта');
+                return;
+            }
+            button.disabled = true;
+            button.classList.add('is-loading');
+            try {
+                const response = await fetch(databasePdfReportApiUrl, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                    body: JSON.stringify({id: conn.id})
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.message || 'Не удалось сформировать PDF-отчёт');
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `db-report-${conn.database || conn.id}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+                showToast('✅ PDF-отчёт сформирован');
+            } catch (error) {
+                showToast(`❌ ${error.message || 'Не удалось сформировать PDF-отчёт'}`);
+            } finally {
+                button.classList.remove('is-loading');
+                button.disabled = !activeConnectionId;
+            }
         });
     }
 

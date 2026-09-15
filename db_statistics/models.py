@@ -252,6 +252,7 @@ class DBAudit(models.Model):
         ("query_terminate", "Завершение активного запроса"),
         ("session_terminate", "Завершение активной сессии"),
         ("temp_table_delete", "Удаление временной таблицы"),
+        ("database_report", "Формирование PDF-отчёта"),
         ("vacuum", "VACUUM таблицы"),
         ("vacuum_full", "VACUUM FULL таблицы"),
         ("analyze", "ANALYZE таблицы"),

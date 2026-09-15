@@ -547,8 +547,6 @@ def delete_temp_table(request):
         return JsonResponse({"ok": False, "message": "Временная таблица не найдена"}, status=404)
 
     _write_audit(
-        "temp_table_delete",
-        _format_audit_details([("Действие", "Удаление временной таблицы"), *_connection_audit_fields(db_connection, server_label=True), ("Схема", schema_name), ("Таблица", table_name), ("Результат", "успешно удалена")]),
-        db_user=_current_db_user(request),
+        "temp_table_delete", _format_audit_details([("Действие", "Удаление временной таблицы"), *_connection_audit_fields(db_connection, server_label=True), ("Схема", schema_name), ("Таблица", table_name), ("Результат", "успешно удалена")]), db_user=_current_db_user(request)
     )
     return JsonResponse({"ok": True, "message": f"Временная таблица {schema_name}.{table_name} удалена", "schema_name": schema_name, "table_name": table_name})

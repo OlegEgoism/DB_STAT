@@ -22,7 +22,7 @@ WORKDIR /app
 # psycopg2 (non-binary) links against the system libpq at runtime instead of
 # bundling its own copy; the builder stage already has libpq-dev to compile it.
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y libpq5 \
+    && apt-get install --no-install-recommends -y fonts-dejavu-core libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
