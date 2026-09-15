@@ -11,14 +11,6 @@ The application allows you to monitor databases.
 The main goal of DB STAT is to simplify daily database health checks.
 ```
 
-A full PDF report is available for the selected connection. It includes the
-database overview, schema and largest-table sizes, temporary tables, queries,
-sessions, locks, open transactions, memory, maintenance, users and groups,
-Greenplum/Greengage segments, and recommendations. Download it with the
-**Download PDF** button on the **Audit** tab.
-If the application reports that ReportLab is missing after a source update,
-run `pip install -r requirements.txt` and restart the application.
-
 ## Project demo
 
 [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA)
