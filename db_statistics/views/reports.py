@@ -1,5 +1,6 @@
 """Формирование общего диагностического PDF-отчёта по выбранной базе данных."""
 
+import importlib.util
 import io
 import os
 from datetime import datetime
@@ -14,7 +15,6 @@ from db_statistics.views.auth import _current_db_user, _require_payload_connecti
 from db_statistics.views.helpers import _format_bytes, _read_json_body
 from db_statistics.views.pool import _fetch_db_rows, _safe_db_error_message
 
-_FONT_DIR = "/usr/share/fonts/truetype/dejavu"
 _MAX_ROWS = 50
 
 
@@ -22,12 +22,15 @@ def _register_fonts():
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    regular = os.path.join(_FONT_DIR, "DejaVuSans.ttf")
-    bold = os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf")
-    if os.path.exists(regular) and "DBStatSans" not in pdfmetrics.getRegisteredFontNames():
+    windows_fonts = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+    candidates = [("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"), (os.path.join(windows_fonts, "arial.ttf"), os.path.join(windows_fonts, "arialbd.ttf"))]
+    regular, bold = next(((regular, bold) for regular, bold in candidates if os.path.exists(regular) and os.path.exists(bold)), (None, None))
+    if not regular:
+        raise RuntimeError("Не найден шрифт DejaVu Sans или Arial для формирования PDF")
+    if "DBStatSans" not in pdfmetrics.getRegisteredFontNames():
         pdfmetrics.registerFont(TTFont("DBStatSans", regular))
         pdfmetrics.registerFont(TTFont("DBStatSans-Bold", bold))
-    return ("DBStatSans", "DBStatSans-Bold") if os.path.exists(regular) else ("Helvetica", "Helvetica-Bold")
+    return "DBStatSans", "DBStatSans-Bold"
 
 
 def _text(value, limit=500):
@@ -53,7 +56,7 @@ def _report_sections(db_connection):
         ),
         (
             "Размеры схем",
-            f"""SELECT namespace.nspname, pg_get_userbyid(namespace.nspowner), count(rel.oid), COALESCE(sum(pg_total_relation_size(rel.oid)), 0), pg_size_pretty(COALESCE(sum(pg_total_relation_size(rel.oid)), 0)) FROM pg_namespace namespace LEFT JOIN pg_class rel ON rel.relnamespace=namespace.oid AND rel.relkind IN ('r','p','m') WHERE {user_schemas} GROUP BY namespace.oid, namespace.nspname ORDER BY 4 DESC LIMIT {_MAX_ROWS}""",
+            f"""SELECT namespace.nspname, pg_get_userbyid(namespace.nspowner), count(rel.oid), COALESCE(sum(pg_total_relation_size(rel.oid)), 0), pg_size_pretty(COALESCE(sum(pg_total_relation_size(rel.oid)), 0)) FROM pg_namespace namespace LEFT JOIN pg_class rel ON rel.relnamespace=namespace.oid AND rel.relkind IN ('r','p','m') WHERE {user_schemas} GROUP BY namespace.nspname, namespace.nspowner ORDER BY 4 DESC LIMIT {_MAX_ROWS}""",
             None,
             ["Схема", "Владелец", "Таблиц", "Байт", "Размер"],
         ),
@@ -223,6 +226,8 @@ def database_pdf_report(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if importlib.util.find_spec("reportlab") is None:
+        return JsonResponse({"ok": False, "message": "Модуль ReportLab не установлен. Выполните pip install -r requirements.txt и перезапустите приложение"}, status=503)
     sections = _report_sections(db_connection)
     pdf = _build_pdf(db_connection, db_user, sections)
     _write_audit("database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(db_connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), db_user=db_user)

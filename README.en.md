@@ -16,6 +16,8 @@ database overview, schema and largest-table sizes, temporary tables, queries,
 sessions, locks, open transactions, memory, maintenance, users and groups,
 Greenplum/Greengage segments, and recommendations. Download it with the
 **Download PDF** button on the **Audit** tab.
+If the application reports that ReportLab is missing after a source update,
+run `pip install -r requirements.txt` and restart the application.
 
 ## Project demo
 
