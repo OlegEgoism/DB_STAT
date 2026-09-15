@@ -14,7 +14,8 @@ The main goal of DB STAT is to simplify daily database health checks.
 A full PDF report is available for the selected connection. It includes the
 database overview, schema and largest-table sizes, temporary tables, queries,
 sessions, locks, open transactions, memory, maintenance, users and groups,
-Greenplum/Greengage segments, and recommendations.
+Greenplum/Greengage segments, and recommendations. Download it with the
+**Download PDF** button on the **Audit** tab.
 
 ## Project demo
 

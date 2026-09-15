@@ -2602,10 +2602,6 @@ body {
     animation: fa-spin 1s linear infinite;
 }
 
-@media (max-width: 1280px) {
-    .database-report-label { display: none; }
-}
-
 #auditActionFilter option[value=""] {
     color: var(--text-primary);
 }

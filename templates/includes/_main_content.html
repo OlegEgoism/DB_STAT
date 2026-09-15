@@ -12,9 +12,6 @@
         <div class="topbar-right">
             <!-- Connection Manager -->
             <div class="connection-manager">
-                <button class="btn-conn" id="databasePdfReportBtn" type="button" title="Сформировать общий PDF-отчёт" disabled>
-                    <i class="fas fa-file-pdf"></i><span class="database-report-label">PDF-отчёт</span>
-                </button>
                 <div class="connection-select">
                     <select class="visually-hidden" id="connectionSelect" onchange="onConnectionChange(this.value)" aria-hidden="true" tabindex="-1">
                         <option value="">Загрузка подключений...</option>
@@ -1678,6 +1675,9 @@
             <div class="card-header">
                 <span><i class="fas fa-clipboard-list"></i> Аудит действий</span>
                 <div class="card-header-actions">
+                    <button class="btn-conn secondary" id="databasePdfReportBtn" type="button" title="Сформировать общий PDF-отчёт" disabled>
+                        <i class="fas fa-file-pdf"></i><span>Скачать PDF</span>
+                    </button>
                     <button class="btn-conn secondary" type="button" id="auditRefreshBtn" title="{% if CURRENT_LANGUAGE == 'en' %}Refresh audit{% else %}Обновить аудит{% endif %}">
                         <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
                     </button>
