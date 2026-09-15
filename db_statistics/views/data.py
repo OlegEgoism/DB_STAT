@@ -2,7 +2,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.views.auth import _current_db_user, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
+from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
+from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
 from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _format_bytes, _read_json_body
 from db_statistics.views.pagination import _favorite_filter, _list_query_params, _multi_column_search_filter
 from db_statistics.views.pool import _fetch_db_resultsets, _fetch_db_rows, _open_database_connection, _query_or_error
@@ -498,3 +499,56 @@ def database_temp_table_sizes(request):
     temp_table_distribution = [{"schema_name": row[0], "table_name": row[1], "size_bytes": int(row[2] or 0), "table_size": row[3]} for row in distribution_rows]
     total_count = int(rows[0][6]) if rows else len(temp_table_distribution)
     return JsonResponse({"ok": True, "temp_tables": temp_tables, "temp_table_distribution": temp_table_distribution, "page": page, "page_size": page_size, "total_count": total_count})
+
+
+@require_http_methods(["POST"])
+def delete_temp_table(request):
+    """Удаляет выбранную временную таблицу в целевой базе данных."""
+    permission_error = _destructive_action_permission_error(request)
+    if permission_error:
+        return permission_error
+
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+
+    schema_name = str(payload.get("schema_name") or "").strip()
+    table_name = str(payload.get("table_name") or "").strip()
+    if not schema_name or not table_name:
+        return JsonResponse({"ok": False, "message": "Укажите схему и имя временной таблицы"}, status=400)
+
+    def drop_table():
+        with _open_database_connection(db_connection) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT 1
+                    FROM pg_catalog.pg_class AS table_class
+                    JOIN pg_catalog.pg_namespace AS namespace
+                        ON namespace.oid = table_class.relnamespace
+                    WHERE namespace.nspname = %s
+                      AND table_class.relname = %s
+                      AND table_class.relkind IN ('r', 'p')
+                      AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%%');
+                    """,
+                    [schema_name, table_name],
+                )
+                if cursor.fetchone() is None:
+                    return False
+                cursor.execute(sql.SQL("DROP TABLE {}.{}").format(sql.Identifier(schema_name), sql.Identifier(table_name)))
+            connection.commit()
+        return True
+
+    deleted, error_response = _query_or_error("Не удалось удалить временную таблицу", drop_table)
+    if error_response:
+        return error_response
+    if not deleted:
+        return JsonResponse({"ok": False, "message": "Временная таблица не найдена"}, status=404)
+
+    _write_audit(
+        "temp_table_delete",
+        _format_audit_details([("Действие", "Удаление временной таблицы"), *_connection_audit_fields(db_connection, server_label=True), ("Схема", schema_name), ("Таблица", table_name), ("Результат", "успешно удалена")]),
+        db_user=_current_db_user(request),
+    )
+    return JsonResponse({"ok": True, "message": f"Временная таблица {schema_name}.{table_name} удалена", "schema_name": schema_name, "table_name": table_name})

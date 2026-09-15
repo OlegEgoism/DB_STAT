@@ -23,6 +23,7 @@ urlpatterns = [
     path("distribution/tables/", data.distribution_tables, name="distribution_tables"),
     path("distribution/info/", data.distribution_info, name="distribution_info"),
     path("temp-tables/sizes/", data.database_temp_table_sizes, name="database_temp_table_sizes"),
+    path("temp-tables/delete/", data.delete_temp_table, name="delete_temp_table"),
     path("queries/active/", performance.active_queries, name="active_queries"),
     path("queries/terminate/", performance.terminate_active_query, name="terminate_active_query"),
     path("sessions/active/", performance.active_sessions, name="active_sessions"),

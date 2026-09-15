@@ -68,6 +68,7 @@
     const viewsListApiUrl = '/views/list/';
     const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
+    const deleteTempTableApiUrl = '/temp-tables/delete/';
     const distributionTablesApiUrl = '/distribution/tables/';
     const distributionInfoApiUrl = '/distribution/info/';
     const activeQueriesApiUrl = '/queries/active/';
@@ -3779,7 +3780,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateTempTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateTempTablePaginationButtons();
     }
 
@@ -3813,7 +3814,7 @@
         if (count) count.textContent = `${data.temp_tables?.length || 0} из ${tempTablesState.totalCount} временных таблиц`;
         if (info) info.textContent = `Страница ${tempTablesState.page} из ${totalPages}`;
         if (!data.temp_tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-muted">Временные таблицы не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Временные таблицы не найдены</td></tr>';
             updateTempTablePaginationButtons();
             return;
         }
@@ -3823,6 +3824,9 @@
                 <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td>${escapeHtml(table.table_owner || '-')}</td>
                 <td>${table.table_size || '-'}</td>
+                <td class="backend-terminate-actions">
+                    ${canRunDestructiveActions() ? `<button type="button" class="btn btn-sm btn-outline-danger temp-table-delete-btn" data-temp-table-schema="${escapeHtml(table.schema_name)}" data-temp-table-name="${escapeHtml(table.table_name)}" title="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}" aria-label="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}"><i class="fas fa-trash"></i> Удалить</button>` : '—'}
+                </td>
             </tr>
         `).join('');
         updateTempTablePaginationButtons();
@@ -3855,6 +3859,26 @@
 
     function initTempTablesControls() {
         let searchTimer = null;
+        document.getElementById('tempTablesTableBody')?.addEventListener('click', function (event) {
+            const button = event.target.closest('.temp-table-delete-btn');
+            if (!button || button.disabled) return;
+            const conn = connections.find(c => String(c.id) === String(activeConnectionId));
+            const schemaName = button.dataset.tempTableSchema;
+            const tableName = button.dataset.tempTableName;
+            if (!conn || !schemaName || !tableName) return;
+            if (!confirm(translateInterfaceText(`Удалить временную таблицу "${schemaName}.${tableName}"?`))) return;
+
+            button.disabled = true;
+            connectionRequest(deleteTempTableApiUrl, {id: conn.id, schema_name: schemaName, table_name: tableName})
+                .then(data => {
+                    showToast(`✅ ${data.message}`);
+                    refreshTempTablesForConnection(conn);
+                })
+                .catch(error => {
+                    button.disabled = false;
+                    showToast(`❌ ${error.message || 'Не удалось удалить временную таблицу'}`);
+                });
+        });
         document.getElementById('tempTableSearchInput')?.addEventListener('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
