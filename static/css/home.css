@@ -2598,6 +2598,10 @@ body {
     font-weight: 400;
 }
 
+#auditActionFilter option[value=""] {
+    color: var(--text-primary);
+}
+
 .audit-table-scroll {
     overflow: visible;
 }
