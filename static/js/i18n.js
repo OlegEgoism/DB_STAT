@@ -13,11 +13,11 @@
         'Сессии': 'Sessions', 'Блокировки': 'Locks', 'Транзакции': 'Transactions', 'Память': 'Memory', 'Пользователи': 'Users',
         'Группы': 'Groups', 'Обслуживание': 'Maintenance', 'Аудит': 'Audit', 'Избранные': 'Favorites', 'Избранное': 'Favorites', 'Настройки': 'Settings', 'Видео': 'Video',
         'Настройки сайдбара': 'Interface settings', 'Интерфейс и боковое меню': 'Interface and sidebar', 'Интерфейс и меню': 'Interface and menu', 'Боковое меню': 'Sidebar', 'Разделы настроек': 'Settings sections', 'Свернуть сайдбар': 'Collapse sidebar', 'Свернуть/развернуть сайдбар': 'Collapse/expand sidebar',
-        'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Сессии и подключения': 'Sessions and connections',
+        'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Показать/скрыть боковое меню': 'Show/hide sidebar', 'Сессии и подключения': 'Sessions and connections',
         'До завершения сессии': 'Session time remaining',
         'Фоновые операции': 'Background jobs', 'Нет фоновых операций': 'No background jobs', 'Завершено': 'Completed',
         'Удалить подключение может только его создатель': 'Only the connection creator can delete it',
-        'Язык интерфейса': 'Interface language', 'Выберите язык': 'Choose a language', 'Русский (RU)': 'Russian (RU)',
+        'Язык интерфейса': 'Interface language', 'Выберите язык': 'Choose a language', 'Русский': 'Russian', 'Русский (RU)': 'Russian (RU)',
         'Тема оформления': 'Appearance theme', 'Белая': 'White', 'Тёмная': 'Dark', 'Светло-серая': 'Light gray',
         'Светло-синяя': 'Light blue', 'Светло-коричневая': 'Light brown', 'Светло-зелёная': 'Light green',
         'Спокойная прохладная палитра': 'Calm cool palette', 'Тёплая естественная палитра': 'Warm natural palette', 'Свежая природная палитра': 'Fresh natural palette',
@@ -29,7 +29,7 @@
         'Подтверждение завершения': 'Confirm termination', 'Подтвердите завершение процесса.': 'Confirm process termination.',
         'Операция может прервать выполняющуюся работу пользователя.': 'This action may interrupt the user’s current work.', 'Закрыть': 'Close',
         'Перетащить вкладку': 'Drag tab', 'Перетащить блок': 'Drag section',
-        'Название': 'Name', 'Хост': 'Host', 'Порт': 'Port', 'Тип БД': 'Database type', 'Пароль': 'Password', 'Пользователь': 'User',
+        'Название': 'Name', 'Подключение': 'Connection', 'Хост': 'Host', 'Порт': 'Port', 'Тип БД': 'Database type', 'Пароль': 'Password', 'Пользователь': 'User',
         'Пользователь БД': 'Database user', 'Владелец': 'Owner', 'Информация о подключении': 'Connection information',
         'Информация о пользователе': 'User information', 'Почта': 'Email', 'Роль': 'Role',
         'Удалить': 'Delete', 'Отмена': 'Cancel', 'Проверить': 'Test', 'Подключиться': 'Connect', 'Редактировать подключение': 'Edit connection',
@@ -47,6 +47,7 @@
         'С': 'From', 'По': 'To', 'Дата и время с': 'Date and time from', 'Дата и время по': 'Date and time to',
         'Фильтр пользователей аудита': 'Audit user filter', 'дд.мм.гггг --:--:--': 'mm/dd/yyyy --:--:--',
         'Страница 1 из 1': 'Page 1 of 1', 'Страница 1': 'Page 1', 'Настройки пагинации': 'Pagination settings', 'Открыть настройки пагинации': 'Open pagination settings',
+        'Записей:': 'Rows:', 'Фильтр': 'Filter',
         'Создавайте и редактируйте доступные размеры страниц. Допускается не более пяти вариантов.': 'Create and edit available page sizes. Up to five options are allowed.',
         'Количество записей на странице': 'Rows per page', 'Редактировать': 'Edit', 'Удалить настройку пагинации?': 'Delete pagination setting?', 'Ошибка настройки пагинации': 'Pagination setting error', 'Свернуть график': 'Collapse chart',
         'Развернуть график': 'Expand chart', 'Выберите таблицу': 'Select a table', 'Таблицы не найдены': 'No tables found',
@@ -207,6 +208,18 @@
         'Не удалось получить аудит': 'Failed to load audit events', 'Не удалось получить блокировки': 'Failed to load locks',
         'Не удалось получить временные таблицы': 'Failed to load temporary tables', 'Не удалось удалить временную таблицу': 'Failed to delete the temporary table', 'Действия': 'Actions', 'Не удалось получить параметры памяти': 'Failed to load memory settings',
         'PDF-отчёт': 'PDF report', 'Скачать PDF': 'Download PDF', 'Сформировать общий PDF-отчёт': 'Generate full PDF report', 'PDF-отчёт сформирован': 'PDF report generated', 'Не удалось сформировать PDF-отчёт': 'Failed to generate PDF report', 'Выберите подключение для формирования отчёта': 'Select a connection to generate a report',
+        'Не удалось проверить состояние PDF-отчёта': 'Failed to check PDF report status',
+        'Формирование PDF запущено в фоне': 'PDF generation started in the background',
+        'PDF-отчёт готов. Скачать его можно в «Фоновых операциях»': 'The PDF report is ready. Download it from Background jobs.',
+        'PDF-отчёт формируется': 'PDF report is being generated', 'PDF-отчёт готов к скачиванию': 'PDF report is ready to download',
+        'PDF-отчёт ещё не готов': 'PDF report is not ready yet', 'Задача формирования отчёта не найдена': 'Report generation job not found',
+        'Не удалось сформировать PDF-отчёт. Подробности см. в журнале сервера': 'Failed to generate the PDF report. See the server log for details',
+        'Модуль ReportLab не установлен. Выполните pip install -r requirements.txt и перезапустите приложение': 'ReportLab is not installed. Run pip install -r requirements.txt and restart the application',
+        'Не удалось изменить избранное': 'Failed to update favorites', 'Не удалось предзагрузить избранное:': 'Failed to preload favorites:',
+        'Не удалось обновить информацию о сегментах': 'Failed to refresh segment information',
+        'Не удалось обновить список фоновых операций': 'Failed to refresh background jobs',
+        'Операция завершилась с ошибкой': 'The operation failed', 'не существует': 'does not exist',
+        'Выберите таблицу для расчёта распределения': 'Select a table to calculate distribution',
         'Не удалось получить представления': 'Failed to load views', 'Не удалось получить функции': 'Failed to load functions', 'Не удалось получить размеры схем': 'Failed to load schema sizes',
         'Не удалось получить размеры таблиц': 'Failed to load table sizes', 'Не удалось получить распределение': 'Failed to load distribution data',
         'Не удалось получить список групп': 'Failed to load groups', 'Не удалось получить список пользователей': 'Failed to load users',
@@ -218,6 +231,7 @@
         'Выберите сохранённое подключение для загрузки памяти': 'Select a saved connection to load memory data', 'Выберите сохранённое подключение для загрузки функций': 'Select a saved connection to load functions',
         'Выберите сохранённое подключение для загрузки списка таблиц': 'Select a saved connection to load the table list',
         'Выберите сохранённое подключение для загрузки таблиц': 'Select a saved connection to load tables',
+        'Выберите подключение или дождитесь загрузки информации о сегментах': 'Select a connection or wait for segment information to load',
         'Загрузка активных сессий и подключений...': 'Loading active sessions and connections...',
         'Загрузка памяти...': 'Loading memory data...', 'Загрузка функций...': 'Loading functions...', 'Загрузка распределения строк по сегментам...': 'Loading row distribution across segments...',
         'Загрузка таблиц...': 'Loading tables...',
@@ -250,6 +264,15 @@
         .filter(([source]) => /[А-Яа-яЁё]/.test(source) && !/[<>]/.test(source))
         .sort(([left], [right]) => right.length - left.length);
 
+    function replaceInlineTranslation(value, source, target) {
+        const escaped = source.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const startsWithWord = /^[\p{L}\p{N}]/u.test(source);
+        const endsWithWord = /[\p{L}\p{N}]$/u.test(source);
+        const prefix = startsWithWord ? '(?<![\\p{L}\\p{N}])' : '';
+        const suffix = endsWithWord ? '(?![\\p{L}\\p{N}])' : '';
+        return value.replace(new RegExp(`${prefix}${escaped}${suffix}`, 'gu'), target);
+    }
+
     const patterns = [
         [/^Страница (\d+) из (\d+)$/, 'Page $1 of $2'], [/^(\d+) из (\d+) записей$/, '$1 of $2 records'],
         [/^Можно создать не более (\d+) настроек пагинации\.$/, 'You can create no more than $1 pagination settings.'],
@@ -277,6 +300,7 @@
         [/^Распределение данных по временным таблицам, всего (.+)$/, 'Temporary-table data distribution, total $1'],
         [/^Удалить подключение "(.+)"\?$/, 'Delete connection "$1"?'],
         [/^Удалить временную таблицу "(.+)"\?$/, 'Delete temporary table "$1"?'],
+        [/^Удалить временную таблицу (.+)$/, 'Delete temporary table $1'],
         [/^Временная таблица (.+) удалена$/, 'Temporary table $1 was deleted'],
         [/^Завершить активный запрос с PID (\d+)\?$/, 'Terminate active query with PID $1?'],
         [/^Завершить сессию пользователя с PID (\d+)\?$/, 'Terminate user session with PID $1?'],
@@ -356,10 +380,8 @@
             if (pattern.test(clean)) return leading + clean.replace(pattern, replacement) + trailing;
         }
         let translated = clean;
-        phraseTranslations.forEach(([source, target]) => { translated = translated.split(source).join(target); });
-        if (/[А-Яа-яЁё]/.test(translated)) {
-            inlineTranslations.forEach(([source, target]) => { translated = translated.split(source).join(target); });
-        }
+        inlineTranslations.forEach(([source, target]) => { translated = replaceInlineTranslation(translated, source, target); });
+        if (/[А-Яа-яЁё]/.test(translated)) phraseTranslations.forEach(([source, target]) => { translated = replaceInlineTranslation(translated, source, target); });
         if (translated !== clean) return leading + translated + trailing;
         return value;
     }
