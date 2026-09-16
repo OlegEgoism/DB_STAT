@@ -545,9 +545,9 @@
         initGroupsControls();
         initFavoriteControls();
         initAuditControls();
-        initFilterSelects();
         initSidebarSettings();
         initLanguageSettings();
+        initFilterSelects();
         initLogoutForm();
         initSessionCountdown();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));

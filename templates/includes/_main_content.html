@@ -252,10 +252,13 @@
                         <p>Язык применяется ко всему интерфейсу и сохраняется для следующих посещений.</p>
                     </div>
                     <label class="form-label" for="interfaceLanguage">Выберите язык</label>
-                    <select class="form-select" id="interfaceLanguage">
-                        <option value="ru">Русский (RU)</option>
-                        <option value="en">English (EN)</option>
-                    </select>
+                    <div class="search-box filter-select-box filter-select-box--wide settings-language-select">
+                        <i class="fas fa-language" aria-hidden="true"></i>
+                        <select id="interfaceLanguage" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Choose a language{% else %}Выберите язык{% endif %}">
+                            <option value="ru">Русский (RU)</option>
+                            <option value="en">English (EN)</option>
+                        </select>
+                    </div>
                     <div class="settings-panel-footer">
                         <button type="button" class="btn btn-primary" id="interfaceLanguageSaveBtn">Сохранить</button>
                     </div>
