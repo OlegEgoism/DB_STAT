@@ -34,9 +34,10 @@ class DbStatisticsConfig(AppConfig):
         def submit_queued_jobs():
             from db_statistics.models import MaintenanceJob, ReportJob
             from db_statistics.views.maintenance import _submit_maintenance_job
-            from db_statistics.views.reports import _submit_report_job
+            from db_statistics.views.reports import _ensure_report_job_table, _submit_report_job
 
             try:
+                _ensure_report_job_table()
                 # Задачи, оставшиеся в статусе "running" после аварийного
                 # завершения процесса (падение, деплой, OOM), иначе провисят
                 # в этом статусе бесконечно — атомарный захват в

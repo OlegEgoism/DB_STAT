@@ -12,7 +12,7 @@ mkdir -p "$sqlite_dir"
 # so reconcile it before anything touches the SQLite file.
 chown -R appuser:appuser "$sqlite_dir"
 
-runuser -u appuser -- python manage.py migrate --noinput --fake-initial
+runuser -u appuser -- python manage.py migrate --noinput --run-syncdb
 runuser -u appuser -- python manage.py recover_maintenance_jobs
 
 # Creates the first account (INITIAL_ADMIN_PASSWORD defaults to "admin" if

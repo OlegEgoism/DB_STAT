@@ -23,5 +23,6 @@ staticfiles/
 # User-uploaded media files
 media/
 
-# Django migrations are versioned so a fresh installation and an existing
-# database receive exactly the same schema changes.
+# Django migrations (keep __init__.py)
+**/migrations/*.py
+!**/migrations/__init__.py

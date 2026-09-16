@@ -5,12 +5,13 @@ import io
 import logging
 import os
 import time
+from threading import Lock
 from datetime import datetime
 from xml.sax.saxutils import escape
 
 import psycopg2
 from django.conf import settings
-from django.db import close_old_connections
+from django.db import DatabaseError, close_old_connections, connection
 from django.http import FileResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -23,6 +24,32 @@ from db_statistics.views.pool import _fetch_db_rows, _safe_db_error_message
 
 _MAX_ROWS = 50
 logger = logging.getLogger(__name__)
+_report_job_schema_lock = Lock()
+
+
+def _ensure_report_job_table():
+    """Создаёт таблицу отчётов в старых установках без Django-миграций.
+
+    Исторически миграции этого приложения не поставлялись и его таблицы
+    создавались через syncdb. Поэтому обычное добавление migration приводит к
+    конфликту истории на существующих БД. Проверка позволяет безопасно
+    обновиться без ручного удаления или пересоздания SQLite-файла.
+    """
+    table_name = ReportJob._meta.db_table
+    if table_name in connection.introspection.table_names():
+        return
+    with _report_job_schema_lock:
+        if table_name in connection.introspection.table_names():
+            return
+        try:
+            with connection.schema_editor() as schema_editor:
+                schema_editor.create_model(ReportJob)
+        except DatabaseError:
+            # Другой процесс приложения мог создать таблицу между проверкой и
+            # DDL. Подавляем только этот безопасный race, остальные ошибки
+            # должны остаться видимыми в журнале.
+            if table_name not in connection.introspection.table_names():
+                raise
 
 
 def _serialize_report_job(job):
@@ -267,6 +294,7 @@ def database_pdf_report(request):
     db_user = _current_db_user(request)
     if not db_user:
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    _ensure_report_job_table()
     if request.method == "GET":
         try:
             job = ReportJob.objects.select_related("connection", "user").filter(pk=request.GET.get("job_id"), user=db_user).first()
