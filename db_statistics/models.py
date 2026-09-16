@@ -329,3 +329,30 @@ class MaintenanceJob(models.Model):
 
     def __str__(self):
         return f"{self.get_operation_display()} {self.schema_name}.{self.table_name} — {self.get_status_display()}"
+
+
+class ReportJob(models.Model):
+    """Фоновое формирование PDF-отчёта."""
+
+    STATUS_CHOICES = MaintenanceJob.STATUS_CHOICES
+
+    id = models.UUIDField(**vn("Идентификатор", "Уникальный идентификатор фоновой задачи."), primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(DBUser, **vn("Пользователь", "Пользователь, запросивший отчёт."), on_delete=models.SET_NULL, null=True, related_name="report_jobs")
+    connection = models.ForeignKey(DBConnection, **vn("Подключение", "Подключение, по которому строится отчёт."), on_delete=models.CASCADE, related_name="report_jobs")
+    status = models.CharField(**vn("Статус", "Текущее состояние формирования отчёта."), max_length=16, choices=STATUS_CHOICES, default="queued", db_index=True)
+    message = models.TextField(**vn("Сообщение", "Текущее или итоговое сообщение исполнителя."), default="Отчёт ожидает формирования")
+    content = models.BinaryField(**vn("PDF", "Сформированный PDF-файл."), null=True, blank=True, editable=False)
+    filename = models.CharField(**vn("Имя файла", "Имя сформированного PDF-файла."), max_length=255, blank=True)
+    duration_seconds = models.FloatField(**vn("Длительность, с", "Продолжительность формирования отчёта."), null=True, blank=True)
+    created = models.DateTimeField(**vn("Дата создания", "Дата постановки задачи в очередь."), auto_now_add=True, db_index=True)
+    started = models.DateTimeField(**vn("Дата запуска", "Дата начала формирования."), null=True, blank=True)
+    finished = models.DateTimeField(**vn("Дата завершения", "Дата завершения формирования."), null=True, blank=True)
+
+    class Meta:
+        db_table = "db_report_job"
+        verbose_name = "Фоновое формирование отчёта"
+        verbose_name_plural = "Фоновые формирования отчётов"
+        ordering = ("-created",)
+
+    def __str__(self):
+        return f"PDF: {self.connection.name} — {self.get_status_display()}"

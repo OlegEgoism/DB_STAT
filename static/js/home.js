@@ -2609,6 +2609,18 @@
         };
         list.innerHTML = jobs.slice(0, 8).map(job => {
             const labels = {queued: 'В очереди', running: 'Выполняется', completed: 'Завершено', failed: 'Ошибка'};
+            if (job.kind === 'report') {
+                const download = job.download_url ? `<a class="background-job-download" href="${escapeHtml(job.download_url)}"><i class="fas fa-download"></i> Скачать PDF</a>` : '';
+                return `<div class="background-job-item">
+                    <b>PDF-отчёт</b>
+                    <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
+                    <small><span class="background-job-user-label">Пользователь:</span> ${escapeHtml(job.username || '—')}</small>
+                    <dl class="background-job-times">
+                        <div><dt>Начало</dt><dd>${escapeHtml(formatJobDateTime(job.started))}</dd></div>
+                        <div><dt>Окончание</dt><dd>${escapeHtml(formatJobDateTime(job.finished))}</dd></div>
+                    </dl>${download}
+                </div>`;
+            }
             return `<div class="background-job-item">
                 <b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}
                 <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
@@ -2628,6 +2640,7 @@
             const jobs = data.jobs || [];
             renderBackgroundJobs(jobs);
             jobs.filter(job => ['queued', 'running'].includes(job.status)).forEach(job => {
+                if (job.kind === 'report') return;
                 if (maintenanceJobs.has(job.id)) return;
                 maintenanceJobs.set(job.id, {...job, tableKey: `${job.schema_name}.${job.table_name}`});
                 pollMaintenanceJob(job.id);
@@ -4235,34 +4248,45 @@
                 return;
             }
             button.disabled = true;
-            button.classList.add('is-loading');
             try {
                 const response = await fetch(databasePdfReportApiUrl, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
                     body: JSON.stringify({id: conn.id})
                 });
-                if (!response.ok) {
-                    const data = await response.json().catch(() => ({}));
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) {
                     throw new Error(data.message || 'Не удалось сформировать PDF-отчёт');
                 }
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `db-report-${conn.database || conn.id}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(url);
-                showToast('✅ PDF-отчёт сформирован');
+                showToast('✅ Формирование PDF запущено в фоне');
+                loadBackgroundJobs();
+                pollReportJob(data.job.id);
             } catch (error) {
                 showToast(`❌ ${error.message || 'Не удалось сформировать PDF-отчёт'}`);
             } finally {
-                button.classList.remove('is-loading');
                 button.disabled = !activeConnectionId;
             }
         });
+    }
+
+    function pollReportJob(jobId) {
+        window.setTimeout(async () => {
+            try {
+                const response = await fetch(`${databasePdfReportApiUrl}?job_id=${encodeURIComponent(jobId)}`);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) throw new Error(data.message || 'Не удалось проверить состояние PDF-отчёта');
+                loadBackgroundJobs();
+                if (['queued', 'running'].includes(data.job.status)) {
+                    pollReportJob(jobId);
+                } else if (data.job.status === 'completed') {
+                    showToast('✅ PDF-отчёт готов. Скачать его можно в «Фоновых операциях»');
+                } else {
+                    showToast(`❌ ${data.job.message || 'Не удалось сформировать PDF-отчёт'}`);
+                }
+            } catch (error) {
+                showToast(`❌ ${error.message}`);
+            }
+        }, 2000);
     }
 
 

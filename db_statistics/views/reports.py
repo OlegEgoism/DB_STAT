@@ -2,20 +2,65 @@
 
 import importlib.util
 import io
+import logging
 import os
+import time
 from datetime import datetime
 from xml.sax.saxutils import escape
 
 import psycopg2
+from django.conf import settings
+from django.db import close_old_connections
 from django.http import FileResponse, JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.models import ReportJob
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _require_payload_connection
 from db_statistics.views.helpers import _format_bytes, _read_json_body
 from db_statistics.views.pool import _fetch_db_rows, _safe_db_error_message
 
 _MAX_ROWS = 50
+logger = logging.getLogger(__name__)
+
+
+def _serialize_report_job(job):
+    return {
+        "id": str(job.pk), "kind": "report", "operation": "database_report",
+        "connection_id": job.connection_id, "connection_name": job.connection.name,
+        "username": job.user.login if job.user else "—", "status": job.status,
+        "message": job.message, "filename": job.filename,
+        "download_url": f"/reports/database.pdf?job_id={job.pk}&download=1" if job.status == "completed" else None,
+        "duration_seconds": job.duration_seconds, "created": job.created.isoformat(),
+        "started": job.started.isoformat() if job.started else None,
+        "finished": job.finished.isoformat() if job.finished else None,
+    }
+
+
+def _submit_report_job(job_id):
+    settings.MAINTENANCE_JOB_EXECUTOR.submit(_run_report_job, str(job_id))
+
+
+def _run_report_job(job_id):
+    close_old_connections()
+    claimed = ReportJob.objects.filter(pk=job_id, status="queued").update(status="running", message="PDF-отчёт формируется", started=timezone.now())
+    if not claimed:
+        close_old_connections()
+        return
+    job = ReportJob.objects.select_related("connection", "user").get(pk=job_id)
+    started_at = time.monotonic()
+    try:
+        sections = _report_sections(job.connection)
+        pdf = _build_pdf(job.connection, job.user, sections)
+        filename = f"db-report-{job.connection_id}-{datetime.now():%Y%m%d-%H%M%S}.pdf"
+        ReportJob.objects.filter(pk=job_id).update(status="completed", message="PDF-отчёт готов к скачиванию", content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
+        _write_audit("database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(job.connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), username=job.user.login if job.user else "system")
+    except Exception:
+        logger.exception("Не удалось сформировать PDF-отчёт job_id=%s", job_id)
+        ReportJob.objects.filter(pk=job_id).update(status="failed", message="Не удалось сформировать PDF-отчёт. Подробности см. в журнале сервера", duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
+    finally:
+        close_old_connections()
 
 
 def _register_fonts():
@@ -216,20 +261,34 @@ def _pdf_table(rows, normal, bold, header=True):
     return table
 
 
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def database_pdf_report(request):
-    """Собирает все диагностические разделы и возвращает готовый PDF."""
+    """Ставит PDF в очередь, возвращает состояние или скачивает результат."""
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    if request.method == "GET":
+        try:
+            job = ReportJob.objects.select_related("connection", "user").filter(pk=request.GET.get("job_id"), user=db_user).first()
+        except (TypeError, ValueError):
+            job = None
+        if not job:
+            return JsonResponse({"ok": False, "message": "Задача формирования отчёта не найдена"}, status=404)
+        if request.GET.get("download") == "1":
+            if job.status != "completed" or not job.content:
+                return JsonResponse({"ok": False, "message": "PDF-отчёт ещё не готов"}, status=409)
+            return FileResponse(io.BytesIO(bytes(job.content)), as_attachment=True, filename=job.filename, content_type="application/pdf")
+        return JsonResponse({"ok": True, "job": _serialize_report_job(job)})
+
     payload = _read_json_body(request)
     db_connection, error_response = _require_payload_connection(request, payload)
     if error_response:
         return error_response
-    db_user = _current_db_user(request)
-    if not db_user:
-        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
     if importlib.util.find_spec("reportlab") is None:
         return JsonResponse({"ok": False, "message": "Модуль ReportLab не установлен. Выполните pip install -r requirements.txt и перезапустите приложение"}, status=503)
-    sections = _report_sections(db_connection)
-    pdf = _build_pdf(db_connection, db_user, sections)
-    _write_audit("database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(db_connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), db_user=db_user)
-    filename = f"db-report-{db_connection.pk}-{datetime.now():%Y%m%d-%H%M%S}.pdf"
-    return FileResponse(pdf, as_attachment=True, filename=filename, content_type="application/pdf")
+    existing = ReportJob.objects.select_related("connection", "user").filter(user=db_user, connection=db_connection, status__in=("queued", "running")).first()
+    if existing:
+        return JsonResponse({"ok": True, "job": _serialize_report_job(existing)}, status=202)
+    job = ReportJob.objects.create(user=db_user, connection=db_connection)
+    _submit_report_job(job.pk)
+    return JsonResponse({"ok": True, "job": _serialize_report_job(job)}, status=202)

@@ -32,8 +32,9 @@ class DbStatisticsConfig(AppConfig):
         connection_created.connect(_enable_sqlite_wal)
 
         def submit_queued_jobs():
-            from db_statistics.models import MaintenanceJob
+            from db_statistics.models import MaintenanceJob, ReportJob
             from db_statistics.views.maintenance import _submit_maintenance_job
+            from db_statistics.views.reports import _submit_report_job
 
             try:
                 # Задачи, оставшиеся в статусе "running" после аварийного
@@ -44,9 +45,13 @@ class DbStatisticsConfig(AppConfig):
                 # прерванной.
                 MaintenanceJob.objects.filter(status="running").update(status="queued", message="Операция восстановлена после перезапуска", started=None)
                 job_ids = list(MaintenanceJob.objects.filter(status="queued").values_list("pk", flat=True))
+                ReportJob.objects.filter(status="running").update(status="queued", message="Формирование отчёта восстановлено после перезапуска", started=None)
+                report_job_ids = list(ReportJob.objects.filter(status="queued").values_list("pk", flat=True))
             except (OperationalError, ProgrammingError):
                 return
             for job_id in job_ids:
                 _submit_maintenance_job(job_id)
+            for job_id in report_job_ids:
+                _submit_report_job(job_id)
 
         Timer(0.5, submit_queued_jobs).start()

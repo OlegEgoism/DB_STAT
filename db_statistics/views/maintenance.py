@@ -90,6 +90,7 @@ def _serialize_maintenance_job(job):
     """Преобразует сохранённую задачу в безопасный ответ API."""
     return {
         "id": str(job.pk),
+        "kind": "maintenance",
         "connection_id": job.connection_id,
         "connection_name": job.connection.name,
         "username": job.user.login if job.user else "—",
