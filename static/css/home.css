@@ -2608,16 +2608,6 @@ body {
     width: min(260px, 100%);
 }
 
-.filter-select-box::after {
-    flex: 0 0 auto;
-    color: var(--text-muted);
-    content: "\f078";
-    font-family: "Font Awesome 5 Free";
-    font-size: 10px;
-    font-weight: 900;
-    pointer-events: none;
-}
-
 .filter-select-box:focus-within {
     border-color: var(--accent-blue);
     background: var(--bg-secondary);
@@ -2628,6 +2618,98 @@ body {
     min-width: 0;
     cursor: pointer;
     appearance: none;
+}
+
+.filter-select {
+    position: static;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.filter-select__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.filter-select__toggle span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.filter-select__toggle i {
+    color: var(--text-muted);
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.filter-select-box.is-open .filter-select__toggle i {
+    transform: rotate(180deg);
+}
+
+.filter-select__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: -1px;
+    left: -1px;
+    display: none;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--accent-blue);
+    border-radius: 12px;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-card-hover);
+    z-index: 1042;
+}
+
+.filter-select-box.is-open .filter-select__menu {
+    display: block;
+}
+
+.filter-select__option {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.filter-select__option i {
+    color: #78c800;
+    font-size: 17px;
+}
+
+.filter-select__option:hover,
+.filter-select__option:focus-visible,
+.filter-select__option.is-selected {
+    background: var(--accent-blue);
+    color: #ffffff;
+}
+
+.filter-select__option:hover i,
+.filter-select__option:focus-visible i,
+.filter-select__option.is-selected i {
+    color: #b7f000;
 }
 
 #databasePdfReportBtn.is-loading i {

@@ -427,6 +427,88 @@
     // ============================
     // INIT
     // ============================
+    function initFilterSelects() {
+        const closeAll = except => {
+            document.querySelectorAll('.filter-select-box.is-open').forEach(box => {
+                if (box === except) return;
+                box.classList.remove('is-open');
+                box.querySelector('.filter-select__toggle')?.setAttribute('aria-expanded', 'false');
+            });
+        };
+
+        document.querySelectorAll('.filter-select-box select').forEach(select => {
+            if (select.dataset.customized === 'true') return;
+            select.dataset.customized = 'true';
+            select.classList.add('visually-hidden');
+
+            const custom = document.createElement('div');
+            custom.className = 'filter-select';
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'filter-select__toggle';
+            toggle.setAttribute('aria-haspopup', 'listbox');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', select.getAttribute('aria-label') || 'Фильтр');
+            const menu = document.createElement('div');
+            menu.className = 'filter-select__menu';
+            menu.setAttribute('role', 'listbox');
+            custom.append(toggle, menu);
+            select.insertAdjacentElement('afterend', custom);
+
+            const render = () => {
+                const options = Array.from(select.options);
+                const selectedIndex = Math.max(select.selectedIndex, 0);
+                toggle.innerHTML = `<span>${escapeHtml(options[selectedIndex]?.textContent || '')}</span><i class="fas fa-chevron-down" aria-hidden="true"></i>`;
+                menu.innerHTML = '';
+                options.forEach((option, index) => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = `filter-select__option${index === selectedIndex ? ' is-selected' : ''}`;
+                    item.setAttribute('role', 'option');
+                    item.setAttribute('aria-selected', String(index === selectedIndex));
+                    item.innerHTML = `<i class="far fa-check-circle" aria-hidden="true"></i><span>${escapeHtml(option.textContent)}</span>`;
+                    item.addEventListener('click', () => {
+                        if (select.selectedIndex !== index) {
+                            select.selectedIndex = index;
+                            select.dispatchEvent(new Event('change', {bubbles: true}));
+                        }
+                        render();
+                        closeAll();
+                        toggle.focus();
+                    });
+                    menu.appendChild(item);
+                });
+            };
+
+            toggle.addEventListener('click', event => {
+                event.stopPropagation();
+                const opening = !select.closest('.filter-select-box').classList.contains('is-open');
+                closeAll();
+                select.closest('.filter-select-box').classList.toggle('is-open', opening);
+                toggle.setAttribute('aria-expanded', String(opening));
+                if (opening) menu.querySelector('.is-selected')?.focus();
+            });
+            custom.addEventListener('keydown', event => {
+                const items = Array.from(menu.querySelectorAll('.filter-select__option'));
+                const index = items.indexOf(document.activeElement);
+                if (event.key === 'Escape') {
+                    closeAll();
+                    toggle.focus();
+                } else if (event.key === 'ArrowDown' && items.length) {
+                    event.preventDefault();
+                    items[(index + 1) % items.length].focus();
+                } else if (event.key === 'ArrowUp' && items.length) {
+                    event.preventDefault();
+                    items[(index - 1 + items.length) % items.length].focus();
+                }
+            });
+            select.addEventListener('change', render);
+            new MutationObserver(render).observe(select, {childList: true, subtree: true});
+            render();
+        });
+        document.addEventListener('click', () => closeAll());
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         initSettingsTabs();
         initThemeSettings();
@@ -463,6 +545,7 @@
         initGroupsControls();
         initFavoriteControls();
         initAuditControls();
+        initFilterSelects();
         initSidebarSettings();
         initLanguageSettings();
         initLogoutForm();
