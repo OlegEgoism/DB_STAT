@@ -251,6 +251,8 @@ class DBAudit(models.Model):
         ("favorite_remove", "Удаление из избранных объектов"),
         ("query_terminate", "Завершение активного запроса"),
         ("session_terminate", "Завершение активной сессии"),
+        ("lock_terminate", "Завершение процесса блокировки"),
+        ("transaction_terminate", "Завершение простаивающей транзакции"),
         ("temp_table_delete", "Удаление временной таблицы"),
         ("database_report", "Формирование PDF-отчёта"),
         ("vacuum", "VACUUM таблицы"),

@@ -1251,11 +1251,12 @@
                             <th>Блок. пользователь</th>
                             <th>Длит. блокирующего</th>
                             <th>Блокирующий SQL</th>
+                            {% if db_user.role == 'Администратор' %}<th>Действие</th>{% endif %}
                         </tr>
                         </thead>
                         <tbody id="blockingLocksTableBody">
                         <tr>
-                            <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки блокировок</td>
+                            <td colspan="{% if db_user.role == 'Администратор' %}9{% else %}8{% endif %}" class="text-muted">Выберите сохранённое подключение для загрузки блокировок</td>
                         </tr>
                         </tbody>
                     </table>
@@ -1311,11 +1312,12 @@
                                     <th>Длит. транзакции</th>
                                     <th>Длит. простоя</th>
                                     <th>SQL</th>
+                                    {% if db_user.role == 'Администратор' %}<th>Действие</th>{% endif %}
                                 </tr>
                                 </thead>
                                 <tbody id="idleTransactionsTableBody">
                                 <tr>
-                                    <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки транзакций</td>
+                                    <td colspan="{% if db_user.role == 'Администратор' %}9{% else %}8{% endif %}" class="text-muted">Выберите сохранённое подключение для загрузки транзакций</td>
                                 </tr>
                                 </tbody>
                             </table>

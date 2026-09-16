@@ -77,7 +77,9 @@
     const activeSessionsApiUrl = '/sessions/active/';
     const terminateActiveSessionApiUrl = '/sessions/terminate/';
     const blockingLocksApiUrl = '/locks/blocking/';
+    const terminateLockProcessApiUrl = '/locks/terminate/';
     const idleTransactionsApiUrl = '/transactions/idle/';
+    const terminateIdleTransactionApiUrl = '/transactions/terminate/';
     const memoryOverviewApiUrl = '/memory/overview/';
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const maintenanceOperationApiUrl = '/maintenance/operation/';
@@ -1884,6 +1886,28 @@
         }, delay));
     }
 
+    function terminateObservedProcess(button, apiUrl, processType, refresh) {
+        const pid = processType === 'lock' ? button.dataset.lockPid : button.dataset.transactionPid;
+        const conn = connections.find(item => String(item.id) === String(activeConnectionId));
+        if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
+        const confirmation = processType === 'lock'
+            ? `Завершить процесс блокировки с PID ${pid}?`
+            : `Завершить простаивающую транзакцию с PID ${pid}?`;
+        confirmBackendTermination(confirmation).then(confirmed => {
+            if (!confirmed) return;
+            button.disabled = true;
+            connectionRequest(apiUrl, {id: conn.id, pid: Number(pid)})
+                .then(data => {
+                    showToast(`✅ ${data.message}`);
+                    refresh(conn, {silent: true});
+                })
+                .catch(error => {
+                    button.disabled = false;
+                    showToast(`❌ ${error.message || 'Не удалось завершить процесс'}`);
+                });
+        });
+    }
+
     function refreshActiveSessionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId)), options = {}) {
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderActiveSessionsWarning('Выберите сохранённое подключение для загрузки активных сессий и подключений');
@@ -1923,7 +1947,7 @@
         const tbody = document.getElementById('blockingLocksTableBody');
         const count = document.getElementById('blockingLocksCount');
         if (count) count.textContent = 'Нет данных';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 9 : 8}" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderBlockingLocks(data) {
@@ -1936,7 +1960,7 @@
             : `${locks.length} блокировок`;
         if (!tbody) return;
         if (!locks.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Блокировки не найдены</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 9 : 8}" class="text-muted">Блокировки не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = locks.map(lock => `
@@ -1949,6 +1973,10 @@
                 <td>${escapeHtml(lock.blocker_user)}</td>
                 <td>${escapeHtml(lock.blocker_duration)}</td>
                 <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(lock.blocker_query)}">${escapeHtml(lock.blocker_query)}</td>
+                ${canRunDestructiveActions() ? `<td class="backend-terminate-actions blocking-lock-actions">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-lock-pid="${escapeHtml(lock.blocked_pid)}" title="Завершить заблокированный процесс PID ${escapeHtml(lock.blocked_pid)}">Завершить заблокированный</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-lock-pid="${escapeHtml(lock.blocker_pid)}" title="Завершить блокирующий процесс PID ${escapeHtml(lock.blocker_pid)}">Завершить блокирующий</button>
+                </td>` : ''}
             </tr>
         `).join('');
     }
@@ -1967,6 +1995,10 @@
     }
 
     function initBlockingLocksControls() {
+        document.getElementById('blockingLocksTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-lock-pid]');
+            if (button) terminateObservedProcess(button, terminateLockProcessApiUrl, 'lock', refreshBlockingLocksForConnection);
+        });
         document.getElementById('blockingLocksRefreshInterval')?.addEventListener('change', function () {
             blockingLocksState.refreshInterval = Number(this.value) || 0;
             scheduleBlockingLocksRefresh();
@@ -2021,7 +2053,7 @@
         const tbody = document.getElementById('idleTransactionsTableBody');
         const count = document.getElementById('idleTransactionsCount');
         if (count) count.textContent = 'Нет данных';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 9 : 8}" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderIdleTransactions(data) {
@@ -2033,7 +2065,7 @@
             : `${transactions.length} транзакций`;
         if (!tbody) return;
         if (!transactions.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Транзакции не найдены</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${canRunDestructiveActions() ? 9 : 8}" class="text-muted">Транзакции не найдены</td></tr>`;
             return;
         }
         tbody.innerHTML = transactions.map(transaction => `
@@ -2046,6 +2078,7 @@
                 <td>${escapeHtml(transaction.transaction_duration)}</td>
                 <td>${escapeHtml(transaction.idle_duration)}</td>
                 <td style="max-width:360px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--text-muted);" title="${escapeHtml(transaction.sql)}">${escapeHtml(transaction.sql)}</td>
+                ${canRunDestructiveActions() ? `<td class="backend-terminate-actions"><button type="button" class="btn btn-sm btn-outline-danger" data-transaction-pid="${escapeHtml(transaction.pid)}" title="Завершить транзакцию PID ${escapeHtml(transaction.pid)}">Завершить</button></td>` : ''}
             </tr>
         `).join('');
     }
@@ -2064,6 +2097,10 @@
     }
 
     function initIdleTransactionsControls() {
+        document.getElementById('idleTransactionsTableBody')?.addEventListener('click', event => {
+            const button = event.target.closest('[data-transaction-pid]');
+            if (button) terminateObservedProcess(button, terminateIdleTransactionApiUrl, 'transaction', refreshIdleTransactionsForConnection);
+        });
         document.getElementById('idleTransactionsRefreshInterval')?.addEventListener('change', function () {
             idleTransactionsState.refreshInterval = Number(this.value) || 0;
             scheduleIdleTransactionsRefresh();
@@ -4168,6 +4205,8 @@
             favorite_remove: 'audit-action-badge--favorite-remove',
             query_terminate: 'audit-action-badge--query-terminate',
             session_terminate: 'audit-action-badge--session-terminate',
+            lock_terminate: 'audit-action-badge--session-terminate',
+            transaction_terminate: 'audit-action-badge--query-terminate',
             vacuum: 'audit-action-badge--vacuum',
             vacuum_full: 'audit-action-badge--vacuum-full',
             analyze: 'audit-action-badge--analyze',

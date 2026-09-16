@@ -1745,6 +1745,19 @@ body {
     white-space: nowrap;
 }
 
+.blocking-lock-actions {
+    min-width: 180px;
+}
+
+.blocking-lock-actions .btn {
+    display: block;
+    width: 100%;
+}
+
+.blocking-lock-actions .btn + .btn {
+    margin-top: 5px;
+}
+
 .maintenance-job-running {
     display: inline-flex;
     align-items: center;

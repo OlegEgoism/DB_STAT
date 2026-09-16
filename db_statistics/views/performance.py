@@ -178,6 +178,36 @@ def terminate_active_session(request):
 
 
 @require_http_methods(["POST"])
+def terminate_lock_process(request):
+    """Завершает заблокированный или блокирующий процесс."""
+    return _terminate_backend(
+        request,
+        require_active=False,
+        invalid_pid_message="Указан некорректный PID процесса блокировки",
+        not_found_message=lambda pid: f"Процесс блокировки с PID {pid} не найден",
+        failed_message=lambda pid: f"Не удалось завершить процесс блокировки с PID {pid}",
+        success_message=lambda pid: f"Процесс блокировки с PID {pid} завершён",
+        audit_action_type="lock_terminate",
+        audit_label="Завершение процесса блокировки",
+    )
+
+
+@require_http_methods(["POST"])
+def terminate_idle_transaction(request):
+    """Завершает процесс с простаивающей транзакцией."""
+    return _terminate_backend(
+        request,
+        require_active=False,
+        invalid_pid_message="Указан некорректный PID транзакции",
+        not_found_message=lambda pid: f"Транзакция с PID {pid} не найдена",
+        failed_message=lambda pid: f"Не удалось завершить транзакцию с PID {pid}",
+        success_message=lambda pid: f"Транзакция с PID {pid} завершена",
+        audit_action_type="transaction_terminate",
+        audit_label="Завершение простаивающей транзакции",
+    )
+
+
+@require_http_methods(["POST"])
 def blocking_locks(request):
     """Возвращает цепочки блокирующих и заблокированных процессов."""
     payload = _read_json_body(request)
