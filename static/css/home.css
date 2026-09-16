@@ -2471,6 +2471,10 @@ body {
     height: 40px;
 }
 
+.audit-table-toolbar .filter-select-box {
+    width: min(280px, 100%);
+}
+
 .audit-date-range {
     width: min(280px, 100%);
     flex-wrap: nowrap;
