@@ -3098,6 +3098,78 @@ body {
     display: block;
 }
 
+.login-language-select {
+    position: relative;
+}
+
+.login-language-select__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 39px;
+    padding: 8px 14px;
+    border: 1px solid var(--control-border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    text-align: left;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-language-select__toggle:focus-visible,
+.login-language-select.is-open .login-language-select__toggle {
+    border-color: var(--accent-blue);
+    outline: 0;
+    box-shadow: 0 0 0 3px var(--glow-blue);
+}
+
+.login-language-select__toggle i {
+    color: var(--text-muted);
+    font-size: 10px;
+    transition: transform 0.2s ease;
+}
+
+.login-language-select.is-open .login-language-select__toggle i {
+    transform: rotate(180deg);
+}
+
+.login-language-select__menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    z-index: 10;
+    overflow: hidden;
+    padding: 4px;
+    border: 1px solid var(--accent-blue);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-card-hover);
+}
+
+.login-language-select__option {
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+}
+
+.login-language-select__option:hover,
+.login-language-select__option:focus-visible,
+.login-language-select__option.is-selected {
+    background: var(--accent-blue);
+    color: #ffffff;
+}
+
 /* ========== UNIFIED LAYOUT SYSTEM ========== */
 .app-page-shell,
 .main-content {
