@@ -2956,16 +2956,29 @@ body {
     white-space: nowrap;
 }
 
-.pagination-page-size select {
-    height: 32px;
-    padding: 0 28px 0 10px;
+.pagination-page-size__select.filter-select-box {
+    width: 68px;
+    min-height: 34px;
+    padding: 7px 9px 7px 11px;
     border: 1px solid var(--sidebar-border);
-    border-radius: 8px;
-    outline: none;
+    border-radius: 10px;
     background: var(--surface-raised);
     color: var(--text-primary);
     font: inherit;
-    cursor: pointer;
+}
+
+.pagination-page-size__select .filter-select__menu {
+    top: calc(100% + 4px);
+    min-width: 100%;
+}
+
+.pagination-page-size__select .filter-select__option {
+    min-height: 32px;
+    padding: 6px 10px;
+}
+
+.pagination-page-size__select .filter-select__option i {
+    display: none;
 }
 
 .current-db-user {

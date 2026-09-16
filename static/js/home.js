@@ -4050,7 +4050,7 @@
             if (paginationPageSizeOptions.includes(storedPageSize)) state.pageSize = storedPageSize;
             const label = document.createElement('label');
             label.className = 'pagination-page-size';
-            label.innerHTML = `<span>${labelText}</span><select aria-label="${labelText}">${paginationPageSizeOptions.map(size => `<option value="${size}">${size}</option>`).join('')}</select>`;
+            label.innerHTML = `<span>${labelText}</span><span class="pagination-page-size__select filter-select-box"><select aria-label="${labelText}">${paginationPageSizeOptions.map(size => `<option value="${size}">${size}</option>`).join('')}</select></span>`;
             const select = label.querySelector('select');
             select.value = String(state.pageSize);
             select.addEventListener('change', () => {
