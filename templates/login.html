@@ -37,11 +37,21 @@
                         <div class="form-text" id="sessionDurationHelp">{% if LANGUAGE_CODE == 'en' %}From {{ min_session_duration_minutes }} minutes to {{ max_session_duration_hours }} hours.{% else %}От {{ min_session_duration_minutes }} минут до {{ max_session_duration_hours }} часов.{% endif %}</div>
                     </div>
                     <div class="col-md-5">
-                        <label class="form-label" for="loginLanguageSelect">{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}</label>
-                        <select class="form-select" id="loginLanguageSelect" aria-label="{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}">
-                            <option value="ru" {% if LANGUAGE_CODE != 'en' %}selected{% endif %}>Русский</option>
-                            <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
-                        </select>
+                        <label class="form-label" for="loginLanguageToggle">{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}</label>
+                        <div class="login-language-select" id="loginLanguagePicker">
+                            <select class="visually-hidden" id="loginLanguageSelect" aria-label="{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}" tabindex="-1">
+                                <option value="ru" {% if LANGUAGE_CODE != 'en' %}selected{% endif %}>Русский</option>
+                                <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>English</option>
+                            </select>
+                            <button class="login-language-select__toggle" id="loginLanguageToggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="loginLanguageMenu">
+                                <span>{% if LANGUAGE_CODE == 'en' %}English{% else %}Русский{% endif %}</span>
+                                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                            </button>
+                            <div class="login-language-select__menu" id="loginLanguageMenu" role="listbox" aria-label="{% if LANGUAGE_CODE == 'en' %}Interface language{% else %}Язык интерфейса{% endif %}" hidden>
+                                <button class="login-language-select__option{% if LANGUAGE_CODE != 'en' %} is-selected{% endif %}" type="button" role="option" aria-selected="{% if LANGUAGE_CODE != 'en' %}true{% else %}false{% endif %}" data-language="ru">Русский</button>
+                                <button class="login-language-select__option{% if LANGUAGE_CODE == 'en' %} is-selected{% endif %}" type="button" role="option" aria-selected="{% if LANGUAGE_CODE == 'en' %}true{% else %}false{% endif %}" data-language="en">English</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -69,7 +79,58 @@
     }
 
     const select = document.getElementById('loginLanguageSelect');
-    if (!select) return;
+    const picker = document.getElementById('loginLanguagePicker');
+    const toggle = document.getElementById('loginLanguageToggle');
+    const menu = document.getElementById('loginLanguageMenu');
+    const options = Array.from(menu?.querySelectorAll('[data-language]') || []);
+    if (!select || !picker || !toggle || !menu) return;
+
+    function closeLanguageMenu() {
+        picker.classList.remove('is-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        menu.hidden = true;
+    }
+
+    function openLanguageMenu() {
+        picker.classList.add('is-open');
+        toggle.setAttribute('aria-expanded', 'true');
+        menu.hidden = false;
+        menu.querySelector('.is-selected')?.focus();
+    }
+
+    toggle.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (picker.classList.contains('is-open')) {
+            closeLanguageMenu();
+        } else {
+            openLanguageMenu();
+        }
+    });
+
+    options.forEach(function (option) {
+        option.addEventListener('click', function () {
+            select.value = option.dataset.language;
+            select.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+    });
+
+    menu.addEventListener('keydown', function (event) {
+        const currentIndex = options.indexOf(document.activeElement);
+        if (event.key === 'Escape') {
+            closeLanguageMenu();
+            toggle.focus();
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            options[(currentIndex + 1) % options.length].focus();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            options[(currentIndex - 1 + options.length) % options.length].focus();
+        }
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!picker.contains(event.target)) closeLanguageMenu();
+    });
 
     select.addEventListener('change', function () {
         const language = select.value;
