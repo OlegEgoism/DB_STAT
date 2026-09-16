@@ -3169,7 +3169,6 @@ body {
     font-weight: 700;
 }
 
-.refresh-interval-control select,
 .refresh-interval-control input {
     width: auto;
     min-width: 110px;
@@ -3181,6 +3180,30 @@ body {
 
 .refresh-interval-control input {
     min-width: 190px;
+}
+
+.refresh-interval-select.filter-select-box {
+    width: 120px;
+    min-height: 34px;
+    padding: 7px 9px 7px 11px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 10px;
+    background: var(--surface-raised);
+    color: var(--text-primary);
+    font: inherit;
+}
+
+.refresh-interval-select .filter-select__menu {
+    top: calc(100% + 4px);
+}
+
+.refresh-interval-select .filter-select__option {
+    min-height: 32px;
+    padding: 6px 10px;
+}
+
+.refresh-interval-select .filter-select__option i {
+    display: none;
 }
 
 .active-queries-table-scroll thead th {

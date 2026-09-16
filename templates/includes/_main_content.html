@@ -1037,13 +1037,17 @@
                 </label>
                 <label class="refresh-interval-control" for="activeQueriesRefreshInterval">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
-                    <select id="activeQueriesRefreshInterval" class="form-control form-control-sm">
+                    <span class="refresh-interval-select filter-select-box">
+
+                        <select id="activeQueriesRefreshInterval" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Refresh interval{% else %}Интервал обновления{% endif %}">
                         <option value="0">{% if CURRENT_LANGUAGE == 'en' %}Manual{% else %}Вручную{% endif %}</option>
                         <option value="5">{% if CURRENT_LANGUAGE == 'en' %}5 sec{% else %}5 сек{% endif %}</option>
                         <option value="10">{% if CURRENT_LANGUAGE == 'en' %}10 sec{% else %}10 сек{% endif %}</option>
                         <option value="30">{% if CURRENT_LANGUAGE == 'en' %}30 sec{% else %}30 сек{% endif %}</option>
                         <option value="60">{% if CURRENT_LANGUAGE == 'en' %}60 sec{% else %}60 сек{% endif %}</option>
                     </select>
+
+                    </span>
                 </label>
                 <button class="btn-conn primary" type="button" id="activeQueriesRefreshBtn">
                     <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
@@ -1111,13 +1115,17 @@
                 </div>
                 <label class="refresh-interval-control" for="activeSessionsRefreshInterval">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
-                    <select id="activeSessionsRefreshInterval" class="form-control form-control-sm">
+                    <span class="refresh-interval-select filter-select-box">
+
+                        <select id="activeSessionsRefreshInterval" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Refresh interval{% else %}Интервал обновления{% endif %}">
                         <option value="0">{% if CURRENT_LANGUAGE == 'en' %}Manual{% else %}Вручную{% endif %}</option>
                         <option value="5">{% if CURRENT_LANGUAGE == 'en' %}5 sec{% else %}5 сек{% endif %}</option>
                         <option value="10">{% if CURRENT_LANGUAGE == 'en' %}10 sec{% else %}10 сек{% endif %}</option>
                         <option value="30">{% if CURRENT_LANGUAGE == 'en' %}30 sec{% else %}30 сек{% endif %}</option>
                         <option value="60">{% if CURRENT_LANGUAGE == 'en' %}60 sec{% else %}60 сек{% endif %}</option>
                     </select>
+
+                    </span>
                 </label>
                 <button class="btn-conn primary" type="button" id="activeSessionsRefreshBtn">
                     <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
@@ -1214,13 +1222,17 @@
                 </label>
                 <label class="refresh-interval-control" for="blockingLocksRefreshInterval">
                     <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
-                    <select id="blockingLocksRefreshInterval" class="form-control form-control-sm">
+                    <span class="refresh-interval-select filter-select-box">
+
+                        <select id="blockingLocksRefreshInterval" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Refresh interval{% else %}Интервал обновления{% endif %}">
                         <option value="0">{% if CURRENT_LANGUAGE == 'en' %}Manual{% else %}Вручную{% endif %}</option>
                         <option value="5">{% if CURRENT_LANGUAGE == 'en' %}5 sec{% else %}5 сек{% endif %}</option>
                         <option value="10">{% if CURRENT_LANGUAGE == 'en' %}10 sec{% else %}10 сек{% endif %}</option>
                         <option value="30">{% if CURRENT_LANGUAGE == 'en' %}30 sec{% else %}30 сек{% endif %}</option>
                         <option value="60">{% if CURRENT_LANGUAGE == 'en' %}60 sec{% else %}60 сек{% endif %}</option>
                     </select>
+
+                    </span>
                 </label>
                 <button class="btn-conn primary" type="button" id="blockingLocksRefreshBtn">
                     <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
@@ -1270,13 +1282,17 @@
                         </label>
                         <label class="refresh-interval-control" for="idleTransactionsRefreshInterval">
                             <span>{% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновление{% endif %}</span>
-                            <select id="idleTransactionsRefreshInterval" class="form-control form-control-sm">
+                            <span class="refresh-interval-select filter-select-box">
+
+                                <select id="idleTransactionsRefreshInterval" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Refresh interval{% else %}Интервал обновления{% endif %}">
                                 <option value="0">{% if CURRENT_LANGUAGE == 'en' %}Manual{% else %}Вручную{% endif %}</option>
                                 <option value="5">{% if CURRENT_LANGUAGE == 'en' %}5 sec{% else %}5 сек{% endif %}</option>
                                 <option value="10">{% if CURRENT_LANGUAGE == 'en' %}10 sec{% else %}10 сек{% endif %}</option>
                                 <option value="30">{% if CURRENT_LANGUAGE == 'en' %}30 sec{% else %}30 сек{% endif %}</option>
                                 <option value="60">{% if CURRENT_LANGUAGE == 'en' %}60 sec{% else %}60 сек{% endif %}</option>
                             </select>
+
+                            </span>
                         </label>
                         <button class="btn-conn primary" type="button" id="idleTransactionsRefreshBtn">
                             <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
