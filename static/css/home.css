@@ -2466,7 +2466,8 @@ body {
     justify-content: flex-start;
 }
 
-.audit-table-toolbar .audit-filter-box {
+.audit-table-toolbar .audit-filter-box,
+.audit-table-toolbar .filter-select-box {
     height: 40px;
 }
 
@@ -2552,10 +2553,6 @@ body {
     white-space: nowrap;
 }
 
-.view-type-filter {
-    width: 220px;
-    max-width: 100%;
-}
 
 .search-box {
     display: flex;
@@ -2584,7 +2581,7 @@ body {
     font-weight: 500;
 }
 
-.audit-filter-box select {
+.filter-select-box select {
     width: 100%;
     border: 0;
     outline: 0;
@@ -2594,8 +2591,43 @@ body {
     font-weight: 400;
 }
 
-.audit-filter-box select option {
+.filter-select-box select option {
     font-weight: 400;
+}
+
+/* All table dropdown filters share the same raised control used by Audit. */
+.filter-select-box {
+    position: relative;
+    width: min(210px, 100%);
+    min-height: 40px;
+    padding-right: 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.filter-select-box--wide {
+    width: min(260px, 100%);
+}
+
+.filter-select-box::after {
+    flex: 0 0 auto;
+    color: var(--text-muted);
+    content: "\f078";
+    font-family: "Font Awesome 5 Free";
+    font-size: 10px;
+    font-weight: 900;
+    pointer-events: none;
+}
+
+.filter-select-box:focus-within {
+    border-color: var(--accent-blue);
+    background: var(--bg-secondary);
+    box-shadow: 0 0 0 3px var(--glow-blue);
+}
+
+.filter-select-box select {
+    min-width: 0;
+    cursor: pointer;
+    appearance: none;
 }
 
 #databasePdfReportBtn.is-loading i {
@@ -2726,68 +2758,68 @@ body {
     color: #0369a1;
 }
 
-.audit-filter-box select option.audit-action-filter-option--login,
-.audit-filter-box select.audit-action-filter--login {
+.filter-select-box select option.audit-action-filter-option--login,
+.filter-select-box select.audit-action-filter--login {
     color: var(--audit-action-login-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--logout,
-.audit-filter-box select.audit-action-filter--logout {
+.filter-select-box select option.audit-action-filter-option--logout,
+.filter-select-box select.audit-action-filter--logout {
     color: var(--audit-action-logout-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--connection-create,
-.audit-filter-box select.audit-action-filter--connection-create {
+.filter-select-box select option.audit-action-filter-option--connection-create,
+.filter-select-box select.audit-action-filter--connection-create {
     color: var(--audit-action-connection-create-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--connection-update,
-.audit-filter-box select.audit-action-filter--connection-update {
+.filter-select-box select option.audit-action-filter-option--connection-update,
+.filter-select-box select.audit-action-filter--connection-update {
     color: var(--audit-action-connection-update-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--connection-delete,
-.audit-filter-box select.audit-action-filter--connection-delete {
+.filter-select-box select option.audit-action-filter-option--connection-delete,
+.filter-select-box select.audit-action-filter--connection-delete {
     color: var(--audit-action-connection-delete-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--connection-test,
-.audit-filter-box select.audit-action-filter--connection-test {
+.filter-select-box select option.audit-action-filter-option--connection-test,
+.filter-select-box select.audit-action-filter--connection-test {
     color: var(--audit-action-connection-test-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--sidebar-settings,
-.audit-filter-box select.audit-action-filter--sidebar-settings {
+.filter-select-box select option.audit-action-filter-option--sidebar-settings,
+.filter-select-box select.audit-action-filter--sidebar-settings {
     color: var(--audit-action-sidebar-settings-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--favorite-add,
-.audit-filter-box select.audit-action-filter--favorite-add {
+.filter-select-box select option.audit-action-filter-option--favorite-add,
+.filter-select-box select.audit-action-filter--favorite-add {
     color: var(--audit-action-favorite-add-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--favorite-remove,
-.audit-filter-box select.audit-action-filter--favorite-remove {
+.filter-select-box select option.audit-action-filter-option--favorite-remove,
+.filter-select-box select.audit-action-filter--favorite-remove {
     color: var(--audit-action-favorite-remove-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--query-terminate,
-.audit-filter-box select.audit-action-filter--query-terminate {
+.filter-select-box select option.audit-action-filter-option--query-terminate,
+.filter-select-box select.audit-action-filter--query-terminate {
     color: var(--audit-action-query-terminate-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--session-terminate,
-.audit-filter-box select.audit-action-filter--session-terminate {
+.filter-select-box select option.audit-action-filter-option--session-terminate,
+.filter-select-box select.audit-action-filter--session-terminate {
     color: var(--audit-action-session-terminate-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--vacuum,
-.audit-filter-box select.audit-action-filter--vacuum {
+.filter-select-box select option.audit-action-filter-option--vacuum,
+.filter-select-box select.audit-action-filter--vacuum {
     color: var(--audit-action-vacuum-color);
 }
 
-.audit-filter-box select option.audit-action-filter-option--vacuum-full,
-.audit-filter-box select.audit-action-filter--vacuum-full {
+.filter-select-box select option.audit-action-filter-option--vacuum-full,
+.filter-select-box select.audit-action-filter--vacuum-full {
     color: var(--audit-action-vacuum-full-color);
 }
 
