@@ -339,6 +339,7 @@ class ReportJob(models.Model):
     id = models.UUIDField(**vn("Идентификатор", "Уникальный идентификатор фоновой задачи."), primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(DBUser, **vn("Пользователь", "Пользователь, запросивший отчёт."), on_delete=models.SET_NULL, null=True, related_name="report_jobs")
     connection = models.ForeignKey(DBConnection, **vn("Подключение", "Подключение, по которому строится отчёт."), on_delete=models.CASCADE, related_name="report_jobs")
+    language = models.CharField(**vn("Язык", "Язык содержимого отчёта."), max_length=2, choices=[("ru", "Русский"), ("en", "English")], default="ru")
     status = models.CharField(**vn("Статус", "Текущее состояние формирования отчёта."), max_length=16, choices=STATUS_CHOICES, default="queued", db_index=True)
     message = models.TextField(**vn("Сообщение", "Текущее или итоговое сообщение исполнителя."), default="Отчёт ожидает формирования")
     content = models.BinaryField(**vn("PDF", "Сформированный PDF-файл."), null=True, blank=True, editable=False)
