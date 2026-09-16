@@ -11,6 +11,10 @@
 Основная цель DB STAT - упростить ежедневный контроль состояния БД.
 ```
 
+## Образ из hub.docker
+
+https://hub.docker.com/r/olegegoism/db-stat
+
 ## Демо проекта
 
 [![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA)
@@ -40,54 +44,34 @@
   </tr>
 </table>
 
-## Настройка окружения
 
-- Версия Python 3.12+
 
-- `psycopg2` собирается из исходников и требует системные заголовки PostgreSQL и Python. На Debian/Ubuntu перед `pip install -r requirements.txt` установите (замените `python3.12-dev` на версию, которой создано виртуальное окружение):
-
-```bash
-sudo apt-get install -y gcc libpq-dev python3.12-dev
-```
-
-Типичные ошибки сборки и чего именно не хватает:
-
-| Ошибка при сборке `psycopg2` | Нужен пакет |
-| --- | --- |
-| `fatal error: pg_config.h: Нет такого файла или каталога` | `libpq-dev` |
-| `fatal error: Python.h: Нет такого файла или каталога` | `python3.X-dev` (X — версия Python окружения) |
+## Запуск проекта в режиме разаработки
 
 - Файл .env
-
 ```
 SECRET_KEY=
 DEBUG=True
 ALLOWED_HOSTS=*
 CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+CSRF_COOKIE_SECURE=False
+SESSION_COOKIE_SECURE=False
 TIME_ZONE=Europe/Minsk
 LANGUAGE_CODE=ru
-
+SECURE_SSL_REDIRECT=False
+SECURE_HSTS_SECONDS=0
+SECURE_HSTS_INCLUDE_SUBDOMAINS=False
+SECURE_HSTS_PRELOAD=False
+SECURE_PROXY_SSL_HEADER=False
 DB_CONNECTION_ENCRYPTION_KEY=
-
 INITIAL_ADMIN_LOGIN=admin
 INITIAL_ADMIN_EMAIL=admin@example.com
 INITIAL_ADMIN_PASSWORD=admin
-
-# Хост, на который перенаправляются localhost и ::1 в подключениях приложения
-LOCALHOST_DB_HOST=127.0.0.1
-
 SQLITE_NAME=db.sqlite3
-
 STATIC_URL=static/
+LOCALHOST_DB_HOST=127.0.0.1
 ```
-
-Служебные данные самого приложения (пользователи, сохранённые подключения, аудит и сессии) хранятся только в SQLite. 
-Путь к файлу задаётся переменной `SQLITE_NAME`; по умолчанию используется `db.sqlite3` в корне проекта.
-Переменные выбора другого Django-бэкенда не поддерживаются. 
-PostgreSQL, Greenplum и Greengage остаются целевыми базами мониторинга и настраиваются через форму подключения в интерфейсе.
-
-## Запуск проекта в режиме разаработки
-
+- Версия Python 3.12+
 - Установка библиотек из файла requirements.txt
 
 ```bash
@@ -101,17 +85,12 @@ python manage.py makemigrations
 python manage.py migrate
 ```
 
-- Создание пользователя
-
-`DBUser` — единая модель пользователя (`AUTH_USER_MODEL`): один и тот же аккаунт используется и для входа в само приложение, и для входа в Django  Admin (`/admin/`). 
-
+- Создание пользователя для входа в приложение, и входа в Django Admin (`/admin/`).
+- логин: admin
+- почта: admin@example.com
+- пароль: admin
 ```bash
 python manage.py ensure_initial_admin
-```
-Вход в приложение защищён паролем: после 5 подряд неверных попыток вход для пользователя блокируется на 5 минут. 
-Пользователи, созданные до появления пароля (поле `password` пустое или непригодное), не смогут войти, пока им не задать пароль — для этого выполните команду сброса:
-```bash
-python manage.py shell -c "from django.contrib.auth.hashers import make_password; from db_statistics.models import DBUser; u = DBUser.objects.get(login='admin'); u.password = make_password('НОВЫЙ_ПАРОЛЬ'); u.failed_login_attempts = 0; u.lockout_until = None; u.save()"
 ```
 
 - Шифрование паролей подключений, оставшихся в открытом виде после обновления с версии без шифрования (одноразовая команда, безопасно выполнять повторно)
@@ -136,23 +115,23 @@ python -m ruff format .
 
 ## Команды Make
 
-Основные шаги выше продублированы в `Makefile` — полный список с описанием: `make help` или `make` (по умолчанию).
+Основные шаги для `Makefile` — полный список с описанием: `make help` или `make` (по умолчанию).
 
-| Команда | Что делает |
-| --- | --- |
-| `make install` | Установить зависимости из requirements.txt |
-| `make migrations` | Сгенерировать миграции по изменениям моделей |
-| `make migrate` | Применить миграции к базе данных |
-| `make run` | Запустить сервер разработки |
-| `make shell` | Открыть интерактивную Django-оболочку |
-| `make admin` | Создать первого администратора (см. `INITIAL_ADMIN_*` в `.env`) |
-| `make lint` / `make lint-fix` | Проверить код (без исправлений / с автоисправлением) |
-| `make format` | Отформатировать код |
-| `make collectstatic` | Собрать статику (как при сборке Docker-образа) |
-| `make docker-build` | Собрать Docker-образ |
-| `make docker-run` / `make docker-stop` | Запустить / остановить Docker-контейнер |
-| `make clean` | Удалить кэши и локально собранную статику |
-| `make reset-db` | ОПАСНО: удалить SQLite БД и все миграции `db_statistics` (кроме `__init__.py`), с подтверждением |
+| Команда                                | Что делает                                                                                       |
+|----------------------------------------|--------------------------------------------------------------------------------------------------|
+| `make install`                         | Установить зависимости из requirements.txt                                                       |
+| `make migrations`                      | Сгенерировать миграции по изменениям моделей                                                     |
+| `make migrate`                         | Применить миграции к базе данных                                                                 |
+| `make run`                             | Запустить сервер разработки                                                                      |
+| `make shell`                           | Открыть интерактивную Django-оболочку                                                            |
+| `make admin`                           | Создать первого администратора (см. `INITIAL_ADMIN_*` в `.env`)                                  |
+| `make lint` / `make lint-fix`          | Проверить код (без исправлений / с автоисправлением)                                             |
+| `make format`                          | Отформатировать код                                                                              |
+| `make collectstatic`                   | Собрать статику (как при сборке Docker-образа)                                                   |
+| `make docker-build`                    | Собрать Docker-образ                                                                             |
+| `make docker-run` / `make docker-stop` | Запустить / остановить Docker-контейнер                                                          |
+| `make clean`                           | Удалить кэши и локально собранную статику                                                        |
+| `make reset-db`                        | ОПАСНО: удалить SQLite БД и все миграции `db_statistics` (кроме `__init__.py`), с подтверждением |
 
 ## Запуск проекта в Docker
 
@@ -164,52 +143,14 @@ docker build -t db-stat .
 
 - Запуск Docker-контейнера
 
-Обычный запуск контейнера с доступом к локальной БД хоста:
-
 ```bash
-docker run --name db-stat --rm -p 8000:8000 \
-  -v db-stat-data:/app/data db-stat
+docker run --name db-stat --rm -p 8000:8000 olegegoism/db-stat:latest
 ```
-
-Именованный том `db-stat-data` хранит единственный файл внутренней SQLite-БД
-между перезапусками и обновлениями контейнера. При старте контейнер сам
-применяет зафиксированные в проекте миграции; генерировать миграции в образе
-или подключать отдельный сервер служебной БД не требуется.
-
-В форме подключения укажите `localhost`: внутри образа приложение автоматически
-направит такое подключение на хост Docker. Это работает в Docker Desktop и в
-обычном Docker под Linux без дополнительного параметра `--add-host`.
-
-По умолчанию `ALLOWED_HOSTS` не задан образом и используется список из настроек
-приложения (`localhost, 127.0.0.1`), которого достаточно для запуска командой
-выше. Если контейнер открывается по другому имени хоста или через обратный
-прокси, передайте его явно: `-e ALLOWED_HOSTS=example.com`.
-
-PostgreSQL на хосте должен принимать подключения не только через Unix-сокет и
-разрешать подключения из сети Docker в `listen_addresses` и `pg_hba.conf`.
-При необходимости адрес назначения можно переопределить параметром
-`-e LOCALHOST_DB_HOST=<адрес>`.
-
-```
-Доступно по адресу: http://localhost:8000
-Единый пользователь (вход в приложение и в Django Admin — /admin/):
-- логин: admin
-- почта: admin@example.com
-- пароль: admin
-
-Если после сборки есть ошибка подключения к `172.17.0.1` или `192.168.0.1`, значит запущен старый Docker-образ. 
-Пересоберите образ и запустите контейнер заново.
-
-Ошибка `exec /app/docker-entrypoint.sh: no such file or directory` означает, что
-entrypoint попал в образ с Windows-переносами строк либо используется образ,
-собранный до исправления. В актуальной сборке скрипт принудительно переводится
-в LF. Пересоберите и опубликуйте образ, затем снова выполните `docker pull`.
-```
-
 
 ## Резервное копирование
 
-Именованный том `db-stat-data` — единственное место, где хранятся все данные приложения (пользователи, сохранённые подключения, избранное, аудит). Ничего этого не автоматизировано образом — резервное копирование и восстановление тома нужно делать вручную.
+Именованный том `db-stat-data` — единственное место, где хранятся все данные приложения (пользователи, сохранённые подключения, избранное, аудит). 
+Ничего этого не автоматизировано образом — резервное копирование и восстановление тома нужно делать вручную.
 
 - Сделать резервную копию (контейнер может быть при этом запущен):
 
@@ -227,6 +168,4 @@ docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \
 docker start db-stat
 ```
 
-## Скачать образ из hub.docker
 
-https://hub.docker.com/r/olegegoism/db-stat
