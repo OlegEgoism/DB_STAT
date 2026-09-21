@@ -513,6 +513,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         initSettingsTabs();
+        initReportsSettings();
         initThemeSettings();
         initPaginationPageSizeControls();
         initPaginationSettingsEditor();
@@ -941,6 +942,67 @@
             }
         });
         loadSettings();
+    }
+
+    function initReportsSettings() {
+        const body = document.getElementById('reportsSettingsBody');
+        const sortButton = document.getElementById('reportsDateSortBtn');
+        const refreshButton = document.getElementById('reportsRefreshBtn');
+        if (!body || !sortButton || !refreshButton) return;
+
+        let reports = [];
+        const statusLabels = {queued: 'В очереди', running: 'Формируется', completed: 'Готов', failed: 'Ошибка'};
+        const formatDateTime = value => {
+            const date = value ? new Date(value) : null;
+            return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : '—';
+        };
+        const render = () => {
+            const multiplier = sortButton.dataset.direction === 'asc' ? 1 : -1;
+            const sorted = [...reports].sort((first, second) => multiplier * (new Date(first.created).getTime() - new Date(second.created).getTime()));
+            sortButton.querySelector('i').className = `fas fa-sort-${sortButton.dataset.direction === 'asc' ? 'up' : 'down'}`;
+            sortButton.setAttribute('aria-label', sortButton.dataset.direction === 'asc' ? 'Дата: сначала старые' : 'Дата: сначала новые');
+            if (!sorted.length) {
+                body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">PDF-отчёты пока не создавались</td></tr>';
+                return;
+            }
+            body.innerHTML = sorted.map(report => {
+                const download = report.download_url
+                    ? `<a class="btn btn-sm btn-outline-primary" href="${escapeHtml(report.download_url)}"><i class="fas fa-download" aria-hidden="true"></i> Скачать</a>`
+                    : '<span class="text-muted">—</span>';
+                const duration = report.duration_seconds == null ? '—' : `${Number(report.duration_seconds).toLocaleString()} с`;
+                return `<tr>
+                    <td data-label="Дата">${escapeHtml(formatDateTime(report.created))}</td>
+                    <td data-label="Подключение">${escapeHtml(report.connection_name || '—')}</td>
+                    <td data-label="База данных">${escapeHtml(report.database || '—')}</td>
+                    <td data-label="Пользователь">${escapeHtml(report.username || '—')}</td>
+                    <td data-label="Язык">${escapeHtml(String(report.language || '—').toUpperCase())}</td>
+                    <td data-label="Статус"><span class="report-status report-status--${escapeHtml(report.status)}">${escapeHtml(statusLabels[report.status] || report.status)}</span></td>
+                    <td data-label="Длительность">${escapeHtml(duration)}</td>
+                    <td data-label="Файл">${download}</td>
+                </tr>`;
+            }).join('');
+        };
+        const load = async () => {
+            refreshButton.disabled = true;
+            try {
+                const response = await fetch(databasePdfReportApiUrl);
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) throw new Error(data.message || 'Не удалось загрузить PDF-отчёты');
+                reports = data.reports || [];
+                render();
+            } catch (error) {
+                body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(error.message)}</td></tr>`;
+            } finally {
+                refreshButton.disabled = false;
+            }
+        };
+        sortButton.addEventListener('click', () => {
+            sortButton.dataset.direction = sortButton.dataset.direction === 'desc' ? 'asc' : 'desc';
+            render();
+        });
+        refreshButton.addEventListener('click', load);
+        document.getElementById('settingsReportsTab')?.addEventListener('click', load);
+        load();
     }
 
     function initSidebarSettings() {

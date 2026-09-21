@@ -53,6 +53,10 @@ if _env_bool("SECURE_PROXY_SSL_HEADER", False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "db_statistics.apps.DbStatisticsConfig"]
+# Модели приложения исторически создаются через migrate --run-syncdb, а не
+# через миграции. Явная отметка нужна в том числе для корректного создания
+# тестовой БД при наличии пустого пакета migrations.
+MIGRATION_MODULES = {"db_statistics": None}
 
 # DBUser — единый пользователь и для входа в само приложение (см. собственную
 # сессионную аутентификацию в views.helpers._current_db_user), и для входа в

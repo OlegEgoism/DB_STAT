@@ -192,6 +192,10 @@
                         <i class="fas fa-bars" aria-hidden="true"></i>
                         <span>Боковое меню</span>
                     </button>
+                    <button class="settings-tab" id="settingsReportsTab" type="button" role="tab" aria-selected="false" aria-controls="settingsReportsPanel" data-settings-tab="reports" tabindex="-1">
+                        <i class="fas fa-file-pdf" aria-hidden="true"></i>
+                        <span>PDF-отчёты</span>
+                    </button>
                     {% if db_user.role == 'Администратор' %}
                     <button class="settings-tab" id="settingsPaginationTab" type="button" role="tab" aria-selected="false" aria-controls="settingsPaginationPanel" data-settings-tab="pagination" tabindex="-1">
                         <i class="fas fa-list-ol" aria-hidden="true"></i>
@@ -269,6 +273,24 @@
                     <div class="sidebar-settings-footer">
                         <button type="button" class="btn btn-outline-secondary" id="sidebarSettingsSelectAllBtn">Выбрать все</button>
                         <button type="button" class="btn btn-primary" id="sidebarSettingsSaveBtn">Сохранить</button>
+                    </div>
+                </section>
+                <section class="settings-tab-panel" id="settingsReportsPanel" role="tabpanel" aria-labelledby="settingsReportsTab" data-settings-panel="reports" hidden>
+                    <div class="settings-section__heading">
+                        <div>
+                            <h5>PDF-отчёты</h5>
+                            <p>Все сформированные и формируемые вами отчёты. Готовые файлы можно скачать.</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline-secondary" id="reportsRefreshBtn" type="button"><i class="fas fa-sync-alt" aria-hidden="true"></i> Обновить</button>
+                    </div>
+                    <div class="table-responsive reports-settings-table-wrap">
+                        <table class="table table-sm reports-settings-table">
+                            <thead><tr>
+                                <th><button class="reports-date-sort" id="reportsDateSortBtn" type="button" data-direction="desc">Дата <i class="fas fa-sort-down" aria-hidden="true"></i></button></th>
+                                <th>Подключение</th><th>База данных</th><th>Пользователь</th><th>Язык</th><th>Статус</th><th>Длительность</th><th>Файл</th>
+                            </tr></thead>
+                            <tbody id="reportsSettingsBody"><tr><td colspan="8" class="text-center text-muted py-4">Загрузка отчётов…</td></tr></tbody>
+                        </table>
                     </div>
                 </section>
                 {% if db_user.role == 'Администратор' %}
