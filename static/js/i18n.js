@@ -216,7 +216,7 @@
         'Не удалось получить активные сессии и подключения': 'Failed to load active sessions and connections',
         'Не удалось получить аудит': 'Failed to load audit events', 'Не удалось получить блокировки': 'Failed to load locks',
         'Не удалось получить временные таблицы': 'Failed to load temporary tables', 'Не удалось удалить временную таблицу': 'Failed to delete the temporary table', 'Действия': 'Actions', 'Не удалось получить параметры памяти': 'Failed to load memory settings',
-        'PDF-отчёт': 'PDF report', 'Скачать PDF': 'Download PDF', 'Сформировать общий PDF-отчёт': 'Generate full PDF report', 'PDF-отчёт сформирован': 'PDF report generated', 'Не удалось сформировать PDF-отчёт': 'Failed to generate PDF report', 'Выберите подключение для формирования отчёта': 'Select a connection to generate a report',
+        'PDF-отчёт': 'PDF report', 'Скачать диагностика PDF': 'Download diagnostics PDF', 'Сформировать общий PDF-отчёт': 'Generate full PDF report', 'PDF-отчёт сформирован': 'PDF report generated', 'Не удалось сформировать PDF-отчёт': 'Failed to generate PDF report', 'Выберите подключение для формирования отчёта': 'Select a connection to generate a report',
         'Не удалось проверить состояние PDF-отчёта': 'Failed to check PDF report status',
         'Формирование PDF запущено в фоне': 'PDF generation started in the background',
         'PDF-отчёт готов. Скачать его можно в «Фоновых операциях»': 'The PDF report is ready. Download it from Background jobs.',
