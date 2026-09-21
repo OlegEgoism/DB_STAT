@@ -552,6 +552,7 @@
         initFilterSelects();
         initLogoutForm();
         initSessionCountdown();
+        initPdfReportsList();
         modalInstance = new bootstrap.Modal(document.getElementById('connectionModal'));
         initConnectionDbTypeSelect();
         updateConnectionDbTypeIcon();
