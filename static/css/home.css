@@ -1746,12 +1746,16 @@ body {
 }
 
 .blocking-lock-actions {
-    min-width: 180px;
+    min-width: 220px;
 }
 
 .blocking-lock-actions .btn {
     display: block;
     width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
+    line-height: 1.2;
+    padding: 6px 8px;
 }
 
 .blocking-lock-actions .btn + .btn {
