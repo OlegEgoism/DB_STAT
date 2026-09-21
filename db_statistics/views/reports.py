@@ -306,6 +306,17 @@ def _pdf_table(rows, normal, bold, header=True):
     return table
 
 
+@require_http_methods(["GET"])
+def pdf_reports_list(request):
+    """Возвращает список всех PDF-отчётов пользователя."""
+    db_user = _current_db_user(request)
+    if not db_user:
+        return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
+    _ensure_report_job_table()
+    jobs = ReportJob.objects.select_related("connection", "user").filter(user=db_user).order_by("-created")[:50]
+    return JsonResponse({"ok": True, "jobs": [_serialize_report_job(job) for job in jobs]})
+
+
 @require_http_methods(["GET", "POST"])
 def database_pdf_report(request):
     """Ставит PDF в очередь, возвращает состояние или скачивает результат."""

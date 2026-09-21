@@ -5294,3 +5294,98 @@
             loadBackgroundJobs();
         }
     });
+
+
+    // ============================================================
+    // PDF Reports List - отображение списка PDF-отчётов в настройках
+    // ============================================================
+    function initPdfReportsList() {
+        const pdfReportsList = document.getElementById('pdfReportsList');
+        if (!pdfReportsList) return;
+
+        const pdfReportsApiUrl = '/reports/list/';
+
+        const loadPdfReports = () => {
+            fetch(pdfReportsApiUrl, {
+                method: 'GET',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok || data.ok === false) throw new Error(data.message || 'Ошибка загрузки списка отчётов');
+                return data;
+            })
+            .then(data => {
+                const jobs = data.jobs || [];
+                if (!jobs.length) {
+                    pdfReportsList.innerHTML = '<div class="text-muted" id="pdfReportsEmptyMessage">Нет доступных PDF-отчётов</div>';
+                    return;
+                }
+                
+                const formatDateTime = value => {
+                    if (!value) return '—';
+                    const parsed = new Date(value);
+                    return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString();
+                };
+
+                const getStatusLabel = status => {
+                    return {
+                        'queued': 'В очереди',
+                        'running': 'Выполняется',
+                        'completed': 'Завершено',
+                        'failed': 'Ошибка'
+                    }[status] || status;
+                };
+
+                pdfReportsList.innerHTML = jobs.map(job => {
+                    const statusClass = {
+                        'queued': 'bg-warning',
+                        'running': 'bg-primary',
+                        'completed': 'bg-success',
+                        'failed': 'bg-danger'
+                    }[job.status] || '';
+                    
+                    const downloadButton = job.download_url 
+                        ? `<a href="${job.download_url}" class="btn btn-sm btn-primary" download><i class="fas fa-download"></i> Скачать</a>`
+                        : '<span class="text-muted"><i class="fas fa-clock"></i> Ожидание завершения</span>';
+
+                    return `<div class="pdf-report-item card mb-2">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong><i class="fas fa-file-pdf text-danger"></i> ${escapeHtml(job.connection_name || 'Неизвестно')}</strong>
+                                    <span class="badge ${statusClass} ms-2">${getStatusLabel(job.status)}</span>
+                                    <div class="small text-muted mt-1">
+                                        <span>Создан: ${formatDateTime(job.created)}</span>
+                                        ${job.started ? ` · Начат: ${formatDateTime(job.started)}` : ''}
+                                        ${job.finished ? ` · Завершён: ${formatDateTime(job.finished)}` : ''}
+                                        ${job.duration_seconds ? ` · Длительность: ${job.duration_seconds.toFixed(2)}с` : ''}
+                                    </div>
+                                    <div class="small text-muted">
+                                        <span>Язык: ${job.language === 'en' ? 'English' : 'Русский'}</span>
+                                        ${job.filename ? ` · Файл: ${escapeHtml(job.filename)}` : ''}
+                                    </div>
+                                </div>
+                                <div>${downloadButton}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            })
+            .catch(error => {
+                pdfReportsList.innerHTML = `<div class="text-danger">Ошибка: ${escapeHtml(error.message)}</div>`;
+            });
+        };
+
+        loadPdfReports();
+        
+        // Обновляем список при переключении на вкладку PDF-отчётов
+        const pdfTab = document.getElementById('settingsPdfReportsTab');
+        if (pdfTab) {
+            pdfTab.addEventListener('click', loadPdfReports);
+        }
+        
+        // Автообновление каждые 5 секунд
+        window.setInterval(loadPdfReports, 5000);
+    }
+
