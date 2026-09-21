@@ -2730,7 +2730,7 @@
         list.innerHTML = jobs.slice(0, 8).map(job => {
             const labels = {queued: 'В очереди', running: 'Выполняется', completed: 'Завершено', failed: 'Ошибка'};
             if (job.kind === 'report') {
-                const download = job.download_url ? `<a class="background-job-download" href="${escapeHtml(job.download_url)}"><i class="fas fa-download"></i> Скачать PDF</a>` : '';
+                const download = job.download_url ? `<a class="background-job-download" href="${escapeHtml(job.download_url)}"><i class="fas fa-download"></i> Скачать диагностика PDF</a>` : '';
                 return `<div class="background-job-item">
                     <b>PDF-отчёт</b>
                     <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
