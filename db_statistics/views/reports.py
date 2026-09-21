@@ -5,8 +5,8 @@ import io
 import logging
 import os
 import time
-from threading import Lock
 from datetime import datetime
+from threading import Lock
 from xml.sax.saxutils import escape
 
 import psycopg2
@@ -64,6 +64,7 @@ def _serialize_report_job(job):
     return {
         "id": str(job.pk), "kind": "report", "operation": "database_report",
         "connection_id": job.connection_id, "connection_name": job.connection.name,
+        "database": job.connection.database,
         "username": job.user.login if job.user else "—", "status": job.status,
         "message": job.message, "filename": job.filename, "language": job.language,
         "download_url": f"/reports/database.pdf?job_id={job.pk}&download=1" if job.status == "completed" else None,
@@ -133,7 +134,9 @@ def _collect(db_connection, title, query, params=None, language="ru"):
 
 
 def _report_sections(db_connection, language="ru"):
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     user_schemas = "namespace.nspname NOT IN ('pg_catalog', 'information_schema') AND namespace.nspname NOT LIKE 'pg_toast%%'"
     definitions = [
         (
@@ -220,7 +223,9 @@ def _report_sections(db_connection, language="ru"):
 
 
 def _recommendations(sections, language="ru"):
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     by_title = {section["title"]: section for section in sections}
     result = []
     locks = by_title[t("Блокировки", "Locks")]["rows"]
@@ -249,7 +254,9 @@ def _build_pdf(db_connection, db_user, sections, language="ru"):
     from reportlab.lib.units import mm
     from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     regular, bold = _register_fonts()
     styles = getSampleStyleSheet()
     normal = ParagraphStyle("ReportNormal", parent=styles["BodyText"], fontName=regular, fontSize=7, leading=9)
@@ -314,6 +321,9 @@ def database_pdf_report(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
     _ensure_report_job_table()
     if request.method == "GET":
+        if not request.GET.get("job_id"):
+            jobs = ReportJob.objects.select_related("connection", "user").filter(user=db_user).order_by("-created")
+            return JsonResponse({"ok": True, "reports": [_serialize_report_job(job) for job in jobs]})
         try:
             job = ReportJob.objects.select_related("connection", "user").filter(pk=request.GET.get("job_id"), user=db_user).first()
         except (TypeError, ValueError):

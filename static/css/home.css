@@ -3854,6 +3854,16 @@ body.sidebar-collapsed .nav-item .nav-icon {
     max-width: 320px;
 }
 
+.reports-settings-table-wrap { border: 1px solid var(--sidebar-border); border-radius: var(--radius-md); }
+.reports-settings-table { margin: 0; min-width: 920px; }
+.reports-settings-table th, .reports-settings-table td { padding: 10px 12px; vertical-align: middle; }
+.reports-date-sort { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; }
+.reports-date-sort:hover, .reports-date-sort:focus-visible { color: var(--accent-blue); }
+.report-status { display: inline-flex; padding: 3px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--text-secondary); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.report-status--completed { background: rgba(34, 197, 94, 0.12); color: #15803d; }
+.report-status--failed { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
+.report-status--queued, .report-status--running { background: rgba(79, 140, 255, 0.12); color: var(--accent-blue); }
+
 .pagination-settings-form {
     max-width: 520px;
     margin-bottom: var(--space-4);
