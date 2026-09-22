@@ -4066,6 +4066,30 @@ body.sidebar-collapsed .nav-item .nav-icon {
     font-size: 13px;
 }
 
+.reports-settings-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.reports-settings-heading #databasePdfReportBtn {
+    flex: 0 0 auto;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+@media (max-width: 576px) {
+    .reports-settings-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .reports-settings-heading #databasePdfReportBtn {
+        align-self: flex-end;
+    }
+}
+
 .theme-options {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
