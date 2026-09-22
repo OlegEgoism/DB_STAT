@@ -1,4 +1,5 @@
 from datetime import timedelta
+from types import SimpleNamespace
 
 from django.conf import settings
 from django.test import TestCase
@@ -6,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from db_statistics.models import DBConnection, DBUser, ReportJob
+from db_statistics.views.reports import _build_pdf, _performance_conclusion
 
 
 class ReportHistoryTests(TestCase):
@@ -38,3 +40,48 @@ class ReportHistoryTests(TestCase):
         response = self.client.get(reverse("database_pdf_report"))
 
         self.assertEqual(response.status_code, 401)
+
+
+class PerformanceConclusionTests(TestCase):
+    def test_conclusion_detects_major_performance_risks(self):
+        sections = [
+            {"title": "Сводка производительности", "rows": [["Подключения", 95], ["Cache hit, %", 82], ["Транзакции COMMIT", 800], ["Транзакции ROLLBACK", 200], ["Deadlock", 3]], "warning": None},
+            {"title": "Общая информация", "rows": [["Максимум подключений", 100]], "warning": None},
+            {"title": "Блокировки", "rows": [[101, "user", 202]], "warning": None},
+            {"title": "Незавершённые транзакции", "rows": [[101, "user", "app", "local", "idle", timedelta(minutes=20), "SELECT 1"]], "warning": None},
+            {"title": "Эффективность доступа к таблицам", "rows": [["public", "events", 500, 10, 2, 1_000_000, 300_000, 23, None, None]], "warning": None},
+        ]
+
+        conclusion = _performance_conclusion(sections)
+
+        self.assertEqual(conclusion[0][0], "Итог")
+        self.assertIn("Требует внимания", conclusion[0][1])
+        self.assertTrue(any("Cache hit" in finding for _, finding in conclusion))
+        self.assertTrue(any("откатов" in finding for _, finding in conclusion))
+        self.assertTrue(any("старше 15 минут" in finding for _, finding in conclusion))
+
+    def test_conclusion_reports_stable_snapshot_without_findings(self):
+        sections = [
+            {"title": "Сводка производительности", "rows": [["Подключения", 10], ["Cache hit, %", 99], ["Транзакции COMMIT", 1000], ["Транзакции ROLLBACK", 1], ["Deadlock", 0]], "warning": None},
+            {"title": "Общая информация", "rows": [["Максимум подключений", 100]], "warning": None},
+            {"title": "Блокировки", "rows": [], "warning": None},
+            {"title": "Незавершённые транзакции", "rows": [], "warning": None},
+            {"title": "Эффективность доступа к таблицам", "rows": [], "warning": None},
+        ]
+
+        conclusion = _performance_conclusion(sections)
+
+        self.assertIn("Стабильно", conclusion[0][1])
+        self.assertEqual(conclusion[1][0], "Норма")
+
+    def test_pdf_is_built_with_performance_conclusion(self):
+        sections = [
+            {"title": "Сводка производительности", "headers": ["Показатель", "Значение"], "rows": [["Cache hit, %", 99]], "warning": None},
+            {"title": "Общая информация", "headers": ["Показатель", "Значение"], "rows": [["Максимум подключений", 100]], "warning": None},
+        ]
+        db_connection = SimpleNamespace(name="Production", db_type="PostgreSQL", database="analytics", host="db", port=5432)
+        db_user = SimpleNamespace(login="analyst")
+
+        pdf = _build_pdf(db_connection, db_user, sections)
+
+        self.assertTrue(pdf.read().startswith(b"%PDF"))
