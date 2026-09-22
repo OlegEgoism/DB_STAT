@@ -48,8 +48,8 @@ class PerformanceConclusionTests(TestCase):
             {"title": "Сводка производительности", "rows": [["Подключения", 95], ["Cache hit, %", 82], ["Транзакции COMMIT", 800], ["Транзакции ROLLBACK", 200], ["Deadlock", 3]], "warning": None},
             {"title": "Общая информация", "rows": [["Максимум подключений", 100]], "warning": None},
             {"title": "Блокировки", "rows": [[101, "user", 202]], "warning": None},
-            {"title": "Незавершённые транзакции", "rows": [[101, "user", "app", "local", "idle", timedelta(minutes=20), "SELECT 1"]], "warning": None},
-            {"title": "Эффективность доступа к таблицам", "rows": [["public", "events", 500, 10, 2, 1_000_000, 300_000, 23, None, None]], "warning": None},
+            {"title": "Незавершённые транзакции", "rows": [[101, "user", "idle", timedelta(minutes=20), "SELECT 1"]], "warning": None},
+            {"title": "Проблемные таблицы", "rows": [["public", "events", 500, 10, 2, 1_000_000, 300_000, 23]], "warning": None},
         ]
 
         conclusion = _performance_conclusion(sections)
@@ -66,7 +66,7 @@ class PerformanceConclusionTests(TestCase):
             {"title": "Общая информация", "rows": [["Максимум подключений", 100]], "warning": None},
             {"title": "Блокировки", "rows": [], "warning": None},
             {"title": "Незавершённые транзакции", "rows": [], "warning": None},
-            {"title": "Эффективность доступа к таблицам", "rows": [], "warning": None},
+            {"title": "Проблемные таблицы", "rows": [], "warning": None},
         ]
 
         conclusion = _performance_conclusion(sections)
