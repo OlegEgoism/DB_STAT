@@ -947,8 +947,7 @@
     function initReportsSettings() {
         const body = document.getElementById('reportsSettingsBody');
         const sortButton = document.getElementById('reportsDateSortBtn');
-        const refreshButton = document.getElementById('reportsRefreshBtn');
-        if (!body || !sortButton || !refreshButton) return;
+        if (!body || !sortButton) return;
 
         let reports = [];
         const statusLabels = {queued: 'В очереди', running: 'Формируется', completed: 'Готов', failed: 'Ошибка'};
@@ -983,7 +982,6 @@
             }).join('');
         };
         const load = async () => {
-            refreshButton.disabled = true;
             try {
                 const response = await fetch(databasePdfReportApiUrl);
                 const data = await response.json().catch(() => ({}));
@@ -992,15 +990,12 @@
                 render();
             } catch (error) {
                 body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(error.message)}</td></tr>`;
-            } finally {
-                refreshButton.disabled = false;
             }
         };
         sortButton.addEventListener('click', () => {
             sortButton.dataset.direction = sortButton.dataset.direction === 'desc' ? 'asc' : 'desc';
             render();
         });
-        refreshButton.addEventListener('click', load);
         document.getElementById('settingsReportsTab')?.addEventListener('click', load);
         load();
     }
