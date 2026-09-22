@@ -281,6 +281,9 @@
                             <h5>PDF-отчёты</h5>
                             <p>Все сформированные и формируемые вами отчёты. Готовые файлы можно скачать.</p>
                         </div>
+                        <button class="btn btn-primary" id="databasePdfReportBtn" type="button" title="Сформировать общий PDF-отчёт" disabled>
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i><span>Отчет PDF</span>
+                        </button>
                     </div>
                     <div class="table-responsive reports-settings-table-wrap">
                         <table class="table table-sm reports-settings-table">
@@ -1718,9 +1721,6 @@
             <div class="card-header">
                 <span><i class="fas fa-clipboard-list"></i> Аудит действий</span>
                 <div class="card-header-actions">
-                    <button class="btn-conn secondary" id="databasePdfReportBtn" type="button" title="Сформировать общий PDF-отчёт" disabled>
-                        <i class="fas fa-file-pdf"></i><span>Отчет PDF</span>
-                    </button>
                     <button class="btn-conn secondary" type="button" id="auditRefreshBtn" title="{% if CURRENT_LANGUAGE == 'en' %}Refresh audit{% else %}Обновить аудит{% endif %}">
                         <i class="fas fa-sync-alt"></i> {% if CURRENT_LANGUAGE == 'en' %}Refresh{% else %}Обновить{% endif %}
                     </button>
