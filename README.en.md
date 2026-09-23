@@ -110,7 +110,31 @@ python -m ruff check .
 python -m ruff check . --fix 
 python -m ruff format . 
 ``` 
- 
+
+### Automatic checks before a commit
+
+After installing the dependencies, install the Git hook once:
+
+```bash
+python -m pre_commit install
+# or: make hooks
+```
+
+Before every `git commit`, Ruff will now automatically fix supported issues and
+format the **entire project**, then perform a final lint check. If files were
+changed or unfixable issues remain, the commit is stopped. Review the changes,
+stage them with `git add`, and retry the commit.
+
+Run the same checks manually for the entire project with:
+
+```bash
+python -m pre_commit run --all-files
+# or: make hooks-run
+```
+
+The hook can be bypassed temporarily with `git commit --no-verify`, but this is
+not recommended during normal development. CI also runs Ruff for pull requests.
+
 ## Make Commands 
  
 Main `Makefile` targets — full list with descriptions: `make help` or `make` (default). 
@@ -125,6 +149,7 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
 | `make admin`                           | Create the first administrator (see `INITIAL_ADMIN_*` in `.env`)                                 | 
 | `make lint` / `make lint-fix`          | Check code (without fixes / with auto-fix)                                                       | 
 | `make format`                          | Format code                                                                                       | 
+| `make hooks` / `make hooks-run`        | Install the pre-commit hook / manually check the entire project                                  |
 | `make collectstatic`                   | Collect static files (as during Docker image build)                                              | 
 | `make docker-build`                    | Build Docker image                                                                                 | 
 | `make docker-run` / `make docker-stop` | Start / stop Docker container                                                                     | 

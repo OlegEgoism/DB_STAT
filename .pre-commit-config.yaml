@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-fix
+        name: Ruff lint (auto-fix the whole project)
+        entry: python -m ruff check . --fix
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]
+
+      - id: ruff-format
+        name: Ruff format (the whole project)
+        entry: python -m ruff format .
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]
+
+      - id: ruff-verify
+        name: Ruff final verification (the whole project)
+        entry: python -m ruff check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        types: [python]

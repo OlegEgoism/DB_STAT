@@ -8,9 +8,9 @@ from db_statistics.views.audit import _maintenance_operation_audit_info, _write_
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _rate_limit_exceeded, _rate_limit_response, _require_payload_connection
 from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _database_roles_list, _format_bytes, _parse_pg_size_to_bytes, _read_json_body
 from db_statistics.views.maintenance import _serialize_maintenance_job, _submit_maintenance_job
-from db_statistics.views.reports import _ensure_report_job_table, _serialize_report_job
 from db_statistics.views.pagination import _escape_like_pattern, _list_query_params
 from db_statistics.views.pool import _fetch_db_row, _fetch_db_rows, _query_or_error
+from db_statistics.views.reports import _ensure_report_job_table, _serialize_report_job
 
 
 @require_http_methods(["POST"])

@@ -4,6 +4,7 @@ cryptography==49.0.0
 Django==6.0.8
 gunicorn==26.2.0
 psycopg2==2.9.12
+pre-commit==4.3.0
 pycparser==3.0
 python-dotenv==1.2.2
 reportlab==4.4.4

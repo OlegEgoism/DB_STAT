@@ -5,8 +5,8 @@ import io
 import logging
 import os
 import time
-from threading import Lock
 from datetime import datetime
+from threading import Lock
 from xml.sax.saxutils import escape
 
 import psycopg2
@@ -62,12 +62,19 @@ def _ensure_report_job_table():
 
 def _serialize_report_job(job):
     return {
-        "id": str(job.pk), "kind": "report", "operation": "database_report",
-        "connection_id": job.connection_id, "connection_name": job.connection.name,
-        "username": job.user.login if job.user else "—", "status": job.status,
-        "message": job.message, "filename": job.filename, "language": job.language,
+        "id": str(job.pk),
+        "kind": "report",
+        "operation": "database_report",
+        "connection_id": job.connection_id,
+        "connection_name": job.connection.name,
+        "username": job.user.login if job.user else "—",
+        "status": job.status,
+        "message": job.message,
+        "filename": job.filename,
+        "language": job.language,
         "download_url": f"/reports/database.pdf?job_id={job.pk}&download=1" if job.status == "completed" else None,
-        "duration_seconds": job.duration_seconds, "created": job.created.isoformat(),
+        "duration_seconds": job.duration_seconds,
+        "created": job.created.isoformat(),
         "started": job.started.isoformat() if job.started else None,
         "finished": job.finished.isoformat() if job.finished else None,
     }
@@ -90,7 +97,9 @@ def _run_report_job(job_id):
         pdf = _build_pdf(job.connection, job.user, sections, job.language)
         filename = f"db-report-{job.connection_id}-{datetime.now():%Y%m%d-%H%M%S}.pdf"
         ReportJob.objects.filter(pk=job_id).update(status="completed", message="PDF-отчёт готов к скачиванию", content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
-        _write_audit("database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(job.connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), username=job.user.login if job.user else "system")
+        _write_audit(
+            "database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(job.connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), username=job.user.login if job.user else "system"
+        )
     except Exception:
         logger.exception("Не удалось сформировать PDF-отчёт job_id=%s", job_id)
         ReportJob.objects.filter(pk=job_id).update(status="failed", message="Не удалось сформировать PDF-отчёт. Подробности см. в журнале сервера", duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
@@ -133,14 +142,26 @@ def _collect(db_connection, title, query, params=None, language="ru"):
 
 
 def _report_sections(db_connection, language="ru"):
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     user_schemas = "namespace.nspname NOT IN ('pg_catalog', 'information_schema') AND namespace.nspname NOT LIKE 'pg_toast%%'"
     definitions = [
         (
             t("Общая информация", "General information"),
             """SELECT version(), current_database(), pg_database_size(current_database()), current_setting('server_encoding'), current_setting('TimeZone'), pg_postmaster_start_time(), now() - pg_postmaster_start_time(), (SELECT count(*) FROM pg_stat_activity), current_setting('max_connections')""",
             None,
-            [t("Версия", "Version"), t("База данных", "Database"), t("Размер", "Size"), t("Кодировка", "Encoding"), t("Часовой пояс", "Time zone"), t("Запуск", "Started"), t("Время работы", "Uptime"), t("Подключения", "Connections"), t("Максимум подключений", "Maximum connections")],
+            [
+                t("Версия", "Version"),
+                t("База данных", "Database"),
+                t("Размер", "Size"),
+                t("Кодировка", "Encoding"),
+                t("Часовой пояс", "Time zone"),
+                t("Запуск", "Started"),
+                t("Время работы", "Uptime"),
+                t("Подключения", "Connections"),
+                t("Максимум подключений", "Maximum connections"),
+            ],
         ),
         (
             t("Размеры схем", "Schema sizes"),
@@ -160,7 +181,12 @@ def _report_sections(db_connection, language="ru"):
             None,
             [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size")],
         ),
-        (t("Активные запросы", "Active queries"), f"""SELECT pid, usename, state, now()-query_start, query FROM pg_stat_activity WHERE state='active' AND pid<>pg_backend_pid() ORDER BY query_start LIMIT {_MAX_ROWS}""", None, ["PID", t("Пользователь", "User"), t("Состояние", "State"), t("Длительность", "Duration"), "SQL"]),
+        (
+            t("Активные запросы", "Active queries"),
+            f"""SELECT pid, usename, state, now()-query_start, query FROM pg_stat_activity WHERE state='active' AND pid<>pg_backend_pid() ORDER BY query_start LIMIT {_MAX_ROWS}""",
+            None,
+            ["PID", t("Пользователь", "User"), t("Состояние", "State"), t("Длительность", "Duration"), "SQL"],
+        ),
         (
             t("Активные сессии", "Active sessions"),
             f"""SELECT pid, usename, datname, application_name, COALESCE(client_addr::text,'local'), state, now()-backend_start FROM pg_stat_activity ORDER BY backend_start LIMIT {_MAX_ROWS}""",
@@ -191,7 +217,12 @@ def _report_sections(db_connection, language="ru"):
             None,
             [t("Схема", "Schema"), t("Таблица", "Table"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), "VACUUM", "Autovacuum", "ANALYZE", "Autoanalyze"],
         ),
-        (t("Пользователи", "Users"), f"""SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolconnlimit FROM pg_roles WHERE rolcanlogin ORDER BY rolname LIMIT {_MAX_ROWS}""", None, [t("Пользователь", "User"), t("Вход", "Login"), "Superuser", t("Создание БД", "Create DB"), t("Создание ролей", "Create roles"), t("Лимит", "Limit")]),
+        (
+            t("Пользователи", "Users"),
+            f"""SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolconnlimit FROM pg_roles WHERE rolcanlogin ORDER BY rolname LIMIT {_MAX_ROWS}""",
+            None,
+            [t("Пользователь", "User"), t("Вход", "Login"), "Superuser", t("Создание БД", "Create DB"), t("Создание ролей", "Create roles"), t("Лимит", "Limit")],
+        ),
         (
             t("Группы", "Groups"),
             f"""SELECT role.rolname, count(member.oid), COALESCE(string_agg(member.rolname, ', ' ORDER BY member.rolname),'—') FROM pg_roles role LEFT JOIN pg_auth_members membership ON membership.roleid=role.oid LEFT JOIN pg_roles member ON member.oid=membership.member WHERE NOT role.rolcanlogin GROUP BY role.rolname ORDER BY role.rolname LIMIT {_MAX_ROWS}""",
@@ -200,7 +231,14 @@ def _report_sections(db_connection, language="ru"):
         ),
     ]
     if db_connection.is_greenplum_compatible:
-        definitions.append((t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"), "SELECT content, dbid, role, preferred_role, mode, status, hostname, port FROM gp_segment_configuration ORDER BY content, role", None, ["Content", "DBID", t("Роль", "Role"), t("Предпочтительная", "Preferred role"), t("Режим", "Mode"), t("Статус", "Status"), t("Хост", "Host"), t("Порт", "Port")]))
+        definitions.append(
+            (
+                t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"),
+                "SELECT content, dbid, role, preferred_role, mode, status, hostname, port FROM gp_segment_configuration ORDER BY content, role",
+                None,
+                ["Content", "DBID", t("Роль", "Role"), t("Предпочтительная", "Preferred role"), t("Режим", "Mode"), t("Статус", "Status"), t("Хост", "Host"), t("Порт", "Port")],
+            )
+        )
     else:
         definitions.append((t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"), None, None, [t("Состояние", "Status")]))
 
@@ -220,7 +258,9 @@ def _report_sections(db_connection, language="ru"):
 
 
 def _recommendations(sections, language="ru"):
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     by_title = {section["title"]: section for section in sections}
     result = []
     locks = by_title[t("Блокировки", "Locks")]["rows"]
@@ -249,7 +289,9 @@ def _build_pdf(db_connection, db_user, sections, language="ru"):
     from reportlab.lib.units import mm
     from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
-    t = lambda ru, en: _label(language, ru, en)
+    def t(ru, en):
+        return _label(language, ru, en)
+
     regular, bold = _register_fonts()
     styles = getSampleStyleSheet()
     normal = ParagraphStyle("ReportNormal", parent=styles["BodyText"], fontName=regular, fontSize=7, leading=9)

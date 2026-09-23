@@ -10,7 +10,7 @@ PORT ?= 8000
 SQLITE_NAME ?= db.sqlite3
 
 .PHONY: help install migrations migrate run shell admin \
-        lint lint-fix format collectstatic \
+        lint lint-fix format hooks hooks-run collectstatic \
         docker-build docker-run docker-stop clean reset-db
 
 help: ## Показать список доступных команд
@@ -42,6 +42,12 @@ lint-fix: ## Проверить код и исправить автоматич�
 
 format: ## Отформатировать код
 	$(PYTHON) -m ruff format .
+
+hooks: ## Установить Git pre-commit hook для автоматического запуска Ruff
+	$(PYTHON) -m pre_commit install
+
+hooks-run: ## Запустить все pre-commit проверки вручную для всего проекта
+	$(PYTHON) -m pre_commit run --all-files
 
 collectstatic: ## Собрать статику (как при сборке Docker-образа)
 	$(MANAGE) collectstatic --noinput
