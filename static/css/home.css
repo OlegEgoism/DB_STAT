@@ -1752,6 +1752,11 @@ body {
 .blocking-lock-actions .btn {
     display: block;
     width: 100%;
+    min-width: 0;
+    height: auto;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .blocking-lock-actions .btn + .btn {
