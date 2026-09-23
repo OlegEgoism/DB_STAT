@@ -1,1 +1,8 @@
+* text=auto
+
+# Ruff is configured to produce LF. Keep Python sources stable on Windows too.
+*.py text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
 *.sh text eol=lf

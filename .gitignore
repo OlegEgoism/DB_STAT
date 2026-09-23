@@ -1,1 +1,23 @@
-(static — output nothing)
+# Local configuration and IDE metadata
+.env
+.idea/
+.vscode/
+
+# Virtual environments
+.venv/
+venv/
+
+# Python and tool caches
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Local databases
+db.sqlite3
+db.sqlite3-shm
+db.sqlite3-wal
+
+# Generated application output
+staticfiles/

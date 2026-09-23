@@ -136,6 +136,11 @@ python -m pre_commit install
 A successful installation ends with `pre-commit installed at
 .git/hooks/pre-commit`.
 
+Warnings such as `LF will be replaced by CRLF` are not Ruff errors. The
+`.gitattributes` settings keep source code on LF line endings on every OS. After
+first receiving these settings, run `git add --renormalize .` if necessary and
+commit the resulting normalization once.
+
 Before every `git commit`, Ruff will now automatically fix supported issues and
 format the **entire project**, then perform a final lint check. If files were
 changed or unfixable issues remain, the commit is stopped. Review the changes,
@@ -150,6 +155,14 @@ python -m pre_commit run --all-files
 
 The hook can be bypassed temporarily with `git commit --no-verify`, but this is
 not recommended during normal development. CI also runs Ruff for pull requests.
+
+If all hooks pass but Git reports `nothing added to commit`, the index contains
+no changes relative to the current commit. This is not a hook failure: inspect
+`git status`, modify the intended files, and run `git add` before retrying the
+commit. Local `.env`, `.idea`, SQLite files, and Python caches are ignored by the
+project. In contrast, `db_statistics/migrations/*.py` files are part of the
+Django schema and should be added to Git when they were intentionally created
+with `makemigrations`.
 
 ## Make Commands 
  
