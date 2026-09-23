@@ -77,7 +77,10 @@
                     <span id="backgroundJobsCount">0</span>
                 </button>
                 <div class="background-jobs-panel" id="backgroundJobsPanel" hidden>
-                    <strong>Фоновые операции</strong>
+                    <div class="background-jobs-panel__header">
+                        <strong>Фоновые операции</strong>
+                        <button class="background-jobs-clear-all" id="backgroundJobsClearAllBtn" type="button" title="Очистить завершённые операции"><i class="fas fa-trash-alt" aria-hidden="true"></i> Очистить все</button>
+                    </div>
                     <div id="backgroundJobsList" class="background-jobs-list">Нет фоновых операций</div>
                 </div>
             </div>
