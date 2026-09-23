@@ -21,7 +21,7 @@
         'PDF-отчёты': 'PDF reports', 'Все сформированные и формируемые вами отчёты. Готовые файлы можно скачать.': 'All of your generated and in-progress reports. Completed files can be downloaded.',
         'Загрузка отчётов…': 'Loading reports…', 'PDF-отчёты пока не создавались': 'No PDF reports have been created yet', 'Скачать': 'Download', 'Файл': 'File', 'Язык': 'Language',
         'В очереди': 'Queued', 'Формируется': 'Generating', 'Готов': 'Ready', 'Ошибка': 'Error', 'Дата: сначала старые': 'Date: oldest first', 'Дата: сначала новые': 'Date: newest first',
-        'Не удалось загрузить PDF-отчёты': 'Failed to load PDF reports', 'Фильтры PDF-отчётов': 'PDF report filters', 'Отчёты по фильтрам не найдены': 'No reports match the filters',
+        'Не удалось загрузить PDF-отчёты': 'Failed to load PDF reports', 'Фильтры PDF-отчётов': 'PDF report filters', 'Отчёты по фильтрам не найдены': 'No reports match the filters', 'Записей на странице': 'Rows per page',
         'Тема оформления': 'Appearance theme', 'Белая': 'White', 'Тёмная': 'Dark', 'Светло-серая': 'Light gray',
         'Светло-синяя': 'Light blue', 'Светло-коричневая': 'Light brown', 'Светло-зелёная': 'Light green',
         'Спокойная прохладная палитра': 'Calm cool palette', 'Тёплая естественная палитра': 'Warm natural palette', 'Свежая природная палитра': 'Fresh natural palette',
