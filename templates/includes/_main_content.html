@@ -285,6 +285,14 @@
                             <i class="fas fa-file-pdf" aria-hidden="true"></i><span>Отчет PDF</span>
                         </button>
                     </div>
+                    <div class="reports-settings-filters" aria-label="Фильтры PDF-отчётов">
+                        <label><span>Дата</span><input class="form-control form-control-sm" id="reportsDateFilter" type="date"></label>
+                        <label><span>Подключение</span><select class="form-select form-select-sm" id="reportsConnectionFilter"><option value="">Все</option></select></label>
+                        <label><span>База данных</span><select class="form-select form-select-sm" id="reportsDatabaseFilter"><option value="">Все</option></select></label>
+                        <label><span>Пользователь</span><select class="form-select form-select-sm" id="reportsUserFilter"><option value="">Все</option></select></label>
+                        <label><span>Язык</span><select class="form-select form-select-sm" id="reportsLanguageFilter"><option value="">Все</option></select></label>
+                        <label><span>Статус</span><select class="form-select form-select-sm" id="reportsStatusFilter"><option value="">Все</option></select></label>
+                    </div>
                     <div class="table-responsive reports-settings-table-wrap">
                         <table class="table table-sm reports-settings-table">
                             <thead><tr>

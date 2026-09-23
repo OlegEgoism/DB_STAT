@@ -947,7 +947,15 @@
     function initReportsSettings() {
         const body = document.getElementById('reportsSettingsBody');
         const sortButton = document.getElementById('reportsDateSortBtn');
-        if (!body || !sortButton) return;
+        const filters = {
+            date: document.getElementById('reportsDateFilter'),
+            connection: document.getElementById('reportsConnectionFilter'),
+            database: document.getElementById('reportsDatabaseFilter'),
+            user: document.getElementById('reportsUserFilter'),
+            language: document.getElementById('reportsLanguageFilter'),
+            status: document.getElementById('reportsStatusFilter')
+        };
+        if (!body || !sortButton || Object.values(filters).some(filter => !filter)) return;
 
         let reports = [];
         const statusLabels = {queued: 'В очереди', running: 'Формируется', completed: 'Готов', failed: 'Ошибка'};
@@ -955,13 +963,42 @@
             const date = value ? new Date(value) : null;
             return date && !Number.isNaN(date.getTime()) ? date.toLocaleString() : '—';
         };
+        const formatLocalDate = value => {
+            const date = value ? new Date(value) : null;
+            if (!date || Number.isNaN(date.getTime())) return '';
+            const pad = number => String(number).padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+        };
+        const setFilterOptions = (select, values, labelFor = value => value) => {
+            const selected = select.value;
+            select.replaceChildren(new Option(translateInterfaceText('Все'), ''));
+            values.forEach(value => select.add(new Option(translateInterfaceText(labelFor(value)), value)));
+            if (values.includes(selected)) select.value = selected;
+        };
+        const updateFilterOptions = () => {
+            const unique = key => [...new Set(reports.map(report => String(report[key] || '')).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            setFilterOptions(filters.connection, unique('connection_name'));
+            setFilterOptions(filters.database, unique('database'));
+            setFilterOptions(filters.user, unique('username'));
+            setFilterOptions(filters.language, unique('language'), value => value.toUpperCase());
+            setFilterOptions(filters.status, unique('status'), value => statusLabels[value] || value);
+        };
         const render = () => {
             const multiplier = sortButton.dataset.direction === 'asc' ? 1 : -1;
-            const sorted = [...reports].sort((first, second) => multiplier * (new Date(first.created).getTime() - new Date(second.created).getTime()));
+            const filtered = reports.filter(report =>
+                (!filters.date.value || formatLocalDate(report.created) === filters.date.value)
+                && (!filters.connection.value || report.connection_name === filters.connection.value)
+                && (!filters.database.value || report.database === filters.database.value)
+                && (!filters.user.value || report.username === filters.user.value)
+                && (!filters.language.value || report.language === filters.language.value)
+                && (!filters.status.value || report.status === filters.status.value)
+            );
+            const sorted = [...filtered].sort((first, second) => multiplier * (new Date(first.created).getTime() - new Date(second.created).getTime()));
             sortButton.querySelector('i').className = `fas fa-sort-${sortButton.dataset.direction === 'asc' ? 'up' : 'down'}`;
             sortButton.setAttribute('aria-label', sortButton.dataset.direction === 'asc' ? 'Дата: сначала старые' : 'Дата: сначала новые');
             if (!sorted.length) {
-                body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">PDF-отчёты пока не создавались</td></tr>';
+                const emptyMessage = reports.length ? 'Отчёты по фильтрам не найдены' : 'PDF-отчёты пока не создавались';
+                body.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">${escapeHtml(translateInterfaceText(emptyMessage))}</td></tr>`;
                 return;
             }
             body.innerHTML = sorted.map(report => {
@@ -987,6 +1024,7 @@
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data.ok === false) throw new Error(data.message || 'Не удалось загрузить PDF-отчёты');
                 reports = data.reports || [];
+                updateFilterOptions();
                 render();
             } catch (error) {
                 body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${escapeHtml(error.message)}</td></tr>`;
@@ -996,7 +1034,12 @@
             sortButton.dataset.direction = sortButton.dataset.direction === 'desc' ? 'asc' : 'desc';
             render();
         });
+        Object.values(filters).forEach(filter => filter.addEventListener('change', render));
         document.getElementById('settingsReportsTab')?.addEventListener('click', load);
+        document.addEventListener('dbstat:reports-changed', load);
+        window.setInterval(() => {
+            if (!document.hidden && !document.getElementById('settingsReportsPanel').hidden) load();
+        }, 5000);
         load();
     }
 
@@ -4438,6 +4481,7 @@
                     throw new Error(data.message || 'Не удалось сформировать PDF-отчёт');
                 }
                 showToast('✅ Формирование PDF запущено в фоне');
+                document.dispatchEvent(new CustomEvent('dbstat:reports-changed'));
                 loadBackgroundJobs();
                 pollReportJob(data.job.id);
             } catch (error) {
@@ -4454,6 +4498,7 @@
                 const response = await fetch(`${databasePdfReportApiUrl}?job_id=${encodeURIComponent(jobId)}`);
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok || data.ok === false) throw new Error(data.message || 'Не удалось проверить состояние PDF-отчёта');
+                document.dispatchEvent(new CustomEvent('dbstat:reports-changed'));
                 loadBackgroundJobs();
                 if (['queued', 'running'].includes(data.job.status)) {
                     pollReportJob(jobId);
