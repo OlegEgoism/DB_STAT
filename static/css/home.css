@@ -3857,7 +3857,7 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .reports-settings-table-wrap { border: 1px solid var(--sidebar-border); border-radius: var(--radius-md); }
 .reports-settings-filters { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
 .reports-settings-filters label { display: grid; gap: 5px; color: var(--text-secondary); font-size: 12px; font-weight: 700; }
-.reports-settings-filters .form-select { max-width: none; }
+.reports-settings-filters .filter-select-box { width: 100%; }
 .reports-settings-table { margin: 0; min-width: 920px; }
 .reports-settings-table th, .reports-settings-table td { padding: 10px 12px; vertical-align: middle; }
 .reports-date-sort { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 700; }
