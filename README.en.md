@@ -9,6 +9,11 @@ Web application for monitoring and diagnostics of PostgreSQL/Greenplum/Greengage
 The project helps assess the state of connected databases through a single interface.
 The application allows monitoring of databases.
 The main goal of DB STAT is to simplify daily monitoring of database health.
+
+For each connection you can generate a full diagnostic PDF report (schema and largest-table
+sizes, active queries/sessions/locks, table access efficiency, VACUUM/ANALYZE stats, and a
+performance conclusion) — generated in the background, in Russian or English, with a history
+and downloads of finished files under "Settings → PDF Reports".
 ```
 
 ## Download image from hub.docker
@@ -69,18 +74,17 @@ SQLITE_NAME=db.sqlite3
 STATIC_URL=static/ 
 LOCALHOST_DB_HOST=127.0.0.1 
 ``` 
-- Python version 3.12+ 
+- Python version 3.12+ (the Docker image is built on 3.13, see `Dockerfile`) 
 - Install libraries from requirements.txt 
  
 ```bash 
 pip install -r requirements.txt 
 ``` 
  
-- Apply migrations 
+- Create database tables (`db_statistics` models don't use migrations — see `MIGRATION_MODULES` in `db/settings.py` — their tables are synced directly from the models) 
  
 ```bash 
-python manage.py makemigrations 
-python manage.py migrate 
+python manage.py migrate --run-syncdb 
 ``` 
  
 - Create a user for logging into the application and Django Admin (`/admin/`). 
@@ -118,8 +122,8 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
 | Command                                | What it does                                                                                     | 
 |----------------------------------------|--------------------------------------------------------------------------------------------------| 
 | `make install`                         | Install dependencies from requirements.txt                                                       | 
-| `make migrations`                      | Generate migrations based on model changes                                                       | 
-| `make migrate`                         | Apply migrations to the database                                                                 | 
+| `make migrations`                      | Generate migrations for Django's built-in apps (`db_statistics` doesn't use migrations)           | 
+| `make migrate`                         | Apply Django migrations and sync `db_statistics` tables                                          | 
 | `make run`                             | Start the development server                                                                     | 
 | `make shell`                           | Open an interactive Django shell                                                                 | 
 | `make admin`                           | Create the first administrator (see `INITIAL_ADMIN_*` in `.env`)                                 | 

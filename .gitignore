@@ -1,1 +1,27 @@
-(static — output nothing)
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# Django
+db.sqlite3
+db.sqlite3-shm
+db.sqlite3-wal
+staticfiles/
+# db_statistics has no migration history by design (see MIGRATION_MODULES in
+# db/settings.py — tables are synced directly from models via --run-syncdb),
+# so any locally regenerated migration file is local-only, not source code.
+db_statistics/migrations/*.py
+!db_statistics/migrations/__init__.py
+
+# Environment/secrets
+.env
+
+# Tooling
+.ruff_cache/
+.idea/
+.vscode/

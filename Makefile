@@ -19,11 +19,11 @@ help: ## Показать список доступных команд
 install: ## Установить зависимости из requirements.txt
 	pip install -r requirements.txt
 
-migrations: ## Сгенерировать миграции по изменениям моделей
+migrations: ## Сгенерировать миграции для встроенных приложений Django (db_statistics их не использует)
 	$(MANAGE) makemigrations
 
-migrate: ## Применить миграции к базе данных
-	$(MANAGE) migrate
+migrate: ## Применить миграции Django и синхронизировать таблицы db_statistics (без миграций, см. MIGRATION_MODULES)
+	$(MANAGE) migrate --run-syncdb
 
 run: ## Запустить сервер разработки
 	$(MANAGE) runserver
@@ -65,7 +65,7 @@ reset-db: ## ОПАСНО: удалить SQLite БД и все миграции
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		rm -f $(SQLITE_NAME) $(SQLITE_NAME)-shm $(SQLITE_NAME)-wal; \
 		find db_statistics/migrations -type f -name "*.py" ! -name "__init__.py" -delete; \
-		echo "Готово. Дальше: make migrations && make migrate"; \
+		echo "Готово. Дальше: make migrate"; \
 	else \
 		echo "Отменено."; \
 	fi

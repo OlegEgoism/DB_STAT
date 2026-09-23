@@ -4202,24 +4202,19 @@ body.sidebar-collapsed .nav-item .nav-icon {
 /* Shared components follow the active palette, including login, 404 and modals. */
 .glass-card,
 .modal-content,
-.dropdown-menu,
 .connection-info-tooltip {
     background-color: var(--surface-raised);
     border-color: var(--sidebar-border);
     color: var(--text-primary);
 }
 
-.form-control,
-.form-select,
-.input-group-text,
-.page-link {
+.form-control {
     border-color: var(--control-border);
     background-color: var(--bg-secondary);
     color: var(--text-primary);
 }
 
-.form-control:focus,
-.form-select:focus {
+.form-control:focus {
     border-color: var(--accent-blue);
     background-color: var(--bg-secondary);
     color: var(--text-primary);
@@ -4229,7 +4224,6 @@ body.sidebar-collapsed .nav-item .nav-icon {
 .form-control::placeholder { color: var(--text-muted); }
 .form-text, .text-muted { color: var(--text-muted) !important; }
 .table { --bs-table-bg: transparent; --bs-table-color: var(--text-primary); --bs-table-border-color: var(--sidebar-border); }
-.table-hover > tbody > tr:hover > * { --bs-table-bg-state: var(--surface-hover); color: var(--text-primary); }
 .modal-header, .modal-footer { border-color: var(--sidebar-border); }
 .btn-close { filter: none; }
 
@@ -4244,8 +4238,6 @@ html[data-theme="dark"] select option { background: var(--surface-raised); color
 html[data-theme="dark"] .login-card,
 html[data-theme="dark"] .error-card { box-shadow: var(--shadow-glow); }
 html[data-theme="dark"] .bg-effects .orb { opacity: 0.16; }
-html[data-theme="dark"] .progress,
-html[data-theme="dark"] .progress-track { background: var(--chart-track); }
 
 @media (max-width: 900px) {
     .theme-options { grid-template-columns: 1fr; }
