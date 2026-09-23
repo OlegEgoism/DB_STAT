@@ -113,12 +113,28 @@ python -m ruff format .
 
 ### Automatic checks before a commit
 
-After installing the dependencies, install the Git hook once:
+First update the dependencies in the activated virtual environment, then install
+the Git hook once:
 
 ```bash
+python -m pip install -r requirements.txt
 python -m pre_commit install
-# or: make hooks
 ```
+
+These commands work in PowerShell, cmd, Linux, and macOS. `make` is usually not
+installed on Windows, so use the Python commands above. `make hooks` is only a
+shortcut for environments where Make is available.
+
+If hook installation reports `No module named pre_commit`, the package has not
+been installed in the current virtual environment. Run:
+
+```powershell
+python -m pip install pre-commit==4.3.0
+python -m pre_commit install
+```
+
+A successful installation ends with `pre-commit installed at
+.git/hooks/pre-commit`.
 
 Before every `git commit`, Ruff will now automatically fix supported issues and
 format the **entire project**, then perform a final lint check. If files were
@@ -129,7 +145,7 @@ Run the same checks manually for the entire project with:
 
 ```bash
 python -m pre_commit run --all-files
-# or: make hooks-run
+# or, if Make is installed: make hooks-run
 ```
 
 The hook can be bypassed temporarily with `git commit --no-verify`, but this is

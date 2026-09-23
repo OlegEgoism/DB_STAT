@@ -113,12 +113,29 @@ python -m ruff format .
 
 ### Автоматическая проверка перед коммитом
 
-После установки зависимостей один раз установите Git hook:
+Сначала обновите зависимости в активированном виртуальном окружении, затем один
+раз установите Git hook:
 
 ```bash
+python -m pip install -r requirements.txt
 python -m pre_commit install
-# или: make hooks
 ```
+
+Эти команды одинаково работают в PowerShell, cmd, Linux и macOS. В Windows
+`make` обычно не установлен, поэтому используйте команды Python выше. Команда
+`make hooks` — только короткая альтернатива для окружений, в которых доступен
+Make.
+
+Если команда установки hook выводит `No module named pre_commit`, значит пакет
+ещё не установлен именно в текущем виртуальном окружении. Выполните:
+
+```powershell
+python -m pip install pre-commit==4.3.0
+python -m pre_commit install
+```
+
+Успешная установка заканчивается сообщением `pre-commit installed at
+.git/hooks/pre-commit`.
 
 Теперь перед каждым `git commit` Ruff автоматически исправляет доступные для
 исправления ошибки и форматирует **весь проект**, после чего повторно проверяет
@@ -129,7 +146,7 @@ python -m pre_commit install
 
 ```bash
 python -m pre_commit run --all-files
-# или: make hooks-run
+# или, если Make установлен: make hooks-run
 ```
 
 Для временного обхода hook существует `git commit --no-verify`, но использовать
