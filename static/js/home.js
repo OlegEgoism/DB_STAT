@@ -947,6 +947,10 @@
     function initReportsSettings() {
         const body = document.getElementById('reportsSettingsBody');
         const sortButton = document.getElementById('reportsDateSortBtn');
+        const pageSizeSelect = document.getElementById('reportsPageSizeSelect');
+        const previousButton = document.getElementById('reportsPrevPageBtn');
+        const nextButton = document.getElementById('reportsNextPageBtn');
+        const paginationInfo = document.getElementById('reportsPaginationInfo');
         const filters = {
             date: document.getElementById('reportsDateFilter'),
             connection: document.getElementById('reportsConnectionFilter'),
@@ -955,9 +959,13 @@
             language: document.getElementById('reportsLanguageFilter'),
             status: document.getElementById('reportsStatusFilter')
         };
-        if (!body || !sortButton || Object.values(filters).some(filter => !filter)) return;
+        if (!body || !sortButton || !pageSizeSelect || !previousButton || !nextButton || !paginationInfo || Object.values(filters).some(filter => !filter)) return;
 
         let reports = [];
+        const storedPageSize = Number(localStorage.getItem('db_stat_page_size_reports'));
+        const pagination = {page: 1, pageSize: paginationPageSizeOptions.includes(storedPageSize) ? storedPageSize : defaultPaginationPageSize};
+        pageSizeSelect.innerHTML = paginationPageSizeOptions.map(size => `<option value="${size}">${size}</option>`).join('');
+        pageSizeSelect.value = String(pagination.pageSize);
         const statusLabels = {queued: 'В очереди', running: 'Формируется', completed: 'Готов', failed: 'Ошибка'};
         const formatDateTime = value => {
             const date = value ? new Date(value) : null;
@@ -994,6 +1002,12 @@
                 && (!filters.status.value || report.status === filters.status.value)
             );
             const sorted = [...filtered].sort((first, second) => multiplier * (new Date(first.created).getTime() - new Date(second.created).getTime()));
+            const totalPages = Math.max(Math.ceil(sorted.length / pagination.pageSize), 1);
+            pagination.page = Math.min(pagination.page, totalPages);
+            const pageReports = sorted.slice((pagination.page - 1) * pagination.pageSize, pagination.page * pagination.pageSize);
+            paginationInfo.textContent = `Страница ${pagination.page} из ${totalPages}`;
+            previousButton.disabled = pagination.page <= 1;
+            nextButton.disabled = pagination.page >= totalPages;
             sortButton.querySelector('i').className = `fas fa-sort-${sortButton.dataset.direction === 'asc' ? 'up' : 'down'}`;
             sortButton.setAttribute('aria-label', sortButton.dataset.direction === 'asc' ? 'Дата: сначала старые' : 'Дата: сначала новые');
             if (!sorted.length) {
@@ -1001,7 +1015,7 @@
                 body.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">${escapeHtml(translateInterfaceText(emptyMessage))}</td></tr>`;
                 return;
             }
-            body.innerHTML = sorted.map(report => {
+            body.innerHTML = pageReports.map(report => {
                 const download = report.download_url
                     ? `<a class="btn btn-sm btn-outline-primary" href="${escapeHtml(report.download_url)}"><i class="fas fa-download" aria-hidden="true"></i> Скачать</a>`
                     : '<span class="text-muted">—</span>';
@@ -1032,9 +1046,29 @@
         };
         sortButton.addEventListener('click', () => {
             sortButton.dataset.direction = sortButton.dataset.direction === 'desc' ? 'asc' : 'desc';
+            pagination.page = 1;
             render();
         });
-        Object.values(filters).forEach(filter => filter.addEventListener('change', render));
+        Object.values(filters).forEach(filter => filter.addEventListener('change', () => {
+            pagination.page = 1;
+            render();
+        }));
+        pageSizeSelect.addEventListener('change', () => {
+            pagination.pageSize = Number(pageSizeSelect.value) || defaultPaginationPageSize;
+            pagination.page = 1;
+            localStorage.setItem('db_stat_page_size_reports', String(pagination.pageSize));
+            render();
+        });
+        previousButton.addEventListener('click', () => {
+            if (pagination.page > 1) {
+                pagination.page -= 1;
+                render();
+            }
+        });
+        nextButton.addEventListener('click', () => {
+            pagination.page += 1;
+            render();
+        });
         document.getElementById('settingsReportsTab')?.addEventListener('click', load);
         document.addEventListener('dbstat:reports-changed', load);
         window.setInterval(() => {

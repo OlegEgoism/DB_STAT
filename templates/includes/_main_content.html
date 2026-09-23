@@ -302,6 +302,12 @@
                             <tbody id="reportsSettingsBody"><tr><td colspan="8" class="text-center text-muted py-4">Загрузка отчётов…</td></tr></tbody>
                         </table>
                     </div>
+                    <div class="table-pagination">
+                        <label class="pagination-page-size"><span>Записей:</span><span class="pagination-page-size__select filter-select-box"><select id="reportsPageSizeSelect" aria-label="Записей на странице"></select></span></label>
+                        <button class="btn-conn secondary" type="button" id="reportsPrevPageBtn"><i class="fas fa-chevron-left" aria-hidden="true"></i> Назад</button>
+                        <span id="reportsPaginationInfo">Страница 1 из 1</span>
+                        <button class="btn-conn secondary" type="button" id="reportsNextPageBtn">Далее <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                    </div>
                 </section>
                 {% if db_user.role == 'Администратор' %}
                 <section class="settings-tab-panel" id="settingsPaginationPanel" role="tabpanel" aria-labelledby="settingsPaginationTab" data-settings-panel="pagination" hidden>
