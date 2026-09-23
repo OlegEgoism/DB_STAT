@@ -76,10 +76,30 @@ LOCALHOST_DB_HOST=127.0.0.1
 ``` 
 - Python version 3.12+ (the Docker image is built on 3.13, see `Dockerfile`) 
 - Install libraries from requirements.txt 
- 
+
+With plain `venv` + `pip`:
+
 ```bash 
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt 
 ``` 
+
+Or with [uv](https://docs.astral.sh/uv/) — same result, noticeably faster:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+uv venv --python 3.12
+source .venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+`uv venv` creates `.venv` in the same place as plain `venv`, so no need to
+reconfigure your IDE's interpreter. The `--python 3.12` flag matters if
+`python3` points to an older version on your system by default (Django 6
+requires Python 3.12+) — `uv` will find an installed `python3.12` itself, or
+download the right version if none is present.
  
 - Create database tables (`db_statistics` models don't use migrations — see `MIGRATION_MODULES` in `db/settings.py` — their tables are synced directly from the models) 
  
