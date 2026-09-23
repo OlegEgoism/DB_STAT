@@ -924,7 +924,13 @@ body {
 }
 
 .background-jobs-list { margin-top: 8px; display: grid; gap: 7px; }
-.background-job-item { padding-top: 7px; border-top: 1px solid var(--sidebar-border); font-size: 12px; }
+.background-jobs-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.background-jobs-clear-all, .background-job-clear { border: 0; background: transparent; color: var(--text-muted); }
+.background-jobs-clear-all { padding: 2px 0; font-size: 11px; font-weight: 600; }
+.background-jobs-clear-all:hover, .background-job-clear:hover { color: var(--accent-red); }
+.background-jobs-clear-all:disabled { cursor: not-allowed; opacity: 0.45; }
+.background-job-item { position: relative; padding: 7px 24px 0 0; border-top: 1px solid var(--sidebar-border); font-size: 12px; }
+.background-job-clear { position: absolute; top: 7px; right: 0; width: 22px; height: 22px; padding: 0; border-radius: 6px; }
 .background-job-item small { display: block; color: var(--text-muted); }
 .background-job-user-label { color: var(--text-primary); font-weight: 500; }
 .background-job-times { margin: 6px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

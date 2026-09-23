@@ -15,7 +15,7 @@
         'Настройки сайдбара': 'Interface settings', 'Интерфейс и боковое меню': 'Interface and sidebar', 'Интерфейс и меню': 'Interface and menu', 'Боковое меню': 'Sidebar', 'Разделы настроек': 'Settings sections', 'Свернуть сайдбар': 'Collapse sidebar', 'Свернуть/развернуть сайдбар': 'Collapse/expand sidebar',
         'Открыть главную страницу DB STAT': 'Open the DB STAT home page', 'Показать/скрыть боковое меню': 'Show/hide sidebar', 'Сессии и подключения': 'Sessions and connections',
         'До завершения сессии': 'Session time remaining',
-        'Фоновые операции': 'Background jobs', 'Нет фоновых операций': 'No background jobs', 'Завершено': 'Completed',
+        'Фоновые операции': 'Background jobs', 'Нет фоновых операций': 'No background jobs', 'Завершено': 'Completed', 'Очистить все': 'Clear all', 'Очистить операцию': 'Clear job', 'Очистить завершённые операции': 'Clear completed jobs',
         'Удалить подключение может только его создатель': 'Only the connection creator can delete it',
         'Язык интерфейса': 'Interface language', 'Выберите язык': 'Choose a language', 'Русский': 'Russian', 'Русский (RU)': 'Russian (RU)',
         'PDF-отчёты': 'PDF reports', 'Все сформированные и формируемые вами отчёты. Готовые файлы можно скачать.': 'All of your generated and in-progress reports. Completed files can be downloaded.',

@@ -165,6 +165,9 @@
 
     const currentDbUserElement = document.getElementById('dbUserData');
     const currentDbUser = currentDbUserElement ? JSON.parse(currentDbUserElement.textContent || 'null') : null;
+    const dismissedBackgroundJobsStorageKey = `db_stat_dismissed_background_jobs_${currentDbUser?.id || 'anonymous'}`;
+    const dismissedBackgroundJobIds = new Set((localStorage.getItem(dismissedBackgroundJobsStorageKey) || '').split(',').filter(Boolean));
+    let latestBackgroundJobs = [];
 
     function canManageConnections() {
         return currentDbUser?.can_manage_connections === true;
@@ -2848,11 +2851,15 @@
         const indicator = document.getElementById('backgroundJobsIndicator');
         const count = document.getElementById('backgroundJobsCount');
         const list = document.getElementById('backgroundJobsList');
+        const clearAllButton = document.getElementById('backgroundJobsClearAllBtn');
         const activeJobs = jobs.filter(job => ['queued', 'running'].includes(job.status));
+        const visibleJobs = jobs.filter(job => !dismissedBackgroundJobIds.has(String(job.id)));
+        const dismissibleJobs = visibleJobs.filter(job => !['queued', 'running'].includes(job.status));
         if (count) count.textContent = String(activeJobs.length);
         indicator?.classList.toggle('has-active-jobs', activeJobs.length > 0);
+        if (clearAllButton) clearAllButton.disabled = dismissibleJobs.length === 0;
         if (!list) return;
-        if (!jobs.length) {
+        if (!visibleJobs.length) {
             list.textContent = 'Нет фоновых операций';
             return;
         }
@@ -2861,11 +2868,13 @@
             const parsed = new Date(value);
             return Number.isNaN(parsed.getTime()) ? '—' : parsed.toLocaleString();
         };
-        list.innerHTML = jobs.slice(0, 8).map(job => {
+        list.innerHTML = visibleJobs.slice(0, 8).map(job => {
             const labels = {queued: 'В очереди', running: 'Выполняется', completed: 'Завершено', failed: 'Ошибка'};
+            const clearButton = ['queued', 'running'].includes(job.status) ? '' : `<button class="background-job-clear" type="button" data-background-job-clear="${escapeHtml(job.id)}" title="Очистить операцию" aria-label="Очистить операцию"><i class="fas fa-times" aria-hidden="true"></i></button>`;
             if (job.kind === 'report') {
                 const download = job.download_url ? `<a class="background-job-download" href="${escapeHtml(job.download_url)}"><i class="fas fa-download"></i> Отчет PDF</a>` : '';
                 return `<div class="background-job-item">
+                    ${clearButton}
                     <b>PDF-отчёт</b>
                     <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
                     <small><span class="background-job-user-label">Пользователь:</span> ${escapeHtml(job.username || '—')}</small>
@@ -2876,6 +2885,7 @@
                 </div>`;
             }
             return `<div class="background-job-item">
+                ${clearButton}
                 <b>${escapeHtml(getMaintenanceOperationLabel(job.operation))}</b> · ${escapeHtml(job.schema_name)}.${escapeHtml(job.table_name)}
                 <small>${escapeHtml(job.connection_name)} · ${escapeHtml(labels[job.status] || job.status)}</small>
                 <small><span class="background-job-user-label">Пользователь:</span> ${escapeHtml(job.username || '—')}</small>
@@ -2892,6 +2902,7 @@
         connectionRequest(maintenanceJobsApiUrl, {}).then(data => {
             backgroundJobsErrorNotified = false;
             const jobs = data.jobs || [];
+            latestBackgroundJobs = jobs;
             renderBackgroundJobs(jobs);
             jobs.filter(job => ['queued', 'running'].includes(job.status)).forEach(job => {
                 if (job.kind === 'report') return;
@@ -2913,12 +2924,30 @@
     function initBackgroundJobs() {
         const indicator = document.getElementById('backgroundJobsIndicator');
         const panel = document.getElementById('backgroundJobsPanel');
+        const list = document.getElementById('backgroundJobsList');
+        const clearAllButton = document.getElementById('backgroundJobsClearAllBtn');
+        const saveDismissedJobs = () => {
+            localStorage.setItem(dismissedBackgroundJobsStorageKey, Array.from(dismissedBackgroundJobIds).slice(-100).join(','));
+        };
         indicator?.addEventListener('click', event => {
             event.stopPropagation();
             const open = panel?.hasAttribute('hidden');
             if (open) panel.removeAttribute('hidden'); else panel?.setAttribute('hidden', '');
             indicator.setAttribute('aria-expanded', String(open));
             if (open) loadBackgroundJobs();
+        });
+        panel?.addEventListener('click', event => event.stopPropagation());
+        list?.addEventListener('click', event => {
+            const button = event.target.closest('[data-background-job-clear]');
+            if (!button) return;
+            dismissedBackgroundJobIds.add(button.dataset.backgroundJobClear);
+            saveDismissedJobs();
+            renderBackgroundJobs(latestBackgroundJobs);
+        });
+        clearAllButton?.addEventListener('click', () => {
+            latestBackgroundJobs.filter(job => !['queued', 'running'].includes(job.status)).forEach(job => dismissedBackgroundJobIds.add(String(job.id)));
+            saveDismissedJobs();
+            renderBackgroundJobs(latestBackgroundJobs);
         });
         document.addEventListener('click', () => {
             panel?.setAttribute('hidden', '');
