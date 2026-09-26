@@ -189,4 +189,8 @@ docker stop db-stat
 docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \ 
   sh -c "rm -rf /data/* && tar xzf /backup/db-stat-backup-FILE.tar.gz -C /data" 
 docker start db-stat 
-```
+``` 
+
+## License
+
+[MIT](LICENSE)
