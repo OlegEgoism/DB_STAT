@@ -72,7 +72,7 @@ def _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs):
     """Формирует описание изменения настроек бокового меню для аудита"""
     visible_labels = ", ".join(_sidebar_tab_labels(visible_tabs))
     previous_labels = ", ".join(_sidebar_tab_labels(previous_tabs))
-    return "Настройки сайдбара пользователя изменены: " f"Пользователь: {db_user.login}; " f"Отображаемые вкладки: {visible_labels}; " f"Предыдущие вкладки: {previous_labels}"
+    return f"Настройки сайдбара пользователя изменены: Пользователь: {db_user.login}; Отображаемые вкладки: {visible_labels}; Предыдущие вкладки: {previous_labels}"
 
 
 def _sidebar_settings_for_user(db_user):

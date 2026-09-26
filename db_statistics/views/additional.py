@@ -121,7 +121,7 @@ def login(request):
                         candidate.lockout_until = timezone.now() + timedelta(seconds=settings.LOGIN_LOCKOUT_SECONDS)
                         error = _lockout_message(candidate.lockout_until, is_english)
                     candidate.save(update_fields=["failed_login_attempts", "lockout_until"])
-                    _write_audit("login", f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; " f"попытка №{attempt_number}", db_user=candidate)
+                    _write_audit("login", f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; попытка №{attempt_number}", db_user=candidate)
 
         if not error and db_user:
             request.session.cycle_key()
@@ -437,14 +437,14 @@ def test_connection(request):
         if audit_connection:
             info = _connection_audit_info("Проверка подключения", audit_connection, result="Ошибка", error=safe_error)
         else:
-            info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {safe_error}"
+            info = f"Действие: Проверка нового подключения; Подключение: {name}; Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; Пользователь БД: {params['username']}; Результат: Ошибка; Ошибка: {safe_error}"
         _write_audit("connection_test", info, db_user=audit_user)
         return JsonResponse({"ok": False, "message": safe_error}, status=400)
 
     if audit_connection:
         info = _connection_audit_info("Проверка подключения", audit_connection, result="Успешно")
     else:
-        info = f"Действие: Проверка нового подключения; Подключение: {name}; " f"Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; " f"Пользователь БД: {params['username']}; Результат: Успешно"
+        info = f"Действие: Проверка нового подключения; Подключение: {name}; Хост: {params['host']}; Порт: {params['port']}; База данных: {params['database']}; Пользователь БД: {params['username']}; Результат: Успешно"
     _write_audit("connection_test", info, db_user=audit_user)
     return JsonResponse({"ok": True, "message": f"Подключение к {name} успешно"})
 

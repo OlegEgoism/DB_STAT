@@ -26,4 +26,4 @@ class Command(BaseCommand):
         if configured_password:
             self.stdout.write("The password was read from INITIAL_ADMIN_PASSWORD.")
         else:
-            self.stdout.write(self.style.WARNING(f"Generated one-time initial password: {password}\n" "Save it now: it will not be displayed again."))
+            self.stdout.write(self.style.WARNING(f"Generated one-time initial password: {password}\nSave it now: it will not be displayed again."))
