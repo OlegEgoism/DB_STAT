@@ -1,0 +1,30 @@
+#!/bin/sh
+# Tracked in the repo — activate once per clone with `make hooks`
+# (git config core.hooksPath .githooks). See README's "make hooks" note.
+#
+# Runs `ruff check .` + `ruff format --check .` over the whole project, but
+# only when pushing the dev branch — same scope as .githooks/pre-commit.
+#
+# Unlike pre-commit, this never auto-fixes: by push time the commits you're
+# sending already exist, so a fix applied here wouldn't be part of them —
+# it'd just be a confusing extra diff sitting in your working tree. This is
+# a check only, matching exactly what CI's lint/format-check step does, so
+# a failure here is one you'd hit in CI anyway — just sooner, and local.
+set -eu
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = "dev" ] || exit 0
+
+echo "[pre-push/dev] ruff check . && ruff format --check ."
+
+status=0
+ruff check . || status=1
+ruff format --check . || status=1
+
+if [ "$status" != "0" ]; then
+    echo ""
+    echo "ruff found issues — push aborted. Fix them, commit, then push again:"
+    echo "  make lint-fix && make format"
+    echo "  git add -u && git commit -m \"...\""
+    exit 1
+fi

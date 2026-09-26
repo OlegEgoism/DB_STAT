@@ -134,6 +134,25 @@ python -m ruff check .
 python -m ruff check . --fix 
 python -m ruff format . 
 ``` 
+
+- Run ruff automatically before every commit and push (dev branch only) — one time after cloning:
+
+```bash
+make hooks
+```
+
+After that, on the `dev` branch:
+- every `git commit` runs `ruff check --fix`/`ruff format` on staged `.py` files
+  (`.githooks/pre-commit`). If ruff changes anything, the commit is aborted and the fix
+  is already staged — check `git diff --cached`, then commit again. A partially-staged
+  file (only some of its changes staged) is left untouched, to avoid any risk of
+  touching code you haven't staged.
+- every `git push` additionally checks (no auto-fix — the commits already exist) the
+  whole project: `ruff check .` and `ruff format --check .` (`.githooks/pre-push`) —
+  the same thing CI checks, just sooner and locally.
+
+On `main` and other branches neither hook does anything; CI's own format check covers
+those on push.
  
 ## Make Commands 
  
@@ -141,7 +160,8 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
  
 | Command                                | What it does                                                                                     | 
 |----------------------------------------|--------------------------------------------------------------------------------------------------| 
-| `make install`                         | Install dependencies from requirements.txt                                                       | 
+| `make install`                         | Install dependencies from requirements.txt                                                       |
+| `make hooks`                           | Enable the project's git hooks for this clone (one-time, after cloning)                          | 
 | `make migrations`                      | Generate migrations for Django's built-in apps (`db_statistics` doesn't use migrations)           | 
 | `make migrate`                         | Apply Django migrations and sync `db_statistics` tables                                          | 
 | `make run`                             | Start the development server                                                                     | 

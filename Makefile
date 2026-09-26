@@ -9,7 +9,7 @@ VOLUME_NAME ?= db-stat-data
 PORT ?= 8000
 SQLITE_NAME ?= db.sqlite3
 
-.PHONY: help install migrations migrate run shell admin \
+.PHONY: help install hooks migrations migrate run shell admin \
         lint lint-fix format collectstatic \
         docker-build docker-run docker-stop clean reset-db
 
@@ -18,6 +18,10 @@ help: ## Показать список доступных команд
 
 install: ## Установить зависимости из requirements.txt
 	pip install -r requirements.txt
+
+hooks: ## Включить git-хуки проекта (.githooks) для этого клона — один раз
+	git config core.hooksPath .githooks
+	@echo "Готово. На ветке dev ruff будет прогоняться перед каждым коммитом (.githooks/pre-commit) и перед каждым push (.githooks/pre-push)."
 
 migrations: ## Сгенерировать миграции для встроенных приложений Django (db_statistics их не использует)
 	$(MANAGE) makemigrations

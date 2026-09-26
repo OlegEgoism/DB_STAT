@@ -1,0 +1,63 @@
+#!/bin/sh
+# Tracked in the repo — activate once per clone with `make hooks`
+# (git config core.hooksPath .githooks). See README's "make hooks" note.
+#
+# Runs `ruff check --fix` + `ruff format` on staged Python files, but only
+# when committing to the dev branch — main and other branches commit as-is,
+# per project decision (CI's own lint/format-check step is the gate there).
+#
+# If ruff changes anything, the commit is aborted (fixes are staged for you)
+# so you always review a formatting change before it lands, instead of it
+# silently riding along inside an unrelated commit.
+set -eu
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ "$branch" = "dev" ] || exit 0
+
+staged_py_files=$(git diff --cached --name-only --diff-filter=ACM -- '*.py')
+[ -n "$staged_py_files" ] || exit 0
+
+# Only fully-staged files are safe to auto-format here: reformatting a file
+# that also has unstaged hunks could either pull those hunks into this
+# commit, or — if hidden away first (e.g. via `git stash`) — collide with
+# ruff's own reflow on restore and leave conflict markers sitting in your
+# working tree. Skip those instead; stage the whole file (or run
+# `make format` yourself) if you want it covered too.
+fully_staged=""
+skipped=""
+for f in $staged_py_files; do
+    if git diff --quiet -- "$f"; then
+        fully_staged="$fully_staged $f"
+    else
+        skipped="$skipped $f"
+    fi
+done
+
+if [ -n "$skipped" ]; then
+    echo "[pre-commit/dev] partially-staged, not auto-formatted:$skipped"
+fi
+
+[ -n "$fully_staged" ] || exit 0
+
+echo "[pre-commit/dev] ruff check --fix + ruff format:$fully_staged"
+
+# --exit-zero: unfixable violations are reported by the explicit check below
+# instead of aborting here, so a real ruff-format diff is never masked by an
+# unrelated lint failure raising first.
+ruff check --fix --exit-zero --quiet -- $fully_staged
+ruff format --quiet -- $fully_staged
+
+if ! git diff --quiet -- $fully_staged; then
+    git add -- $fully_staged
+    echo ""
+    echo "ruff changed formatting/style in:$fully_staged"
+    echo "The fix has been staged for you — review it with 'git diff --cached', then commit again."
+    exit 1
+fi
+
+if ! ruff check --quiet -- $fully_staged; then
+    echo ""
+    echo "ruff found issues it can't auto-fix in:$fully_staged"
+    echo "Fix them manually, then commit again."
+    exit 1
+fi
