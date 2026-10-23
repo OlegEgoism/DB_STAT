@@ -517,6 +517,10 @@ def database_toast_table_sizes(request):
     params = []
     if search:
         where_sql, params = _multi_column_search_filter(search, TOAST_TABLE_SEARCH_COLUMNS)
+    # Избранное общее с вкладкой «Таблицы»: ключ — таблица-владелец (схема + имя), а не TOAST-таблица.
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "table", ("parent_namespace.nspname", "parent.relname"))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
 
     toast_tables_query = f"""
         WITH toast_tables AS (

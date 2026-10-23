@@ -1008,13 +1008,15 @@
                             <i class="fas fa-search"></i>
                             <input type="search" id="toastTableSearchInput" placeholder="{% if CURRENT_LANGUAGE == 'en' %}Search by schema, table or TOAST table...{% else %}Поиск по схеме, таблице или TOAST-таблице...{% endif %}" autocomplete="off">
                         </div>
+                        <div class="search-box filter-select-box"><i class="fas fa-star" aria-hidden="true"></i><select id="toastTableFavoritesFilter" aria-label="{% if CURRENT_LANGUAGE == 'en' %}Record filter{% else %}Фильтр записей{% endif %}"><option value="">{% if CURRENT_LANGUAGE == 'en' %}All records{% else %}Все записи{% endif %}</option><option value="favorites">{% if CURRENT_LANGUAGE == 'en' %}Favorites only{% else %}Только избранные{% endif %}</option></select></div>
                     </div>
-                    <p class="text-muted small px-3 pt-2 mb-0">TOAST хранит отдельно значения, не помещающиеся в страницу (TEXT, JSONB, BYTEA и др.). Показаны только TOAST-таблицы с данными; «Доля TOAST» — отношение TOAST (с индексом) к полному размеру таблицы.</p>
+                    <p class="text-muted small px-3 pt-2 mb-0">TOAST хранит отдельно значения, не помещающиеся в страницу (TEXT, JSONB, BYTEA и др.). Звезда добавляет таблицу в избранное (общее с вкладкой «Таблицы»). Показаны только TOAST-таблицы с данными; «Доля TOAST» — отношение TOAST (с индексом) к полному размеру таблицы.</p>
                     <div class="card-body p-0">
                         <div class="table-responsive table-scroll-lg toast-tables-table-scroll">
                             <table class="table table-sm">
                                 <thead>
                                 <tr>
+                                    <th class="favorite-column" title="Избранное"><i class="far fa-star" aria-hidden="true"></i><span class="visually-hidden">Избранное</span></th>
                                     <th>
                                         <button class="table-sort-btn" type="button" data-toast-table-sort="schema_name">Схема <i class="fas fa-sort"></i></button>
                                     </th>
@@ -1040,7 +1042,7 @@
                                 </thead>
                                 <tbody id="toastTablesTableBody">
                                 <tr>
-                                    <td colspan="7" class="text-muted">Выберите сохранённое подключение для загрузки TOAST-таблиц</td>
+                                    <td colspan="8" class="text-muted">Выберите сохранённое подключение для загрузки TOAST-таблиц</td>
                                 </tr>
                                 </tbody>
                             </table>

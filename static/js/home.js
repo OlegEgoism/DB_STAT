@@ -24,7 +24,7 @@
     let functionsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
-    let toastTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'toast_total_bytes', direction: 'desc', search: ''};
+    let toastTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'toast_total_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let toastTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
@@ -287,6 +287,9 @@
         const target = targets[objectType];
         if (target?.state.favoritesOnly && document.getElementById(`page-${target.page}`)?.classList.contains('active')) {
             target.refresh();
+        }
+        if (objectType === 'table' && toastTablesState.favoritesOnly && document.getElementById('page-toast-tables')?.classList.contains('active')) {
+            refreshToastTablesForConnection();
         }
     }
 
@@ -4046,7 +4049,7 @@
         if (count) count.textContent = 'Нет данных';
         if (total) total.textContent = '';
         if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateToastTablePaginationButtons();
     }
 
@@ -4065,7 +4068,7 @@
         if (total) total.textContent = toastTablesState.totalCount ? `${translateInterfaceText('Всего')}: ${data.all_toast_size || '-'}` : '';
         if (info) info.textContent = `Страница ${toastTablesState.page} из ${totalPages}`;
         if (!data.toast_tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">TOAST-таблицы с данными не найдены</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">TOAST-таблицы с данными не найдены</td></tr>';
             updateToastTablePaginationButtons();
             return;
         }
@@ -4075,6 +4078,7 @@
             const toastDetails = `${formatDatabaseSize(table.toast_bytes).value} ${formatDatabaseSize(table.toast_bytes).unit} + ${formatDatabaseSize(table.toast_index_bytes).value} ${formatDatabaseSize(table.toast_index_bytes).unit}`;
             return `
             <tr>
+                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
                 <td>${escapeHtml(table.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td><code>${escapeHtml(table.toast_table_name || '-')}</code></td>
@@ -4100,7 +4104,8 @@
             page_size: toastTablesState.pageSize,
             search: toastTablesState.search,
             sort: toastTablesState.sort,
-            direction: toastTablesState.direction
+            direction: toastTablesState.direction,
+            favorites_only: toastTablesState.favoritesOnly
         })
             .then(data => {
                 if (requestId === toastTablesRequestId) renderToastTables(data);
@@ -4114,6 +4119,11 @@
 
     function initToastTablesControls() {
         let searchTimer = null;
+        document.getElementById('toastTableFavoritesFilter')?.addEventListener('change', function () {
+            toastTablesState.favoritesOnly = this.value === 'favorites';
+            toastTablesState.page = 1;
+            refreshToastTablesForConnection();
+        });
         document.getElementById('toastTableSearchInput')?.addEventListener('input', function () {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(() => {
