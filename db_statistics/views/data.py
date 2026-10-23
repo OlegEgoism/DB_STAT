@@ -12,6 +12,7 @@ SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
 TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
 VIEW_SEARCH_COLUMNS = ("namespace.nspname", "view_class.relname", "(namespace.nspname || '.' || view_class.relname)")
 FUNCTION_SEARCH_COLUMNS = ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_result(procedure.oid)", "pg_catalog.pg_get_function_arguments(procedure.oid)")
+TOAST_TABLE_SEARCH_COLUMNS = ("parent_namespace.nspname", "parent.relname", "toast.relname", "(parent_namespace.nspname || '.' || parent.relname)")
 TEMP_TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
 
 
@@ -499,6 +500,97 @@ def database_temp_table_sizes(request):
     temp_table_distribution = [{"schema_name": row[0], "table_name": row[1], "size_bytes": int(row[2] or 0), "table_size": row[3]} for row in distribution_rows]
     total_count = int(rows[0][6]) if rows else len(temp_table_distribution)
     return JsonResponse({"ok": True, "temp_tables": temp_tables, "temp_table_distribution": temp_table_distribution, "page": page, "page_size": page_size, "total_count": total_count})
+
+
+@require_http_methods(["POST"])
+def database_toast_table_sizes(request):
+    """Возвращает TOAST-таблицы с данными: размер, доля от таблицы-владельца и мёртвые версии строк."""
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload, {"schema_name": "schema_name", "table_name": "table_name", "toast_table_name": "toast_table_name", "toast_total_bytes": "toast_total_bytes", "heap_bytes": "heap_bytes", "toast_share": "toast_share", "dead_chunks": "dead_chunks"}, "toast_total_bytes"
+    )
+
+    where_sql = ""
+    params = []
+    if search:
+        where_sql, params = _multi_column_search_filter(search, TOAST_TABLE_SEARCH_COLUMNS)
+
+    toast_tables_query = f"""
+        WITH toast_tables AS (
+            SELECT
+                parent_namespace.nspname AS schema_name,
+                parent.relname AS table_name,
+                toast.relname AS toast_table_name,
+                pg_relation_size(toast.oid)::bigint AS toast_bytes,
+                pg_indexes_size(toast.oid)::bigint AS toast_index_bytes,
+                pg_total_relation_size(toast.oid)::bigint AS toast_total_bytes,
+                pg_relation_size(parent.oid)::bigint AS heap_bytes,
+                pg_total_relation_size(parent.oid)::bigint AS total_bytes,
+                COALESCE(stat.n_live_tup, 0)::bigint AS live_chunks,
+                COALESCE(stat.n_dead_tup, 0)::bigint AS dead_chunks
+            FROM pg_catalog.pg_class AS parent
+            JOIN pg_catalog.pg_namespace AS parent_namespace
+                ON parent_namespace.oid = parent.relnamespace
+            JOIN pg_catalog.pg_class AS toast
+                ON toast.oid = parent.reltoastrelid
+            LEFT JOIN pg_catalog.pg_stat_all_tables AS stat
+                ON stat.relid = toast.oid
+            WHERE parent.relkind IN ('r', 'm')
+              AND parent.reltoastrelid <> 0
+              AND parent_namespace.nspname NOT IN {EXCLUDED_SYSTEM_SCHEMAS_SQL}
+              AND parent_namespace.nspname NOT LIKE 'pg_toast%%'
+              AND parent_namespace.nspname NOT LIKE 'pg_temp_%%'
+              AND pg_relation_size(toast.oid) > 0
+              {where_sql}
+        )
+        SELECT
+            schema_name,
+            table_name,
+            toast_table_name,
+            toast_bytes,
+            toast_index_bytes,
+            toast_total_bytes,
+            pg_size_pretty(toast_total_bytes) AS toast_total_size,
+            pg_size_pretty(heap_bytes) AS heap_size,
+            heap_bytes,
+            COALESCE(ROUND(100.0 * toast_total_bytes / NULLIF(total_bytes, 0), 1), 0)::float AS toast_share,
+            live_chunks,
+            dead_chunks,
+            COUNT(*) OVER() AS total_count,
+            SUM(toast_total_bytes) OVER()::bigint AS all_toast_bytes,
+            pg_size_pretty(SUM(toast_total_bytes) OVER()::bigint) AS all_toast_size
+        FROM toast_tables
+        ORDER BY {sort_column} {direction}, schema_name ASC, table_name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    rows, error_response = _query_or_error("Не удалось получить TOAST-таблицы", lambda: _fetch_db_rows(db_connection, toast_tables_query, [*params, page_size, offset]))
+    if error_response:
+        return error_response
+
+    toast_tables = [
+        {
+            "schema_name": row[0],
+            "table_name": row[1],
+            "toast_table_name": row[2],
+            "toast_bytes": int(row[3]),
+            "toast_index_bytes": int(row[4]),
+            "toast_total_bytes": int(row[5]),
+            "toast_total_size": row[6],
+            "heap_size": row[7],
+            "heap_bytes": int(row[8]),
+            "toast_share": float(row[9]),
+            "live_chunks": int(row[10]),
+            "dead_chunks": int(row[11]),
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][12]) if rows else 0
+    all_toast_size = rows[0][14] if rows else "0 bytes"
+    return JsonResponse({"ok": True, "toast_tables": toast_tables, "page": page, "page_size": page_size, "total_count": total_count, "all_toast_size": all_toast_size})
 
 
 @require_http_methods(["POST"])

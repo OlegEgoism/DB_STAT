@@ -24,6 +24,8 @@
     let functionsRequestId = 0;
     let tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
     let tempTablesRequestId = 0;
+    let toastTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'toast_total_bytes', direction: 'desc', search: ''};
+    let toastTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
     let distributionPickerActiveIndex = -1;
@@ -68,6 +70,7 @@
     const viewsListApiUrl = '/views/list/';
     const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
+    const toastTablesApiUrl = '/toast-tables/sizes/';
     const deleteTempTableApiUrl = '/temp-tables/delete/';
     const databasePdfReportApiUrl = '/reports/database.pdf';
     const distributionTablesApiUrl = '/distribution/tables/';
@@ -107,6 +110,7 @@
         'functions': 'Функции <small>Список функций</small>',
         'distribution': 'Распределение <small>Перекос данных</small>',
         'temp-tables': 'Временные таблицы <small>Активные временные таблицы</small>',
+        'toast-tables': 'TOAST-таблицы <small>Вынесенные большие значения</small>',
         'queries': 'Активные запросы <small>Долгие запросы</small>',
         'sessions': 'Сессии <small>Пользователи и подключения</small>',
         'locks': 'Блокировки <small>Кто кого блокирует</small>',
@@ -144,8 +148,8 @@
     function getDefaultPageForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         if (!conn) return 'home';
         const preferredPages = isGreenplumCompatibleConnection(conn)
-            ? ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
-            : ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
+            ? ['segments', 'database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'toast-tables', 'distribution', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit']
+            : ['database-overview', 'databases', 'tables', 'views', 'functions', 'temp-tables', 'toast-tables', 'queries', 'sessions', 'locks', 'transactions', 'memory', 'users', 'groups', 'maintenance', 'audit'];
         return preferredPages.find(page => isPageAvailableForConnection(page, conn)) || 'home';
     }
 
@@ -540,6 +544,7 @@
         initViewsControls();
         initFunctionsControls();
         initTempTablesControls();
+        initToastTablesControls();
         initDistributionControls();
         initActiveQueriesControls();
         initActiveSessionsControls();
@@ -4017,6 +4022,136 @@
     }
 
 
+    function updateToastTablePaginationButtons() {
+        const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
+        const prev = document.getElementById('toastTablePrevPageBtn');
+        const next = document.getElementById('toastTableNextPageBtn');
+        if (prev) prev.disabled = toastTablesState.page <= 1;
+        if (next) next.disabled = toastTablesState.page >= totalPages;
+    }
+
+    function updateToastTableSortIndicators() {
+        document.querySelectorAll('[data-toast-table-sort]').forEach(button => {
+            const isActive = button.dataset.toastTableSort === toastTablesState.sort;
+            button.classList.toggle('active', isActive);
+            updateSortHeaderState(button, isActive, toastTablesState.direction);
+        });
+    }
+
+    function renderToastTablesWarning(message) {
+        const tbody = document.getElementById('toastTablesTableBody');
+        const count = document.getElementById('toastTablesCount');
+        const total = document.getElementById('toastTablesTotalSize');
+        const info = document.getElementById('toastTablePaginationInfo');
+        if (count) count.textContent = 'Нет данных';
+        if (total) total.textContent = '';
+        if (info) info.textContent = 'Страница 1 из 1';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        updateToastTablePaginationButtons();
+    }
+
+    function renderToastTables(data) {
+        const tbody = document.getElementById('toastTablesTableBody');
+        const count = document.getElementById('toastTablesCount');
+        const total = document.getElementById('toastTablesTotalSize');
+        const info = document.getElementById('toastTablePaginationInfo');
+        if (!tbody) return;
+        toastTablesState.totalCount = Number(data.total_count) || 0;
+        toastTablesState.page = Number(data.page) || 1;
+        toastTablesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
+        updateToastTableSortIndicators();
+        const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
+        if (count) count.textContent = `${data.toast_tables?.length || 0} из ${toastTablesState.totalCount} TOAST-таблиц`;
+        if (total) total.textContent = toastTablesState.totalCount ? `${translateInterfaceText('Всего')}: ${data.all_toast_size || '-'}` : '';
+        if (info) info.textContent = `Страница ${toastTablesState.page} из ${totalPages}`;
+        if (!data.toast_tables?.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-muted">TOAST-таблицы с данными не найдены</td></tr>';
+            updateToastTablePaginationButtons();
+            return;
+        }
+        tbody.innerHTML = data.toast_tables.map(table => {
+            const share = Number(table.toast_share) || 0;
+            const shareBadge = share >= 50 ? ' <span class="badge bg-warning text-dark">&gt;50%</span>' : '';
+            const toastDetails = `${formatDatabaseSize(table.toast_bytes).value} ${formatDatabaseSize(table.toast_bytes).unit} + ${formatDatabaseSize(table.toast_index_bytes).value} ${formatDatabaseSize(table.toast_index_bytes).unit}`;
+            return `
+            <tr>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td><code>${escapeHtml(table.toast_table_name || '-')}</code></td>
+                <td title="${escapeHtml(toastDetails)}">${escapeHtml(table.toast_total_size || '-')}</td>
+                <td>${escapeHtml(table.heap_size || '-')}</td>
+                <td>${share.toFixed(1)}%${shareBadge}</td>
+                <td>${Number(table.dead_chunks || 0).toLocaleString()}</td>
+            </tr>`;
+        }).join('');
+        updateToastTablePaginationButtons();
+    }
+
+    function refreshToastTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const requestId = ++toastTablesRequestId;
+        if (!conn || !/^\d+$/.test(String(conn.id))) {
+            renderToastTablesWarning('Выберите сохранённое подключение для загрузки TOAST-таблиц');
+            return;
+        }
+        renderToastTablesWarning('Загрузка TOAST-таблиц...');
+        connectionRequest(toastTablesApiUrl, {
+            id: conn.id,
+            page: toastTablesState.page,
+            page_size: toastTablesState.pageSize,
+            search: toastTablesState.search,
+            sort: toastTablesState.sort,
+            direction: toastTablesState.direction
+        })
+            .then(data => {
+                if (requestId === toastTablesRequestId) renderToastTables(data);
+            })
+            .catch(error => {
+                if (requestId === toastTablesRequestId) {
+                    renderToastTablesWarning(error.message || 'Не удалось получить TOAST-таблицы');
+                }
+            });
+    }
+
+    function initToastTablesControls() {
+        let searchTimer = null;
+        document.getElementById('toastTableSearchInput')?.addEventListener('input', function () {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                toastTablesState.search = this.value.trim();
+                toastTablesState.page = 1;
+                refreshToastTablesForConnection();
+            }, 300);
+        });
+        document.querySelectorAll('[data-toast-table-sort]').forEach(button => {
+            button.addEventListener('click', function () {
+                const sort = this.dataset.toastTableSort;
+                if (toastTablesState.sort === sort) {
+                    toastTablesState.direction = toastTablesState.direction === 'asc' ? 'desc' : 'asc';
+                } else {
+                    toastTablesState.sort = sort;
+                    toastTablesState.direction = ['schema_name', 'table_name', 'toast_table_name'].includes(sort) ? 'asc' : 'desc';
+                }
+                toastTablesState.page = 1;
+                refreshToastTablesForConnection();
+            });
+        });
+        document.getElementById('toastTablePrevPageBtn')?.addEventListener('click', function () {
+            if (toastTablesState.page > 1) {
+                toastTablesState.page -= 1;
+                refreshToastTablesForConnection();
+            }
+        });
+        document.getElementById('toastTableNextPageBtn')?.addEventListener('click', function () {
+            const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
+            if (toastTablesState.page < totalPages) {
+                toastTablesState.page += 1;
+                refreshToastTablesForConnection();
+            }
+        });
+        updateToastTableSortIndicators();
+        updateToastTablePaginationButtons();
+    }
+
     function updateTempTableDistributionChart(tables = []) {
         const donut = document.getElementById('tempTableDistributionDonut');
         const summary = document.getElementById('tempTableDistributionSummary');
@@ -4235,6 +4370,7 @@
             ['viewPaginationInfo', 'views', viewsState, refreshViewsForConnection],
             ['functionPaginationInfo', 'functions', functionsState, refreshFunctionsForConnection],
             ['tempTablePaginationInfo', 'temp-tables', tempTablesState, refreshTempTablesForConnection],
+            ['toastTablePaginationInfo', 'toast-tables', toastTablesState, refreshToastTablesForConnection],
             ['usersPaginationInfo', 'users', usersState, refreshUsersForConnection],
             ['groupsPaginationInfo', 'groups', groupsState, refreshGroupsForConnection],
             ['favoritesPaginationInfo', 'favorites', favoritesState, renderFavoritesPage],
@@ -5010,6 +5146,9 @@
         if (pageId === 'functions') {
             refreshFunctionsForConnection(conn);
         }
+        if (pageId === 'toast-tables') {
+            refreshToastTablesForConnection(conn);
+        }
         if (pageId === 'temp-tables') {
             refreshTempTablesForConnection(conn);
         }
@@ -5328,6 +5467,9 @@
         }
         if (document.getElementById('page-functions')?.classList.contains('active')) {
             refreshFunctionsForConnection();
+        }
+        if (document.getElementById('page-toast-tables')?.classList.contains('active')) {
+            refreshToastTablesForConnection();
         }
         if (document.getElementById('page-temp-tables')?.classList.contains('active')) {
             refreshTempTablesForConnection();

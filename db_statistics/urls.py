@@ -24,6 +24,7 @@ urlpatterns = [
     path("distribution/info/", data.distribution_info, name="distribution_info"),
     path("temp-tables/sizes/", data.database_temp_table_sizes, name="database_temp_table_sizes"),
     path("temp-tables/delete/", data.delete_temp_table, name="delete_temp_table"),
+    path("toast-tables/sizes/", data.database_toast_table_sizes, name="database_toast_table_sizes"),
     path("reports/database.pdf", reports.database_pdf_report, name="database_pdf_report"),
     path("queries/active/", performance.active_queries, name="active_queries"),
     path("queries/terminate/", performance.terminate_active_query, name="terminate_active_query"),

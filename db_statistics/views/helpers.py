@@ -41,12 +41,34 @@ def _normalize_sidebar_sections(sections):
     return normalized_sections
 
 
+def _add_new_sidebar_tabs(visible_tabs, known_tabs):
+    """Добавляет вкладки, появившиеся после сохранения настроек, рядом с соседней по порядку вкладкой.
+
+    known_tabs — вкладки, которые пользователь уже видел при последнем сохранении; всё, что
+    он скрыл из известных, остаётся скрытым. Если поля нет (старые настройки), новыми
+    считаются вкладки из SIDEBAR_TABS_ADDED_LATER.
+    """
+    if isinstance(known_tabs, list):
+        known = set(known_tabs)
+    else:
+        known = set(settings.SIDEBAR_TAB_IDS) - settings.SIDEBAR_TABS_ADDED_LATER
+    result = list(visible_tabs)
+    for index, tab_id in enumerate(settings.SIDEBAR_TAB_IDS):
+        if tab_id in known or tab_id in result:
+            continue
+        previous_tabs = [tab for tab in settings.SIDEBAR_TAB_IDS[:index] if tab in result]
+        position = result.index(previous_tabs[-1]) + 1 if previous_tabs else 0
+        result.insert(position, tab_id)
+    return result
+
+
 def _sidebar_settings_values(sidebar_settings):
     """Извлекает нормализованные значения настроек бокового меню"""
     stored_value = sidebar_settings.visible_tabs
     if isinstance(stored_value, dict):
-        return (_normalize_sidebar_tabs(stored_value.get("visible_tabs")), _normalize_sidebar_sections(stored_value.get("section_order")))
-    return _normalize_sidebar_tabs(stored_value), settings.SIDEBAR_SECTION_IDS.copy()
+        visible_tabs = _add_new_sidebar_tabs(_normalize_sidebar_tabs(stored_value.get("visible_tabs")), stored_value.get("known_tabs"))
+        return visible_tabs, _normalize_sidebar_sections(stored_value.get("section_order"))
+    return _add_new_sidebar_tabs(_normalize_sidebar_tabs(stored_value), None), settings.SIDEBAR_SECTION_IDS.copy()
 
 
 def _sidebar_tab_labels(tab_ids):
@@ -79,7 +101,7 @@ def _sidebar_settings_for_user(db_user):
     """Получает или создаёт настройки бокового меню пользователя"""
     sidebar_settings, _created = DBUserSidebarSettings.objects.get_or_create(user=db_user, defaults={"visible_tabs": settings.SIDEBAR_TAB_IDS.copy()})
     normalized_tabs, normalized_sections = _sidebar_settings_values(sidebar_settings)
-    normalized_value = {"visible_tabs": normalized_tabs, "section_order": normalized_sections}
+    normalized_value = {"visible_tabs": normalized_tabs, "section_order": normalized_sections, "known_tabs": settings.SIDEBAR_TAB_IDS.copy()}
     if sidebar_settings.visible_tabs != normalized_value:
         sidebar_settings.visible_tabs = normalized_value
         sidebar_settings.save(update_fields=["visible_tabs", "updated"])

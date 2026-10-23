@@ -161,9 +161,12 @@ RATE_LIMIT_MAINTENANCE_OPERATION_WINDOW_SECONDS = 60
 LOCALHOST_NAMES = {"localhost", "::1"}
 LOCALHOST_DB_HOST = os.getenv("LOCALHOST_DB_HOST", "127.0.0.1").strip() or "127.0.0.1"
 
-SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "functions", "temp-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
+SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "views", "functions", "temp-tables", "toast-tables", "distribution", "queries", "sessions", "locks", "transactions", "memory", "users", "groups", "maintenance", "favorites", "audit", "settings"]
 SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
 FIXED_SIDEBAR_TAB_IDS = {"settings"}
+# Вкладки, добавленные позже других: у пользователей с уже сохранёнными настройками они
+# показываются один раз автоматически (см. known_tabs в views/helpers.py).
+SIDEBAR_TABS_ADDED_LATER = {"toast-tables"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",
     "segments": "Сегменты",
@@ -172,6 +175,7 @@ SIDEBAR_TAB_LABELS = {
     "views": "Представления",
     "functions": "Функции",
     "temp-tables": "Временные таблицы",
+    "toast-tables": "TOAST-таблицы",
     "distribution": "Распределение",
     "queries": "Активные запросы",
     "sessions": "Сессии",

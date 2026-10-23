@@ -177,7 +177,7 @@ def sidebar_settings(request):
     visible_tabs = _normalize_sidebar_tabs(payload.get("visible_tabs"))
     visible_tabs = [tab_id for tab_id in visible_tabs if tab_id in available_tabs]
     section_order = _normalize_sidebar_sections(payload.get("section_order"))
-    sidebar_prefs.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order}
+    sidebar_prefs.visible_tabs = {"visible_tabs": visible_tabs, "section_order": section_order, "known_tabs": settings.SIDEBAR_TAB_IDS.copy()}
     sidebar_prefs.save(update_fields=["visible_tabs", "updated"])
     _write_audit("sidebar_settings", _sidebar_settings_audit_info(db_user, visible_tabs, previous_tabs), db_user=db_user)
     return JsonResponse({"ok": True, "available_tabs": available_tabs, "visible_tabs": visible_tabs, "section_order": section_order})
