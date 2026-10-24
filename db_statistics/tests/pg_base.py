@@ -20,6 +20,7 @@ from db_statistics.views.pool import _close_connection_pools_for
 
 PASSWORD = "integration-test-password"
 SCHEMA = "dbstat_it"
+ROLE_GROUP = "dbstat_it_group"
 
 
 def _target_settings():
@@ -48,6 +49,7 @@ class PostgresTestCase(TestCase):
         if cls.target is not None:
             with cls._target_connection() as connection, connection.cursor() as cursor:
                 cursor.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
+                cursor.execute(f"DROP ROLE IF EXISTS {ROLE_GROUP}")
 
     @classmethod
     def _target_connection(cls):
@@ -70,6 +72,9 @@ class PostgresTestCase(TestCase):
             cursor.execute(f"CREATE TABLE {SCHEMA}.small (id int)")
             cursor.execute(f"INSERT INTO {SCHEMA}.small VALUES (1)")
             cursor.execute(f"ANALYZE {SCHEMA}.orders, {SCHEMA}.documents, {SCHEMA}.small")
+            # Роли кластерные: создаём и удаляем в тестовом классе, чтобы не оставлять следов.
+            cursor.execute(f"DROP ROLE IF EXISTS {ROLE_GROUP}")
+            cursor.execute(f"CREATE ROLE {ROLE_GROUP} NOLOGIN")
 
     def setUp(self):
         self.user = DBUser.objects.create_user(login="it_analyst", email="it_analyst@example.com", password=PASSWORD)

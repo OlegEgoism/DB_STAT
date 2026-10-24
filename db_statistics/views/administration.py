@@ -6,9 +6,9 @@ from django.views.decorators.http import require_http_methods
 from db_statistics.models import MaintenanceJob, ReportJob
 from db_statistics.views.audit import _maintenance_operation_audit_info, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _rate_limit_exceeded, _rate_limit_response, _require_payload_connection
-from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _database_roles_list, _format_bytes, _parse_pg_size_to_bytes, _read_json_body
+from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _format_bytes, _parse_pg_size_to_bytes, _read_json_body
 from db_statistics.views.maintenance import _serialize_maintenance_job, _submit_maintenance_job
-from db_statistics.views.pagination import _escape_like_pattern, _list_query_params
+from db_statistics.views.pagination import _escape_like_pattern, _favorite_filter, _list_query_params, _multi_column_search_filter
 from db_statistics.views.pool import _fetch_db_row, _fetch_db_rows, _query_or_error
 from db_statistics.views.reports import _ensure_report_job_table, _serialize_report_job
 
@@ -233,3 +233,109 @@ def maintenance_jobs(request):
     report_jobs = [_serialize_report_job(job) for job in ReportJob.objects.select_related("connection", "user").filter(user=db_user)[:25]]
     jobs = sorted([*maintenance_jobs, *report_jobs], key=lambda job: job["created"], reverse=True)[:25]
     return JsonResponse({"ok": True, "jobs": jobs})
+
+
+def _format_role_timestamp(value):
+    """Форматирует срок действия роли базы данных."""
+    if value is None:
+        return "Бессрочно"
+    return value.strftime("%Y-%m-%d %H:%M:%S") if hasattr(value, "strftime") else str(value)
+
+
+def _role_flag(value):
+    """Преобразует логический признак роли в отображаемое значение."""
+    return "Да" if value else "Нет"
+
+
+def _database_roles_list(request, *, can_login):
+    """Возвращает отфильтрованный список пользователей или групп базы данных."""
+    payload = _read_json_body(request)
+    db_connection, error_response = _require_payload_connection(request, payload)
+    if error_response:
+        return error_response
+    page, page_size, offset, search, sort_column, direction = _list_query_params(
+        payload,
+        {"name": "name", "superuser": "superuser", "createdb": "createdb", "createrole": "createrole", "inherit": "inherit", "replication": "replication", "connection_limit": "connection_limit", "valid_until": "valid_until", "member_count": "member_count"},
+        "name",
+        default_page_size=settings.PAGINATION_DEFAULT_PAGE_SIZE,
+    )
+    role_type_message = "пользователей" if can_login else "групп"
+
+    where_sql = ""
+    params = [can_login]
+    if search:
+        search_sql, search_params = _multi_column_search_filter(search, ("role_info.rolname",))
+        where_sql = search_sql
+        params.extend(search_params)
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "user" if can_login else "group", ("role_info.rolname",))
+    where_sql += f" {favorite_sql}"
+    params.extend(favorite_params)
+
+    roles_query = f"""
+        WITH roles AS (
+            SELECT
+                role_info.rolname AS name,
+                role_info.rolsuper AS superuser,
+                role_info.rolcreatedb AS createdb,
+                role_info.rolcreaterole AS createrole,
+                role_info.rolinherit AS inherit,
+                role_info.rolreplication AS replication,
+                role_info.rolconnlimit AS connection_limit,
+                role_info.rolvaliduntil AS valid_until,
+                COUNT(membership.member)::bigint AS member_count
+            FROM pg_catalog.pg_roles AS role_info
+            LEFT JOIN pg_catalog.pg_auth_members AS membership
+                ON membership.roleid = role_info.oid
+            WHERE role_info.rolcanlogin = %s
+              {where_sql}
+            GROUP BY
+                role_info.rolname,
+                role_info.rolsuper,
+                role_info.rolcreatedb,
+                role_info.rolcreaterole,
+                role_info.rolinherit,
+                role_info.rolreplication,
+                role_info.rolconnlimit,
+                role_info.rolvaliduntil
+        )
+        SELECT
+            name,
+            superuser,
+            createdb,
+            createrole,
+            inherit,
+            replication,
+            connection_limit,
+            valid_until,
+            member_count,
+            COUNT(*) OVER() AS total_count,
+            SUM(CASE WHEN superuser THEN 1 ELSE 0 END) OVER() AS superuser_count,
+            SUM(CASE WHEN createdb THEN 1 ELSE 0 END) OVER() AS createdb_count,
+            SUM(CASE WHEN replication THEN 1 ELSE 0 END) OVER() AS replication_count,
+            SUM(CASE WHEN superuser OR createdb OR createrole OR replication THEN 1 ELSE 0 END) OVER() AS privileged_count
+        FROM roles
+        ORDER BY {sort_column} {direction}, name ASC
+        LIMIT %s OFFSET %s;
+    """
+
+    rows, error_response = _query_or_error(f"Не удалось получить список {role_type_message}", lambda: _fetch_db_rows(db_connection, roles_query, [*params, page_size, offset]))
+    if error_response:
+        return error_response
+
+    roles = [
+        {
+            "name": row[0],
+            "superuser": _role_flag(row[1]),
+            "createdb": _role_flag(row[2]),
+            "createrole": _role_flag(row[3]),
+            "inherit": _role_flag(row[4]),
+            "replication": _role_flag(row[5]),
+            "connection_limit": "Без лимита" if row[6] == -1 else str(row[6]),
+            "valid_until": _format_role_timestamp(row[7]),
+            "member_count": int(row[8] or 0),
+        }
+        for row in rows
+    ]
+    total_count = int(rows[0][9]) if rows else 0
+    summary = {"total_count": total_count, "superuser_count": int(rows[0][10]) if rows else 0, "createdb_count": int(rows[0][11]) if rows else 0, "replication_count": int(rows[0][12]) if rows else 0, "privileged_count": int(rows[0][13]) if rows else 0}
+    return JsonResponse({"ok": True, "roles": roles, "page": page, "page_size": page_size, "total_count": total_count, "summary": summary})

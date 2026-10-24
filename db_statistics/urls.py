@@ -36,7 +36,6 @@ urlpatterns = [
     path("transactions/terminate/", performance.terminate_idle_transaction, name="terminate_idle_transaction"),
     path("memory/overview/", administration.memory_overview, name="memory_overview"),
     path("maintenance/stats/", administration.maintenance_stats, name="maintenance_stats"),
-    path("maintenance/vacuum/", administration.maintenance_operation, name="maintenance_vacuum"),
     path("maintenance/operation/", administration.maintenance_operation, name="maintenance_operation"),
     path("maintenance/jobs/", administration.maintenance_jobs, name="maintenance_jobs"),
     path("users/list/", administration.database_users_list, name="database_users_list"),
