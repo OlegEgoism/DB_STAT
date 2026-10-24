@@ -52,7 +52,10 @@ SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", False)
 if _env_bool("SECURE_PROXY_SSL_HEADER", False):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "db_statistics.apps.DbStatisticsConfig"]
+# db_statistics стоит перед staticfiles: Django выбирает команду с тем же именем из первого приложения
+# в этом списке, а db_statistics переопределяет runserver (восстановление задач при старте, см.
+# db_statistics/management/commands/runserver.py). Наследник сохраняет раздачу статики staticfiles.
+INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "db_statistics.apps.DbStatisticsConfig", "django.contrib.staticfiles"]
 # Модели приложения исторически создаются через migrate --run-syncdb, а не
 # через миграции. Явная отметка нужна в том числе для корректного создания
 # тестовой БД при наличии пустого пакета migrations.
@@ -230,7 +233,14 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"verbose": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "filters": {"service_unavailable_as_warning": {"()": "db_statistics.logging_filters.ServiceUnavailableWarningFilter"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
     "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": False}, "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False}, "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False}},
+    # 503 — намеренный ответ (блокировка, таймаут, исчерпанный пул), а не сбой: журналируем как WARNING.
+    # Уровень django.request остаётся ERROR, поэтому 4xx по-прежнему не попадают в журнал.
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False, "filters": ["service_unavailable_as_warning"]},
+        "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
 }

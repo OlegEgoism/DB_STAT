@@ -47,9 +47,9 @@ class RecoverCommandTests(TestCase):
     def setUp(self):
         self.connection = _connection()
 
-    @mock.patch("db_statistics.management.commands.recover_maintenance_jobs._submit_report_job")
-    @mock.patch("db_statistics.management.commands.recover_maintenance_jobs._submit_maintenance_job")
-    def test_command_requeues_and_resubmits_interrupted_jobs(self, submit_maintenance, submit_report):
+    @mock.patch("db_statistics.views.reports._submit_report_job")
+    @mock.patch("db_statistics.views.maintenance._submit_maintenance_job")
+    def test_command_only_requeues_interrupted_jobs_without_submitting(self, submit_maintenance, submit_report):
         job = MaintenanceJob.objects.create(connection=self.connection, operation="vacuum", schema_name="s", table_name="t", status="running")
         report = ReportJob.objects.create(connection=self.connection, status="running")
 
@@ -59,8 +59,8 @@ class RecoverCommandTests(TestCase):
         report.refresh_from_db()
         self.assertEqual(job.status, "queued")
         self.assertEqual(report.status, "queued")
-        submit_maintenance.assert_called_once_with(job.pk)
-        submit_report.assert_called_once_with(report.pk)
+        submit_maintenance.assert_not_called()
+        submit_report.assert_not_called()
 
 
 class OrphanedJobSweepTests(TestCase):

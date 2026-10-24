@@ -118,7 +118,7 @@ python manage.py ensure_initial_admin
 python manage.py encrypt_connection_passwords
 ```
 
-- Возврат прерванных фоновых задач (VACUUM/ANALYZE и PDF-отчёты) в очередь после аварийной остановки сервера. В Docker выполняется автоматически при старте; при запуске через `runserver` выполните один раз перед стартом
+- Возврат прерванных фоновых задач (VACUUM/ANALYZE и PDF-отчёты) в очередь после аварийной остановки сервера. В Docker выполняется автоматически при старте; `runserver` восстанавливает задачи автоматически
 
 ```bash
 python manage.py recover_maintenance_jobs
@@ -178,6 +178,14 @@ docker build -t db-stat .
 ```bash
 docker run --name db-stat --rm -p 8000:8000 olegegoism/db-stat:latest
 ```
+
+- Бюджет соединений с целевыми БД. Каждый воркер gunicorn (`GUNICORN_WORKERS`, по умолчанию 3) держит свой пул: на каждое сохранённое подключение — до `DB_CONNECTION_POOL_MAX_CONN` соединений (по умолчанию 10). Фоновые задачи (VACUUM/ANALYZE и PDF-отчёты) берут соединения из тех же пулов.
+
+```
+Итого на целевой БД ≈ GUNICORN_WORKERS × DB_CONNECTION_POOL_MAX_CONN × число сохранённых подключений в работе
+```
+
+Например, 3 воркера × 10 соединений × 2 подключения дают до 60 соединений на целевой БД. Проверьте, что это укладывается в `max_connections` целевой БД с запасом для других клиентов. Если пул исчерпан, приложение отвечает 503 «Превышен лимит соединений с целевой БД». При `DB_CONNECTION_POOL_MAX_CONN` больше 20 `manage.py check` выводит предупреждение `db_statistics.W003`. Подробности — в `.env.example`.
 
 ## Резервное копирование
 
