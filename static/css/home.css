@@ -2212,7 +2212,7 @@ body {
     font-size: 13px;
 }
 
-.form-control, .form-select {
+.form-control {
     background: var(--bg-primary);
     border: 1px solid var(--sidebar-border);
     border-radius: var(--radius-sm);
@@ -2222,7 +2222,7 @@ body {
     transition: all 0.2s ease;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus {
     background: var(--bg-secondary);
     border-color: var(--accent-blue);
     box-shadow: 0 0 0 3px var(--glow-blue);
@@ -2557,12 +2557,6 @@ body {
     filter: var(--date-picker-filter, none);
 }
 
-.toolbar-filter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
 .toolbar-filter-group {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
@@ -2576,15 +2570,6 @@ body {
 .toolbar-filter-group .filter-select-box--wide {
     width: 100%;
 }
-
-.toolbar-filter label {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
 
 .search-box {
     display: flex;
@@ -2742,10 +2727,6 @@ body {
 .filter-select__option:focus-visible i,
 .filter-select__option.is-selected i {
     color: #b7f000;
-}
-
-#databasePdfReportBtn.is-loading i {
-    animation: fa-spin 1s linear infinite;
 }
 
 #auditActionFilter option[value=""] {
@@ -3862,9 +3843,6 @@ body.sidebar-collapsed .nav-item .nav-icon {
     min-height: 180px;
 }
 
-.settings-tab-panel .form-select {
-    max-width: 320px;
-}
 
 .reports-settings-table-wrap { border: 1px solid var(--sidebar-border); border-radius: var(--radius-md); }
 .reports-settings-filters { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
