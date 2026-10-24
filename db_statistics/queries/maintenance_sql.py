@@ -1,4 +1,6 @@
-"""Запросы обслуживания: завершение сессии и статистика таблицы после VACUUM/ANALYZE."""
+"""Запросы обслуживания: команды VACUUM/ANALYZE/EXPLAIN, завершение сессии, статистика таблицы."""
+
+from psycopg2 import sql
 
 
 def terminate_backend_sql(*, require_active):
@@ -41,3 +43,12 @@ TABLE_STATISTICS_SQL = """
                     FROM pg_catalog.pg_stat_user_tables
                     WHERE schemaname = %s AND relname = %s
 """
+
+
+def operation_statement(operation, table_identifier):
+    """Команда обслуживания для таблицы. table_identifier — psycopg2.sql.Identifier, значения не подставляются."""
+    if operation in {"vacuum", "vacuum_full"}:
+        return sql.SQL("VACUUM {mode} {table}").format(mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""), table=table_identifier)
+    if operation == "analyze":
+        return sql.SQL("ANALYZE {table}").format(table=table_identifier)
+    return sql.SQL("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) SELECT * FROM {table}").format(table=table_identifier)

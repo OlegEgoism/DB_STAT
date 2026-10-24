@@ -107,12 +107,7 @@ def _run_maintenance_operation(job_id):
     try:
         db_connection = DBConnection.objects.get(pk=connection_id)
         table_identifier = sql.Identifier(schema_name, table_name)
-        if operation in {"vacuum", "vacuum_full"}:
-            statement = sql.SQL("VACUUM {mode} {table}").format(mode=sql.SQL("FULL") if operation == "vacuum_full" else sql.SQL(""), table=table_identifier)
-        elif operation == "analyze":
-            statement = sql.SQL("ANALYZE {table}").format(table=table_identifier)
-        else:
-            statement = sql.SQL("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) SELECT * FROM {table}").format(table=table_identifier)
+        statement = maintenance_sql.operation_statement(operation, table_identifier)
         # VACUUM запрещён внутри транзакции, поэтому autocommit включается
         # сразу после открытия соединения, до выполнения запроса.
         with _open_database_connection(db_connection, background=True) as connection:
