@@ -71,6 +71,9 @@ class PostgresTestCase(TestCase):
             # Без TEXT/JSONB и без TOAST-таблицы с данными: в TOAST-списке её быть не должно.
             cursor.execute(f"CREATE TABLE {SCHEMA}.small (id int)")
             cursor.execute(f"INSERT INTO {SCHEMA}.small VALUES (1)")
+            cursor.execute(f"CREATE VIEW {SCHEMA}.v_orders AS SELECT id, note FROM {SCHEMA}.orders")
+            cursor.execute(f"CREATE MATERIALIZED VIEW {SCHEMA}.mv_orders AS SELECT id FROM {SCHEMA}.orders")
+            cursor.execute(f"CREATE FUNCTION {SCHEMA}.f_orders_count() RETURNS bigint LANGUAGE sql AS 'SELECT count(*) FROM {SCHEMA}.orders'")
             cursor.execute(f"ANALYZE {SCHEMA}.orders, {SCHEMA}.documents, {SCHEMA}.small")
             # Роли кластерные: создаём и удаляем в тестовом классе, чтобы не оставлять следов.
             cursor.execute(f"DROP ROLE IF EXISTS {ROLE_GROUP}")
