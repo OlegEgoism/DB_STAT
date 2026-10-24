@@ -1,7 +1,4 @@
-"""Session/login state, per-request permission checks, and rate limiting.
-
-Split out of views/helpers.py (see its module docstring).
-"""
+"""Session/login state, per-request permission checks, and rate limiting."""
 
 from decimal import Decimal, InvalidOperation
 

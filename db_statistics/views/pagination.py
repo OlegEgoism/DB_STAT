@@ -1,7 +1,4 @@
-"""Pagination, search, and favorites-filter helpers shared by the list views.
-
-Split out of views/helpers.py (see its module docstring).
-"""
+"""Pagination, search, and favorites-filter helpers shared by the list views."""
 
 from django.conf import settings
 from django.db import OperationalError, ProgrammingError

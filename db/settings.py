@@ -60,7 +60,7 @@ INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib
 # появления миграций, переносятся на них командой migrate: см. db_statistics/management/commands/migrate.py.
 
 # DBUser — единый пользователь и для входа в само приложение (см. собственную
-# сессионную аутентификацию в views.helpers._current_db_user), и для входа в
+# сессионную аутентификацию в views.auth._current_db_user), и для входа в
 # Django admin (через стандартный django.contrib.auth). Обычный auth.User
 # больше не используется.
 AUTH_USER_MODEL = "db_statistics.DBUser"
@@ -127,7 +127,7 @@ STORAGES = {"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"
 CONNECTION_TIMEOUT_SECONDS = 5
 
 # Пул psycopg2-соединений на каждое сохранённое подключение (см.
-# db_statistics.views.helpers._get_connection_pool), а не новое TCP-соединение
+# db_statistics.views.pool._get_connection_pool), а не новое TCP-соединение
 # и SSL/auth-рукопожатие на каждый запрос — особенно важно для частого поллинга
 # (активные запросы/сессии/блокировки) и для Greenplum, где установка
 # соединения заметно дороже, чем на обычном PostgreSQL. Пул создаётся лениво
@@ -164,7 +164,7 @@ SESSION_EXPIRES_AT_KEY = "session_expires_at"
 LOGIN_MAX_FAILED_ATTEMPTS = 5
 LOGIN_LOCKOUT_SECONDS = 5 * 60
 
-# Ограничение частоты (см. views.helpers._rate_limit_exceeded) для действий,
+# Ограничение частоты (см. views.auth._rate_limit_exceeded) для действий,
 # которые не защищены блокировкой логина, но всё равно не должны выполняться
 # без ограничений: проверка подключения (потенциальный скан внутренней сети)
 # и запуск обслуживания (VACUUM FULL блокирует таблицу на целевой БД).
@@ -180,7 +180,7 @@ SIDEBAR_TAB_IDS = ["database-overview", "segments", "databases", "tables", "view
 SIDEBAR_SECTION_IDS = ["infrastructure", "data", "performance", "administration", "additional"]
 FIXED_SIDEBAR_TAB_IDS = {"settings"}
 # Вкладки, добавленные позже других: у пользователей с уже сохранёнными настройками они
-# показываются один раз автоматически (см. known_tabs в views/helpers.py).
+# показываются один раз автоматически (см. known_tabs в views/sidebar.py).
 SIDEBAR_TABS_ADDED_LATER = {"toast-tables"}
 SIDEBAR_TAB_LABELS = {
     "database-overview": "База данных",

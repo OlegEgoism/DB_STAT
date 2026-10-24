@@ -1,8 +1,6 @@
 """Background maintenance jobs (VACUUM/ANALYZE/EXPLAIN) and backend termination.
 
-Split out of views/helpers.py (see its module docstring). Grouped together
-because both are admin-triggered, audited actions against the target DB that
-run through the connection pool.
+Обе операции запускает администратор, они аудируются и работают с целевой БД через пул соединений.
 """
 
 import logging

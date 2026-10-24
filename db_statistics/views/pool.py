@@ -1,8 +1,7 @@
 """Target-database connection handling: parameter building, pooling, and query execution.
 
-Split out of views/helpers.py (see its module docstring) because this is the
-most self-contained, concurrency-sensitive piece — it has no dependency on
-auth/session/audit concerns, only on settings and psycopg2.
+Это самая самостоятельная и чувствительная к конкурентности часть: она зависит только от настроек
+и psycopg2, без сессий, прав и аудита.
 """
 
 import hashlib

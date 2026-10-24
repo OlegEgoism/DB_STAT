@@ -8,9 +8,6 @@
 
 import json
 
-# Реэкспорт для views/reports.py, который пока импортирует форматтер отсюда; новый код берёт его из formatting.py.
-from db_statistics.views.formatting import _format_bytes  # noqa: F401
-
 
 def _connection_to_dict(connection):
     """Преобразует подключение в словарь для JSON-ответа"""

@@ -22,7 +22,8 @@ from db_statistics.models import ReportJob
 from db_statistics.queries import report_sql
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _require_payload_connection
-from db_statistics.views.helpers import _format_bytes, _read_json_body
+from db_statistics.views.formatting import _format_bytes
+from db_statistics.views.helpers import _read_json_body
 from db_statistics.views.pool import _fetch_db_rows, _safe_db_error_message
 
 logger = logging.getLogger(__name__)

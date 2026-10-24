@@ -1,7 +1,4 @@
-"""Audit-log writing and formatting helpers.
-
-Split out of views/helpers.py (see its module docstring).
-"""
+"""Audit-log writing and formatting helpers."""
 
 from django.utils import timezone
 
