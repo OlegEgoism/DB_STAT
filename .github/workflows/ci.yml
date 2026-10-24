@@ -141,7 +141,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/e2e"
           echo "SQLITE_NAME=$RUNNER_TEMP/e2e/db.sqlite3" >> "$GITHUB_ENV"
           export SQLITE_NAME="$RUNNER_TEMP/e2e/db.sqlite3"
-          python manage.py migrate --noinput --run-syncdb
+          python manage.py migrate --noinput
           python manage.py ensure_initial_admin
 
       - name: Start the application (runserver without reloader)
