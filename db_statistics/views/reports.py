@@ -17,12 +17,12 @@ from django.utils import timezone, translation
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.models import ReportJob
+from db_statistics.queries import report_sql
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _require_payload_connection
 from db_statistics.views.helpers import _format_bytes, _read_json_body
 from db_statistics.views.pool import _fetch_db_rows, _safe_db_error_message
 
-_MAX_ROWS = 50
 logger = logging.getLogger(__name__)
 _report_job_schema_lock = Lock()
 
@@ -146,11 +146,10 @@ def _report_sections(db_connection, language="ru"):
     def t(ru, en):
         return _label(language, ru, en)
 
-    user_schemas = "namespace.nspname NOT IN ('pg_catalog', 'information_schema') AND namespace.nspname NOT LIKE 'pg_toast%%'"
     definitions = [
         (
             t("Общая информация", "General information"),
-            """SELECT version(), current_database(), pg_database_size(current_database()), current_setting('server_encoding'), current_setting('TimeZone'), pg_postmaster_start_time(), now() - pg_postmaster_start_time(), (SELECT count(*) FROM pg_stat_activity), current_setting('max_connections')""",
+            report_sql.REPORT_GENERAL_INFO_SQL,
             None,
             [
                 t("Версия", "Version"),
@@ -164,15 +163,10 @@ def _report_sections(db_connection, language="ru"):
                 t("Максимум подключений", "Maximum connections"),
             ],
         ),
-        (
-            t("Размеры схем", "Schema sizes"),
-            f"""SELECT namespace.nspname, pg_get_userbyid(namespace.nspowner), count(rel.oid), COALESCE(sum(pg_total_relation_size(rel.oid)), 0), pg_size_pretty(COALESCE(sum(pg_total_relation_size(rel.oid)), 0)) FROM pg_namespace namespace LEFT JOIN pg_class rel ON rel.relnamespace=namespace.oid AND rel.relkind IN ('r','p','m') WHERE {user_schemas} GROUP BY namespace.nspname, namespace.nspowner ORDER BY 4 DESC LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Схема", "Schema"), t("Владелец", "Owner"), t("Таблиц", "Tables"), t("Байт", "Bytes"), t("Размер", "Size")],
-        ),
+        (t("Размеры схем", "Schema sizes"), report_sql.REPORT_SCHEMA_SIZES_SQL, None, [t("Схема", "Schema"), t("Владелец", "Owner"), t("Таблиц", "Tables"), t("Байт", "Bytes"), t("Размер", "Size")]),
         (
             t("Сводка производительности", "Performance summary"),
-            """SELECT numbackends, xact_commit, xact_rollback, blks_hit, blks_read, ROUND(100.0 * blks_hit / NULLIF(blks_hit + blks_read, 0), 2), tup_returned, tup_fetched, tup_inserted, tup_updated, tup_deleted, temp_files, temp_bytes, deadlocks, blk_read_time, blk_write_time, stats_reset FROM pg_stat_database WHERE datname=current_database()""",
+            report_sql.REPORT_PERFORMANCE_SUMMARY_SQL,
             None,
             [
                 t("Подключения", "Connections"),
@@ -196,92 +190,35 @@ def _report_sections(db_connection, language="ru"):
         ),
         (
             t("Крупнейшие таблицы", "Largest tables"),
-            f"""SELECT namespace.nspname, rel.relname, pg_get_userbyid(rel.relowner), pg_total_relation_size(rel.oid), pg_size_pretty(pg_total_relation_size(rel.oid)), pg_indexes_size(rel.oid), pg_size_pretty(pg_indexes_size(rel.oid)), GREATEST(rel.reltuples::bigint,0) FROM pg_class rel JOIN pg_namespace namespace ON namespace.oid=rel.relnamespace WHERE rel.relkind IN ('r','p') AND {user_schemas} ORDER BY 4 DESC LIMIT {_MAX_ROWS}""",
+            report_sql.REPORT_LARGEST_TABLES_SQL,
             None,
             [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size"), t("Индексы, байт", "Indexes, bytes"), t("Индексы", "Indexes"), t("Строк", "Rows")],
         ),
-        (
-            t("Временные таблицы", "Temporary tables"),
-            f"""SELECT namespace.nspname, rel.relname, pg_get_userbyid(rel.relowner), pg_total_relation_size(rel.oid), pg_size_pretty(pg_total_relation_size(rel.oid)) FROM pg_class rel JOIN pg_namespace namespace ON namespace.oid=rel.relnamespace WHERE rel.relkind IN ('r','p') AND (rel.relpersistence='t' OR namespace.nspname LIKE 'pg_temp_%%') ORDER BY 4 DESC LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size")],
-        ),
-        (
-            t("Активные запросы", "Active queries"),
-            f"""SELECT pid, usename, state, now()-query_start, query FROM pg_stat_activity WHERE state='active' AND pid<>pg_backend_pid() ORDER BY query_start LIMIT {_MAX_ROWS}""",
-            None,
-            ["PID", t("Пользователь", "User"), t("Состояние", "State"), t("Длительность", "Duration"), "SQL"],
-        ),
-        (
-            t("Активные сессии", "Active sessions"),
-            f"""SELECT pid, usename, datname, application_name, COALESCE(client_addr::text,'local'), state, now()-backend_start FROM pg_stat_activity ORDER BY backend_start LIMIT {_MAX_ROWS}""",
-            None,
-            ["PID", t("Пользователь", "User"), t("База", "Database"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Длительность", "Duration")],
-        ),
-        (
-            t("Блокировки", "Locks"),
-            f"""SELECT blocked.pid, blocked.usename, blocker.pid, blocker.usename, now()-blocked.query_start, blocked.query FROM pg_stat_activity blocked CROSS JOIN LATERAL unnest(pg_blocking_pids(blocked.pid)) blocker_pid JOIN pg_stat_activity blocker ON blocker.pid=blocker_pid ORDER BY blocked.query_start LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Заблокирован PID", "Blocked PID"), t("Пользователь", "User"), t("Блокирует PID", "Blocking PID"), t("Пользователь", "User"), t("Длительность", "Duration"), "SQL"],
-        ),
-        (
-            t("Незавершённые транзакции", "Open transactions"),
-            f"""SELECT pid, usename, application_name, COALESCE(client_addr::text,'local'), state, now()-xact_start, query FROM pg_stat_activity WHERE xact_start IS NOT NULL AND pid<>pg_backend_pid() ORDER BY xact_start LIMIT {_MAX_ROWS}""",
-            None,
-            ["PID", t("Пользователь", "User"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Возраст", "Age"), "SQL"],
-        ),
-        (
-            t("Ожидания сессий", "Session waits"),
-            """SELECT COALESCE(wait_event_type, 'CPU / без ожидания'), COALESCE(wait_event, '—'), count(*) FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid() GROUP BY wait_event_type, wait_event ORDER BY 3 DESC""",
-            None,
-            [t("Тип ожидания", "Wait type"), t("Событие", "Event"), t("Сессий", "Sessions")],
-        ),
+        (t("Временные таблицы", "Temporary tables"), report_sql.REPORT_TEMP_TABLES_SQL, None, [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size")]),
+        (t("Активные запросы", "Active queries"), report_sql.REPORT_ACTIVE_QUERIES_SQL, None, ["PID", t("Пользователь", "User"), t("Состояние", "State"), t("Длительность", "Duration"), "SQL"]),
+        (t("Активные сессии", "Active sessions"), report_sql.REPORT_ACTIVE_SESSIONS_SQL, None, ["PID", t("Пользователь", "User"), t("База", "Database"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Длительность", "Duration")]),
+        (t("Блокировки", "Locks"), report_sql.REPORT_LOCKS_SQL, None, [t("Заблокирован PID", "Blocked PID"), t("Пользователь", "User"), t("Блокирует PID", "Blocking PID"), t("Пользователь", "User"), t("Длительность", "Duration"), "SQL"]),
+        (t("Незавершённые транзакции", "Open transactions"), report_sql.REPORT_IDLE_TRANSACTIONS_SQL, None, ["PID", t("Пользователь", "User"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Возраст", "Age"), "SQL"]),
+        (t("Ожидания сессий", "Session waits"), report_sql.REPORT_WAIT_EVENTS_SQL, None, [t("Тип ожидания", "Wait type"), t("Событие", "Event"), t("Сессий", "Sessions")]),
         (
             t("Эффективность доступа к таблицам", "Table access efficiency"),
-            f"""SELECT schemaname, relname, seq_scan, COALESCE(idx_scan, 0), ROUND(100.0 * COALESCE(idx_scan, 0) / NULLIF(seq_scan + COALESCE(idx_scan, 0), 0), 2), n_live_tup, n_dead_tup, ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2), last_autovacuum, last_autoanalyze FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT {_MAX_ROWS}""",
+            report_sql.REPORT_TABLE_ACCESS_SQL,
             None,
             [t("Схема", "Schema"), t("Таблица", "Table"), t("Seq scan", "Seq scans"), t("Index scan", "Index scans"), t("Индексы, %", "Index usage, %"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), t("Мёртвые, %", "Dead rows, %"), "Autovacuum", "Autoanalyze"],
         ),
-        (
-            t("Память", "Memory"),
-            """SELECT name, setting, unit FROM pg_settings WHERE name IN ('shared_buffers','work_mem','maintenance_work_mem','effective_cache_size','temp_buffers','statement_mem','max_statement_mem','gp_vmem_protect_limit') ORDER BY name""",
-            None,
-            [t("Параметр", "Parameter"), t("Значение", "Value"), t("Единица", "Unit")],
-        ),
-        (
-            t("Обслуживание", "Maintenance"),
-            f"""SELECT schemaname, relname, n_live_tup, n_dead_tup, last_vacuum, last_autovacuum, last_analyze, last_autoanalyze FROM pg_stat_user_tables ORDER BY n_dead_tup DESC LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Схема", "Schema"), t("Таблица", "Table"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), "VACUUM", "Autovacuum", "ANALYZE", "Autoanalyze"],
-        ),
-        (
-            t("Пользователи", "Users"),
-            f"""SELECT rolname, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolconnlimit FROM pg_roles WHERE rolcanlogin ORDER BY rolname LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Пользователь", "User"), t("Вход", "Login"), "Superuser", t("Создание БД", "Create DB"), t("Создание ролей", "Create roles"), t("Лимит", "Limit")],
-        ),
-        (
-            t("Группы", "Groups"),
-            f"""SELECT role.rolname, count(member.oid), COALESCE(string_agg(member.rolname, ', ' ORDER BY member.rolname),'—') FROM pg_roles role LEFT JOIN pg_auth_members membership ON membership.roleid=role.oid LEFT JOIN pg_roles member ON member.oid=membership.member WHERE NOT role.rolcanlogin GROUP BY role.rolname ORDER BY role.rolname LIMIT {_MAX_ROWS}""",
-            None,
-            [t("Группа", "Group"), t("Участников", "Member count"), t("Участники", "Members")],
-        ),
+        (t("Память", "Memory"), report_sql.REPORT_MEMORY_SQL, None, [t("Параметр", "Parameter"), t("Значение", "Value"), t("Единица", "Unit")]),
+        (t("Обслуживание", "Maintenance"), report_sql.REPORT_MAINTENANCE_SQL, None, [t("Схема", "Schema"), t("Таблица", "Table"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), "VACUUM", "Autovacuum", "ANALYZE", "Autoanalyze"]),
+        (t("Пользователи", "Users"), report_sql.REPORT_USERS_SQL, None, [t("Пользователь", "User"), t("Вход", "Login"), "Superuser", t("Создание БД", "Create DB"), t("Создание ролей", "Create roles"), t("Лимит", "Limit")]),
+        (t("Группы", "Groups"), report_sql.REPORT_GROUPS_SQL, None, [t("Группа", "Group"), t("Участников", "Member count"), t("Участники", "Members")]),
     ]
-    extension_rows, _ = _collect(db_connection, "pg_stat_statements", "SELECT 1 FROM pg_extension WHERE extname='pg_stat_statements'", language=language)
+    extension_rows, _ = _collect(db_connection, "pg_stat_statements", report_sql.REPORT_PG_STAT_STATEMENTS_CHECK_SQL, language=language)
     if extension_rows:
-        definitions.append(
-            (
-                t("Ресурсоёмкие запросы", "Expensive queries"),
-                f"""SELECT calls, ROUND(COALESCE((to_jsonb(statement)->>'total_exec_time')::numeric, (to_jsonb(statement)->>'total_time')::numeric), 2), ROUND(COALESCE((to_jsonb(statement)->>'mean_exec_time')::numeric, (to_jsonb(statement)->>'mean_time')::numeric), 2), rows, query FROM pg_stat_statements statement ORDER BY COALESCE((to_jsonb(statement)->>'total_exec_time')::numeric, (to_jsonb(statement)->>'total_time')::numeric) DESC LIMIT {_MAX_ROWS}""",
-                None,
-                [t("Вызовов", "Calls"), t("Общее время, мс", "Total time, ms"), t("Среднее время, мс", "Mean time, ms"), t("Строк", "Rows"), "SQL"],
-            )
-        )
+        definitions.append((t("Ресурсоёмкие запросы", "Expensive queries"), report_sql.REPORT_EXPENSIVE_QUERIES_SQL, None, [t("Вызовов", "Calls"), t("Общее время, мс", "Total time, ms"), t("Среднее время, мс", "Mean time, ms"), t("Строк", "Rows"), "SQL"]))
     if db_connection.is_greenplum_compatible:
         definitions.append(
             (
                 t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"),
-                "SELECT content, dbid, role, preferred_role, mode, status, hostname, port FROM gp_segment_configuration ORDER BY content, role",
+                report_sql.REPORT_GP_SEGMENTS_SQL,
                 None,
                 ["Content", "DBID", t("Роль", "Role"), t("Предпочтительная", "Preferred role"), t("Режим", "Mode"), t("Статус", "Status"), t("Хост", "Host"), t("Порт", "Port")],
             )
