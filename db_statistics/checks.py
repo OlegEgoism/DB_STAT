@@ -70,3 +70,25 @@ def check_connection_pool_budget(app_configs, **kwargs):
             id="db_statistics.W003",
         )
     ]
+
+
+@register()
+def check_encryption_key_separate(app_configs, **kwargs):
+    """Предупреждает, если ключ шифрования паролей подключений совпадает с SECRET_KEY.
+
+    По умолчанию DB_CONNECTION_ENCRYPTION_KEY берётся из SECRET_KEY: один секрет тогда защищает
+    и подписи сессий, и сохранённые пароли к целевым базам. Для рабочей инсталляции задайте
+    DB_CONNECTION_ENCRYPTION_KEY отдельно. Это только предупреждение: смена ключа без
+    перешифрования сделает сохранённые пароли нечитаемыми.
+    """
+    if settings.DEBUG:
+        return []
+    if settings.DB_CONNECTION_ENCRYPTION_KEY != settings.SECRET_KEY:
+        return []
+    return [
+        Warning(
+            "DB_CONNECTION_ENCRYPTION_KEY совпадает с SECRET_KEY.",
+            hint="Один секрет защищает подписи сессий и сохранённые пароли к целевым базам. Задайте DB_CONNECTION_ENCRYPTION_KEY отдельно до первого сохранения подключений; после смены ключ нужно перешифровать пароли (manage.py encrypt_connection_passwords работает только с открытыми паролями).",
+            id="db_statistics.W004",
+        )
+    ]
