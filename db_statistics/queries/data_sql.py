@@ -378,3 +378,11 @@ def segment_distribution_sql(schema_name, table_name):
         GROUP BY gp_segment_id
         ORDER BY gp_segment_id ASC;
     """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
+
+
+SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
+TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
+VIEW_SEARCH_COLUMNS = ("namespace.nspname", "view_class.relname", "(namespace.nspname || '.' || view_class.relname)")
+FUNCTION_SEARCH_COLUMNS = ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_result(procedure.oid)", "pg_catalog.pg_get_function_arguments(procedure.oid)")
+TOAST_TABLE_SEARCH_COLUMNS = ("parent_namespace.nspname", "parent.relname", "toast.relname", "(parent_namespace.nspname || '.' || parent.relname)")
+TEMP_TABLE_SEARCH_COLUMNS = ("namespace.nspname", "table_class.relname", "(namespace.nspname || '.' || table_class.relname)")
