@@ -78,3 +78,93 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt
+
+  # Браузерные smoke-тесты (Playwright, каталог tests/e2e) на запущенном приложении и PostgreSQL.
+  # Задача НЕ блокирует сборку: continue-on-error включён, пока тесты не докажут стабильность.
+  # Когда несколько прогонов подряд зелёные, уберите строку continue-on-error: тогда падение
+  # e2e станет блокирующим.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    env:
+      SECRET_KEY: ci-only-secret-key-not-used-in-production
+      # Пароль первого администратора (ensure_initial_admin); тесты входят как admin с этим паролем.
+      INITIAL_ADMIN_PASSWORD: admin12345
+      # DEBUG=True: runserver раздаёт статику без манифеста, а cookie не требуют HTTPS.
+      DEBUG: "True"
+      ALLOWED_HOSTS: 127.0.0.1,localhost
+      CSRF_TRUSTED_ORIGINS: http://127.0.0.1:8000,http://localhost:8000
+      E2E_BASE_URL: http://127.0.0.1:8000
+      # В CI недоступный сервер должен валить тесты, а не тихо пропускать их.
+      E2E_REQUIRE_SERVER: "1"
+      # Подключение, которое тесты сохраняют в приложении, указывает на сервис postgres ниже.
+      E2E_PG_HOST: 127.0.0.1
+      E2E_PG_PORT: 5432
+      E2E_PG_USER: postgres
+      E2E_PG_PASSWORD: ci-pg-password
+      E2E_PG_DATABASE: postgres
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-pg-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Как в lint-and-test: psycopg2 собирается из исходников против libpq.
+      - name: Install system build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y gcc libpq-dev
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt -r requirements-e2e.txt
+
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+
+      # SQLite лежит во временном каталоге раннера; путь передаём следующим шагам через GITHUB_ENV.
+      - name: Prepare SQLite database and first administrator
+        run: |
+          mkdir -p "$RUNNER_TEMP/e2e"
+          echo "SQLITE_NAME=$RUNNER_TEMP/e2e/db.sqlite3" >> "$GITHUB_ENV"
+          export SQLITE_NAME="$RUNNER_TEMP/e2e/db.sqlite3"
+          python manage.py migrate --noinput --run-syncdb
+          python manage.py ensure_initial_admin
+
+      - name: Start the application (runserver without reloader)
+        run: |
+          nohup python manage.py runserver 127.0.0.1:8000 --noreload > "$RUNNER_TEMP/e2e/runserver.log" 2>&1 &
+
+      # Явная проверка: если сервер не поднялся, шаг падает и выводит лог runserver.
+      - name: Check that the server answers on /healthz/
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:8000/healthz/; then
+              echo "Server is up after ${attempt} attempt(s)."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::runserver did not answer on http://127.0.0.1:8000/healthz/ within 30 seconds"
+          cat "$RUNNER_TEMP/e2e/runserver.log"
+          exit 1
+
+      - name: Browser smoke tests (pytest tests/e2e)
+        run: python -m pytest tests/e2e -q
+
+      - name: Print runserver log after a failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/e2e/runserver.log"
