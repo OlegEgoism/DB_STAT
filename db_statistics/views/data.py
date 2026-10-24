@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from psycopg2 import sql
 
-from db_statistics.queries import data as data_sql
+from db_statistics.queries import data_sql
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
 from db_statistics.views.helpers import _format_bytes, _read_json_body
@@ -163,12 +163,7 @@ def distribution_info(request):
     if not db_connection.is_greenplum_compatible:
         return _greenplum_only_error()
     validate_query = data_sql.VALIDATE_SQL
-    distribution_query = sql.SQL("""
-        SELECT gp_segment_id::int AS segment_id, COUNT(*)::bigint AS row_count
-        FROM {}.{}
-        GROUP BY gp_segment_id
-        ORDER BY gp_segment_id ASC;
-    """).format(sql.Identifier(schema_name), sql.Identifier(table_name))
+    distribution_query = data_sql.segment_distribution_sql(schema_name, table_name)
 
     def _fetch_distribution_rows():
         with _open_database_connection(db_connection) as connection:
@@ -291,19 +286,7 @@ def delete_temp_table(request):
     def drop_table():
         with _open_database_connection(db_connection) as connection:
             with connection.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT 1
-                    FROM pg_catalog.pg_class AS table_class
-                    JOIN pg_catalog.pg_namespace AS namespace
-                        ON namespace.oid = table_class.relnamespace
-                    WHERE namespace.nspname = %s
-                      AND table_class.relname = %s
-                      AND table_class.relkind IN ('r', 'p')
-                      AND (table_class.relpersistence = 't' OR namespace.nspname LIKE 'pg_temp_%%');
-                    """,
-                    [schema_name, table_name],
-                )
+                cursor.execute(data_sql.TEMP_TABLE_EXISTS_SQL, [schema_name, table_name])
                 if cursor.fetchone() is None:
                     return False
                 cursor.execute(sql.SQL("DROP TABLE {}.{}").format(sql.Identifier(schema_name), sql.Identifier(table_name)))

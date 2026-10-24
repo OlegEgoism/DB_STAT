@@ -16,6 +16,7 @@ from django.utils import timezone
 from psycopg2 import sql
 
 from db_statistics.models import DBConnection, MaintenanceJob
+from db_statistics.queries import maintenance_sql
 from db_statistics.views.audit import MAINTENANCE_OPERATION_LABELS, _backend_termination_audit_info, _maintenance_operation_audit_info, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _require_payload_connection
 from db_statistics.views.helpers import _read_json_body
@@ -48,31 +49,7 @@ def _terminate_backend(request, *, require_active, invalid_pid_message, not_foun
     except (TypeError, ValueError):
         return JsonResponse({"ok": False, "message": invalid_pid_message}, status=400)
 
-    active_clause = "\n          AND activity.state = 'active'" if require_active else ""
-    terminate_query = f"""
-        SELECT
-            pg_catalog.pg_terminate_backend(activity.pid),
-            activity.pid,
-            activity.usename,
-            activity.datname,
-            activity.application_name,
-            activity.client_addr,
-            activity.client_port,
-            activity.state,
-            activity.backend_type,
-            activity.backend_start,
-            activity.xact_start,
-            activity.query_start,
-            activity.state_change,
-            activity.wait_event_type,
-            activity.wait_event,
-            now() - activity.backend_start AS session_duration,
-            CASE WHEN activity.query_start IS NULL THEN NULL ELSE now() - activity.query_start END AS query_duration,
-            activity.query
-        FROM pg_catalog.pg_stat_activity AS activity
-        WHERE activity.pid = %s
-          AND activity.pid <> pg_backend_pid(){active_clause};
-    """
+    terminate_query = maintenance_sql.terminate_backend_sql(require_active=require_active)
     row, error_response = _query_or_error(f"Не удалось завершить процесс с PID {pid}", lambda: _fetch_db_row(db_connection, terminate_query, [pid]))
     if error_response:
         return error_response
@@ -148,20 +125,7 @@ def _run_maintenance_operation(job_id):
                 # coordinator без ANALYZE могут оставаться устаревшими.
                 if operation in {"vacuum", "vacuum_full"}:
                     cursor.execute(sql.SQL("ANALYZE {table}").format(table=table_identifier))
-                cursor.execute(
-                    """
-                    SELECT
-                        COALESCE(n_live_tup, 0)::bigint,
-                        COALESCE(n_dead_tup, 0)::bigint,
-                        last_vacuum,
-                        last_autovacuum,
-                        last_analyze,
-                        last_autoanalyze
-                    FROM pg_catalog.pg_stat_user_tables
-                    WHERE schemaname = %s AND relname = %s
-                    """,
-                    [schema_name, table_name],
-                )
+                cursor.execute(maintenance_sql.TABLE_STATISTICS_SQL, [schema_name, table_name])
                 statistics_row = cursor.fetchone()
                 statistics = (
                     {

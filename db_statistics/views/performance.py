@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.queries import performance_sql
 from db_statistics.views.auth import _require_payload_connection
 from db_statistics.views.helpers import _duration_seconds, _format_duration, _read_json_body
 from db_statistics.views.maintenance import _terminate_backend
@@ -18,37 +19,7 @@ def active_queries(request):
         return error_response
     username = (payload.get("username") or "").strip()
     username_pattern = _like_search_pattern(username) if username else ""
-    active_queries_query = """
-        WITH locked_relations AS (
-            SELECT
-                locks.pid,
-                string_agg(
-                    DISTINCT namespace.nspname || '.' || relation.relname,
-                    ', ' ORDER BY namespace.nspname || '.' || relation.relname
-                ) AS relation_name
-            FROM pg_catalog.pg_locks AS locks
-            JOIN pg_catalog.pg_class AS relation
-                ON relation.oid = locks.relation
-            JOIN pg_catalog.pg_namespace AS namespace
-                ON namespace.oid = relation.relnamespace
-            WHERE locks.relation IS NOT NULL
-            GROUP BY locks.pid
-        )
-        SELECT
-            activity.pid,
-            activity.usename,
-            COALESCE(locked_relations.relation_name, '—') AS relation_name,
-            activity.state,
-            GREATEST(now() - activity.query_start, INTERVAL '0 seconds') AS duration,
-            activity.query
-        FROM pg_catalog.pg_stat_activity AS activity
-        LEFT JOIN locked_relations
-            ON locked_relations.pid = activity.pid
-        WHERE activity.state = 'active'
-          AND activity.pid <> pg_backend_pid()
-          AND (%s = '' OR activity.usename ILIKE %s ESCAPE '!')
-        ORDER BY duration DESC;
-    """
+    active_queries_query = performance_sql.ACTIVE_QUERIES_SQL
 
     rows, error_response = _query_or_error("Не удалось получить активные запросы", lambda: _fetch_db_rows(db_connection, active_queries_query, [username, username_pattern]))
     if error_response:
@@ -86,32 +57,7 @@ def active_sessions(request):
     username = (payload.get("username") or "").strip()
     username_pattern = _like_search_pattern(username) if username else ""
     state = (payload.get("state") or "").strip()
-    sessions_query = """
-        SELECT
-            pid,
-            usename,
-            datname,
-            application_name,
-            client_addr,
-            client_port,
-            backend_start,
-            xact_start,
-            query_start,
-            state_change,
-            state,
-            wait_event_type,
-            wait_event,
-            backend_type,
-            now() - backend_start AS session_duration,
-            CASE WHEN query_start IS NULL THEN NULL ELSE now() - query_start END AS query_duration,
-            query
-        FROM pg_catalog.pg_stat_activity
-        WHERE (%s = '' OR usename ILIKE %s ESCAPE '!')
-          AND (%s = '' OR state = %s)
-        ORDER BY
-            CASE WHEN state = 'active' THEN 0 ELSE 1 END,
-            backend_start DESC;
-    """
+    sessions_query = performance_sql.SESSIONS_SQL
 
     rows, error_response = _query_or_error("Не удалось получить активные сессии и подключения", lambda: _fetch_db_rows(db_connection, sessions_query, [username, username_pattern, state, state]))
     if error_response:
@@ -218,38 +164,7 @@ def blocking_locks(request):
     blocker_username = (payload.get("blocker_username") or "").strip()
     blocked_username_pattern = _like_search_pattern(blocked_username) if blocked_username else ""
     blocker_username_pattern = _like_search_pattern(blocker_username) if blocker_username else ""
-    blocking_locks_query = """
-        SELECT
-            blocked.pid AS blocked_pid,
-            blocked.usename AS blocked_user,
-            now() - blocked.query_start AS blocked_duration,
-            blocked.query AS blocked_query,
-            blocker.pid AS blocker_pid,
-            blocker.usename AS blocker_user,
-            now() - blocker.query_start AS blocker_duration,
-            blocker.query AS blocker_query
-        FROM pg_catalog.pg_locks AS blocked_locks
-        JOIN pg_catalog.pg_stat_activity AS blocked
-            ON blocked.pid = blocked_locks.pid
-        JOIN pg_catalog.pg_locks AS blocker_locks
-            ON blocker_locks.locktype = blocked_locks.locktype
-           AND blocker_locks.database IS NOT DISTINCT FROM blocked_locks.database
-           AND blocker_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
-           AND blocker_locks.page IS NOT DISTINCT FROM blocked_locks.page
-           AND blocker_locks.tuple IS NOT DISTINCT FROM blocked_locks.tuple
-           AND blocker_locks.virtualxid IS NOT DISTINCT FROM blocked_locks.virtualxid
-           AND blocker_locks.transactionid IS NOT DISTINCT FROM blocked_locks.transactionid
-           AND blocker_locks.classid IS NOT DISTINCT FROM blocked_locks.classid
-           AND blocker_locks.objid IS NOT DISTINCT FROM blocked_locks.objid
-           AND blocker_locks.objsubid IS NOT DISTINCT FROM blocked_locks.objsubid
-           AND blocker_locks.pid <> blocked_locks.pid
-        JOIN pg_catalog.pg_stat_activity AS blocker
-            ON blocker.pid = blocker_locks.pid
-        WHERE NOT blocked_locks.granted
-          AND blocker_locks.granted
-          AND (%s = '' OR blocked.usename ILIKE %s ESCAPE '!')
-          AND (%s = '' OR blocker.usename ILIKE %s ESCAPE '!');
-    """
+    blocking_locks_query = performance_sql.BLOCKING_LOCKS_SQL
 
     rows, error_response = _query_or_error("Не удалось получить блокировки", lambda: _fetch_db_rows(db_connection, blocking_locks_query, [blocked_username, blocked_username_pattern, blocker_username, blocker_username_pattern]))
     if error_response:
@@ -283,21 +198,7 @@ def idle_transactions(request):
         return error_response
     username = (payload.get("username") or "").strip()
     username_pattern = _like_search_pattern(username) if username else ""
-    idle_transactions_query = """
-        SELECT
-            pid,
-            usename,
-            application_name,
-            client_addr,
-            state,
-            now() - xact_start AS transaction_duration,
-            now() - state_change AS idle_duration,
-            query
-        FROM pg_catalog.pg_stat_activity
-        WHERE state = 'idle in transaction'
-          AND (%s = '' OR usename ILIKE %s ESCAPE '!')
-        ORDER BY xact_start;
-    """
+    idle_transactions_query = performance_sql.IDLE_TRANSACTIONS_SQL
 
     rows, error_response = _query_or_error("Не удалось получить транзакции", lambda: _fetch_db_rows(db_connection, idle_transactions_query, [username, username_pattern]))
     if error_response:
