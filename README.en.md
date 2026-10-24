@@ -181,7 +181,15 @@ docker build -t db-stat .
 ```bash 
 docker run --name db-stat --rm -p 8000:8000 olegegoism/db-stat:latest 
 ``` 
- 
+
+- Connection budget for target databases. Each gunicorn worker (`GUNICORN_WORKERS`, default 3) keeps its own pool: up to `DB_CONNECTION_POOL_MAX_CONN` connections (default 10) per saved connection. Background jobs (VACUUM/ANALYZE and PDF reports) take connections from the same pools.
+
+```
+Total on the target DB ≈ GUNICORN_WORKERS × DB_CONNECTION_POOL_MAX_CONN × number of saved connections in use
+```
+
+For example, 3 workers × 10 connections × 2 saved connections give up to 60 connections on the target DB. Make sure this fits within the target's `max_connections` with room left for other clients. When a pool is exhausted, the app responds with HTTP 503 and a "connection limit exceeded" message (the message text is in Russian, like the rest of the UI). With `DB_CONNECTION_POOL_MAX_CONN` above 20, `manage.py check` prints the warning `db_statistics.W003`. Details are in `.env.example`.
+
 ## Backup 
  
 The named volume `db-stat-data` is the only place where all application data is stored (users, saved connections, favorites, audit log).  

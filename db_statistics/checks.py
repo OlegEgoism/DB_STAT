@@ -45,3 +45,28 @@ def check_cookie_transport_security(app_configs, **kwargs):
             id="db_statistics.W001",
         )
     ]
+
+
+# Больше этого числа соединений на один пул — повод проверить бюджет (см. .env.example).
+CONNECTION_POOL_MAX_CONN_WARNING_THRESHOLD = 20
+
+
+@register()
+def check_connection_pool_budget(app_configs, **kwargs):
+    """Предупреждает (не блокирует запуск), если пул к целевой БД может открыть слишком много соединений.
+
+    Каждый воркер gunicorn держит свой пул на каждое сохранённое подключение, поэтому
+    итоговая нагрузка на целевую БД ≈ GUNICORN_WORKERS × DB_CONNECTION_POOL_MAX_CONN ×
+    число используемых подключений. Высокое значение легко исчерпывает max_connections
+    на целевой БД (особенно на Greenplum), поэтому предупреждаем, а не запрещаем.
+    """
+    limit = settings.DB_CONNECTION_POOL_MAX_CONN
+    if limit <= CONNECTION_POOL_MAX_CONN_WARNING_THRESHOLD:
+        return []
+    return [
+        Warning(
+            f"DB_CONNECTION_POOL_MAX_CONN={limit} больше {CONNECTION_POOL_MAX_CONN_WARNING_THRESHOLD}.",
+            hint="Пул открывает до этого числа соединений на каждое сохранённое подключение в каждом воркере gunicorn. Проверьте бюджет: GUNICORN_WORKERS × DB_CONNECTION_POOL_MAX_CONN × число подключений должно укладываться в max_connections целевой БД (см. .env.example).",
+            id="db_statistics.W003",
+        )
+    ]
