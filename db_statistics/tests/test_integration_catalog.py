@@ -3,7 +3,7 @@ from db_statistics.tests.pg_base import SCHEMA, PostgresTestCase
 
 class ViewsAndFunctionsIntegrationTests(PostgresTestCase):
     def test_views_list_contains_ordinary_and_materialized_views(self):
-        data = self.post_json("/views/list/", {"search": "orders"}).json()
+        data = self.post_json("/views/list/", {"search": f"{SCHEMA}."}).json()
 
         self.assertTrue(data["ok"])
         names = {(v["schema_name"], v["view_name"]) for v in data["views"]}
@@ -11,8 +11,8 @@ class ViewsAndFunctionsIntegrationTests(PostgresTestCase):
         self.assertIn((SCHEMA, "mv_orders"), names)
 
     def test_views_list_filter_by_type(self):
-        ordinary = self.post_json("/views/list/", {"search": "orders", "view_type": "ordinary"}).json()
-        materialized = self.post_json("/views/list/", {"search": "orders", "view_type": "materialized"}).json()
+        ordinary = self.post_json("/views/list/", {"search": f"{SCHEMA}.", "view_type": "ordinary"}).json()
+        materialized = self.post_json("/views/list/", {"search": f"{SCHEMA}.", "view_type": "materialized"}).json()
 
         self.assertEqual({v["view_name"] for v in ordinary["views"]}, {"v_orders"})
         self.assertEqual({v["view_name"] for v in materialized["views"]}, {"mv_orders"})

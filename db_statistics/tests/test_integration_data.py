@@ -17,7 +17,7 @@ class TableListIntegrationTests(PostgresTestCase):
         self.assertTrue({(SCHEMA, "orders"), (SCHEMA, "documents"), (SCHEMA, "small")} <= ours)
 
     def test_search_narrows_results_to_matching_table(self):
-        data = self.post_json("/tables/sizes/", {"search": "orders"}).json()
+        data = self.post_json("/tables/sizes/", {"search": f"{SCHEMA}.orders"}).json()
 
         self.assertEqual(data["total_count"], 1)
         self.assertEqual(data["tables"][0]["table_name"], "orders")
@@ -28,7 +28,7 @@ class TableListIntegrationTests(PostgresTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()["ok"])
         # Таблица на месте: инъекция через сортировку не сработала.
-        self.assertTrue(self.post_json("/tables/sizes/", {"search": "orders"}).json()["total_count"] == 1)
+        self.assertTrue(self.post_json("/tables/sizes/", {"search": f"{SCHEMA}.orders"}).json()["total_count"] == 1)
 
     def test_pagination_returns_requested_page_size_and_total(self):
         data = self.post_json("/tables/sizes/", {"page": 1, "page_size": 10}).json()
@@ -54,18 +54,18 @@ class ToastListIntegrationTests(PostgresTestCase):
 
     def test_toast_list_excludes_table_with_empty_toast_table(self):
         # orders имеет TEXT-столбец, поэтому TOAST-таблица у неё есть, но она пуста.
-        data = self.post_json("/toast-tables/sizes/", {"search": "orders"}).json()
+        data = self.post_json("/toast-tables/sizes/", {"search": f"{SCHEMA}.orders"}).json()
 
         self.assertEqual(data["total_count"], 0)
 
     def test_toast_list_excludes_table_without_toast_table(self):
         # small не содержит TEXT/JSONB и TOAST-таблицы не имеет вовсе.
-        data = self.post_json("/toast-tables/sizes/", {"search": "small"}).json()
+        data = self.post_json("/toast-tables/sizes/", {"search": f"{SCHEMA}.small"}).json()
 
         self.assertEqual(data["total_count"], 0)
 
     def test_toast_share_is_a_percentage(self):
-        data = self.post_json("/toast-tables/sizes/", {"search": "documents"}).json()
+        data = self.post_json("/toast-tables/sizes/", {"search": f"{SCHEMA}.documents"}).json()
 
         share = data["toast_tables"][0]["toast_share"]
         self.assertGreaterEqual(share, 0)

@@ -21,7 +21,7 @@ class LockedTableIntegrationTests(PostgresTestCase):
                 with holder.cursor() as cursor:
                     cursor.execute(f"LOCK TABLE {SCHEMA}.orders IN ACCESS EXCLUSIVE MODE")
                 started = time.monotonic()
-                response = self.post_json("/tables/sizes/", {"search": "orders"})
+                response = self.post_json("/tables/sizes/", {"search": f"{SCHEMA}.orders"})
                 elapsed = time.monotonic() - started
             finally:
                 safety_release.cancel()
