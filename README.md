@@ -130,6 +130,12 @@ python manage.py recover_maintenance_jobs
 python manage.py runserver
 ```
 
+- Тесты. Модульные тесты запускаются без внешних сервисов. Интеграционные (`test_integration_*`) выполняются против настоящего PostgreSQL и пропускаются, пока не заданы переменные `PG_TEST_*`:
+
+```bash
+PG_TEST_HOST=127.0.0.1 PG_TEST_PORT=5432 PG_TEST_USER=postgres PG_TEST_PASSWORD=... PG_TEST_DATABASE=postgres python manage.py test
+```
+
 - Проверка и автоисправление кода
 
 ```bash

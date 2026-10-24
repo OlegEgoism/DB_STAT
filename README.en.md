@@ -133,6 +133,12 @@ python manage.py recover_maintenance_jobs
 python manage.py runserver 
 ``` 
  
+- Tests. Unit tests need no external services. Integration tests (`test_integration_*`) run against a real PostgreSQL and are skipped until the `PG_TEST_*` variables are set:
+
+```bash
+PG_TEST_HOST=127.0.0.1 PG_TEST_PORT=5432 PG_TEST_USER=postgres PG_TEST_PASSWORD=... PG_TEST_DATABASE=postgres python manage.py test
+```
+
 - Code check and auto-fix 
  
 ```bash 

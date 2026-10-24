@@ -13,6 +13,20 @@ jobs:
       # default SECRET_KEY and trip db_statistics.checks' W002 warning — this
       # is a throwaway CI-only value, not a production secret.
       SECRET_KEY: ci-only-secret-key-not-used-in-production
+    # Интеграционные тесты (db_statistics/tests/test_integration_*.py) работают с
+    # настоящим PostgreSQL. Пароль ниже — одноразовый, только для CI.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-pg-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -40,4 +54,11 @@ jobs:
         run: python manage.py check
 
       - name: Run tests
-        run: python manage.py test
+        env:
+          # Без PG_TEST_HOST интеграционные тесты пропускаются молча, поэтому в CI они заданы явно.
+          PG_TEST_HOST: 127.0.0.1
+          PG_TEST_PORT: 5432
+          PG_TEST_USER: postgres
+          PG_TEST_PASSWORD: ci-pg-password
+          PG_TEST_DATABASE: postgres
+        run: python manage.py test -v 2
