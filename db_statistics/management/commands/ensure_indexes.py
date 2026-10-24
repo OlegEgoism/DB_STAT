@@ -7,9 +7,10 @@ class Command(BaseCommand):
     help = "Создаёт индексы из Meta.indexes моделей db_statistics, которых ещё нет в базе (для уже существующих таблиц)"
 
     def handle(self, *args, **options):
-        # --run-syncdb создаёт индексы только для новых таблиц. Для таблиц, которые уже есть
-        # в установке, новые индексы добавляет эта команда. Уже существующие индексы не трогаются,
-        # поэтому команда безопасна для повторного запуска (её вызывает docker-entrypoint.sh).
+        # Миграции создают индексы вместе с таблицами, а установки, созданные до миграций, их не получают
+        # (см. db_statistics/management/commands/migrate.py). Эта команда добавляет недостающие индексы.
+        # Существующие индексы не трогаются, поэтому команда безопасна для повторного запуска
+        # (её вызывает docker-entrypoint.sh).
         created = []
         with connection.cursor() as cursor:
             for model in apps.get_app_config("db_statistics").get_models():

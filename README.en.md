@@ -106,14 +106,21 @@ reconfigure your IDE's interpreter. The `--python 3.12` flag matters if
 requires Python 3.12+) — `uv` will find an installed `python3.12` itself, or
 download the right version if none is present.
  
-- Create database tables (`db_statistics` models don't use migrations — see `MIGRATION_MODULES` in `db/settings.py` — their tables are synced directly from the models) 
+- Create database tables and apply migrations (`db_statistics` models are managed by migrations in `db_statistics/migrations`). The same command works for a new database and for an existing installation: existing tables are not recreated
  
 ```bash 
-python manage.py migrate --run-syncdb
+python manage.py migrate --fake-initial
 python manage.py ensure_indexes
 ```
 
-`ensure_indexes` adds indexes missing from an existing database (`--run-syncdb` creates them only for new tables). Safe to run again.
+`--fake-initial` marks the initial migration as applied when its tables already exist. This is how installations created before migrations are upgraded: `migrate` moves them onto the migration history itself (see `db_statistics/management/commands/migrate.py`). `ensure_indexes` adds indexes missing from an existing database (migrations create indexes only together with their tables). Safe to run again.
+
+- Schema changes (a field, table or index): change the model, create a migration and apply it. Commit the migration file together with the model change:
+
+```bash
+make migrations   # same as: python manage.py makemigrations
+make migrate
+```
 
  
 - Create a user for logging into the application and Django Admin (`/admin/`). 
@@ -164,8 +171,8 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
 |----------------------------------------|--------------------------------------------------------------------------------------------------| 
 | `make install`                         | Install dependencies from requirements.txt                                                       |
 | `make hooks`                           | Enable the project's git hooks for this clone (one-time, after cloning)                          | 
-| `make migrations`                      | Generate migrations for Django's built-in apps (`db_statistics` doesn't use migrations)           | 
-| `make migrate`                         | Apply Django migrations and sync `db_statistics` tables                                          | 
+| `make migrations`                      | Generate migrations after model changes (all apps, including `db_statistics`)                    |
+| `make migrate`                         | Apply migrations and add missing indexes (`migrate --fake-initial` and `ensure_indexes`)         |
 | `make run`                             | Start the development server                                                                     | 
 | `make shell`                           | Open an interactive Django shell                                                                 | 
 | `make admin`                           | Create the first administrator (see `INITIAL_ADMIN_*` in `.env`)                                 | 
@@ -175,7 +182,7 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
 | `make docker-build`                    | Build Docker image                                                                                 | 
 | `make docker-run` / `make docker-stop` | Start / stop Docker container                                                                     | 
 | `make clean`                           | Remove caches and locally collected static files                                                 | 
-| `make reset-db`                        | DANGEROUS: delete the SQLite DB and all `db_statistics` migrations (except `__init__.py`), with confirmation | 
+| `make reset-db`                        | DANGEROUS: delete only the SQLite DB (migration files are kept), with confirmation               |
  
 ## Running the project in Docker 
  
@@ -190,6 +197,8 @@ docker build -t db-stat .
 ```bash 
 docker run --name db-stat --rm -p 8000:8000 olegegoism/db-stat:latest 
 ``` 
+
+- At each container start the entrypoint applies migrations (`migrate --fake-initial`) and adds missing indexes, so an existing data volume is upgraded without manual steps.
 
 - Connection budget for target databases. Each gunicorn worker (`GUNICORN_WORKERS`, default 3) keeps its own pool: up to `DB_CONNECTION_POOL_MAX_CONN` connections (default 10) per saved connection. Background jobs (VACUUM/ANALYZE and PDF reports) take connections from the same pools.
 

@@ -23,11 +23,11 @@ hooks: ## Включить git-хуки проекта (.githooks) для это
 	git config core.hooksPath .githooks
 	@echo "Готово. На ветке dev ruff будет прогоняться перед каждым коммитом (.githooks/pre-commit) и перед каждым push (.githooks/pre-push)."
 
-migrations: ## Сгенерировать миграции для встроенных приложений Django (db_statistics их не использует)
+migrations: ## Сгенерировать миграции после изменения моделей (все приложения, включая db_statistics)
 	$(MANAGE) makemigrations
 
-migrate: ## Применить миграции Django и синхронизировать таблицы db_statistics (без миграций, см. MIGRATION_MODULES)
-	$(MANAGE) migrate --run-syncdb
+migrate: ## Применить миграции и добавить недостающие индексы (новые и существующие установки, таблицы не пересоздаются)
+	$(MANAGE) migrate --noinput --fake-initial
 	$(MANAGE) ensure_indexes
 
 run: ## Запустить сервер разработки
@@ -70,12 +70,11 @@ clean: ## Удалить кэши и локально собранную ста�
 	rm -rf staticfiles .ruff_cache
 	find . -type d -name "__pycache__" -not -path "./.venv/*" -exec rm -rf {} +
 
-reset-db: ## ОПАСНО: удалить SQLite БД и все миграции db_statistics (кроме __init__.py)
-	@echo "Будут удалены: $(SQLITE_NAME) (+ -shm/-wal) и файлы миграций db_statistics, кроме __init__.py."
+reset-db: ## ОПАСНО: удалить только SQLite БД (файлы миграций не трогаются), с подтверждением
+	@echo "Будут удалены: $(SQLITE_NAME) (+ -shm/-wal). Файлы миграций db_statistics не затрагиваются."
 	@read -p "Продолжить? [y/N] " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		rm -f $(SQLITE_NAME) $(SQLITE_NAME)-shm $(SQLITE_NAME)-wal; \
-		find db_statistics/migrations -type f -name "*.py" ! -name "__init__.py" -delete; \
 		echo "Готово. Дальше: make migrate"; \
 	else \
 		echo "Отменено."; \
