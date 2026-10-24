@@ -14,6 +14,7 @@ from django.conf import settings
 from django.db import DatabaseError, close_old_connections, connection
 from django.http import FileResponse, JsonResponse
 from django.utils import timezone, translation
+from django.utils.translation import gettext as _, pgettext
 from django.views.decorators.http import require_http_methods
 
 from db_statistics.job_locks import with_job_lock
@@ -96,10 +97,13 @@ def _run_report_job(job_id):
     job = ReportJob.objects.select_related("connection", "user").get(pk=job_id)
     started_at = time.monotonic()
     try:
-        sections = _report_sections(job.connection, job.language)
-        pdf = _build_pdf(job.connection, job.user, sections, job.language)
+        # Язык отчёта задан при постановке задачи; весь текст PDF и итоговое сообщение формируются на нём.
+        with translation.override(job.language):
+            sections = _report_sections(job.connection)
+            pdf = _build_pdf(job.connection, job.user, sections)
+            message = _completion_message(sections)
         filename = f"db-report-{job.connection_id}-{datetime.now():%Y%m%d-%H%M%S}.pdf"
-        ReportJob.objects.filter(pk=job_id).update(status="completed", message=_completion_message(sections, job.language), content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
+        ReportJob.objects.filter(pk=job_id).update(status="completed", message=message, content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
         _write_audit(
             "database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(job.connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), username=job.user.login if job.user else "system"
         )
@@ -110,17 +114,18 @@ def _run_report_job(job_id):
         close_old_connections()
 
 
-def _completion_message(sections, language="ru"):
+def _completion_message(sections):
     """Итоговое сообщение задачи. Статус остаётся «completed», но неполный отчёт назван прямо.
 
     Раздел считается не собранным, если для него заполнено предупреждение
     (см. _collect). Без таких разделов сообщение прежнее.
+    Вызывается внутри translation.override(язык задачи).
     """
     failed_titles = [section["title"] for section in sections if section["warning"]]
     if not failed_titles:
-        return "PDF-отчёт готов к скачиванию"
+        return _("PDF-отчёт готов к скачиванию")
     titles = ", ".join(failed_titles)
-    return _label(language, f"Готов, но неполный: не собраны разделы: {titles}", f"Ready, but incomplete: sections not collected: {titles}")
+    return _("Готов, но неполный: не собраны разделы: {titles}").format(titles=titles)
 
 
 def _register_fonts():
@@ -143,128 +148,87 @@ def _text(value, limit=500):
     return escape(value[:limit] + ("…" if len(value) > limit else ""))
 
 
-def _label(language, russian, english):
-    return english if language == "en" else russian
-
-
-def _collect(db_connection, title, query, params=None, language="ru"):
+def _collect(db_connection, title, query, params=None):
     try:
         return _fetch_db_rows(db_connection, query, params, background=True), None
     except psycopg2.Error as exc:
-        if language == "en":
+        message = _("Не удалось собрать раздел «{title}»").format(title=title)
+        if translation.get_language() == "en":
             logger.warning("Could not collect PDF section %s: %s", title, exc)
-            return [], f"Could not collect the “{title}” section."
-        return [], _safe_db_error_message(f"Не удалось собрать раздел «{title}»", exc)
+            return [], message
+        return [], _safe_db_error_message(message, exc)
 
 
-def _report_sections(db_connection, language="ru"):
-    def t(ru, en):
-        return _label(language, ru, en)
-
+def _report_sections(db_connection):
     definitions = [
+        (_("Общая информация"), report_sql.REPORT_GENERAL_INFO_SQL, None, [_("Версия"), _("База данных"), _("Размер"), _("Кодировка"), _("Часовой пояс"), _("Запуск"), _("Время работы"), _("Подключения"), _("Максимум подключений")]),
+        (_("Размеры схем"), report_sql.REPORT_SCHEMA_SIZES_SQL, None, [_("Схема"), _("Владелец"), _("Таблиц"), _("Байт"), _("Размер")]),
         (
-            t("Общая информация", "General information"),
-            report_sql.REPORT_GENERAL_INFO_SQL,
-            None,
-            [
-                t("Версия", "Version"),
-                t("База данных", "Database"),
-                t("Размер", "Size"),
-                t("Кодировка", "Encoding"),
-                t("Часовой пояс", "Time zone"),
-                t("Запуск", "Started"),
-                t("Время работы", "Uptime"),
-                t("Подключения", "Connections"),
-                t("Максимум подключений", "Maximum connections"),
-            ],
-        ),
-        (t("Размеры схем", "Schema sizes"), report_sql.REPORT_SCHEMA_SIZES_SQL, None, [t("Схема", "Schema"), t("Владелец", "Owner"), t("Таблиц", "Tables"), t("Байт", "Bytes"), t("Размер", "Size")]),
-        (
-            t("Сводка производительности", "Performance summary"),
+            _("Сводка производительности"),
             report_sql.REPORT_PERFORMANCE_SUMMARY_SQL,
             None,
             [
-                t("Подключения", "Connections"),
-                t("Транзакции COMMIT", "Committed transactions"),
-                t("Транзакции ROLLBACK", "Rolled back transactions"),
-                t("Попадания в кэш", "Buffer cache hits"),
-                t("Чтения с диска", "Disk block reads"),
-                t("Cache hit, %", "Cache hit, %"),
-                t("Возвращено строк", "Rows returned"),
-                t("Получено строк", "Rows fetched"),
-                t("Вставлено строк", "Rows inserted"),
-                t("Обновлено строк", "Rows updated"),
-                t("Удалено строк", "Rows deleted"),
-                t("Временных файлов", "Temporary files"),
-                t("Временные данные", "Temporary data"),
-                t("Deadlock", "Deadlocks"),
-                t("Время чтения, мс", "Read time, ms"),
-                t("Время записи, мс", "Write time, ms"),
-                t("Статистика с", "Statistics since"),
+                _("Подключения"),
+                _("Транзакции COMMIT"),
+                _("Транзакции ROLLBACK"),
+                _("Попадания в кэш"),
+                _("Чтения с диска"),
+                _("Cache hit, %"),
+                _("Возвращено строк"),
+                _("Получено строк"),
+                _("Вставлено строк"),
+                _("Обновлено строк"),
+                _("Удалено строк"),
+                _("Временных файлов"),
+                _("Временные данные"),
+                _("Deadlock"),
+                _("Время чтения, мс"),
+                _("Время записи, мс"),
+                _("Статистика с"),
             ],
         ),
-        (
-            t("Крупнейшие таблицы", "Largest tables"),
-            report_sql.REPORT_LARGEST_TABLES_SQL,
-            None,
-            [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size"), t("Индексы, байт", "Indexes, bytes"), t("Индексы", "Indexes"), t("Строк", "Rows")],
-        ),
-        (t("Временные таблицы", "Temporary tables"), report_sql.REPORT_TEMP_TABLES_SQL, None, [t("Схема", "Schema"), t("Таблица", "Table"), t("Владелец", "Owner"), t("Байт", "Bytes"), t("Размер", "Size")]),
-        (t("Активные запросы", "Active queries"), report_sql.REPORT_ACTIVE_QUERIES_SQL, None, ["PID", t("Пользователь", "User"), t("Состояние", "State"), t("Длительность", "Duration"), "SQL"]),
-        (t("Активные сессии", "Active sessions"), report_sql.REPORT_ACTIVE_SESSIONS_SQL, None, ["PID", t("Пользователь", "User"), t("База", "Database"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Длительность", "Duration")]),
-        (t("Блокировки", "Locks"), report_sql.REPORT_LOCKS_SQL, None, [t("Заблокирован PID", "Blocked PID"), t("Пользователь", "User"), t("Блокирует PID", "Blocking PID"), t("Пользователь", "User"), t("Длительность", "Duration"), "SQL"]),
-        (t("Незавершённые транзакции", "Open transactions"), report_sql.REPORT_IDLE_TRANSACTIONS_SQL, None, ["PID", t("Пользователь", "User"), t("Приложение", "Application"), t("Клиент", "Client"), t("Состояние", "State"), t("Возраст", "Age"), "SQL"]),
-        (t("Ожидания сессий", "Session waits"), report_sql.REPORT_WAIT_EVENTS_SQL, None, [t("Тип ожидания", "Wait type"), t("Событие", "Event"), t("Сессий", "Sessions")]),
-        (
-            t("Эффективность доступа к таблицам", "Table access efficiency"),
-            report_sql.REPORT_TABLE_ACCESS_SQL,
-            None,
-            [t("Схема", "Schema"), t("Таблица", "Table"), t("Seq scan", "Seq scans"), t("Index scan", "Index scans"), t("Индексы, %", "Index usage, %"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), t("Мёртвые, %", "Dead rows, %"), "Autovacuum", "Autoanalyze"],
-        ),
-        (t("Память", "Memory"), report_sql.REPORT_MEMORY_SQL, None, [t("Параметр", "Parameter"), t("Значение", "Value"), t("Единица", "Unit")]),
-        (t("Обслуживание", "Maintenance"), report_sql.REPORT_MAINTENANCE_SQL, None, [t("Схема", "Schema"), t("Таблица", "Table"), t("Живые", "Live rows"), t("Мёртвые", "Dead rows"), "VACUUM", "Autovacuum", "ANALYZE", "Autoanalyze"]),
-        (t("Пользователи", "Users"), report_sql.REPORT_USERS_SQL, None, [t("Пользователь", "User"), t("Вход", "Login"), "Superuser", t("Создание БД", "Create DB"), t("Создание ролей", "Create roles"), t("Лимит", "Limit")]),
-        (t("Группы", "Groups"), report_sql.REPORT_GROUPS_SQL, None, [t("Группа", "Group"), t("Участников", "Member count"), t("Участники", "Members")]),
+        (_("Крупнейшие таблицы"), report_sql.REPORT_LARGEST_TABLES_SQL, None, [_("Схема"), _("Таблица"), _("Владелец"), _("Байт"), _("Размер"), _("Индексы, байт"), _("Индексы"), _("Строк")]),
+        (_("Временные таблицы"), report_sql.REPORT_TEMP_TABLES_SQL, None, [_("Схема"), _("Таблица"), _("Владелец"), _("Байт"), _("Размер")]),
+        (_("Активные запросы"), report_sql.REPORT_ACTIVE_QUERIES_SQL, None, ["PID", _("Пользователь"), _("Состояние"), _("Длительность"), "SQL"]),
+        (_("Активные сессии"), report_sql.REPORT_ACTIVE_SESSIONS_SQL, None, ["PID", _("Пользователь"), _("База"), _("Приложение"), _("Клиент"), _("Состояние"), _("Длительность")]),
+        (_("Блокировки"), report_sql.REPORT_LOCKS_SQL, None, [_("Заблокирован PID"), _("Пользователь"), _("Блокирует PID"), _("Пользователь"), _("Длительность"), "SQL"]),
+        (_("Незавершённые транзакции"), report_sql.REPORT_IDLE_TRANSACTIONS_SQL, None, ["PID", _("Пользователь"), _("Приложение"), _("Клиент"), _("Состояние"), _("Возраст"), "SQL"]),
+        (_("Ожидания сессий"), report_sql.REPORT_WAIT_EVENTS_SQL, None, [_("Тип ожидания"), _("Событие"), _("Сессий")]),
+        (_("Эффективность доступа к таблицам"), report_sql.REPORT_TABLE_ACCESS_SQL, None, [_("Схема"), _("Таблица"), _("Seq scan"), _("Index scan"), _("Индексы, %"), _("Живые"), _("Мёртвые"), _("Мёртвые, %"), "Autovacuum", "Autoanalyze"]),
+        (_("Память"), report_sql.REPORT_MEMORY_SQL, None, [_("Параметр"), _("Значение"), _("Единица")]),
+        (_("Обслуживание"), report_sql.REPORT_MAINTENANCE_SQL, None, [_("Схема"), _("Таблица"), _("Живые"), _("Мёртвые"), "VACUUM", "Autovacuum", "ANALYZE", "Autoanalyze"]),
+        (_("Пользователи"), report_sql.REPORT_USERS_SQL, None, [_("Пользователь"), _("Вход"), "Superuser", _("Создание БД"), _("Создание ролей"), _("Лимит")]),
+        (_("Группы"), report_sql.REPORT_GROUPS_SQL, None, [_("Группа"), _("Участников"), _("Участники")]),
     ]
-    extension_rows, _ = _collect(db_connection, "pg_stat_statements", report_sql.REPORT_PG_STAT_STATEMENTS_CHECK_SQL, language=language)
+    extension_rows, _extension_warning = _collect(db_connection, "pg_stat_statements", report_sql.REPORT_PG_STAT_STATEMENTS_CHECK_SQL)
     if extension_rows:
-        definitions.append((t("Ресурсоёмкие запросы", "Expensive queries"), report_sql.REPORT_EXPENSIVE_QUERIES_SQL, None, [t("Вызовов", "Calls"), t("Общее время, мс", "Total time, ms"), t("Среднее время, мс", "Mean time, ms"), t("Строк", "Rows"), "SQL"]))
+        definitions.append((_("Ресурсоёмкие запросы"), report_sql.REPORT_EXPENSIVE_QUERIES_SQL, None, [_("Вызовов"), _("Общее время, мс"), _("Среднее время, мс"), _("Строк"), "SQL"]))
     if db_connection.is_greenplum_compatible:
-        definitions.append(
-            (
-                t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"),
-                report_sql.REPORT_GP_SEGMENTS_SQL,
-                None,
-                ["Content", "DBID", t("Роль", "Role"), t("Предпочтительная", "Preferred role"), t("Режим", "Mode"), t("Статус", "Status"), t("Хост", "Host"), t("Порт", "Port")],
-            )
-        )
+        definitions.append((_("Сегменты Greenplum/Greengage"), report_sql.REPORT_GP_SEGMENTS_SQL, None, ["Content", "DBID", _("Роль"), _("Предпочтительная"), _("Режим"), _("Статус"), _("Хост"), _("Порт")]))
     else:
-        definitions.append((t("Сегменты Greenplum/Greengage", "Greenplum/Greengage segments"), None, None, [t("Состояние", "Status")]))
+        definitions.append((_("Сегменты Greenplum/Greengage"), None, None, [pgettext("Greenplum fallback column", "Состояние")]))
 
     sections = []
     for title, query, params, headers in definitions:
         if query is None:
-            sections.append({"title": title, "headers": headers, "rows": [[t("Не применимо для PostgreSQL", "Not applicable to PostgreSQL")]], "warning": None})
+            sections.append({"title": title, "headers": headers, "rows": [[_("Не применимо для PostgreSQL")]], "warning": None})
             continue
-        rows, warning = _collect(db_connection, title, query, params, language)
-        if title == t("Общая информация", "General information") and rows:
+        rows, warning = _collect(db_connection, title, query, params)
+        if title == _("Общая информация") and rows:
             row = list(rows[0])
             row[2] = _format_bytes(int(row[2] or 0))
             rows = [[headers[index], value] for index, value in enumerate(row)]
-            headers = [t("Показатель", "Metric"), t("Значение", "Value")]
-        elif title == t("Сводка производительности", "Performance summary") and rows:
+            headers = [_("Показатель"), _("Значение")]
+        elif title == _("Сводка производительности") and rows:
             row = list(rows[0])
             row[12] = _format_bytes(int(row[12] or 0))
             rows = [[headers[index], value] for index, value in enumerate(row)]
-            headers = [t("Показатель", "Metric"), t("Значение", "Value")]
+            headers = [_("Показатель"), _("Значение")]
         sections.append({"title": title, "headers": headers, "rows": rows, "warning": warning})
     return sections
 
 
-def _performance_conclusion(sections, language="ru"):
-    def t(ru, en):
-        return _label(language, ru, en)
-
+def _performance_conclusion(sections):
     by_title = {section["title"]: section for section in sections}
     result = []
     severity = 0
@@ -274,11 +238,11 @@ def _performance_conclusion(sections, language="ru"):
         severity = max(severity, weight)
         result.append((level, message))
 
-    summary = dict(by_title.get(t("Сводка производительности", "Performance summary"), {}).get("rows", []))
-    general = dict(by_title.get(t("Общая информация", "General information"), {}).get("rows", []))
-    locks = by_title.get(t("Блокировки", "Locks"), {}).get("rows", [])
-    transactions = by_title.get(t("Незавершённые транзакции", "Open transactions"), {}).get("rows", [])
-    access = by_title.get(t("Эффективность доступа к таблицам", "Table access efficiency"), {}).get("rows", [])
+    summary = dict(by_title.get(_("Сводка производительности"), {}).get("rows", []))
+    general = dict(by_title.get(_("Общая информация"), {}).get("rows", []))
+    locks = by_title.get(_("Блокировки"), {}).get("rows", [])
+    transactions = by_title.get(_("Незавершённые транзакции"), {}).get("rows", [])
+    access = by_title.get(_("Эффективность доступа к таблицам"), {}).get("rows", [])
 
     def as_number(value):
         try:
@@ -290,58 +254,58 @@ def _performance_conclusion(sections, language="ru"):
         return as_number(mapping.get(key))
 
     if locks:
-        add(t("Критично", "Critical"), t(f"Обнаружено блокировок: {len(locks)}. Проверьте блокирующие сессии.", f"Locks detected: {len(locks)}. Inspect blocking sessions."), 2)
+        add(_("Критично"), _("Обнаружено блокировок: {count}. Проверьте блокирующие сессии.").format(count=len(locks)), 2)
 
-    cache_hit = number(summary, t("Cache hit, %", "Cache hit, %"))
+    cache_hit = number(summary, _("Cache hit, %"))
     if cache_hit and cache_hit < 90:
-        add(t("Критично", "Critical"), t(f"Cache hit равен {cache_hit:.1f}%. Высокая доля чтения с диска может ограничивать производительность.", f"Cache hit is {cache_hit:.1f}%. A high disk-read share may be limiting performance."), 2)
+        add(_("Критично"), _("Cache hit равен {cache_hit:.1f}%. Высокая доля чтения с диска может ограничивать производительность.").format(cache_hit=cache_hit), 2)
     elif cache_hit and cache_hit < 95:
-        add(t("Внимание", "Warning"), t(f"Cache hit равен {cache_hit:.1f}%. Проверьте самые читаемые запросы и размер кэша.", f"Cache hit is {cache_hit:.1f}%. Review the most read-intensive queries and cache sizing."))
+        add(_("Внимание"), _("Cache hit равен {cache_hit:.1f}%. Проверьте самые читаемые запросы и размер кэша.").format(cache_hit=cache_hit))
 
-    commits = number(summary, t("Транзакции COMMIT", "Committed transactions"))
-    rollbacks = number(summary, t("Транзакции ROLLBACK", "Rolled back transactions"))
+    commits = number(summary, _("Транзакции COMMIT"))
+    rollbacks = number(summary, _("Транзакции ROLLBACK"))
     rollback_ratio = 100 * rollbacks / (commits + rollbacks) if commits + rollbacks else 0
     if rollback_ratio >= 10:
-        add(t("Критично", "Critical"), t(f"Доля откатов составляет {rollback_ratio:.1f}%. Проверьте ошибки приложения и конфликты транзакций.", f"Rollback rate is {rollback_ratio:.1f}%. Check application errors and transaction conflicts."), 2)
+        add(_("Критично"), _("Доля откатов составляет {rollback_ratio:.1f}%. Проверьте ошибки приложения и конфликты транзакций.").format(rollback_ratio=rollback_ratio), 2)
     elif rollback_ratio >= 5:
-        add(t("Внимание", "Warning"), t(f"Доля откатов составляет {rollback_ratio:.1f}%.", f"Rollback rate is {rollback_ratio:.1f}%."))
+        add(_("Внимание"), _("Доля откатов составляет {rollback_ratio:.1f}%.").format(rollback_ratio=rollback_ratio))
 
-    connections = number(summary, t("Подключения", "Connections"))
-    max_connections = number(general, t("Максимум подключений", "Maximum connections"))
+    connections = number(summary, _("Подключения"))
+    max_connections = number(general, _("Максимум подключений"))
     connection_ratio = 100 * connections / max_connections if max_connections else 0
     if connection_ratio >= 90:
-        add(t("Критично", "Critical"), t(f"Использовано {connection_ratio:.1f}% доступных подключений.", f"{connection_ratio:.1f}% of available connections are in use."), 2)
+        add(_("Критично"), _("Использовано {connection_ratio:.1f}% доступных подключений.").format(connection_ratio=connection_ratio), 2)
     elif connection_ratio >= 75:
-        add(t("Внимание", "Warning"), t(f"Использовано {connection_ratio:.1f}% доступных подключений.", f"{connection_ratio:.1f}% of available connections are in use."))
+        add(_("Внимание"), _("Использовано {connection_ratio:.1f}% доступных подключений.").format(connection_ratio=connection_ratio))
 
-    deadlocks = int(number(summary, t("Deadlock", "Deadlocks")))
+    deadlocks = int(number(summary, _("Deadlock")))
     if deadlocks:
-        add(t("Внимание", "Warning"), t(f"С момента сброса статистики зарегистрировано deadlock: {deadlocks}.", f"Deadlocks since statistics reset: {deadlocks}."))
+        add(_("Внимание"), _("С момента сброса статистики зарегистрировано deadlock: {count}.").format(count=deadlocks))
 
     bloated = [row for row in access if len(row) > 7 and as_number(row[7]) >= 20 and as_number(row[6]) >= 100000]
     if bloated:
-        add(t("Внимание", "Warning"), t(f"У {len(bloated)} крупных таблиц не менее 20% мёртвых строк. Проверьте autovacuum.", f"{len(bloated)} large tables have at least 20% dead rows. Check autovacuum."))
+        add(_("Внимание"), _("У {count} крупных таблиц не менее 20% мёртвых строк. Проверьте autovacuum.").format(count=len(bloated)))
 
     sequential = [row for row in access if len(row) > 5 and as_number(row[5]) >= 100000 and as_number(row[4]) < 80 and as_number(row[2]) > 100]
     if sequential:
-        add(t("Внимание", "Warning"), t(f"Для {len(sequential)} крупных таблиц доля index scan ниже 80%. Проверьте планы запросов и индексы.", f"{len(sequential)} large tables have index scan usage below 80%. Review query plans and indexes."))
+        add(_("Внимание"), _("Для {count} крупных таблиц доля index scan ниже 80%. Проверьте планы запросов и индексы.").format(count=len(sequential)))
 
     long_transactions = [row for row in transactions if len(row) > 5 and hasattr(row[5], "total_seconds") and row[5].total_seconds() >= 900]
     if long_transactions:
-        add(t("Внимание", "Warning"), t(f"Транзакций старше 15 минут: {len(long_transactions)}. Они могут удерживать блокировки и мешать очистке.", f"Transactions older than 15 minutes: {len(long_transactions)}. They may hold locks and delay vacuum."))
+        add(_("Внимание"), _("Транзакций старше 15 минут: {count}. Они могут удерживать блокировки и мешать очистке.").format(count=len(long_transactions)))
 
     if not result:
-        result.append((t("Норма", "Normal"), t("По доступному снимку критические отклонения производительности не обнаружены.", "No critical performance deviations were found in the available snapshot.")))
+        result.append((_("Норма"), _("По доступному снимку критические отклонения производительности не обнаружены.")))
 
-    status = t("Требует внимания", "Needs attention") if severity == 2 else t("Есть замечания", "Observations found") if severity == 1 else t("Стабильно", "Stable")
-    result.insert(0, (t("Итог", "Overall"), t(f"Оценка: {status}. Заключение основано на текущем снимке и накопительной статистике PostgreSQL.", f"Assessment: {status}. The conclusion is based on the current snapshot and cumulative PostgreSQL statistics.")))
+    status = _("Требует внимания") if severity == 2 else _("Есть замечания") if severity == 1 else _("Стабильно")
+    result.insert(0, (_("Итог"), _("Оценка: {status}. Заключение основано на текущем снимке и накопительной статистике PostgreSQL.").format(status=status)))
     warnings = [section["title"] for section in sections if section["warning"]]
     if warnings:
-        result.append((t("Информация", "Information"), t("Часть разделов недоступна: ", "Some sections are unavailable: ") + ", ".join(warnings) + "."))
+        result.append((_("Информация"), _("Часть разделов недоступна: ") + ", ".join(warnings) + "."))
     return result
 
 
-def _build_pdf(db_connection, db_user, sections, language="ru"):
+def _build_pdf(db_connection, db_user, sections):
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.pagesizes import A4, landscape
@@ -349,33 +313,30 @@ def _build_pdf(db_connection, db_user, sections, language="ru"):
     from reportlab.lib.units import mm
     from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
-    def t(ru, en):
-        return _label(language, ru, en)
-
     regular, bold = _register_fonts()
     styles = getSampleStyleSheet()
     normal = ParagraphStyle("ReportNormal", parent=styles["BodyText"], fontName=regular, fontSize=7, leading=9)
     heading = ParagraphStyle("ReportHeading", parent=styles["Heading1"], fontName=bold, fontSize=15, leading=18, textColor=colors.HexColor("#1d4ed8"), spaceAfter=8)
     title = ParagraphStyle("ReportTitle", parent=heading, fontSize=20, leading=23, alignment=TA_CENTER, spaceAfter=8)
     buffer = io.BytesIO()
-    document = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm, topMargin=14 * mm, bottomMargin=14 * mm, title=t(f"Отчёт по базе {db_connection.database}", f"Database report: {db_connection.database}"))
-    story = [Paragraph("DB STAT", title), Paragraph(t("Диагностика базы данных", "Database diagnostics"), title), Spacer(1, 3 * mm)]
+    document = SimpleDocTemplate(buffer, pagesize=landscape(A4), leftMargin=12 * mm, rightMargin=12 * mm, topMargin=14 * mm, bottomMargin=14 * mm, title=_("Отчёт по базе {database}").format(database=db_connection.database))
+    story = [Paragraph("DB STAT", title), Paragraph(_("Диагностика базы данных"), title), Spacer(1, 3 * mm)]
     cover = [
-        [t("Подключение", "Connection"), db_connection.name],
-        [t("СУБД", "DBMS"), db_connection.db_type],
-        [t("База данных", "Database"), db_connection.database],
-        [t("Сервер", "Server"), f"{db_connection.host}:{db_connection.port}"],
-        [t("Пользователь отчёта", "Report user"), db_user.login],
-        [t("Сформирован", "Generated"), datetime.now().astimezone().strftime("%d.%m.%Y %H:%M:%S %Z")],
+        [_("Подключение"), db_connection.name],
+        [_("СУБД"), db_connection.db_type],
+        [_("База данных"), db_connection.database],
+        [_("Сервер"), f"{db_connection.host}:{db_connection.port}"],
+        [_("Пользователь отчёта"), db_user.login],
+        [_("Сформирован"), datetime.now().astimezone().strftime("%d.%m.%Y %H:%M:%S %Z")],
     ]
-    conclusion = _performance_conclusion(sections, language)
-    story.extend([_pdf_table(cover, normal, bold, header=False), Spacer(1, 4 * mm), Paragraph(t("Заключение о производительности", "Performance conclusion"), heading), _pdf_table([[t("Уровень", "Level"), t("Вывод", "Finding")], *conclusion], normal, bold), PageBreak()])
+    conclusion = _performance_conclusion(sections)
+    story.extend([_pdf_table(cover, normal, bold, header=False), Spacer(1, 4 * mm), Paragraph(_("Заключение о производительности"), heading), _pdf_table([[_("Уровень"), _("Вывод")], *conclusion], normal, bold), PageBreak()])
     for section in sections:
         story.append(Paragraph(_text(section["title"]), heading))
         if section["warning"]:
             story.append(Paragraph(_text(section["warning"]), normal))
         elif not section["rows"]:
-            story.append(Paragraph(t("На момент формирования отчёта данные отсутствуют.", "No data was available when the report was generated."), normal))
+            story.append(Paragraph(_("На момент формирования отчёта данные отсутствуют."), normal))
         else:
             story.append(_pdf_table([section["headers"], *section["rows"]], normal, bold))
         story.extend([Spacer(1, 5 * mm)])
@@ -385,7 +346,7 @@ def _build_pdf(db_connection, db_user, sections, language="ru"):
         canvas.setFont(regular, 7)
         canvas.setFillColor(colors.grey)
         canvas.drawString(12 * mm, 7 * mm, f"DB STAT · {db_connection.name} · {db_connection.database}")
-        canvas.drawRightString(landscape(A4)[0] - 12 * mm, 7 * mm, t(f"Страница {doc.page}", f"Page {doc.page}"))
+        canvas.drawRightString(landscape(A4)[0] - 12 * mm, 7 * mm, _("Страница {page}").format(page=doc.page))
         canvas.restoreState()
 
     document.build(story, onFirstPage=page, onLaterPages=page)

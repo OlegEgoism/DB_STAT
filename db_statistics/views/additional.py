@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone, translation
 from django.utils.dateparse import parse_datetime
+from django.utils.translation import gettext as _
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
@@ -68,13 +69,11 @@ def home(request):
     )
 
 
-def _lockout_message(lockout_until, is_english):
+def _lockout_message(lockout_until):
     """Формирует сообщение о временной блокировке входа"""
     remaining_seconds = int((lockout_until - timezone.now()).total_seconds())
     remaining_minutes = max(1, -(-remaining_seconds // 60))
-    if is_english:
-        return f"Too many failed attempts. Try again in {remaining_minutes} min."
-    return f"Слишком много неверных попыток. Повторите через {remaining_minutes} мин."
+    return _("Слишком много неверных попыток. Повторите через {minutes} мин.").format(minutes=remaining_minutes)
 
 
 @ensure_csrf_cookie
@@ -86,7 +85,6 @@ def login(request):
         return redirect("home")
 
     error = ""
-    is_english = translation.get_language() == "en"
     identifier_value = ""
     session_duration_value = str(settings.DEFAULT_SESSION_DURATION_HOURS)
     if request.method == "POST":
@@ -95,17 +93,14 @@ def login(request):
         session_duration_value = (request.POST.get("session_duration") or str(settings.DEFAULT_SESSION_DURATION_HOURS)).strip()
         session_duration_seconds = _session_duration_seconds(session_duration_value)
 
-        invalid_credentials_message = "Invalid login, email or password" if is_english else "Неверный логин, почта или пароль"
+        invalid_credentials_message = _("Неверный логин, почта или пароль")
 
         if session_duration_seconds is None:
-            if is_english:
-                error = f"Session duration must be between {settings.MIN_SESSION_DURATION_MINUTES} minutes and {settings.MAX_SESSION_DURATION_HOURS} hours"
-            else:
-                error = f"Время сессии должно быть от {settings.MIN_SESSION_DURATION_MINUTES} минут до {settings.MAX_SESSION_DURATION_HOURS} часов"
+            error = _("Время сессии должно быть от {min_minutes} минут до {max_hours} часов").format(min_minutes=settings.MIN_SESSION_DURATION_MINUTES, max_hours=settings.MAX_SESSION_DURATION_HOURS)
         else:
             candidate = DBUser.objects.filter(Q(login=identifier_value) | Q(email=identifier_value), is_active=True).first()
             if candidate and candidate.lockout_until and candidate.lockout_until > timezone.now():
-                error = _lockout_message(candidate.lockout_until, is_english)
+                error = _lockout_message(candidate.lockout_until)
             elif candidate and candidate.check_password(password_value):
                 db_user = candidate
                 clear_login_failures(db_user)
@@ -114,7 +109,7 @@ def login(request):
                 if candidate:
                     attempt_number, lockout_until = register_failed_login(candidate)
                     if lockout_until:
-                        error = _lockout_message(lockout_until, is_english)
+                        error = _lockout_message(lockout_until)
                     _write_audit("login", f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; попытка №{attempt_number}", db_user=candidate)
 
         if not error and db_user:
@@ -247,7 +242,7 @@ def language_settings(request):
     payload = _read_json_body(request)
     language = str(payload.get("language", "")).lower()
     if language not in settings.SUPPORTED_LANGUAGES:
-        return JsonResponse({"ok": False, "message": "Поддерживаются только языки RU и EN"}, status=400)
+        return JsonResponse({"ok": False, "message": _("Поддерживаются только языки RU и EN")}, status=400)
 
     translation.activate(language)
     request.session["django_language"] = language
