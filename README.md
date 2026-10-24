@@ -148,6 +148,18 @@ python -m ruff check . --fix
 python -m ruff format .
 ```
 
+## Браузерные smoke-тесты (Playwright)
+
+Каталог `tests/e2e` проверяет в Chromium вход, сохранённое подключение, вкладки «Таблицы», «Временные таблицы» и «TOAST-таблицы», поиск и выход. Тестам нужны запущенное приложение и PostgreSQL: тест сохраняет в приложении подключение к этой базе и на время поиска создаёт в ней две таблицы с TOAST-данными (после теста они удаляются).
+
+```bash
+pip install -r requirements.txt -r requirements-e2e.txt
+python -m playwright install chromium
+E2E_PG_PASSWORD=... python -m pytest tests/e2e -q
+```
+
+Адрес приложения задаётся переменной `E2E_BASE_URL` (по умолчанию `http://127.0.0.1:8000`). Первый администратор — `admin` с паролем из `E2E_ADMIN_PASSWORD` (по умолчанию `admin12345`). Если приложение не отвечает, тесты пропускаются. В CI они идут отдельной задачей `e2e`, которая пока не блокирует сборку (`continue-on-error`).
+
 ## Команды Make
 
 Основные шаги для `Makefile` — полный список с описанием: `make help` или `make` (по умолчанию).

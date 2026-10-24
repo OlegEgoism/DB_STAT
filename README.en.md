@@ -151,6 +151,18 @@ python -m ruff check . --fix
 python -m ruff format . 
 ``` 
  
+## Browser smoke tests (Playwright)
+
+The `tests/e2e` directory checks sign-in, a saved connection, the "Tables", "Temporary tables" and "TOAST tables" tabs, search and sign-out in Chromium. The tests need a running application and a PostgreSQL database: they save a connection to this database in the application and, for the search test, create two tables with TOAST data there (they are dropped afterwards):
+
+```bash
+pip install -r requirements.txt -r requirements-e2e.txt
+python -m playwright install chromium
+E2E_PG_PASSWORD=... python -m pytest tests/e2e -q
+```
+
+The application address is set by `E2E_BASE_URL` (default `http://127.0.0.1:8000`). The first administrator is `admin` with the password from `E2E_ADMIN_PASSWORD` (default `admin12345`). If the application does not respond, the tests are skipped. In CI they run as a separate `e2e` job that does not block the build yet (`continue-on-error`).
+
 ## Make Commands 
  
 Main `Makefile` targets — full list with descriptions: `make help` or `make` (default). 

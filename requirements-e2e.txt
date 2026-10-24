@@ -1,0 +1,23 @@
+# Браузерные smoke-тесты (каталог tests/e2e). Ставятся вместе с requirements.txt:
+#   pip install -r requirements.txt -r requirements-e2e.txt
+#   python -m playwright install --with-deps chromium
+#
+# Каждая версия, включая транзитивные, выпущена не позже 2026-10-11, то есть не менее
+# чем за две недели до 2026-10-25. Список получен uv из входного файла с playwright и pytest:
+#   uv pip compile <входной файл> --python-version 3.12 --python-platform linux --exclude-newer 2026-10-11T23:59:59Z
+greenlet==3.5.6
+    # via playwright
+iniconfig==2.3.1
+    # via pytest
+packaging==26.3
+    # via pytest
+playwright==1.63.0
+pluggy==1.6.0
+    # via pytest
+pyee==13.0.1
+    # via playwright
+pygments==2.21.0
+    # via pytest
+pytest==9.1.1
+typing-extensions==4.16.0
+    # via pyee
