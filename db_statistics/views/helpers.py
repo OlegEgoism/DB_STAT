@@ -13,8 +13,7 @@ from django.conf import settings
 
 from db_statistics.models import DBUserSidebarSettings
 
-# Служебные схемы, которые не показываются пользователю как обычные объекты БД.
-EXCLUDED_SYSTEM_SCHEMAS_SQL = "('pg_catalog', 'information_schema', 'gp_toolkit')"
+# Служебные схемы: константа живёт в queries/common.py, здесь реэкспорт для прежних импортов.
 
 
 def _normalize_sidebar_tabs(tabs):
