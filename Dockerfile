@@ -7,8 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt ./
-RUN sed '/^ruff==/d' requirements.txt > requirements-runtime.txt \
-    && pip wheel --no-cache-dir --wheel-dir /wheels -r requirements-runtime.txt
+RUN pip wheel --no-cache-dir --wheel-dir /wheels -r requirements.txt
 
 FROM python:3.13-slim
 
@@ -26,7 +25,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /wheels /wheels
-RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements-runtime.txt \
+RUN pip install --no-cache-dir --no-index --find-links=/wheels -r /wheels/requirements.txt \
     && rm -rf /wheels
 
 COPY . .

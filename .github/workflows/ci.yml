@@ -42,7 +42,7 @@ jobs:
           sudo apt-get install --no-install-recommends -y gcc libpq-dev
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Lint (ruff check)
         run: python -m ruff check .

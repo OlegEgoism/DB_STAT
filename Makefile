@@ -16,8 +16,8 @@ SQLITE_NAME ?= db.sqlite3
 help: ## Показать список доступных команд
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-install: ## Установить зависимости из requirements.txt
-	pip install -r requirements.txt
+install: ## Установить зависимости для разработки (requirements-dev.txt: рабочие + ruff)
+	pip install -r requirements-dev.txt
 
 hooks: ## Включить git-хуки проекта (.githooks) для этого клона — один раз
 	git config core.hooksPath .githooks
