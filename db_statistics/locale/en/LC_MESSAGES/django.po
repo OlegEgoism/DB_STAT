@@ -1,0 +1,453 @@
+# English translations for DB STAT.
+# This file is distributed under the same license as the DB STAT project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: DB STAT\n"
+"POT-Creation-Date: 2026-10-25 00:56+0300\n"
+"PO-Revision-Date: 2026-10-25 00:56+0300\n"
+"Last-Translator: DB STAT\n"
+"Language: en\n"
+"Language-Team: English\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#, python-brace-format
+msgid ""
+"Cache hit равен {cache_hit:.1f}%. Высокая доля чтения с диска может "
+"ограничивать производительность."
+msgstr ""
+"Cache hit is {cache_hit:.1f}%. A high disk-read share may be limiting "
+"performance."
+
+#, python-brace-format
+msgid ""
+"Cache hit равен {cache_hit:.1f}%. Проверьте самые читаемые запросы и "
+"размер кэша."
+msgstr ""
+"Cache hit is {cache_hit:.1f}%. Review the most read-intensive queries and"
+" cache sizing."
+
+msgid "Cache hit, %"
+msgstr "Cache hit, %"
+
+msgid "Deadlock"
+msgstr "Deadlocks"
+
+msgid "Index scan"
+msgstr "Index scans"
+
+msgid "PDF-отчёт готов к скачиванию"
+msgstr "PDF report is ready for download"
+
+msgid "Seq scan"
+msgstr "Seq scans"
+
+msgid "Активные запросы"
+msgstr "Active queries"
+
+msgid "Активные сессии"
+msgstr "Active sessions"
+
+msgid "База"
+msgstr "Database"
+
+msgid "База данных"
+msgstr "Database"
+
+msgid "Байт"
+msgstr "Bytes"
+
+msgid "Блокировки"
+msgstr "Locks"
+
+msgid "Блокирует PID"
+msgstr "Blocking PID"
+
+msgid "Версия"
+msgstr "Version"
+
+msgid "Владелец"
+msgstr "Owner"
+
+msgid "Внимание"
+msgstr "Warning"
+
+msgid "Возвращено строк"
+msgstr "Rows returned"
+
+msgid "Возраст"
+msgstr "Age"
+
+msgid "Временные данные"
+msgstr "Temporary data"
+
+msgid "Временные таблицы"
+msgstr "Temporary tables"
+
+msgid "Временных файлов"
+msgstr "Temporary files"
+
+msgid "Время записи, мс"
+msgstr "Write time, ms"
+
+msgid "Время работы"
+msgstr "Uptime"
+
+#, python-brace-format
+msgid "Время сессии должно быть от {min_minutes} минут до {max_hours} часов"
+msgstr ""
+"Session duration must be between {min_minutes} minutes and {max_hours} "
+"hours"
+
+msgid "Время чтения, мс"
+msgstr "Read time, ms"
+
+msgid "Вставлено строк"
+msgstr "Rows inserted"
+
+msgid "Вход"
+msgstr "Login"
+
+msgid "Вывод"
+msgstr "Finding"
+
+msgid "Вызовов"
+msgstr "Calls"
+
+#, python-brace-format
+msgid "Готов, но неполный: не собраны разделы: {titles}"
+msgstr "Ready, but incomplete: sections not collected: {titles}"
+
+msgid "Группа"
+msgstr "Group"
+
+msgid "Группы"
+msgstr "Groups"
+
+msgid "Диагностика базы данных"
+msgstr "Database diagnostics"
+
+msgid "Длительность"
+msgstr "Duration"
+
+#, python-brace-format
+msgid ""
+"Для {count} крупных таблиц доля index scan ниже 80%. Проверьте планы "
+"запросов и индексы."
+msgstr ""
+"{count} large tables have index scan usage below 80%. Review query plans "
+"and indexes."
+
+#, python-brace-format
+msgid "Доля откатов составляет {rollback_ratio:.1f}%."
+msgstr "Rollback rate is {rollback_ratio:.1f}%."
+
+#, python-brace-format
+msgid ""
+"Доля откатов составляет {rollback_ratio:.1f}%. Проверьте ошибки "
+"приложения и конфликты транзакций."
+msgstr ""
+"Rollback rate is {rollback_ratio:.1f}%. Check application errors and "
+"transaction conflicts."
+
+msgid "Единица"
+msgstr "Unit"
+
+msgid "Есть замечания"
+msgstr "Observations found"
+
+msgid "Живые"
+msgstr "Live rows"
+
+msgid "Заблокирован PID"
+msgstr "Blocked PID"
+
+msgid "Заключение о производительности"
+msgstr "Performance conclusion"
+
+msgid "Запуск"
+msgstr "Started"
+
+msgid "Значение"
+msgstr "Value"
+
+msgid "Индексы"
+msgstr "Indexes"
+
+msgid "Индексы, %"
+msgstr "Index usage, %"
+
+msgid "Индексы, байт"
+msgstr "Indexes, bytes"
+
+msgid "Информация"
+msgstr "Information"
+
+#, python-brace-format
+msgid "Использовано {connection_ratio:.1f}% доступных подключений."
+msgstr "{connection_ratio:.1f}% of available connections are in use."
+
+msgid "Итог"
+msgstr "Overall"
+
+msgid "Клиент"
+msgstr "Client"
+
+msgid "Кодировка"
+msgstr "Encoding"
+
+msgid "Критично"
+msgstr "Critical"
+
+msgid "Крупнейшие таблицы"
+msgstr "Largest tables"
+
+msgid "Лимит"
+msgstr "Limit"
+
+msgid "Максимум подключений"
+msgstr "Maximum connections"
+
+msgid "Мёртвые"
+msgstr "Dead rows"
+
+msgid "Мёртвые, %"
+msgstr "Dead rows, %"
+
+msgid "На момент формирования отчёта данные отсутствуют."
+msgstr "No data was available when the report was generated."
+
+msgid "Не применимо для PostgreSQL"
+msgstr "Not applicable to PostgreSQL"
+
+#, python-brace-format
+msgid "Не удалось собрать раздел «{title}»"
+msgstr "Could not collect the “{title}” section."
+
+msgid "Неверный логин, почта или пароль"
+msgstr "Invalid login, email or password"
+
+msgid "Незавершённые транзакции"
+msgstr "Open transactions"
+
+msgid "Норма"
+msgstr "Normal"
+
+#, python-brace-format
+msgid "Обнаружено блокировок: {count}. Проверьте блокирующие сессии."
+msgstr "Locks detected: {count}. Inspect blocking sessions."
+
+msgid "Обновлено строк"
+msgstr "Rows updated"
+
+msgid "Обслуживание"
+msgstr "Maintenance"
+
+msgid "Общая информация"
+msgstr "General information"
+
+msgid "Общее время, мс"
+msgstr "Total time, ms"
+
+msgid "Ожидания сессий"
+msgstr "Session waits"
+
+#, python-brace-format
+msgid "Отчёт по базе {database}"
+msgstr "Database report: {database}"
+
+#, python-brace-format
+msgid ""
+"Оценка: {status}. Заключение основано на текущем снимке и накопительной "
+"статистике PostgreSQL."
+msgstr ""
+"Assessment: {status}. The conclusion is based on the current snapshot and"
+" cumulative PostgreSQL statistics."
+
+msgid "Память"
+msgstr "Memory"
+
+msgid "Параметр"
+msgstr "Parameter"
+
+msgid ""
+"По доступному снимку критические отклонения производительности не "
+"обнаружены."
+msgstr "No critical performance deviations were found in the available snapshot."
+
+msgid "Поддерживаются только языки RU и EN"
+msgstr "Only RU and EN languages are supported"
+
+msgid "Подключение"
+msgstr "Connection"
+
+msgid "Подключения"
+msgstr "Connections"
+
+msgid "Показатель"
+msgstr "Metric"
+
+msgid "Получено строк"
+msgstr "Rows fetched"
+
+msgid "Пользователи"
+msgstr "Users"
+
+msgid "Пользователь"
+msgstr "User"
+
+msgid "Пользователь отчёта"
+msgstr "Report user"
+
+msgid "Попадания в кэш"
+msgstr "Buffer cache hits"
+
+msgid "Порт"
+msgstr "Port"
+
+msgid "Предпочтительная"
+msgstr "Preferred role"
+
+msgid "Приложение"
+msgstr "Application"
+
+msgid "Размер"
+msgstr "Size"
+
+msgid "Размеры схем"
+msgstr "Schema sizes"
+
+msgid "Режим"
+msgstr "Mode"
+
+msgid "Ресурсоёмкие запросы"
+msgstr "Expensive queries"
+
+msgid "Роль"
+msgstr "Role"
+
+#, python-brace-format
+msgid "С момента сброса статистики зарегистрировано deadlock: {count}."
+msgstr "Deadlocks since statistics reset: {count}."
+
+msgid "СУБД"
+msgstr "DBMS"
+
+msgid "Сводка производительности"
+msgstr "Performance summary"
+
+msgid "Сегменты Greenplum/Greengage"
+msgstr "Greenplum/Greengage segments"
+
+msgid "Сервер"
+msgstr "Server"
+
+msgid "Сессий"
+msgstr "Sessions"
+
+#, python-brace-format
+msgid "Слишком много неверных попыток. Повторите через {minutes} мин."
+msgstr "Too many failed attempts. Try again in {minutes} min."
+
+msgid "Событие"
+msgstr "Event"
+
+msgid "Создание БД"
+msgstr "Create DB"
+
+msgid "Создание ролей"
+msgstr "Create roles"
+
+msgid "Состояние"
+msgstr "State"
+
+msgctxt "Greenplum fallback column"
+msgid "Состояние"
+msgstr "Status"
+
+msgid "Среднее время, мс"
+msgstr "Mean time, ms"
+
+msgid "Стабильно"
+msgstr "Stable"
+
+msgid "Статистика с"
+msgstr "Statistics since"
+
+msgid "Статус"
+msgstr "Status"
+
+#, python-brace-format
+msgid "Страница {page}"
+msgstr "Page {page}"
+
+msgid "Строк"
+msgstr "Rows"
+
+msgid "Сформирован"
+msgstr "Generated"
+
+msgid "Схема"
+msgstr "Schema"
+
+msgid "Таблиц"
+msgstr "Tables"
+
+msgid "Таблица"
+msgstr "Table"
+
+msgid "Тип ожидания"
+msgstr "Wait type"
+
+msgid "Транзакции COMMIT"
+msgstr "Committed transactions"
+
+msgid "Транзакции ROLLBACK"
+msgstr "Rolled back transactions"
+
+#, python-brace-format
+msgid ""
+"Транзакций старше 15 минут: {count}. Они могут удерживать блокировки и "
+"мешать очистке."
+msgstr ""
+"Transactions older than 15 minutes: {count}. They may hold locks and "
+"delay vacuum."
+
+msgid "Требует внимания"
+msgstr "Needs attention"
+
+#, python-brace-format
+msgid "У {count} крупных таблиц не менее 20% мёртвых строк. Проверьте autovacuum."
+msgstr "{count} large tables have at least 20% dead rows. Check autovacuum."
+
+msgid "Удалено строк"
+msgstr "Rows deleted"
+
+msgid "Уровень"
+msgstr "Level"
+
+msgid "Участники"
+msgstr "Members"
+
+msgid "Участников"
+msgstr "Member count"
+
+msgid "Хост"
+msgstr "Host"
+
+msgid "Часовой пояс"
+msgstr "Time zone"
+
+msgid "Часть разделов недоступна: "
+msgstr "Some sections are unavailable: "
+
+msgid "Чтения с диска"
+msgstr "Disk block reads"
+
+msgid "Эффективность доступа к таблицам"
+msgstr "Table access efficiency"
+
