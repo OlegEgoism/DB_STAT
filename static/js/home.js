@@ -9,9 +9,10 @@
     // Хранит состояние, загружает данные, отбрасывает устаревшие ответы (requestId),
     // рисует таблицу и привязывает поиск, сортировку, пагинацию и фильтр избранного.
     // config: state, apiUrl, ids {body, count, info, prev, next, search, favoritesFilter?},
-    //   sortAttr (атрибут кнопок сортировки), colspan, itemsKey, countLabel,
+    //   sortAttr (атрибут кнопок сортировки), colspan, itemsKey, countLabel | formatCount(items),
     //   emptyMessage, loadingMessage, notConnectedMessage, errorFallbackMessage,
-    //   defaultDirection(sort), renderRow(item) -> html, renderSummary?(data | null)
+    //   defaultDirection(sort), renderRow(item) -> html, renderSummary?(data | null),
+    //   filters? [{id, stateKey, param}] — необязательные фильтры-select (значение -> state -> параметр запроса)
     // ============================
     class PagedTable {
         constructor(config) {
@@ -40,6 +41,7 @@
                 sort: state.sort,
                 direction: state.direction
             };
+            (config.filters || []).forEach(filter => { params[filter.param] = state[filter.stateKey]; });
             if (config.ids.favoritesFilter) params.favorites_only = state.favoritesOnly;
             return params;
         }
@@ -47,6 +49,7 @@
         refresh(conn = this.findActiveConnection()) {
             const requestId = ++this.requestId;
             if (!conn || !/^\d+$/.test(String(conn.id))) {
+                this.state.totalCount = 0;
                 this.renderWarning(this.config.notConnectedMessage);
                 return;
             }
@@ -94,7 +97,7 @@
             const totalPages = Math.max(Math.ceil(state.totalCount / state.pageSize), 1);
             const count = this.element('count');
             const info = this.element('info');
-            if (count) count.textContent = `${items.length} из ${state.totalCount} ${config.countLabel}`;
+            if (count) count.textContent = config.formatCount ? config.formatCount(items) : `${items.length} из ${state.totalCount} ${config.countLabel}`;
             if (info) info.textContent = `Страница ${state.page} из ${totalPages}`;
             tbody.innerHTML = items.length
                 ? items.map(item => config.renderRow(item)).join('')
@@ -123,6 +126,14 @@
                 state.favoritesOnly = favoritesFilter.value === 'favorites';
                 state.page = 1;
                 this.refresh();
+            });
+            (config.filters || []).forEach(filter => {
+                const select = document.getElementById(filter.id);
+                select?.addEventListener('change', () => {
+                    state[filter.stateKey] = select.value;
+                    state.page = 1;
+                    this.refresh();
+                });
             });
             const searchInput = this.element('search');
             searchInput?.addEventListener('input', () => {
@@ -176,13 +187,9 @@
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
     let schemaSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let schemaSizesRequestId = 0;
     let tableSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let tableSizesRequestId = 0;
     let viewsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
-    let viewsRequestId = 0;
     let functionsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
-    let functionsRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
     let distributionPickerActiveIndex = -1;
@@ -206,9 +213,7 @@
     const maintenanceJobs = new Map();
     let backgroundJobsErrorNotified = false;
     let usersState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
-    let usersRequestId = 0;
     let groupsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
-    let groupsRequestId = 0;
     let auditRequestId = 0;
     let databaseOverviewRequestId = 0;
     let memoryOverviewRequestId = 0;
@@ -294,6 +299,150 @@
         renderSummary(data) {
             const total = document.getElementById('toastTablesTotalSize');
             if (total) total.textContent = data && toastTablesState.totalCount ? `${translateInterfaceText('Всего')}: ${data.all_toast_size || '-'}` : '';
+        }
+    });
+    const schemaSizesPager = new PagedTable({
+        state: schemaSizesState,
+        apiUrl: databaseSchemasApiUrl,
+        ids: {body: 'schemaSizesTableBody', count: 'schemaSizesCount', info: 'schemaPaginationInfo', prev: 'schemaPrevPageBtn', next: 'schemaNextPageBtn', search: 'schemaSearchInput', favoritesFilter: 'schemaFavoritesFilter'},
+        sortAttr: 'data-schema-sort',
+        colspan: 5,
+        itemsKey: 'schemas',
+        countLabel: 'схем',
+        emptyMessage: 'Схемы не найдены',
+        loadingMessage: 'Загрузка размеров схем...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки размеров схем',
+        errorFallbackMessage: 'Не удалось получить размеры схем',
+        defaultDirection: sort => (sort === 'size_bytes' ? 'desc' : 'asc'),
+        renderRow: schema => `
+            <tr>
+                <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
+                <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
+                <td>${escapeHtml(schema.schema_owner || '-')}</td>
+                <td>${escapeHtml(schema.table_count ?? 0)}</td>
+                <td>${escapeHtml(schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit)}</td>
+            </tr>
+        `,
+        renderSummary(data) {
+            updateSchemaDistributionChart(data ? (data.schema_distribution || data.schemas || []) : []);
+        }
+    });
+    const tableSizesPager = new PagedTable({
+        state: tableSizesState,
+        apiUrl: tableSizesApiUrl,
+        ids: {body: 'tableSizesTableBody', count: 'tableSizesCount', info: 'tablePaginationInfo', prev: 'tablePrevPageBtn', next: 'tableNextPageBtn', search: 'tableSearchInput', favoritesFilter: 'tableFavoritesFilter'},
+        sortAttr: 'data-table-sort',
+        colspan: 8,
+        itemsKey: 'tables',
+        countLabel: 'таблиц',
+        emptyMessage: 'Таблицы не найдены',
+        loadingMessage: 'Загрузка размеров таблиц...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки размеров таблиц',
+        errorFallbackMessage: 'Не удалось получить размеры таблиц',
+        defaultDirection: sort => (['size_bytes', 'index_size_bytes', 'index_count', 'row_count'].includes(sort) ? 'desc' : 'asc'),
+        renderRow: table => `
+            <tr>
+                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td>${escapeHtml(table.table_owner || '-')}</td>
+                <td>${escapeHtml(table.table_size || '-')}</td>
+                <td>${escapeHtml(table.index_size || '-')}</td>
+                <td>${formatRowCount(table.index_count)}</td>
+                <td>${formatRowCount(table.row_count)}</td>
+            </tr>
+        `,
+        renderSummary(data) {
+            updateTableDistributionChart(data ? (data.table_distribution || data.tables || []) : []);
+        }
+    });
+    const viewsPager = new PagedTable({
+        state: viewsState,
+        apiUrl: viewsListApiUrl,
+        ids: {body: 'viewsTableBody', count: 'viewsCount', info: 'viewPaginationInfo', prev: 'viewPrevPageBtn', next: 'viewNextPageBtn', search: 'viewSearchInput', favoritesFilter: 'viewFavoritesFilter'},
+        filters: [{id: 'viewTypeFilter', stateKey: 'viewType', param: 'view_type'}],
+        sortAttr: 'data-view-sort',
+        colspan: 8,
+        itemsKey: 'views',
+        countLabel: 'представлений',
+        emptyMessage: 'Представления не найдены',
+        loadingMessage: 'Загрузка представлений...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки представлений',
+        errorFallbackMessage: 'Не удалось получить представления',
+        defaultDirection: sort => (['size_bytes', 'index_size_bytes', 'row_count'].includes(sort) ? 'desc' : 'asc'),
+        renderRow: view => `
+            <tr>
+                <td class="favorite-column">${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)}</td>
+                <td>${escapeHtml(view.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(view.view_name || '-')}</strong></td>
+                <td>${escapeHtml(view.view_owner || '-')}</td>
+                <td>${escapeHtml(view.view_type || '-')}</td>
+                <td>${escapeHtml(view.view_size || '-')}</td>
+                <td>${escapeHtml(view.index_size || '-')}</td>
+                <td>${formatRowCount(view.row_count)}</td>
+            </tr>
+        `,
+        renderSummary(data) {
+            updateViewsSummaryChart(data ? (data.summary || null) : null, data ? (data.views || []) : []);
+        }
+    });
+    const functionsPager = new PagedTable({
+        state: functionsState,
+        apiUrl: functionsListApiUrl,
+        ids: {body: 'functionsTableBody', count: 'functionsCount', info: 'functionPaginationInfo', prev: 'functionPrevPageBtn', next: 'functionNextPageBtn', search: 'functionSearchInput', favoritesFilter: 'functionFavoritesFilter'},
+        sortAttr: 'data-function-sort',
+        colspan: 5,
+        itemsKey: 'functions',
+        countLabel: 'функций',
+        emptyMessage: 'Функции не найдены',
+        loadingMessage: 'Загрузка функций...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки функций',
+        errorFallbackMessage: 'Не удалось получить функции',
+        defaultDirection: () => 'asc',
+        renderRow: item => `<tr>
+                <td class="favorite-column">${favoriteButton('function', `${item.schema_name}\u001f${item.function_name}\u001f${item.arguments || ''}`, `${item.schema_name}.${item.function_name}(${item.arguments || ''})`)}</td>
+                <td>${escapeHtml(item.schema_name || '—')}</td>
+                <td><strong>${escapeHtml(item.function_name || '—')}</strong></td>
+                <td><code>${escapeHtml(item.return_type || '—')}</code></td>
+                <td><code>${escapeHtml(item.arguments || '—')}</code></td>
+            </tr>`
+    });
+    const usersPager = new PagedTable({
+        state: usersState,
+        apiUrl: usersListApiUrl,
+        ids: {body: 'usersTableBody', count: 'usersCount', info: 'usersPaginationInfo', prev: 'usersPrevPageBtn', next: 'usersNextPageBtn', search: 'usersSearchInput', favoritesFilter: 'usersFavoritesFilter'},
+        sortAttr: 'data-users-sort',
+        colspan: 9,
+        itemsKey: 'roles',
+        countLabel: 'пользователей',
+        emptyMessage: 'Пользователи не найдены',
+        loadingMessage: 'Загрузка пользователей...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки пользователей',
+        errorFallbackMessage: 'Не удалось получить список пользователей',
+        defaultDirection: sort => (['connection_limit', 'valid_until'].includes(sort) ? 'desc' : 'asc'),
+        renderRow: role => renderRoleRow(role, false),
+        renderSummary(data) {
+            if (data) updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
+            else updateUsersPrivilegeCharts([]);
+        }
+    });
+    const groupsPager = new PagedTable({
+        state: groupsState,
+        apiUrl: groupsListApiUrl,
+        ids: {body: 'groupsTableBody', count: 'groupsCount', info: 'groupsPaginationInfo', prev: 'groupsPrevPageBtn', next: 'groupsNextPageBtn', search: 'groupsSearchInput', favoritesFilter: 'groupsFavoritesFilter'},
+        sortAttr: 'data-groups-sort',
+        colspan: 10,
+        itemsKey: 'roles',
+        formatCount: items => `${items.length} записей`,
+        emptyMessage: 'Группы не найдены',
+        loadingMessage: 'Загрузка групп...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки групп',
+        errorFallbackMessage: 'Не удалось получить список групп',
+        defaultDirection: sort => (['connection_limit', 'valid_until', 'member_count'].includes(sort) ? 'desc' : 'asc'),
+        renderRow: role => renderRoleRow(role, true),
+        renderSummary(data) {
+            if (data) updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
+            else updateGroupsPrivilegeCharts([]);
         }
     });
     // Серверный statement_timeout (15 с) короче этого лимита, поэтому обычно сервер
@@ -2650,29 +2799,21 @@
             });
     }
 
-    function renderRolesListWarning(tbodyId, countId, colspan, message) {
-        const tbody = document.getElementById(tbodyId);
-        const count = document.getElementById(countId);
-        if (count) count.textContent = 'Нет данных';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-muted">${escapeHtml(message)}</td></tr>`;
+    function refreshUsersForConnection(conn) {
+        usersPager.refresh(conn);
     }
 
-    function updateUsersSortIndicators() {
-        document.querySelectorAll('[data-users-sort]').forEach(button => {
-            const isActive = button.dataset.usersSort === usersState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, usersState.direction);
-        });
+    function initUsersControls() {
+        usersPager.bindControls();
     }
 
-    function updateGroupsSortIndicators() {
-        document.querySelectorAll('[data-groups-sort]').forEach(button => {
-            const isActive = button.dataset.groupsSort === groupsState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, groupsState.direction);
-        });
+    function refreshGroupsForConnection(conn) {
+        groupsPager.refresh(conn);
     }
 
+    function initGroupsControls() {
+        groupsPager.bindControls();
+    }
 
     function isRoleEnabled(value) {
         return value === true || String(value).toLowerCase() === 'true' || value === 'Да';
@@ -2734,27 +2875,9 @@
         }).join('');
     }
 
-    function renderUsersWarning(message) {
-        const info = document.getElementById('usersPaginationInfo');
-        usersState.totalCount = 0;
-        updateUsersPrivilegeCharts([]);
-        if (info) info.textContent = 'Страница 1 из 1';
-        renderRolesListWarning('usersTableBody', 'usersCount', 9, message);
-        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
-    }
 
-    function renderRolesList(data, tbodyId, countId, emptyMessage, includeMembersCount = false) {
-        const tbody = document.getElementById(tbodyId);
-        const count = document.getElementById(countId);
-        const roles = data.roles || [];
-        const colspan = includeMembersCount ? 10 : 9;
-        if (count) count.textContent = `${roles.length} записей`;
-        if (!tbody) return;
-        if (!roles.length) {
-            tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-muted">${escapeHtml(emptyMessage)}</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = roles.map(role => `
+    function renderRoleRow(role, includeMembersCount = false) {
+        return `
             <tr>
                 <td class="favorite-column">${favoriteButton(includeMembersCount ? 'group' : 'user', role.name, role.name)}</td>
                 <td><strong>${escapeHtml(role.name)}</strong></td>
@@ -2767,155 +2890,8 @@
                 ${includeMembersCount ? `<td>${escapeHtml(role.member_count)}</td>` : ''}
                 <td>${escapeHtml(role.valid_until)}</td>
             </tr>
-        `).join('');
+        `;
     }
-
-    function renderUsers(data) {
-        const info = document.getElementById('usersPaginationInfo');
-        const count = document.getElementById('usersCount');
-        usersState.totalCount = Number(data.total_count) || 0;
-        usersState.page = Number(data.page) || 1;
-        usersState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateUsersSortIndicators();
-        updateUsersPrivilegeCharts(data.roles || [], data.summary || null);
-        const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
-        renderRolesList(data, 'usersTableBody', null, 'Пользователи не найдены');
-        if (count) count.textContent = `${data.roles?.length || 0} из ${usersState.totalCount} пользователей`;
-        if (info) info.textContent = `Страница ${usersState.page} из ${totalPages}`;
-        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
-    }
-
-    function refreshUsersForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++usersRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderUsersWarning('Выберите сохранённое подключение для загрузки пользователей');
-            return;
-        }
-        renderUsersWarning('Загрузка пользователей...');
-        connectionRequest(usersListApiUrl, {
-            id: conn.id,
-            page: usersState.page,
-            page_size: usersState.pageSize,
-            search: usersState.search,
-            sort: usersState.sort,
-            direction: usersState.direction,
-            favorites_only: usersState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId === usersRequestId) renderUsers(data);
-            })
-            .catch(error => {
-                if (requestId === usersRequestId) renderUsersWarning(error.message || 'Не удалось получить список пользователей');
-            });
-    }
-
-    function initUsersControls() {
-        let searchTimer = null;
-        document.getElementById('usersSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                usersState.search = this.value.trim();
-                usersState.page = 1;
-                refreshUsersForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-users-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.usersSort;
-                if (usersState.sort === sort) {
-                    usersState.direction = usersState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    usersState.sort = sort;
-                    usersState.direction = ['connection_limit', 'valid_until'].includes(sort) ? 'desc' : 'asc';
-                }
-                usersState.page = 1;
-                refreshUsersForConnection();
-            });
-        });
-        document.getElementById('usersPrevPageBtn')?.addEventListener('click', function () {
-            if (usersState.page > 1) {
-                usersState.page -= 1;
-                refreshUsersForConnection();
-            }
-        });
-        document.getElementById('usersNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
-            if (usersState.page < totalPages) {
-                usersState.page += 1;
-                refreshUsersForConnection();
-            }
-        });
-        document.getElementById('usersFavoritesFilter')?.addEventListener('change', function () { usersState.favoritesOnly = this.value === 'favorites'; usersState.page = 1; refreshUsersForConnection(); });
-        updateUsersSortIndicators();
-        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
-    }
-
-    function refreshGroupsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++groupsRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            updateGroupsPrivilegeCharts([]);
-            renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Выберите сохранённое подключение для загрузки групп');
-            return;
-        }
-        updateGroupsPrivilegeCharts([]);
-        renderRolesListWarning('groupsTableBody', 'groupsCount', 10, 'Загрузка групп...');
-        connectionRequest(groupsListApiUrl, {
-            id: conn.id,
-            page: groupsState.page,
-            page_size: groupsState.pageSize,
-            search: groupsState.search,
-            sort: groupsState.sort,
-            direction: groupsState.direction,
-            favorites_only: groupsState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId !== groupsRequestId) return;
-                updateGroupsSortIndicators();
-                groupsState.page = Number(data.page) || 1;
-                groupsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-                groupsState.totalCount = Number(data.total_count) || 0;
-                const totalPages = Math.max(Math.ceil(groupsState.totalCount / groupsState.pageSize), 1);
-                document.getElementById('groupsPaginationInfo').textContent = `Страница ${groupsState.page} из ${totalPages}`;
-                updatePaginationButtons(groupsState, 'groupsPrevPageBtn', 'groupsNextPageBtn');
-                updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
-                renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
-            })
-            .catch(error => {
-                if (requestId !== groupsRequestId) return;
-                updateGroupsPrivilegeCharts([]);
-                renderRolesListWarning('groupsTableBody', 'groupsCount', 10, error.message || 'Не удалось получить список групп');
-            });
-    }
-
-    function initGroupsControls() {
-        let searchTimer = null;
-        document.getElementById('groupsSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                groupsState.search = this.value.trim();
-                groupsState.page = 1;
-                refreshGroupsForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-groups-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.groupsSort;
-                if (groupsState.sort === sort) {
-                    groupsState.direction = groupsState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    groupsState.sort = sort;
-                    groupsState.direction = ['connection_limit', 'valid_until', 'member_count'].includes(sort) ? 'desc' : 'asc';
-                }
-                groupsState.page = 1;
-                refreshGroupsForConnection();
-            });
-        });
-        document.getElementById('groupsFavoritesFilter')?.addEventListener('change', function () { groupsState.favoritesOnly = this.value === 'favorites'; groupsState.page = 1; refreshGroupsForConnection(); });
-        document.getElementById('groupsPrevPageBtn')?.addEventListener('click', () => { if (groupsState.page > 1) { groupsState.page -= 1; refreshGroupsForConnection(); } });
-        document.getElementById('groupsNextPageBtn')?.addEventListener('click', () => { if (groupsState.page * groupsState.pageSize < groupsState.totalCount) { groupsState.page += 1; refreshGroupsForConnection(); } });
-        updateGroupsSortIndicators();
-    }
-
 
     function getMaintenanceStatusClass(deadPercent) {
         if (deadPercent > 25) return 'danger';
@@ -3396,123 +3372,12 @@
         }).join('');
     }
 
-    function renderSchemaSizesWarning(message) {
-        const tbody = document.getElementById('schemaSizesTableBody');
-        const count = document.getElementById('schemaSizesCount');
-        const info = document.getElementById('schemaPaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (info) info.textContent = 'Страница 1 из 1';
-        updateSchemaDistributionChart([]);
-        if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        }
-        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
-    }
-
-    function updateSchemaSortIndicators() {
-        document.querySelectorAll('[data-schema-sort]').forEach(button => {
-            const isActive = button.dataset.schemaSort === schemaSizesState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, schemaSizesState.direction);
-        });
-    }
-
-    function renderSchemaSizes(data) {
-        const tbody = document.getElementById('schemaSizesTableBody');
-        const count = document.getElementById('schemaSizesCount');
-        const info = document.getElementById('schemaPaginationInfo');
-        if (!tbody) return;
-        schemaSizesState.totalCount = Number(data.total_count) || 0;
-        schemaSizesState.page = Number(data.page) || 1;
-        schemaSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateSchemaSortIndicators();
-        updateSchemaDistributionChart(data.schema_distribution || data.schemas || []);
-        const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
-        if (count) count.textContent = `${data.schemas?.length || 0} из ${schemaSizesState.totalCount} схем`;
-        if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
-        if (!data.schemas?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Схемы не найдены</td></tr>';
-            updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
-            return;
-        }
-        tbody.innerHTML = data.schemas.map(schema => `
-            <tr>
-                <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
-                <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
-                <td>${escapeHtml(schema.schema_owner || '-')}</td>
-                <td>${escapeHtml(schema.table_count ?? 0)}</td>
-                <td>${escapeHtml(schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit)}</td>
-            </tr>
-        `).join('');
-        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
+    function refreshSchemaSizesForConnection(conn) {
+        schemaSizesPager.refresh(conn);
     }
 
     function initSchemaSizesControls() {
-        let searchTimer = null;
-        document.getElementById('schemaSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                schemaSizesState.search = this.value.trim();
-                schemaSizesState.page = 1;
-                refreshSchemaSizesForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-schema-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.schemaSort;
-                if (schemaSizesState.sort === sort) {
-                    schemaSizesState.direction = schemaSizesState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    schemaSizesState.sort = sort;
-                    schemaSizesState.direction = sort === 'size_bytes' ? 'desc' : 'asc';
-                }
-                schemaSizesState.page = 1;
-                refreshSchemaSizesForConnection();
-            });
-        });
-        document.getElementById('schemaPrevPageBtn')?.addEventListener('click', function () {
-            if (schemaSizesState.page > 1) {
-                schemaSizesState.page -= 1;
-                refreshSchemaSizesForConnection();
-            }
-        });
-        document.getElementById('schemaNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
-            if (schemaSizesState.page < totalPages) {
-                schemaSizesState.page += 1;
-                refreshSchemaSizesForConnection();
-            }
-        });
-        document.getElementById('schemaFavoritesFilter')?.addEventListener('change', function () { schemaSizesState.favoritesOnly = this.value === 'favorites'; schemaSizesState.page = 1; refreshSchemaSizesForConnection(); });
-        updateSchemaSortIndicators();
-        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
-    }
-
-    function refreshSchemaSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++schemaSizesRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            schemaSizesState.totalCount = 0;
-            renderSchemaSizesWarning('Выберите сохранённое подключение для загрузки размеров схем');
-            return;
-        }
-        renderSchemaSizesWarning('Загрузка размеров схем...');
-        connectionRequest(databaseSchemasApiUrl, {
-            id: conn.id,
-            page: schemaSizesState.page,
-            page_size: schemaSizesState.pageSize,
-            search: schemaSizesState.search,
-            sort: schemaSizesState.sort,
-            direction: schemaSizesState.direction,
-            favorites_only: schemaSizesState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId === schemaSizesRequestId) renderSchemaSizes(data);
-            })
-            .catch(error => {
-                if (requestId !== schemaSizesRequestId) return;
-                schemaSizesState.totalCount = 0;
-                renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
-            });
+        schemaSizesPager.bindControls();
     }
 
     function formatRowCount(value) {
@@ -3577,125 +3442,13 @@
             `;
         }).join('');
     }
-    function renderTableSizesWarning(message) {
-        const tbody = document.getElementById('tableSizesTableBody');
-        const count = document.getElementById('tableSizesCount');
-        const info = document.getElementById('tablePaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (info) info.textContent = 'Страница 1 из 1';
-        updateTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
-    }
-
-    function updateTableSortIndicators() {
-        document.querySelectorAll('[data-table-sort]').forEach(button => {
-            const isActive = button.dataset.tableSort === tableSizesState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, tableSizesState.direction);
-        });
-    }
-
-    function renderTableSizes(data) {
-        const tbody = document.getElementById('tableSizesTableBody');
-        const count = document.getElementById('tableSizesCount');
-        const info = document.getElementById('tablePaginationInfo');
-        if (!tbody) return;
-        tableSizesState.totalCount = Number(data.total_count) || 0;
-        tableSizesState.page = Number(data.page) || 1;
-        tableSizesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateTableSortIndicators();
-        updateTableDistributionChart(data.table_distribution || data.tables || []);
-        const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
-        if (count) count.textContent = `${data.tables?.length || 0} из ${tableSizesState.totalCount} таблиц`;
-        if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
-        if (!data.tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Таблицы не найдены</td></tr>';
-            updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
-            return;
-        }
-        tbody.innerHTML = data.tables.map(table => `
-            <tr>
-                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
-                <td>${escapeHtml(table.schema_name || '-')}</td>
-                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
-                <td>${escapeHtml(table.table_owner || '-')}</td>
-                <td>${escapeHtml(table.table_size || '-')}</td>
-                <td>${escapeHtml(table.index_size || '-')}</td>
-                <td>${formatRowCount(table.index_count)}</td>
-                <td>${formatRowCount(table.row_count)}</td>
-            </tr>
-        `).join('');
-        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
-    }
-
-    function refreshTableSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++tableSizesRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderTableSizesWarning('Выберите сохранённое подключение для загрузки размеров таблиц');
-            return;
-        }
-        renderTableSizesWarning('Загрузка размеров таблиц...');
-        connectionRequest(tableSizesApiUrl, {
-            id: conn.id,
-            page: tableSizesState.page,
-            page_size: tableSizesState.pageSize,
-            search: tableSizesState.search,
-            sort: tableSizesState.sort,
-            direction: tableSizesState.direction,
-            favorites_only: tableSizesState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId === tableSizesRequestId) renderTableSizes(data);
-            })
-            .catch(error => {
-                if (requestId === tableSizesRequestId) {
-                    renderTableSizesWarning(error.message || 'Не удалось получить размеры таблиц');
-                }
-            });
+    function refreshTableSizesForConnection(conn) {
+        tableSizesPager.refresh(conn);
     }
 
     function initTableSizesControls() {
-        let searchTimer = null;
-        document.getElementById('tableSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                tableSizesState.search = this.value.trim();
-                tableSizesState.page = 1;
-                refreshTableSizesForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-table-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.tableSort;
-                if (tableSizesState.sort === sort) {
-                    tableSizesState.direction = tableSizesState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    tableSizesState.sort = sort;
-                    tableSizesState.direction = ['size_bytes', 'index_size_bytes', 'index_count', 'row_count'].includes(sort) ? 'desc' : 'asc';
-                }
-                tableSizesState.page = 1;
-                refreshTableSizesForConnection();
-            });
-        });
-        document.getElementById('tablePrevPageBtn')?.addEventListener('click', function () {
-            if (tableSizesState.page > 1) {
-                tableSizesState.page -= 1;
-                refreshTableSizesForConnection();
-            }
-        });
-        document.getElementById('tableNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
-            if (tableSizesState.page < totalPages) {
-                tableSizesState.page += 1;
-                refreshTableSizesForConnection();
-            }
-        });
-        document.getElementById('tableFavoritesFilter')?.addEventListener('change', function () { tableSizesState.favoritesOnly = this.value === 'favorites'; tableSizesState.page = 1; refreshTableSizesForConnection(); });
-        updateTableSortIndicators();
-        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
+        tableSizesPager.bindControls();
     }
-
 
     function updateViewsSummaryChart(summary = null, views = []) {
         const donut = document.getElementById('viewsTypeDonut');
@@ -3716,214 +3469,20 @@
         sizeSummary.textContent = total > 0 || materializedSizeBytes > 0 ? formattedSize : '—';
     }
 
-    function renderViewsWarning(message) {
-        const tbody = document.getElementById('viewsTableBody');
-        const count = document.getElementById('viewsCount');
-        const info = document.getElementById('viewPaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (info) info.textContent = 'Страница 1 из 1';
-        updateViewsSummaryChart(null, []);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
-    }
-
-    function updateViewSortIndicators() {
-        document.querySelectorAll('[data-view-sort]').forEach(button => {
-            const isActive = button.dataset.viewSort === viewsState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, viewsState.direction);
-        });
-    }
-
-    function renderViews(data) {
-        const tbody = document.getElementById('viewsTableBody');
-        const count = document.getElementById('viewsCount');
-        const info = document.getElementById('viewPaginationInfo');
-        if (!tbody) return;
-        viewsState.totalCount = Number(data.total_count) || 0;
-        viewsState.page = Number(data.page) || 1;
-        viewsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateViewSortIndicators();
-        updateViewsSummaryChart(data.summary || null, data.views || []);
-        const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
-        if (count) count.textContent = `${data.views?.length || 0} из ${viewsState.totalCount} представлений`;
-        if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
-        if (!data.views?.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Представления не найдены</td></tr>';
-            updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
-            return;
-        }
-        tbody.innerHTML = data.views.map(view => `
-            <tr>
-                <td class="favorite-column">${favoriteButton('view', `${view.schema_name}\u001f${view.view_name}`, `${view.schema_name}.${view.view_name}`)}</td>
-                <td>${escapeHtml(view.schema_name || '-')}</td>
-                <td><strong>${escapeHtml(view.view_name || '-')}</strong></td>
-                <td>${escapeHtml(view.view_owner || '-')}</td>
-                <td>${escapeHtml(view.view_type || '-')}</td>
-                <td>${escapeHtml(view.view_size || '-')}</td>
-                <td>${escapeHtml(view.index_size || '-')}</td>
-                <td>${formatRowCount(view.row_count)}</td>
-            </tr>
-        `).join('');
-        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
-    }
-
-    function refreshViewsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++viewsRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderViewsWarning('Выберите сохранённое подключение для загрузки представлений');
-            return;
-        }
-        renderViewsWarning('Загрузка представлений...');
-        connectionRequest(viewsListApiUrl, {
-            id: conn.id,
-            page: viewsState.page,
-            page_size: viewsState.pageSize,
-            search: viewsState.search,
-            view_type: viewsState.viewType,
-            sort: viewsState.sort,
-            direction: viewsState.direction,
-            favorites_only: viewsState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId === viewsRequestId) renderViews(data);
-            })
-            .catch(error => {
-                if (requestId === viewsRequestId) {
-                    renderViewsWarning(error.message || 'Не удалось получить представления');
-                }
-            });
+    function refreshViewsForConnection(conn) {
+        viewsPager.refresh(conn);
     }
 
     function initViewsControls() {
-        let searchTimer = null;
-        document.getElementById('viewSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                viewsState.search = this.value.trim();
-                viewsState.page = 1;
-                refreshViewsForConnection();
-            }, 300);
-        });
-        document.getElementById('viewTypeFilter')?.addEventListener('change', function () {
-            viewsState.viewType = this.value;
-            viewsState.page = 1;
-            refreshViewsForConnection();
-        });
-        document.querySelectorAll('[data-view-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.viewSort;
-                if (viewsState.sort === sort) {
-                    viewsState.direction = viewsState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    viewsState.sort = sort;
-                    viewsState.direction = ['size_bytes', 'index_size_bytes', 'row_count'].includes(sort) ? 'desc' : 'asc';
-                }
-                viewsState.page = 1;
-                refreshViewsForConnection();
-            });
-        });
-        document.getElementById('viewPrevPageBtn')?.addEventListener('click', function () {
-            if (viewsState.page > 1) {
-                viewsState.page -= 1;
-                refreshViewsForConnection();
-            }
-        });
-        document.getElementById('viewNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
-            if (viewsState.page < totalPages) {
-                viewsState.page += 1;
-                refreshViewsForConnection();
-            }
-        });
-        document.getElementById('viewFavoritesFilter')?.addEventListener('change', function () { viewsState.favoritesOnly = this.value === 'favorites'; viewsState.page = 1; refreshViewsForConnection(); });
-        updateViewSortIndicators();
-        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
+        viewsPager.bindControls();
     }
 
-    function renderFunctionsWarning(message) {
-        const tbody = document.getElementById('functionsTableBody');
-        const count = document.getElementById('functionsCount');
-        const info = document.getElementById('functionPaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
-    }
-
-    function updateFunctionSortIndicators() {
-        document.querySelectorAll('[data-function-sort]').forEach(button => {
-            const active = button.dataset.functionSort === functionsState.sort;
-            button.classList.toggle('active', active);
-            updateSortHeaderState(button, active, functionsState.direction);
-        });
-    }
-
-    function renderFunctions(data) {
-        const tbody = document.getElementById('functionsTableBody');
-        if (!tbody) return;
-        functionsState.totalCount = Number(data.total_count) || 0;
-        functionsState.page = Number(data.page) || 1;
-        functionsState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
-        document.getElementById('functionsCount').textContent = `${data.functions?.length || 0} из ${functionsState.totalCount} функций`;
-        document.getElementById('functionPaginationInfo').textContent = `Страница ${functionsState.page} из ${totalPages}`;
-        updateFunctionSortIndicators();
-        if (!data.functions?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Функции не найдены</td></tr>';
-        } else {
-            tbody.innerHTML = data.functions.map(item => `<tr>
-                <td class="favorite-column">${favoriteButton('function', `${item.schema_name}\u001f${item.function_name}\u001f${item.arguments || ''}`, `${item.schema_name}.${item.function_name}(${item.arguments || ''})`)}</td>
-                <td>${escapeHtml(item.schema_name || '—')}</td>
-                <td><strong>${escapeHtml(item.function_name || '—')}</strong></td>
-                <td><code>${escapeHtml(item.return_type || '—')}</code></td>
-                <td><code>${escapeHtml(item.arguments || '—')}</code></td>
-            </tr>`).join('');
-        }
-        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
-    }
-
-    function refreshFunctionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++functionsRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderFunctionsWarning('Выберите сохранённое подключение для загрузки функций');
-            return;
-        }
-        renderFunctionsWarning('Загрузка функций...');
-        connectionRequest(functionsListApiUrl, {id: conn.id, page: functionsState.page, page_size: functionsState.pageSize, search: functionsState.search, sort: functionsState.sort, direction: functionsState.direction, favorites_only: functionsState.favoritesOnly})
-            .then(data => { if (requestId === functionsRequestId) renderFunctions(data); })
-            .catch(error => { if (requestId === functionsRequestId) renderFunctionsWarning(error.message || 'Не удалось получить функции'); });
+    function refreshFunctionsForConnection(conn) {
+        functionsPager.refresh(conn);
     }
 
     function initFunctionsControls() {
-        let searchTimer = null;
-        document.getElementById('functionSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                functionsState.search = this.value.trim();
-                functionsState.page = 1;
-                refreshFunctionsForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-function-sort]').forEach(button => button.addEventListener('click', function () {
-            const sort = this.dataset.functionSort;
-            if (functionsState.sort === sort) functionsState.direction = functionsState.direction === 'asc' ? 'desc' : 'asc';
-            else { functionsState.sort = sort; functionsState.direction = 'asc'; }
-            functionsState.page = 1;
-            refreshFunctionsForConnection();
-        }));
-        document.getElementById('functionFavoritesFilter')?.addEventListener('change', function () {
-            functionsState.favoritesOnly = this.value === 'favorites';
-            functionsState.page = 1;
-            refreshFunctionsForConnection();
-        });
-        document.getElementById('functionPrevPageBtn')?.addEventListener('click', () => {
-            if (functionsState.page > 1) { functionsState.page -= 1; refreshFunctionsForConnection(); }
-        });
-        document.getElementById('functionNextPageBtn')?.addEventListener('click', () => {
-            if (functionsState.page < Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1)) { functionsState.page += 1; refreshFunctionsForConnection(); }
-        });
-        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
+        functionsPager.bindControls();
     }
 
     function renderDistributionWarning(message) {
