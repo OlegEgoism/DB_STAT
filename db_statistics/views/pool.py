@@ -5,6 +5,7 @@ most self-contained, concurrency-sensitive piece — it has no dependency on
 auth/session/audit concerns, only on settings and psycopg2.
 """
 
+import hashlib
 import logging
 import threading
 from contextlib import closing, contextmanager
@@ -54,7 +55,9 @@ def _pool_key(db_connection, ssl):
     подключения, ключ меняется вместе с ними, и код ниже сам закрывает пул со
     старыми параметрами — новые соединения не создаются с устаревшим паролем.
     """
-    return (db_connection.pk, db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl, settings.DB_LOCK_TIMEOUT_MS, settings.DB_STATEMENT_TIMEOUT_MS)
+    # В ключе хранится отпечаток пароля, а не сам пароль: ключи пулов видны в отладке и дампах памяти.
+    password_fingerprint = hashlib.sha256(db_connection.get_password().encode("utf-8")).hexdigest()
+    return (db_connection.pk, db_connection.host, db_connection.port, db_connection.database, db_connection.username, password_fingerprint, ssl, settings.DB_LOCK_TIMEOUT_MS, settings.DB_STATEMENT_TIMEOUT_MS)
 
 
 def _get_connection_pool(db_connection, ssl):
