@@ -5,7 +5,7 @@ from psycopg2 import sql
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
 from db_statistics.views.helpers import EXCLUDED_SYSTEM_SCHEMAS_SQL, _format_bytes, _read_json_body
-from db_statistics.views.pagination import _favorite_filter, _list_query_params, _multi_column_search_filter
+from db_statistics.views.pagination import _list_query_params, _multi_column_search_filter, _search_and_favorites_filter
 from db_statistics.views.pool import _fetch_db_resultsets, _fetch_db_rows, _open_database_connection, _query_or_error
 
 SCHEMA_SEARCH_COLUMNS = ("namespace.nspname",)
@@ -25,14 +25,7 @@ def database_schema_sizes(request):
         return error_response
     page, page_size, offset, search, sort_column, direction = _list_query_params(payload, {"schema_name": "schema_name", "schema_owner": "schema_owner", "table_count": "table_count", "size_bytes": "size_bytes"}, "size_bytes")
 
-    where_sql = ""
-    params = []
-    if search:
-        where_sql, search_params = _multi_column_search_filter(search, SCHEMA_SEARCH_COLUMNS)
-        params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "schema", ("namespace.nspname",))
-    where_sql += f" {favorite_sql}"
-    params.extend(favorite_params)
+    where_sql, params = _search_and_favorites_filter(request, payload, db_connection, search, SCHEMA_SEARCH_COLUMNS, "schema", ("namespace.nspname",))
 
     schema_sizes_query = f"""
         WITH schema_sizes AS (
@@ -110,14 +103,7 @@ def database_table_sizes(request):
         payload, {"schema_name": "schema_name", "table_name": "table_name", "table_owner": "table_owner", "size_bytes": "size_bytes", "index_size_bytes": "index_size_bytes", "index_count": "index_count", "row_count": "row_count"}, "size_bytes"
     )
 
-    where_sql = ""
-    params = []
-    if search:
-        where_sql, search_params = _multi_column_search_filter(search, TABLE_SEARCH_COLUMNS)
-        params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "table", ("namespace.nspname", "table_class.relname"))
-    where_sql += f" {favorite_sql}"
-    params.extend(favorite_params)
+    where_sql, params = _search_and_favorites_filter(request, payload, db_connection, search, TABLE_SEARCH_COLUMNS, "table", ("namespace.nspname", "table_class.relname"))
 
     table_sizes_query = f"""
         WITH table_sizes AS (
@@ -212,12 +198,7 @@ def database_views_list(request):
         type_sql = "AND view_class.relkind = 'v'"
     elif view_type == "materialized":
         type_sql = "AND view_class.relkind = 'm'"
-    if search:
-        where_sql, search_params = _multi_column_search_filter(search, VIEW_SEARCH_COLUMNS)
-        params.extend(search_params)
-    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "view", ("namespace.nspname", "view_class.relname"))
-    where_sql += f" {favorite_sql}"
-    params.extend(favorite_params)
+    where_sql, params = _search_and_favorites_filter(request, payload, db_connection, search, VIEW_SEARCH_COLUMNS, "view", ("namespace.nspname", "view_class.relname"))
 
     views_query = f"""
         WITH database_views AS (
@@ -285,13 +266,7 @@ def database_functions_list(request):
 
     page, page_size, offset, search, sort_column, direction = _list_query_params(payload, {"schema_name": "schema_name", "function_name": "function_name", "return_type": "return_type", "arguments": "arguments"}, "schema_name")
 
-    where_sql = ""
-    params = []
-    if search:
-        where_sql, params = _multi_column_search_filter(search, FUNCTION_SEARCH_COLUMNS)
-    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "function", ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_arguments(procedure.oid)"))
-    where_sql += f" {favorite_sql}"
-    params.extend(favorite_params)
+    where_sql, params = _search_and_favorites_filter(request, payload, db_connection, search, FUNCTION_SEARCH_COLUMNS, "function", ("namespace.nspname", "procedure.proname", "pg_catalog.pg_get_function_arguments(procedure.oid)"))
 
     functions_query = f"""
         WITH database_functions AS (
@@ -513,14 +488,8 @@ def database_toast_table_sizes(request):
         payload, {"schema_name": "schema_name", "table_name": "table_name", "toast_table_name": "toast_table_name", "toast_total_bytes": "toast_total_bytes", "heap_bytes": "heap_bytes", "toast_share": "toast_share", "dead_chunks": "dead_chunks"}, "toast_total_bytes"
     )
 
-    where_sql = ""
-    params = []
-    if search:
-        where_sql, params = _multi_column_search_filter(search, TOAST_TABLE_SEARCH_COLUMNS)
     # Избранное общее с вкладкой «Таблицы»: ключ — таблица-владелец (схема + имя), а не TOAST-таблица.
-    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, "table", ("parent_namespace.nspname", "parent.relname"))
-    where_sql += f" {favorite_sql}"
-    params.extend(favorite_params)
+    where_sql, params = _search_and_favorites_filter(request, payload, db_connection, search, TOAST_TABLE_SEARCH_COLUMNS, "table", ("parent_namespace.nspname", "parent.relname"))
 
     toast_tables_query = f"""
         WITH toast_tables AS (

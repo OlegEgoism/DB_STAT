@@ -7,6 +7,7 @@ from django.conf import settings
 from django.db import OperationalError, ProgrammingError
 
 from db_statistics.models import DBFavorite, DBPaginationSettings
+from db_statistics.views.auth import _current_db_user
 
 
 def _pagination_page_sizes():
@@ -76,3 +77,19 @@ def _favorite_filter(payload, db_user, db_connection, object_type, columns):
         return "AND FALSE", []
     clauses = ["(" + " AND ".join(f"{column} = %s" for column in columns) + ")" for _value in values]
     return f"AND ({' OR '.join(clauses)})", [part for value in values for part in value]
+
+
+def _search_and_favorites_filter(request, payload, db_connection, search, search_columns, favorite_type, favorite_columns):
+    """Строит WHERE-условие поиска и фильтра «Избранные» для списка объектов.
+
+    Возвращает (where_sql, params). where_sql может начинаться с пробела, что
+    допустимо в SQL и позволяет склеивать условия без проверок.
+    """
+    where_sql = ""
+    params = []
+    if search:
+        where_sql, search_params = _multi_column_search_filter(search, search_columns)
+        params.extend(search_params)
+    favorite_sql, favorite_params = _favorite_filter(payload, _current_db_user(request), db_connection, favorite_type, favorite_columns)
+    params.extend(favorite_params)
+    return f"{where_sql} {favorite_sql}", params

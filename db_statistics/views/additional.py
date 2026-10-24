@@ -121,6 +121,8 @@ def login(request):
             request.session[settings.SESSION_USER_ID_KEY] = db_user.pk
             request.session[settings.SESSION_EXPIRES_AT_KEY] = int(timezone.now().timestamp()) + session_duration_seconds
             request.session.set_expiry(session_duration_seconds)
+            # В этом же запросе мог быть закэширован «нет пользователя» до входа.
+            request.__dict__.pop("_db_stat_current_user", None)
             _write_audit("login", f"Пользователь вошёл в приложение: login={db_user.login}; email={db_user.email}; role={db_user.role}; session_duration={session_duration_seconds}s", db_user=db_user)
             return redirect("home")
 

@@ -13,9 +13,24 @@ from django.utils import timezone
 
 from db_statistics.models import DBConnection, DBUser
 
+_NOT_LOADED = object()
+
 
 def _current_db_user(request):
-    """Возвращает активного пользователя приложения из текущей сессии"""
+    """Возвращает активного пользователя приложения из текущей сессии.
+
+    Результат запоминается на время одного запроса: без этого каждый вызов
+    (проверка подключения, фильтр избранного, права) делал отдельный SELECT.
+    """
+    cached = getattr(request, "_db_stat_current_user", _NOT_LOADED)
+    if cached is _NOT_LOADED:
+        cached = _load_current_db_user(request)
+        request._db_stat_current_user = cached
+    return cached
+
+
+def _load_current_db_user(request):
+    """Читает пользователя из сессии и базы без кэша (см. _current_db_user)."""
     if _session_has_expired(request.session):
         request.session.flush()
         return None
