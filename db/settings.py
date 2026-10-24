@@ -204,6 +204,9 @@ PAGINATION_PAGE_SIZE_OPTIONS = (10, 20, 50)
 # получают 0 обновлённых строк и выходят. WAL-режим SQLite (см. apps.py)
 # снижает вероятность "database is locked" при таких конкурентных обновлениях.
 MAINTENANCE_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="db-stat-vacuum")
+# Формирование PDF-отчётов — отдельный пул: длинный отчёт не должен задерживать
+# VACUUM/ANALYZE в очереди обслуживания, и наоборот.
+REPORT_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="db-stat-report")
 
 # Без явной настройки необработанные исключения в проде (DEBUG=False) не
 # попадают никуда: консольный вывод по умолчанию отфильтрован, а

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import uuid
+from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
@@ -30,9 +31,22 @@ def _connection_encryption_secret():
 
 
 def _connection_password_cipher():
-    """Создаёт экземпляр шифра на основе ключа, растянутого через PBKDF2"""
+    """Возвращает шифр на основе ключа, растянутого через PBKDF2"""
+    return _pbkdf2_cipher_for_secret(_connection_encryption_secret())
+
+
+@lru_cache(maxsize=4)
+def _pbkdf2_cipher_for_secret(secret):
+    """Растягивает секрет через PBKDF2 один раз на процесс.
+
+    PBKDF2 с 390 000 итерациями занимает около 50 мс. Без кэша эта цена платилась
+    при каждом обращении к подключению (пароль расшифровывается при каждом
+    запросе к целевой БД), поэтому ключ выводится однажды на каждый секрет.
+    Ключ передаётся аргументом, а не берётся из настроек внутри функции, чтобы
+    кэш не переживал смену секрета (например, в тестах).
+    """
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=_CONNECTION_PASSWORD_KDF_SALT, iterations=_CONNECTION_PASSWORD_KDF_ITERATIONS)
-    key = base64.urlsafe_b64encode(kdf.derive(_connection_encryption_secret().encode("utf-8")))
+    key = base64.urlsafe_b64encode(kdf.derive(secret.encode("utf-8")))
     return Fernet(key)
 
 

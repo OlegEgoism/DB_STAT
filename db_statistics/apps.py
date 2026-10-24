@@ -1,3 +1,4 @@
+import sys
 from threading import Timer
 
 from django.apps import AppConfig
@@ -31,28 +32,40 @@ class DbStatisticsConfig(AppConfig):
 
         connection_created.connect(_enable_sqlite_wal)
 
-        def submit_queued_jobs():
-            from db_statistics.models import MaintenanceJob, ReportJob
-            from db_statistics.views.maintenance import _submit_maintenance_job
-            from db_statistics.views.reports import _ensure_report_job_table, _submit_report_job
+        if not _running_tests():
+            Timer(0.5, _resubmit_queued_jobs).start()
 
-            try:
-                _ensure_report_job_table()
-                # Задачи, оставшиеся в статусе "running" после аварийного
-                # завершения процесса (падение, деплой, OOM), иначе провисят
-                # в этом статусе бесконечно — атомарный захват в
-                # _run_maintenance_operation защищает только от повторного
-                # запуска уже выполняющейся задачи, а не от восстановления
-                # прерванной.
-                MaintenanceJob.objects.filter(status="running").update(status="queued", message="Операция восстановлена после перезапуска", started=None)
-                job_ids = list(MaintenanceJob.objects.filter(status="queued").values_list("pk", flat=True))
-                ReportJob.objects.filter(status="running").update(status="queued", message="Формирование отчёта восстановлено после перезапуска", started=None)
-                report_job_ids = list(ReportJob.objects.filter(status="queued").values_list("pk", flat=True))
-            except (OperationalError, ProgrammingError):
-                return
-            for job_id in job_ids:
-                _submit_maintenance_job(job_id)
-            for job_id in report_job_ids:
-                _submit_report_job(job_id)
 
-        Timer(0.5, submit_queued_jobs).start()
+def _running_tests():
+    """Истина, когда приложение запущено командой `manage.py test`.
+
+    Фоновый запуск очереди при импорте приложения обращается к файлу БД из
+    настроек, поэтому в тестах он не нужен и может задеть реальную базу.
+    """
+    return len(sys.argv) > 1 and sys.argv[1] == "test"
+
+
+def _resubmit_queued_jobs():
+    """Ставит на выполнение задачи, которые остались в статусе «В очереди».
+
+    Здесь намеренно НЕТ сброса статуса «Выполняется» в «В очереди»: каждый
+    процесс gunicorn (воркер) вызывает эту функцию при старте, и сброс
+    «running» отнял бы задачу у воркера, который её сейчас выполняет, после
+    чего она запустилась бы повторно. Восстановление прерванных задач
+    выполняет только команда `recover_maintenance_jobs`, которую
+    docker-entrypoint.sh запускает один раз до старта gunicorn.
+    """
+    from db_statistics.models import MaintenanceJob, ReportJob
+    from db_statistics.views.maintenance import _submit_maintenance_job
+    from db_statistics.views.reports import _ensure_report_job_table, _submit_report_job
+
+    try:
+        _ensure_report_job_table()
+        job_ids = list(MaintenanceJob.objects.filter(status="queued").values_list("pk", flat=True))
+        report_job_ids = list(ReportJob.objects.filter(status="queued").values_list("pk", flat=True))
+    except (OperationalError, ProgrammingError):
+        return
+    for job_id in job_ids:
+        _submit_maintenance_job(job_id)
+    for job_id in report_job_ids:
+        _submit_report_job(job_id)

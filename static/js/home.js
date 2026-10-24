@@ -1471,14 +1471,14 @@
         updateConnectionSlotsChart([]);
         updateDatabaseActivityChart([]);
         if (version) version.textContent = message;
-        if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (connectionTbody) connectionTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (rolesTbody) rolesTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (basicSettingsTbody) basicSettingsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (activityStatsTbody) activityStatsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${message}</td></tr>`;
-        if (extensionsTbody) extensionsTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (memoryTbody) memoryTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (connectionTbody) connectionTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (rolesTbody) rolesTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (connectionSlotsTbody) connectionSlotsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (basicSettingsTbody) basicSettingsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (activityStatsTbody) activityStatsTbody.innerHTML = `<tr><td colspan="2" class="text-muted">${escapeHtml(message)}</td></tr>`;
+        if (extensionsTbody) extensionsTbody.innerHTML = `<tr><td colspan="4" class="text-muted">${escapeHtml(message)}</td></tr>`;
     }
 
     function renderDatabaseOverview(data) {
@@ -3357,7 +3357,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         updateTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateTablePaginationButtons();
     }
 
@@ -3731,7 +3731,7 @@
         const tableName = document.getElementById('distributionSelectedTableName');
         if (count) count.textContent = 'Нет данных';
         if (tableName) tableName.textContent = 'Выберите таблицу';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${message}</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="3" class="text-muted">${escapeHtml(message)}</td></tr>`;
         updateDistributionMetrics();
         updateSegmentDistributionChart([]);
     }

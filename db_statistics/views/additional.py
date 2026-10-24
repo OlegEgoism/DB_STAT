@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import psycopg2
 from django.conf import settings
 from django.core.cache import cache
@@ -12,6 +10,7 @@ from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.auth_backends import clear_login_failures, register_failed_login
 from db_statistics.models import DBAudit, DBConnection, DBFavorite, DBPaginationSettings, DBUser
 from db_statistics.views.audit import _audit_action_label, _audit_username, _connection_audit_info, _favorite_audit_info, _write_audit
 from db_statistics.views.auth import (
@@ -108,19 +107,13 @@ def login(request):
                 error = _lockout_message(candidate.lockout_until, is_english)
             elif candidate and candidate.check_password(password_value):
                 db_user = candidate
-                db_user.failed_login_attempts = 0
-                db_user.lockout_until = None
-                db_user.save(update_fields=["failed_login_attempts", "lockout_until"])
+                clear_login_failures(db_user)
             else:
                 error = invalid_credentials_message
                 if candidate:
-                    candidate.failed_login_attempts += 1
-                    attempt_number = candidate.failed_login_attempts
-                    if attempt_number >= settings.LOGIN_MAX_FAILED_ATTEMPTS:
-                        candidate.failed_login_attempts = 0
-                        candidate.lockout_until = timezone.now() + timedelta(seconds=settings.LOGIN_LOCKOUT_SECONDS)
-                        error = _lockout_message(candidate.lockout_until, is_english)
-                    candidate.save(update_fields=["failed_login_attempts", "lockout_until"])
+                    attempt_number, lockout_until = register_failed_login(candidate)
+                    if lockout_until:
+                        error = _lockout_message(lockout_until, is_english)
                     _write_audit("login", f"Неудачная попытка входа: login={candidate.login}; email={candidate.email}; попытка №{attempt_number}", db_user=candidate)
 
         if not error and db_user:

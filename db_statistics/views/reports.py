@@ -82,7 +82,7 @@ def _serialize_report_job(job):
 
 
 def _submit_report_job(job_id):
-    settings.MAINTENANCE_JOB_EXECUTOR.submit(_run_report_job, str(job_id))
+    settings.REPORT_JOB_EXECUTOR.submit(_run_report_job, str(job_id))
 
 
 def _run_report_job(job_id):

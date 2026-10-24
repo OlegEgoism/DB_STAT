@@ -121,6 +121,12 @@ python manage.py ensure_initial_admin
 python manage.py encrypt_connection_passwords 
 ``` 
  
+- Requeue interrupted background jobs (VACUUM/ANALYZE and PDF reports) after the server was stopped abruptly. Runs automatically at startup in Docker; with `runserver`, run it once before starting
+
+```bash
+python manage.py recover_maintenance_jobs
+```
+
 - Start the server 
  
 ```bash 
