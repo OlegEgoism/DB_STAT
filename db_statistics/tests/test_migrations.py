@@ -3,7 +3,23 @@ from io import StringIO
 from django.core.management import call_command
 from django.db import connection
 from django.db.migrations.recorder import MigrationRecorder
-from django.test import TransactionTestCase
+from django.test import TestCase, TransactionTestCase
+
+
+class ModelsMatchMigrationsTests(TestCase):
+    """Изменение модели без миграции ломает тесты: иначе новая схема не дойдёт до уже развёрнутых установок."""
+
+    def test_no_pending_migrations_for_db_statistics(self):
+        out = StringIO()
+        has_changes = False
+        try:
+            call_command("makemigrations", "db_statistics", check=True, dry_run=True, verbosity=1, stdout=out, stderr=out)
+        except SystemExit:
+            # makemigrations --check завершается с кодом 1, только если модели изменены без миграции.
+            has_changes = True
+        if has_changes:
+            self.fail(f"Модели db_statistics изменены без миграции. Выполните `make migrations` и закоммитьте файл миграции.\n{out.getvalue()}")
+        self.assertIn("No changes detected", out.getvalue())
 
 
 class LegacyInstallMigrationTests(TransactionTestCase):
