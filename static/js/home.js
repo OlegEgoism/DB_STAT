@@ -2153,11 +2153,17 @@
         `).join('');
     }
 
+    // Одно окно подтверждения за раз: пока оно открыто, новые вызовы не открывают второе окно
+    // и не добавляют второй обработчик на кнопку подтверждения.
+    let backendConfirmationPending = false;
+
     function confirmBackendTermination(message) {
         const modalElement = document.getElementById('backendTerminationModal');
         const messageElement = document.getElementById('backendTerminationModalMessage');
         const confirmButton = document.getElementById('backendTerminationConfirmBtn');
         if (!modalElement || !messageElement || !confirmButton) return Promise.resolve(false);
+        if (backendConfirmationPending) return Promise.resolve(false);
+        backendConfirmationPending = true;
 
         messageElement.textContent = translateInterfaceText(message);
         const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
@@ -2166,6 +2172,7 @@
             const finish = result => {
                 if (resolved) return;
                 resolved = true;
+                backendConfirmationPending = false;
                 confirmButton.removeEventListener('click', confirm);
                 modalElement.removeEventListener('hidden.bs.modal', cancel);
                 resolve(result);
@@ -2181,12 +2188,25 @@
         });
     }
 
+    // Кнопка блокируется на время окна подтверждения: повторный клик по ней ничего не открывает
+    // и не отправляет второй запрос на завершение того же процесса. Если действие отменено, кнопка снова доступна.
+    function requestBackendTermination(button, message, action) {
+        if (button.disabled) return;
+        button.disabled = true;
+        confirmBackendTermination(message).then(confirmed => {
+            if (!confirmed) {
+                button.disabled = false;
+                return;
+            }
+            action();
+        });
+    }
+
     function terminateActiveQuery(button) {
         const pid = button.dataset.activeQueryPid;
         const conn = connections.find(item => String(item.id) === String(activeConnectionId));
         if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
-        confirmBackendTermination(`Завершить активный запрос с PID ${pid}?`).then(confirmed => {
-            if (!confirmed) return;
+        requestBackendTermination(button, `Завершить активный запрос с PID ${pid}?`, () => {
             button.disabled = true;
             connectionRequest(terminateActiveQueryApiUrl, {id: conn.id, pid: Number(pid)})
                 .then(data => {
@@ -2396,8 +2416,7 @@
         const pid = button.dataset.activeSessionPid;
         const conn = connections.find(item => String(item.id) === String(activeConnectionId));
         if (!conn || !/^\d+$/.test(String(conn.id)) || !/^\d+$/.test(String(pid))) return;
-        confirmBackendTermination(`Завершить сессию пользователя с PID ${pid}?`).then(confirmed => {
-            if (!confirmed) return;
+        requestBackendTermination(button, `Завершить сессию пользователя с PID ${pid}?`, () => {
             button.disabled = true;
             connectionRequest(terminateActiveSessionApiUrl, {id: conn.id, pid: Number(pid)})
                 .then(data => {
@@ -2430,8 +2449,7 @@
         const confirmation = processType === 'lock'
             ? `Завершить процесс блокировки с PID ${pid}?`
             : `Завершить простаивающую транзакцию с PID ${pid}?`;
-        confirmBackendTermination(confirmation).then(confirmed => {
-            if (!confirmed) return;
+        requestBackendTermination(button, confirmation, () => {
             button.disabled = true;
             connectionRequest(apiUrl, {id: conn.id, pid: Number(pid)})
                 .then(data => {
