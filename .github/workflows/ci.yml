@@ -53,6 +53,13 @@ jobs:
       - name: Django system checks
         run: python manage.py check
 
+      # Статика (static/js/*.js) не проходит через Django-тесты, поэтому синтаксис проверяем
+      # отдельно: tree-sitter разбирает файлы и падает на любом узле ERROR/MISSING.
+      - name: JS syntax check (tree-sitter)
+        run: |
+          pip install tree-sitter tree-sitter-javascript
+          python scripts/check_js.py
+
       - name: Run tests
         env:
           # Без PG_TEST_HOST интеграционные тесты пропускаются молча, поэтому в CI они заданы явно.
@@ -62,3 +69,12 @@ jobs:
           PG_TEST_PASSWORD: ci-pg-password
           PG_TEST_DATABASE: postgres
         run: python manage.py test -v 2
+
+      # Политика решения владельца проекта: найденные уязвимости зависимостей пока
+      # только выводятся в журнал и не останавливают сборку. Блокировать сборку
+      # можно, убрав continue-on-error, когда определено, что делать с находками.
+      - name: Dependency audit (pip-audit)
+        continue-on-error: true
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
