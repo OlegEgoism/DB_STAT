@@ -17,7 +17,8 @@ class StartupSweepTests(TestCase):
 
     @mock.patch("db_statistics.views.maintenance._submit_maintenance_job")
     @mock.patch("db_statistics.views.reports._submit_report_job")
-    def test_startup_sweep_never_resets_running_jobs(self, submit_report, submit_maintenance):
+    @mock.patch("db_statistics.job_locks.job_owner_alive", return_value=True)
+    def test_startup_sweep_keeps_running_jobs_with_live_owner(self, _alive, submit_report, submit_maintenance):
         running = MaintenanceJob.objects.create(connection=self.connection, operation="vacuum", schema_name="s", table_name="t", status="running")
         running_report = ReportJob.objects.create(connection=self.connection, status="running")
 
@@ -60,3 +61,32 @@ class RecoverCommandTests(TestCase):
         self.assertEqual(report.status, "queued")
         submit_maintenance.assert_called_once_with(job.pk)
         submit_report.assert_called_once_with(report.pk)
+
+
+class OrphanedJobSweepTests(TestCase):
+    def setUp(self):
+        self.connection = _connection()
+
+    @mock.patch("db_statistics.views.maintenance._submit_maintenance_job")
+    @mock.patch("db_statistics.views.reports._submit_report_job")
+    @mock.patch("db_statistics.job_locks.job_owner_alive", return_value=False)
+    def test_running_job_without_live_owner_is_requeued_and_submitted(self, _alive, submit_report, submit_maintenance):
+        job = MaintenanceJob.objects.create(connection=self.connection, operation="vacuum", schema_name="s", table_name="t", status="running")
+
+        _resubmit_queued_jobs()
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, "queued")
+        submit_maintenance.assert_called_once_with(job.pk)
+
+    @mock.patch("db_statistics.views.maintenance._submit_maintenance_job")
+    @mock.patch("db_statistics.views.reports._submit_report_job")
+    @mock.patch("db_statistics.job_locks.job_owner_alive", return_value=True)
+    def test_running_job_with_live_owner_is_left_alone(self, _alive, submit_report, submit_maintenance):
+        job = MaintenanceJob.objects.create(connection=self.connection, operation="vacuum", schema_name="s", table_name="t", status="running")
+
+        _resubmit_queued_jobs()
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, "running")
+        submit_maintenance.assert_not_called()
