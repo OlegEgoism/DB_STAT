@@ -33,3 +33,30 @@ class LegacyInstallMigrationTests(TransactionTestCase):
         call_command("migrate", fake_initial=True, interactive=False, stdout=StringIO())
 
         self.assertTrue(recorder.migration_qs.filter(app="db_statistics", name="0001_initial").exists())
+
+
+class LegacyColumnReconciliationTests(TransactionTestCase):
+    """Установка, созданная раньше колонки db_type, получает её при адаптации и не теряет данные."""
+
+    def test_missing_column_is_added_and_existing_rows_are_kept(self):
+        from db_statistics.management.commands.migrate import add_missing_columns
+        from db_statistics.models import DBConnection
+
+        connection_row = DBConnection.objects.create(name="legacy", host="db.internal", port=5432, database="app", username="reader", password="pw")
+        with connection.schema_editor() as editor:
+            editor.remove_field(DBConnection, DBConnection._meta.get_field("db_type"))
+        with connection.cursor() as cursor:
+            columns = {c.name for c in connection.introspection.get_table_description(cursor, DBConnection._meta.db_table)}
+        self.assertNotIn("db_type", columns)
+
+        added = add_missing_columns(connection)
+
+        self.assertEqual(added, ["db_connection.db_type"])
+        connection_row.refresh_from_db()
+        self.assertEqual(connection_row.name, "legacy")
+        self.assertEqual(connection_row.db_type, "PostgreSQL")
+
+    def test_nothing_is_added_when_schema_is_complete(self):
+        from db_statistics.management.commands.migrate import add_missing_columns
+
+        self.assertEqual(add_missing_columns(connection), [])

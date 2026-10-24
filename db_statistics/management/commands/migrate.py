@@ -19,8 +19,35 @@ APP_LABEL = "db_statistics"
 BASELINE = "0001_initial"
 
 
+def add_missing_columns(connection):
+    """Добавляет колонки, которых нет в таблицах старой установки. Возвращает список «таблица.колонка».
+
+    Колонки появлялись в моделях по ходу развития (например, failed_login_attempts, language), а
+    --run-syncdb их в существующие таблицы не добавлял. Поле с default или null=True добавляется без
+    потери данных: редактор схемы Django подставляет значение по умолчанию для существующих строк.
+    """
+    from django.apps import apps
+
+    missing = []
+    with connection.cursor() as cursor:
+        for model in apps.get_app_config(APP_LABEL).get_models():
+            existing = {column.name for column in connection.introspection.get_table_description(cursor, model._meta.db_table)}
+            for field in model._meta.local_concrete_fields:
+                if field.column not in existing:
+                    missing.append((model, field))
+    if missing:
+        with connection.schema_editor() as editor:
+            for model, field in missing:
+                editor.add_field(model, field)
+    return [f"{model._meta.db_table}.{field.column}" for model, field in missing]
+
+
 def adopt_legacy_baseline(connection):
-    """Отмечает 0001_initial применённой, если таблицы установки уже созданы. Возвращает True, если отметила."""
+    """Отмечает 0001_initial применённой, если таблицы установки уже созданы. Возвращает True, если отметила.
+
+    Вместе с отметкой сверяет колонки моделей с таблицами: установка, созданная раньше, должна
+    получить недостающие колонки до того, как приложение начнёт их использовать.
+    """
     recorder = MigrationRecorder(connection)
     if (APP_LABEL, BASELINE) in recorder.applied_migrations():
         return False
@@ -28,14 +55,16 @@ def adopt_legacy_baseline(connection):
     migration = executor.loader.get_migration(APP_LABEL, BASELINE)
     applied, _state = executor.detect_soft_applied(None, migration)
     if applied:
+        add_missing_columns(connection)
         recorder.record_applied(APP_LABEL, BASELINE)
     return applied
 
 
 class Command(django_migrate.Command):
-    help = django_migrate.Command.help + " Для установок, созданных до миграций, сначала отмечает 0001_initial db_statistics, если её таблицы уже есть."
+    help = django_migrate.Command.help + " Для установок, созданных до миграций, сначала отмечает 0001_initial db_statistics и добавляет недостающие колонки."
 
     def handle(self, *args, **options):
-        if adopt_legacy_baseline(connections[options["database"]]) and options["verbosity"] >= 1:
+        connection = connections[options["database"]]
+        if adopt_legacy_baseline(connection) and options["verbosity"] >= 1:
             self.stdout.write(f"Установка создана до миграций: {APP_LABEL} {BASELINE} отмечена применённой (таблицы уже существуют).")
         return super().handle(*args, **options)
