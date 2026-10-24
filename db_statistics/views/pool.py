@@ -26,8 +26,13 @@ def _normalize_database_host(host):
 
 
 def _connection_kwargs(host, port, database, username, password, ssl=True):
-    """Формирует параметры подключения psycopg2."""
-    return {"host": _normalize_database_host(host), "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": settings.CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable"}
+    """Формирует параметры подключения psycopg2.
+
+    Таймауты передаются в самом подключении, поэтому действуют на все запросы
+    пула, а не только на отдельные view. См. комментарий к DB_LOCK_TIMEOUT_MS.
+    """
+    options = f"-c lock_timeout={settings.DB_LOCK_TIMEOUT_MS} -c statement_timeout={settings.DB_STATEMENT_TIMEOUT_MS}"
+    return {"host": _normalize_database_host(host), "port": port, "dbname": database, "user": username, "password": password, "connect_timeout": settings.CONNECTION_TIMEOUT_SECONDS, "sslmode": "prefer" if ssl else "disable", "options": options}
 
 
 def _test_connection_params(host, port, database, username, password, ssl):
@@ -49,7 +54,7 @@ def _pool_key(db_connection, ssl):
     подключения, ключ меняется вместе с ними, и код ниже сам закрывает пул со
     старыми параметрами — новые соединения не создаются с устаревшим паролем.
     """
-    return (db_connection.pk, db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl)
+    return (db_connection.pk, db_connection.host, db_connection.port, db_connection.database, db_connection.username, db_connection.get_password(), ssl, settings.DB_LOCK_TIMEOUT_MS, settings.DB_STATEMENT_TIMEOUT_MS)
 
 
 def _get_connection_pool(db_connection, ssl):
@@ -73,8 +78,28 @@ def _close_connection_pools_for(connection_id):
             _connection_pools.pop(stale_key).closeall()
 
 
+def _apply_session_timeouts(connection, statement_ms, lock_ms):
+    """Задаёт таймауты сессии и фиксирует их, не трогая открытую транзакцию вызывающего кода.
+
+    SET откатывается вместе с транзакцией, поэтому значение фиксируется коммитом;
+    вызывается только на чистом соединении из пула.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(f"SET statement_timeout = {int(statement_ms)}")
+        cursor.execute(f"SET lock_timeout = {int(lock_ms)}")
+    if not connection.autocommit:
+        connection.commit()
+
+
+def _restore_session_timeouts(connection):
+    """Возвращает таймауты сессии к значениям из параметров подключения перед отдачей в пул."""
+    with connection.cursor() as cursor:
+        cursor.execute("RESET statement_timeout")
+        cursor.execute("RESET lock_timeout")
+
+
 @contextmanager
-def _open_database_connection(db_connection, ssl=True):
+def _open_database_connection(db_connection, ssl=True, background=False):
     """Берёт соединение с сохранённой базой данных из пула этого подключения.
 
     Соединение возвращается в пул при выходе из блока `with` вместо того,
@@ -83,10 +108,20 @@ def _open_database_connection(db_connection, ssl=True):
     Если соединение осталось в аварийном состоянии (ошибка внутри блока) или
     оказалось нежизнеспособным, оно закрывается и не возвращается в пул, чтобы
     следующий запрос получил заведомо рабочее соединение.
+
+    background=True для фоновых задач (VACUUM, PDF): им выставляются более
+    длинный statement_timeout и отдельный lock_timeout, а после выхода таймауты
+    возвращаются к обычным значениям, чтобы пул не сохранил их для других запросов.
     """
     pool = _get_connection_pool(db_connection, ssl)
     connection = pool.getconn()
     discard = False
+    if background:
+        try:
+            _apply_session_timeouts(connection, settings.DB_BACKGROUND_STATEMENT_TIMEOUT_MS, settings.DB_BACKGROUND_LOCK_TIMEOUT_MS)
+        except psycopg2.Error:
+            pool.putconn(connection, close=True)
+            raise
     try:
         yield connection
     except Exception:
@@ -98,17 +133,22 @@ def _open_database_connection(db_connection, ssl=True):
         elif not discard:
             try:
                 if connection.autocommit:
+                    if background:
+                        _restore_session_timeouts(connection)
                     connection.autocommit = False
                 else:
                     connection.rollback()
+                    if background:
+                        _restore_session_timeouts(connection)
+                        connection.commit()
             except psycopg2.Error:
                 discard = True
         pool.putconn(connection, close=discard)
 
 
-def _fetch_db_rows(db_connection, query, params=None):
+def _fetch_db_rows(db_connection, query, params=None, background=False):
     """Выполняет запрос и возвращает все строки результата."""
-    with _open_database_connection(db_connection) as connection:
+    with _open_database_connection(db_connection, background=background) as connection:
         with connection.cursor() as cursor:
             cursor.execute(query, params or [])
             return cursor.fetchall()
@@ -158,4 +198,21 @@ def _query_or_error(action_description, fn):
     try:
         return fn(), None
     except psycopg2.Error as exc:
-        return None, JsonResponse({"ok": False, "message": _safe_db_error_message(action_description, exc)}, status=400)
+        return None, _db_error_response(action_description, exc)
+
+
+# Коды SQLSTATE, которые означают не ошибку запроса, а перегрузку или блокировку.
+LOCK_NOT_AVAILABLE_SQLSTATE = "55P03"
+QUERY_CANCELED_SQLSTATE = "57014"
+LOCKED_MESSAGE = "Объект заблокирован другой транзакцией: посмотрите вкладку «Блокировки»"
+TIMEOUT_MESSAGE = "Запрос не уложился в допустимое время: попробуйте позже или сузьте фильтр"
+
+
+def _db_error_response(action_description, exc):
+    """Ответ для ошибки БД: блокировка и таймаут — 503 с понятной причиной, остальное — 400."""
+    sqlstate = getattr(exc, "pgcode", None)
+    if sqlstate in (LOCK_NOT_AVAILABLE_SQLSTATE, QUERY_CANCELED_SQLSTATE):
+        reason = LOCKED_MESSAGE if sqlstate == LOCK_NOT_AVAILABLE_SQLSTATE else TIMEOUT_MESSAGE
+        logger.info("%s: SQLSTATE %s", action_description, sqlstate)
+        return JsonResponse({"ok": False, "message": f"{action_description}. {reason}"}, status=503)
+    return JsonResponse({"ok": False, "message": _safe_db_error_message(action_description, exc)}, status=400)

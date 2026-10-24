@@ -71,6 +71,9 @@
     const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const toastTablesApiUrl = '/toast-tables/sizes/';
+    // Серверный statement_timeout (15 с) короче этого лимита, поэтому обычно сервер
+    // сам сообщает причину раньше, чем сработает клиентский таймаут.
+    const CONNECTION_REQUEST_TIMEOUT_MS = 20000;
     const deleteTempTableApiUrl = '/temp-tables/delete/';
     const databasePdfReportApiUrl = '/reports/database.pdf';
     const distributionTablesApiUrl = '/distribution/tables/';
@@ -4653,20 +4656,28 @@
     }
 
     function connectionRequest(url, payload) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), CONNECTION_REQUEST_TIMEOUT_MS);
         return fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         }).then(async response => {
             const data = await response.json().catch(() => ({}));
             if (!response.ok || data.ok === false) {
                 throw new Error(data.message || 'Ошибка запроса');
             }
             return data;
-        });
+        }).catch(error => {
+            if (error.name === 'AbortError') {
+                throw new Error('База данных не ответила за 20 секунд. Возможно, объект заблокирован или сервер перегружен');
+            }
+            throw error;
+        }).finally(() => clearTimeout(timer));
     }
 
     function initDatabasePdfReport() {

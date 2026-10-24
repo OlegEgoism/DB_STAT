@@ -138,7 +138,7 @@ def _run_maintenance_operation(job_id):
             statement = sql.SQL("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT TEXT) SELECT * FROM {table}").format(table=table_identifier)
         # VACUUM запрещён внутри транзакции, поэтому autocommit включается
         # сразу после открытия соединения, до выполнения запроса.
-        with _open_database_connection(db_connection) as connection:
+        with _open_database_connection(db_connection, background=True) as connection:
             connection.autocommit = True
             with connection.cursor() as cursor:
                 cursor.execute(statement)

@@ -134,6 +134,19 @@ CONNECTION_TIMEOUT_SECONDS = 5
 DB_CONNECTION_POOL_MIN_CONN = int(os.getenv("DB_CONNECTION_POOL_MIN_CONN", "1"))
 DB_CONNECTION_POOL_MAX_CONN = int(os.getenv("DB_CONNECTION_POOL_MAX_CONN", "10"))
 
+# Таймауты на сессии к целевой БД. Без них запрос, который ждёт блокировку или
+# выполняется бесконечно, держит поток приложения, и при нескольких таких
+# запросах приложение перестаёт отвечать всем пользователям. lock_timeout короткий:
+# ожидание освобождения таблицы не должно длиться дольше нескольких секунд.
+# statement_timeout меньше таймаута браузера (см. CONNECTION_REQUEST_TIMEOUT_MS
+# в home.js), чтобы сервер успел сообщить о причине раньше, чем клиент сдастся.
+DB_LOCK_TIMEOUT_MS = int(os.getenv("DB_LOCK_TIMEOUT_MS", "3000"))
+DB_STATEMENT_TIMEOUT_MS = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "15000"))
+# Фоновые задачи (VACUUM/ANALYZE, PDF-отчёты) идут долго по своей природе, поэтому
+# им даётся отдельный, более длинный лимит на выполнение запроса.
+DB_BACKGROUND_LOCK_TIMEOUT_MS = int(os.getenv("DB_BACKGROUND_LOCK_TIMEOUT_MS", "30000"))
+DB_BACKGROUND_STATEMENT_TIMEOUT_MS = int(os.getenv("DB_BACKGROUND_STATEMENT_TIMEOUT_MS", "600000"))
+
 ADMIN_ROLE = "Администратор"
 
 SESSION_USER_ID_KEY = "db_user_id"

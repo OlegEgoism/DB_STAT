@@ -134,7 +134,7 @@ def _label(language, russian, english):
 
 def _collect(db_connection, title, query, params=None, language="ru"):
     try:
-        return _fetch_db_rows(db_connection, query, params), None
+        return _fetch_db_rows(db_connection, query, params, background=True), None
     except psycopg2.Error as exc:
         if language == "en":
             logger.warning("Could not collect PDF section %s: %s", title, exc)
