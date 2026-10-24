@@ -4046,12 +4046,6 @@ body.sidebar-collapsed .nav-item .nav-icon {
 }
 
 /* ========== APPEARANCE SETTINGS ========== */
-.settings-section {
-    margin-bottom: var(--space-5);
-    padding-bottom: var(--space-5);
-    border-bottom: 1px solid var(--sidebar-border);
-}
-
 .settings-section__heading h5 {
     margin: 0 0 4px;
     color: var(--text-primary);
