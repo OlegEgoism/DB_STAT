@@ -16,6 +16,7 @@
     let currentSegmentsWarningHtml = '';
     let segmentsSortState = {column: 'segment', direction: 'asc'};
     let schemaSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    let schemaSizesRequestId = 0;
     let tableSizesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: '', favoritesOnly: false};
     let tableSizesRequestId = 0;
     let viewsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', viewType: '', favoritesOnly: false};
@@ -33,6 +34,7 @@
     let currentDistributionTotalRows = 0;
     let distributionSortState = {column: 'segment_id', direction: 'asc'};
     let distributionRequestId = 0;
+    let distributionTablesRequestId = 0;
     let activeQueriesRequestId = 0;
     let activeQueriesState = {sort: 'duration_seconds', direction: 'desc', refreshInterval: 0, timer: null, username: '', inFlight: false};
     const terminatedActiveQueryKeys = new Set();
@@ -52,6 +54,9 @@
     let groupsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'name', direction: 'asc', search: '', favoritesOnly: false};
     let groupsRequestId = 0;
     let auditRequestId = 0;
+    let databaseOverviewRequestId = 0;
+    let memoryOverviewRequestId = 0;
+    let segmentsRequestId = 0;
     let auditActionsLoaded = false;
     let auditUsersLoaded = false;
     let auditState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'created', direction: 'desc'};
@@ -219,6 +224,14 @@
         if (header) header.setAttribute('aria-sort', isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none');
         const icon = button.querySelector('i');
         if (icon) icon.className = isActive ? `fas fa-sort-${direction === 'asc' ? 'up' : 'down'}` : 'fas fa-sort';
+    }
+
+    function updatePaginationButtons(state, prevButtonId, nextButtonId, page = state.page) {
+        const totalPages = Math.max(Math.ceil(state.totalCount / state.pageSize), 1);
+        const prev = document.getElementById(prevButtonId);
+        const next = document.getElementById(nextButtonId);
+        if (prev) prev.disabled = page <= 1;
+        if (next) next.disabled = page >= totalPages;
     }
 
     function escapeHtml(value) {
@@ -927,8 +940,8 @@
                 <div class="pagination-settings-item">
                     <strong>${escapeHtml(item.size)}</strong>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary" type="button" data-pagination-edit="${item.id}" data-pagination-size="${item.size}"><i class="fas fa-edit"></i> Редактировать</button>
-                        <button class="btn btn-sm btn-outline-danger" type="button" data-pagination-delete="${item.id}"><i class="fas fa-trash"></i> Удалить</button>
+                        <button class="btn btn-sm btn-outline-primary" type="button" data-pagination-edit="${escapeHtml(item.id)}" data-pagination-size="${escapeHtml(item.size)}"><i class="fas fa-edit"></i> Редактировать</button>
+                        <button class="btn btn-sm btn-outline-danger" type="button" data-pagination-delete="${escapeHtml(item.id)}"><i class="fas fa-trash"></i> Удалить</button>
                     </div>
                 </div>`).join('');
             if ((data.settings || []).length >= data.max_records) sizeInput.disabled = !idInput.value;
@@ -1591,7 +1604,7 @@
                 rolesTbody.innerHTML = roleCounts.map(item => `
                     <tr>
                         <td>${escapeHtml(translateInterfaceText(item.label))}</td>
-                        <td><strong>${item.count ?? 0}</strong></td>
+                        <td><strong>${escapeHtml(item.count ?? 0)}</strong></td>
                     </tr>
                 `).join('');
             }
@@ -1631,14 +1644,19 @@
     }
 
     function refreshDatabaseOverviewForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const requestId = ++databaseOverviewRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderDatabaseOverviewWarning('Выберите сохранённое подключение для загрузки размеров БД');
             return;
         }
         renderDatabaseOverviewWarning('Загрузка размеров БД...');
         connectionRequest(databaseOverviewApiUrl, {id: conn.id})
-            .then(data => renderDatabaseOverview(data))
-            .catch(error => renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД'));
+            .then(data => {
+                if (requestId === databaseOverviewRequestId) renderDatabaseOverview(data);
+            })
+            .catch(error => {
+                if (requestId === databaseOverviewRequestId) renderDatabaseOverviewWarning(error.message || 'Не удалось получить размеры БД');
+            });
     }
 
 
@@ -1931,7 +1949,9 @@
         }
         tbody.innerHTML = sessions.map(session => {
             const stateClass = session.state === 'active' ? 'up' : (session.state === 'idle in transaction' ? 'warning' : '');
-            const client = `${session.client_addr}${session.client_port !== '—' ? ':' + session.client_port : ''}`;
+            const clientAddr = session.client_addr ?? '—';
+            const clientPort = session.client_port ?? '—';
+            const client = `${clientAddr}${clientPort !== '—' ? ':' + clientPort : ''}`;
             return `
                 <tr>
                     <td><strong>${escapeHtml(session.pid)}</strong></td>
@@ -2395,14 +2415,19 @@
     }
 
     function refreshMemoryOverviewForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const requestId = ++memoryOverviewRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             renderMemoryOverviewWarning('Выберите сохранённое подключение для загрузки памяти');
             return;
         }
         renderMemoryOverviewWarning('Загрузка памяти...');
         connectionRequest(memoryOverviewApiUrl, {id: conn.id})
-            .then(data => renderMemoryOverview(data))
-            .catch(error => renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти'));
+            .then(data => {
+                if (requestId === memoryOverviewRequestId) renderMemoryOverview(data);
+            })
+            .catch(error => {
+                if (requestId === memoryOverviewRequestId) renderMemoryOverviewWarning(error.message || 'Не удалось получить параметры памяти');
+            });
     }
 
     function renderRolesListWarning(tbodyId, countId, colspan, message) {
@@ -2426,14 +2451,6 @@
             button.classList.toggle('active', isActive);
             updateSortHeaderState(button, isActive, groupsState.direction);
         });
-    }
-
-    function updateUsersPaginationButtons() {
-        const totalPages = Math.max(Math.ceil(usersState.totalCount / usersState.pageSize), 1);
-        const prev = document.getElementById('usersPrevPageBtn');
-        const next = document.getElementById('usersNextPageBtn');
-        if (prev) prev.disabled = usersState.page <= 1;
-        if (next) next.disabled = usersState.page >= totalPages;
     }
 
 
@@ -2503,7 +2520,7 @@
         updateUsersPrivilegeCharts([]);
         if (info) info.textContent = 'Страница 1 из 1';
         renderRolesListWarning('usersTableBody', 'usersCount', 9, message);
-        updateUsersPaginationButtons();
+        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
     }
 
     function renderRolesList(data, tbodyId, countId, emptyMessage, includeMembersCount = false) {
@@ -2545,7 +2562,7 @@
         renderRolesList(data, 'usersTableBody', null, 'Пользователи не найдены');
         if (count) count.textContent = `${data.roles?.length || 0} из ${usersState.totalCount} пользователей`;
         if (info) info.textContent = `Страница ${usersState.page} из ${totalPages}`;
-        updateUsersPaginationButtons();
+        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
     }
 
     function refreshUsersForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -2610,7 +2627,7 @@
         });
         document.getElementById('usersFavoritesFilter')?.addEventListener('change', function () { usersState.favoritesOnly = this.value === 'favorites'; usersState.page = 1; refreshUsersForConnection(); });
         updateUsersSortIndicators();
-        updateUsersPaginationButtons();
+        updatePaginationButtons(usersState, 'usersPrevPageBtn', 'usersNextPageBtn');
     }
 
     function refreshGroupsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -2639,8 +2656,7 @@
                 groupsState.totalCount = Number(data.total_count) || 0;
                 const totalPages = Math.max(Math.ceil(groupsState.totalCount / groupsState.pageSize), 1);
                 document.getElementById('groupsPaginationInfo').textContent = `Страница ${groupsState.page} из ${totalPages}`;
-                document.getElementById('groupsPrevPageBtn').disabled = groupsState.page <= 1;
-                document.getElementById('groupsNextPageBtn').disabled = groupsState.page >= totalPages;
+                updatePaginationButtons(groupsState, 'groupsPrevPageBtn', 'groupsNextPageBtn');
                 updateGroupsPrivilegeCharts(data.roles || [], data.summary || null);
                 renderRolesList(data, 'groupsTableBody', 'groupsCount', 'Группы не найдены', true);
             })
@@ -2770,15 +2786,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1';
         if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateMaintenancePaginationControls();
-    }
-
-    function updateMaintenancePaginationControls() {
-        const totalPages = Math.max(Math.ceil(maintenanceStatsState.totalCount / maintenanceStatsState.pageSize), 1);
-        const prev = document.getElementById('maintenancePrevPageBtn');
-        const next = document.getElementById('maintenanceNextPageBtn');
-        if (prev) prev.disabled = maintenanceStatsState.page <= 1;
-        if (next) next.disabled = maintenanceStatsState.page >= totalPages;
+        updatePaginationButtons(maintenanceStatsState, 'maintenancePrevPageBtn', 'maintenanceNextPageBtn');
     }
 
     function updateMaintenanceSortIndicators() {
@@ -2801,7 +2809,7 @@
         if (count) count.textContent = `${tables.length} из ${maintenanceStatsState.totalCount} таблиц`;
         if (info) info.textContent = `Страница ${maintenanceStatsState.page} из ${totalPages}`;
         updateMaintenanceSortIndicators();
-        updateMaintenancePaginationControls();
+        updatePaginationButtons(maintenanceStatsState, 'maintenancePrevPageBtn', 'maintenanceNextPageBtn');
         updateMaintenanceVisuals(tables);
         if (!tbody) return;
         if (!tables.length) {
@@ -3178,7 +3186,7 @@
         if (tbody) {
             tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
         }
-        updateSchemaPaginationButtons();
+        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
     }
 
     function updateSchemaSortIndicators() {
@@ -3187,14 +3195,6 @@
             button.classList.toggle('active', isActive);
             updateSortHeaderState(button, isActive, schemaSizesState.direction);
         });
-    }
-
-    function updateSchemaPaginationButtons() {
-        const totalPages = Math.max(Math.ceil(schemaSizesState.totalCount / schemaSizesState.pageSize), 1);
-        const prev = document.getElementById('schemaPrevPageBtn');
-        const next = document.getElementById('schemaNextPageBtn');
-        if (prev) prev.disabled = schemaSizesState.page <= 1;
-        if (next) next.disabled = schemaSizesState.page >= totalPages;
     }
 
     function renderSchemaSizes(data) {
@@ -3212,7 +3212,7 @@
         if (info) info.textContent = `Страница ${schemaSizesState.page} из ${totalPages}`;
         if (!data.schemas?.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Схемы не найдены</td></tr>';
-            updateSchemaPaginationButtons();
+            updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
             return;
         }
         tbody.innerHTML = data.schemas.map(schema => `
@@ -3220,11 +3220,11 @@
                 <td class="favorite-column">${favoriteButton('schema', schema.schema_name, schema.schema_name)}</td>
                 <td><strong>${escapeHtml(schema.schema_name || '-')}</strong></td>
                 <td>${escapeHtml(schema.schema_owner || '-')}</td>
-                <td>${schema.table_count ?? 0}</td>
-                <td>${schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit}</td>
+                <td>${escapeHtml(schema.table_count ?? 0)}</td>
+                <td>${escapeHtml(schema.table_size || formatDatabaseSize(schema.size_bytes).value + ' ' + formatDatabaseSize(schema.size_bytes).unit)}</td>
             </tr>
         `).join('');
-        updateSchemaPaginationButtons();
+        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
     }
 
     function initSchemaSizesControls() {
@@ -3265,10 +3265,11 @@
         });
         document.getElementById('schemaFavoritesFilter')?.addEventListener('change', function () { schemaSizesState.favoritesOnly = this.value === 'favorites'; schemaSizesState.page = 1; refreshSchemaSizesForConnection(); });
         updateSchemaSortIndicators();
-        updateSchemaPaginationButtons();
+        updatePaginationButtons(schemaSizesState, 'schemaPrevPageBtn', 'schemaNextPageBtn');
     }
 
     function refreshSchemaSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
+        const requestId = ++schemaSizesRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             schemaSizesState.totalCount = 0;
             renderSchemaSizesWarning('Выберите сохранённое подключение для загрузки размеров схем');
@@ -3284,8 +3285,11 @@
             direction: schemaSizesState.direction,
             favorites_only: schemaSizesState.favoritesOnly
         })
-            .then(data => renderSchemaSizes(data))
+            .then(data => {
+                if (requestId === schemaSizesRequestId) renderSchemaSizes(data);
+            })
             .catch(error => {
+                if (requestId !== schemaSizesRequestId) return;
                 schemaSizesState.totalCount = 0;
                 renderSchemaSizesWarning(error.message || 'Не удалось получить размеры схем');
             });
@@ -3361,7 +3365,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateTableDistributionChart([]);
         if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateTablePaginationButtons();
+        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
     }
 
     function updateTableSortIndicators() {
@@ -3370,14 +3374,6 @@
             button.classList.toggle('active', isActive);
             updateSortHeaderState(button, isActive, tableSizesState.direction);
         });
-    }
-
-    function updateTablePaginationButtons() {
-        const totalPages = Math.max(Math.ceil(tableSizesState.totalCount / tableSizesState.pageSize), 1);
-        const prev = document.getElementById('tablePrevPageBtn');
-        const next = document.getElementById('tableNextPageBtn');
-        if (prev) prev.disabled = tableSizesState.page <= 1;
-        if (next) next.disabled = tableSizesState.page >= totalPages;
     }
 
     function renderTableSizes(data) {
@@ -3395,7 +3391,7 @@
         if (info) info.textContent = `Страница ${tableSizesState.page} из ${totalPages}`;
         if (!data.tables?.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Таблицы не найдены</td></tr>';
-            updateTablePaginationButtons();
+            updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
             return;
         }
         tbody.innerHTML = data.tables.map(table => `
@@ -3404,13 +3400,13 @@
                 <td>${escapeHtml(table.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td>${escapeHtml(table.table_owner || '-')}</td>
-                <td>${table.table_size || '-'}</td>
-                <td>${table.index_size || '-'}</td>
+                <td>${escapeHtml(table.table_size || '-')}</td>
+                <td>${escapeHtml(table.index_size || '-')}</td>
                 <td>${formatRowCount(table.index_count)}</td>
                 <td>${formatRowCount(table.row_count)}</td>
             </tr>
         `).join('');
-        updateTablePaginationButtons();
+        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
     }
 
     function refreshTableSizesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -3477,7 +3473,7 @@
         });
         document.getElementById('tableFavoritesFilter')?.addEventListener('change', function () { tableSizesState.favoritesOnly = this.value === 'favorites'; tableSizesState.page = 1; refreshTableSizesForConnection(); });
         updateTableSortIndicators();
-        updateTablePaginationButtons();
+        updatePaginationButtons(tableSizesState, 'tablePrevPageBtn', 'tableNextPageBtn');
     }
 
 
@@ -3508,7 +3504,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateViewsSummaryChart(null, []);
         if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateViewPaginationButtons();
+        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
     }
 
     function updateViewSortIndicators() {
@@ -3517,14 +3513,6 @@
             button.classList.toggle('active', isActive);
             updateSortHeaderState(button, isActive, viewsState.direction);
         });
-    }
-
-    function updateViewPaginationButtons() {
-        const totalPages = Math.max(Math.ceil(viewsState.totalCount / viewsState.pageSize), 1);
-        const prev = document.getElementById('viewPrevPageBtn');
-        const next = document.getElementById('viewNextPageBtn');
-        if (prev) prev.disabled = viewsState.page <= 1;
-        if (next) next.disabled = viewsState.page >= totalPages;
     }
 
     function renderViews(data) {
@@ -3542,7 +3530,7 @@
         if (info) info.textContent = `Страница ${viewsState.page} из ${totalPages}`;
         if (!data.views?.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted">Представления не найдены</td></tr>';
-            updateViewPaginationButtons();
+            updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
             return;
         }
         tbody.innerHTML = data.views.map(view => `
@@ -3551,13 +3539,13 @@
                 <td>${escapeHtml(view.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(view.view_name || '-')}</strong></td>
                 <td>${escapeHtml(view.view_owner || '-')}</td>
-                <td>${view.view_type || '-'}</td>
-                <td>${view.view_size || '-'}</td>
-                <td>${view.index_size || '-'}</td>
+                <td>${escapeHtml(view.view_type || '-')}</td>
+                <td>${escapeHtml(view.view_size || '-')}</td>
+                <td>${escapeHtml(view.index_size || '-')}</td>
                 <td>${formatRowCount(view.row_count)}</td>
             </tr>
         `).join('');
-        updateViewPaginationButtons();
+        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
     }
 
     function refreshViewsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -3630,7 +3618,7 @@
         });
         document.getElementById('viewFavoritesFilter')?.addEventListener('change', function () { viewsState.favoritesOnly = this.value === 'favorites'; viewsState.page = 1; refreshViewsForConnection(); });
         updateViewSortIndicators();
-        updateViewPaginationButtons();
+        updatePaginationButtons(viewsState, 'viewPrevPageBtn', 'viewNextPageBtn');
     }
 
     function renderFunctionsWarning(message) {
@@ -3640,7 +3628,7 @@
         if (count) count.textContent = 'Нет данных';
         if (info) info.textContent = 'Страница 1 из 1';
         if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateFunctionPaginationButtons();
+        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
     }
 
     function updateFunctionSortIndicators() {
@@ -3649,14 +3637,6 @@
             button.classList.toggle('active', active);
             updateSortHeaderState(button, active, functionsState.direction);
         });
-    }
-
-    function updateFunctionPaginationButtons() {
-        const totalPages = Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1);
-        const prev = document.getElementById('functionPrevPageBtn');
-        const next = document.getElementById('functionNextPageBtn');
-        if (prev) prev.disabled = functionsState.page <= 1;
-        if (next) next.disabled = functionsState.page >= totalPages;
     }
 
     function renderFunctions(data) {
@@ -3680,7 +3660,7 @@
                 <td><code>${escapeHtml(item.arguments || '—')}</code></td>
             </tr>`).join('');
         }
-        updateFunctionPaginationButtons();
+        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
     }
 
     function refreshFunctionsForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -3723,7 +3703,7 @@
         document.getElementById('functionNextPageBtn')?.addEventListener('click', () => {
             if (functionsState.page < Math.max(Math.ceil(functionsState.totalCount / functionsState.pageSize), 1)) { functionsState.page += 1; refreshFunctionsForConnection(); }
         });
-        updateFunctionPaginationButtons();
+        updatePaginationButtons(functionsState, 'functionPrevPageBtn', 'functionNextPageBtn');
     }
 
     function renderDistributionWarning(message) {
@@ -3926,6 +3906,7 @@
     function refreshDistributionTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
         const select = document.getElementById('distributionTableSelect');
         const options = document.getElementById('distributionTableOptions');
+        const requestId = ++distributionTablesRequestId;
         if (!conn || !/^\d+$/.test(String(conn.id))) {
             distributionTables = [];
             selectedDistributionTable = null;
@@ -3946,10 +3927,12 @@
         closeDistributionTablePicker();
         connectionRequest(distributionTablesApiUrl, {id: conn.id})
             .then(data => {
+                if (requestId !== distributionTablesRequestId) return;
                 distributionTables = data.tables || [];
                 renderDistributionTableOptions(distributionTables);
             })
             .catch(error => {
+                if (requestId !== distributionTablesRequestId) return;
                 distributionTables = [];
                 selectedDistributionTable = null;
                 if (select) {
@@ -4028,14 +4011,6 @@
     }
 
 
-    function updateToastTablePaginationButtons() {
-        const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
-        const prev = document.getElementById('toastTablePrevPageBtn');
-        const next = document.getElementById('toastTableNextPageBtn');
-        if (prev) prev.disabled = toastTablesState.page <= 1;
-        if (next) next.disabled = toastTablesState.page >= totalPages;
-    }
-
     function updateToastTableSortIndicators() {
         document.querySelectorAll('[data-toast-table-sort]').forEach(button => {
             const isActive = button.dataset.toastTableSort === toastTablesState.sort;
@@ -4053,7 +4028,7 @@
         if (total) total.textContent = '';
         if (info) info.textContent = 'Страница 1 из 1';
         if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateToastTablePaginationButtons();
+        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
     }
 
     function renderToastTables(data) {
@@ -4072,7 +4047,7 @@
         if (info) info.textContent = `Страница ${toastTablesState.page} из ${totalPages}`;
         if (!data.toast_tables?.length) {
             tbody.innerHTML = '<tr><td colspan="8" class="text-muted">TOAST-таблицы с данными не найдены</td></tr>';
-            updateToastTablePaginationButtons();
+            updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
             return;
         }
         tbody.innerHTML = data.toast_tables.map(table => {
@@ -4091,7 +4066,7 @@
                 <td>${Number(table.dead_chunks || 0).toLocaleString()}</td>
             </tr>`;
         }).join('');
-        updateToastTablePaginationButtons();
+        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
     }
 
     function refreshToastTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -4162,7 +4137,7 @@
             }
         });
         updateToastTableSortIndicators();
-        updateToastTablePaginationButtons();
+        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
     }
 
     function updateTempTableDistributionChart(tables = []) {
@@ -4229,7 +4204,7 @@
         if (info) info.textContent = 'Страница 1 из 1';
         updateTempTableDistributionChart([]);
         if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updateTempTablePaginationButtons();
+        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
     }
 
     function updateTempTableSortIndicators() {
@@ -4238,14 +4213,6 @@
             button.classList.toggle('active', isActive);
             updateSortHeaderState(button, isActive, tempTablesState.direction);
         });
-    }
-
-    function updateTempTablePaginationButtons() {
-        const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
-        const prev = document.getElementById('tempTablePrevPageBtn');
-        const next = document.getElementById('tempTableNextPageBtn');
-        if (prev) prev.disabled = tempTablesState.page <= 1;
-        if (next) next.disabled = tempTablesState.page >= totalPages;
     }
 
     function renderTempTables(data) {
@@ -4263,7 +4230,7 @@
         if (info) info.textContent = `Страница ${tempTablesState.page} из ${totalPages}`;
         if (!data.temp_tables?.length) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Временные таблицы не найдены</td></tr>';
-            updateTempTablePaginationButtons();
+            updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
             return;
         }
         tbody.innerHTML = data.temp_tables.map(table => `
@@ -4271,13 +4238,13 @@
                 <td>${escapeHtml(table.schema_name || '-')}</td>
                 <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
                 <td>${escapeHtml(table.table_owner || '-')}</td>
-                <td>${table.table_size || '-'}</td>
+                <td>${escapeHtml(table.table_size || '-')}</td>
                 <td class="backend-terminate-actions">
                     ${canRunDestructiveActions() ? `<button type="button" class="btn btn-sm btn-outline-danger temp-table-delete-btn" data-temp-table-schema="${escapeHtml(table.schema_name)}" data-temp-table-name="${escapeHtml(table.table_name)}" title="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}" aria-label="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}"><i class="fas fa-trash"></i> Удалить</button>` : '—'}
                 </td>
             </tr>
         `).join('');
-        updateTempTablePaginationButtons();
+        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
     }
 
     function refreshTempTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
@@ -4362,18 +4329,15 @@
             }
         });
         updateTempTableSortIndicators();
-        updateTempTablePaginationButtons();
+        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
     }
 
     function updateAuditPaginationButtons() {
         const totalPages = Math.max(Math.ceil(auditState.totalCount / auditState.pageSize), 1);
         const page = Math.min(auditState.page, totalPages);
         const info = document.getElementById('auditPaginationInfo');
-        const prev = document.getElementById('auditPrevPageBtn');
-        const next = document.getElementById('auditNextPageBtn');
         if (info) info.textContent = `Страница ${page} из ${totalPages}`;
-        if (prev) prev.disabled = page <= 1;
-        if (next) next.disabled = page >= totalPages;
+        updatePaginationButtons(auditState, 'auditPrevPageBtn', 'auditNextPageBtn', page);
     }
 
     function initPaginationPageSizeControls() {
@@ -4846,7 +4810,7 @@
         container.innerHTML = metrics.map(metric => `
             <div class="segment-metric">
                 <div class="metric-value">${Number(metric.value).toFixed(metric.name.includes('Процент') ? 0 : 0)}</div>
-                <div class="metric-name">${metric.name}</div>
+                <div class="metric-name">${escapeHtml(metric.name)}</div>
             </div>
         `).join('');
     }
@@ -4967,9 +4931,14 @@
             badge.textContent = 'Обновление...';
         }
 
+        const requestId = ++segmentsRequestId;
         connectionRequest(segmentsInfoApiUrl, {id: conn.id})
-            .then(data => renderSegmentsInfo(data))
-            .catch(error => renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.'));
+            .then(data => {
+                if (requestId === segmentsRequestId) renderSegmentsInfo(data);
+            })
+            .catch(error => {
+                if (requestId === segmentsRequestId) renderSegmentsWarning(error.message || 'Информация о сегментах недоступна для выбранного подключения.');
+            });
     }
 
 
