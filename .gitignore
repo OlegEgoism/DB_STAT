@@ -20,3 +20,6 @@ staticfiles/
 .ruff_cache/
 .idea/
 .vscode/
+
+# Отчёт покрытия тестов (coverage run)
+.coverage
