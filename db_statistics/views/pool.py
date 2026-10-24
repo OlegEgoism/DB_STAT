@@ -13,7 +13,7 @@ from contextlib import closing, contextmanager
 import psycopg2
 from django.conf import settings
 from django.http import JsonResponse
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import PoolError, ThreadedConnectionPool
 
 logger = logging.getLogger(__name__)
 
@@ -209,10 +209,16 @@ LOCK_NOT_AVAILABLE_SQLSTATE = "55P03"
 QUERY_CANCELED_SQLSTATE = "57014"
 LOCKED_MESSAGE = "Объект заблокирован другой транзакцией: посмотрите вкладку «Блокировки»"
 TIMEOUT_MESSAGE = "Запрос не уложился в допустимое время: попробуйте позже или сузьте фильтр"
+POOL_EXHAUSTED_MESSAGE = "Превышен лимит соединений с целевой БД: попробуйте позже"
 
 
 def _db_error_response(action_description, exc):
-    """Ответ для ошибки БД: блокировка и таймаут — 503 с понятной причиной, остальное — 400."""
+    """Ответ для ошибки БД: блокировка, таймаут и исчерпанный пул — 503 с понятной причиной, остальное — 400."""
+    # PoolError — подкласс psycopg2.Error без SQLSTATE, поэтому проверяется первым:
+    # его бросает pool.getconn(), когда все соединения пула заняты.
+    if isinstance(exc, PoolError):
+        logger.warning("%s: пул соединений с целевой БД исчерпан", action_description)
+        return JsonResponse({"ok": False, "message": f"{action_description}. {POOL_EXHAUSTED_MESSAGE}"}, status=503)
     sqlstate = getattr(exc, "pgcode", None)
     if sqlstate in (LOCK_NOT_AVAILABLE_SQLSTATE, QUERY_CANCELED_SQLSTATE):
         reason = LOCKED_MESSAGE if sqlstate == LOCK_NOT_AVAILABLE_SQLSTATE else TIMEOUT_MESSAGE
