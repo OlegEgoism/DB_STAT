@@ -6,7 +6,8 @@ from db_statistics.queries import data_sql
 from db_statistics.queries.data_sql import FUNCTION_SEARCH_COLUMNS, SCHEMA_SEARCH_COLUMNS, TABLE_SEARCH_COLUMNS, TEMP_TABLE_SEARCH_COLUMNS, TOAST_TABLE_SEARCH_COLUMNS, VIEW_SEARCH_COLUMNS
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _get_connection_for_request, _greenplum_only_error, _require_greenplum_connection, _require_payload_connection
-from db_statistics.views.helpers import _format_bytes, _read_json_body
+from db_statistics.views.formatting import _format_bytes
+from db_statistics.views.helpers import _read_json_body
 from db_statistics.views.pagination import _list_query_params, _multi_column_search_filter, _search_and_favorites_filter
 from db_statistics.views.pool import _fetch_db_resultsets, _fetch_db_rows, _open_database_connection, _query_or_error
 

@@ -26,9 +26,10 @@ from db_statistics.views.auth import (
     _rate_limit_response,
     _session_duration_seconds,
 )
-from db_statistics.views.helpers import _available_sidebar_tabs_for_user, _connection_to_dict, _normalize_sidebar_sections, _normalize_sidebar_tabs, _read_json_body, _sidebar_settings_audit_info, _sidebar_settings_for_user, _sidebar_settings_values_for_user, _user_payload
+from db_statistics.views.helpers import _connection_to_dict, _read_json_body
 from db_statistics.views.pagination import _pagination_page_sizes
 from db_statistics.views.pool import _close_connection_pools_for, _safe_db_error_message, _test_connection_params
+from db_statistics.views.sidebar import _available_sidebar_tabs_for_user, _normalize_sidebar_sections, _normalize_sidebar_tabs, _sidebar_settings_audit_info, _sidebar_settings_for_user, _sidebar_settings_values_for_user, _user_payload
 
 
 def page_not_found(request, exception=None):

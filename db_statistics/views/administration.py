@@ -7,7 +7,8 @@ from db_statistics.models import MaintenanceJob, ReportJob
 from db_statistics.queries import administration_sql
 from db_statistics.views.audit import _maintenance_operation_audit_info, _write_audit
 from db_statistics.views.auth import _current_db_user, _destructive_action_permission_error, _rate_limit_exceeded, _rate_limit_response, _require_payload_connection
-from db_statistics.views.helpers import _format_bytes, _parse_pg_size_to_bytes, _read_json_body
+from db_statistics.views.formatting import _format_bytes, _parse_pg_size_to_bytes
+from db_statistics.views.helpers import _read_json_body
 from db_statistics.views.maintenance import _serialize_maintenance_job, _submit_maintenance_job
 from db_statistics.views.pagination import _escape_like_pattern, _favorite_filter, _list_query_params, _multi_column_search_filter
 from db_statistics.views.pool import _fetch_db_row, _fetch_db_rows, _query_or_error

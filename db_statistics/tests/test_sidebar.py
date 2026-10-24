@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from db_statistics.views.helpers import _sidebar_settings_values
+from db_statistics.views.sidebar import _sidebar_settings_values
 
 
 def _settings_with(value):

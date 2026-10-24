@@ -4,7 +4,8 @@ from django.views.decorators.http import require_http_methods
 
 from db_statistics.queries import performance_sql
 from db_statistics.views.auth import _require_payload_connection
-from db_statistics.views.helpers import _duration_seconds, _format_duration, _read_json_body
+from db_statistics.views.formatting import _duration_seconds, _format_duration
+from db_statistics.views.helpers import _read_json_body
 from db_statistics.views.maintenance import _terminate_backend
 from db_statistics.views.pagination import _like_search_pattern
 from db_statistics.views.pool import _fetch_db_rows, _query_or_error
