@@ -16,6 +16,7 @@ from django.http import FileResponse, JsonResponse
 from django.utils import timezone, translation
 from django.views.decorators.http import require_http_methods
 
+from db_statistics.job_locks import with_job_lock
 from db_statistics.models import ReportJob
 from db_statistics.queries import report_sql
 from db_statistics.views.audit import _connection_audit_fields, _format_audit_details, _write_audit
@@ -85,6 +86,7 @@ def _submit_report_job(job_id):
     settings.REPORT_JOB_EXECUTOR.submit(_run_report_job, str(job_id))
 
 
+@with_job_lock
 def _run_report_job(job_id):
     close_old_connections()
     claimed = ReportJob.objects.filter(pk=job_id, status="queued").update(status="running", message="PDF-отчёт формируется", started=timezone.now())

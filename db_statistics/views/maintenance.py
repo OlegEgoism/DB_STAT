@@ -15,6 +15,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from psycopg2 import sql
 
+from db_statistics.job_locks import with_job_lock
 from db_statistics.models import DBConnection, MaintenanceJob
 from db_statistics.queries import maintenance_sql
 from db_statistics.views.audit import MAINTENANCE_OPERATION_LABELS, _backend_termination_audit_info, _maintenance_operation_audit_info, _write_audit
@@ -89,6 +90,7 @@ def _submit_maintenance_job(job_id):
     settings.MAINTENANCE_JOB_EXECUTOR.submit(_run_maintenance_operation, str(job_id))
 
 
+@with_job_lock
 def _run_maintenance_operation(job_id):
     """Выполняет VACUUM/ANALYZE/EXPLAIN ANALYZE и обновляет состояние задачи."""
     close_old_connections()

@@ -55,12 +55,21 @@ def _resubmit_queued_jobs():
     выполняет только команда `recover_maintenance_jobs`, которую
     docker-entrypoint.sh запускает один раз до старта gunicorn.
     """
+    from db_statistics.job_locks import job_owner_alive
     from db_statistics.models import MaintenanceJob, ReportJob
     from db_statistics.views.maintenance import _submit_maintenance_job
     from db_statistics.views.reports import _ensure_report_job_table, _submit_report_job
 
     try:
         _ensure_report_job_table()
+        # Задача в статусе «Выполняется» сбрасывается в очередь, только если её выполняющий процесс
+        # погиб: lock-файл свободен (см. db_statistics/job_locks.py). Живую задачу не трогаем.
+        for job in MaintenanceJob.objects.filter(status="running"):
+            if not job_owner_alive(job.pk):
+                MaintenanceJob.objects.filter(pk=job.pk, status="running").update(status="queued", message="Операция восстановлена после падения процесса", started=None)
+        for job in ReportJob.objects.filter(status="running"):
+            if not job_owner_alive(job.pk):
+                ReportJob.objects.filter(pk=job.pk, status="running").update(status="queued", message="Формирование отчёта восстановлено после падения процесса", started=None)
         job_ids = list(MaintenanceJob.objects.filter(status="queued").values_list("pk", flat=True))
         report_job_ids = list(ReportJob.objects.filter(status="queued").values_list("pk", flat=True))
     except (OperationalError, ProgrammingError):
