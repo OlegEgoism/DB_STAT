@@ -118,7 +118,7 @@ python manage.py ensure_initial_admin
 python manage.py encrypt_connection_passwords
 ```
 
-- Возврат прерванных фоновых задач (VACUUM/ANALYZE и PDF-отчёты) в очередь после аварийной остановки сервера. В Docker выполняется автоматически при старте; при запуске через `runserver` выполните один раз перед стартом
+- Возврат прерванных фоновых задач (VACUUM/ANALYZE и PDF-отчёты) в очередь после аварийной остановки сервера. В Docker выполняется автоматически при старте; `runserver` восстанавливает задачи автоматически
 
 ```bash
 python manage.py recover_maintenance_jobs
