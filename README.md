@@ -81,14 +81,14 @@ STATIC_URL=static/
 LOCALHOST_DB_HOST=127.0.0.1
 ```
 - Версия Python 3.12+ (Docker-образ собирается на 3.13, см. `Dockerfile`)
-- Установка библиотек из файла requirements.txt
+- Установка библиотек: `requirements.txt` (рабочие зависимости) и `requirements-dev.txt` (поверх них, добавляет ruff для проверки кода)
 
 Через обычный `venv` + `pip`:
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
 Либо через [uv](https://docs.astral.sh/uv/) — тот же результат, но заметно быстрее:
@@ -98,7 +98,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements-dev.txt
 ```
 
 `uv venv` создаёт `.venv` в той же папке, что и обычный `venv`, поэтому переконфигурировать интерпретатор в IDE не нужно. Флаг `--python 3.12` важен, если `python3` в системе по умолчанию указывает на более старую версию (Django 6 требует Python 3.12+) — `uv` сам найдёт установленный `python3.12`, если он есть, либо скачает нужную версию.
@@ -178,7 +178,7 @@ E2E_PG_PASSWORD=... python -m pytest tests/e2e -q
 
 | Команда                                | Что делает                                                                                       |
 |----------------------------------------|--------------------------------------------------------------------------------------------------|
-| `make install`                         | Установить зависимости из requirements.txt                                                       |
+| `make install`                         | Установить зависимости для разработки из requirements-dev.txt                                                       |
 | `make hooks`                           | Включить git-хуки проекта для этого клона (один раз после клонирования)                          |
 | `make migrations`                      | Сгенерировать миграции после изменения моделей (все приложения, включая `db_statistics`)         |
 | `make migrate`                         | Применить миграции и добавить недостающие индексы (`migrate --fake-initial` и `ensure_indexes`)  |

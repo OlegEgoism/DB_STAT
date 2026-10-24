@@ -80,14 +80,14 @@ STATIC_URL=static/
 LOCALHOST_DB_HOST=127.0.0.1 
 ``` 
 - Python version 3.12+ (the Docker image is built on 3.13, see `Dockerfile`) 
-- Install libraries from requirements.txt 
+- Install libraries: `requirements.txt` (runtime dependencies) and `requirements-dev.txt` (on top of them, adds ruff for code checks)
 
 With plain `venv` + `pip`:
 
 ```bash 
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt 
+pip install -r requirements-dev.txt
 ``` 
 
 Or with [uv](https://docs.astral.sh/uv/) — same result, noticeably faster:
@@ -97,7 +97,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 uv venv --python 3.12
 source .venv/bin/activate
-uv pip install -r requirements.txt
+uv pip install -r requirements-dev.txt
 ```
 
 `uv venv` creates `.venv` in the same place as plain `venv`, so no need to
@@ -181,7 +181,7 @@ Main `Makefile` targets — full list with descriptions: `make help` or `make` (
  
 | Command                                | What it does                                                                                     | 
 |----------------------------------------|--------------------------------------------------------------------------------------------------| 
-| `make install`                         | Install dependencies from requirements.txt                                                       |
+| `make install`                         | Install development dependencies from requirements-dev.txt                                                       |
 | `make hooks`                           | Enable the project's git hooks for this clone (one-time, after cloning)                          | 
 | `make migrations`                      | Generate migrations after model changes (all apps, including `db_statistics`)                    |
 | `make migrate`                         | Apply migrations and add missing indexes (`migrate --fake-initial` and `ensure_indexes`)         |
