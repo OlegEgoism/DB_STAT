@@ -56,10 +56,8 @@ if _env_bool("SECURE_PROXY_SSL_HEADER", False):
 # в этом списке, а db_statistics переопределяет runserver (восстановление задач при старте, см.
 # db_statistics/management/commands/runserver.py). Наследник сохраняет раздачу статики staticfiles.
 INSTALLED_APPS = ["django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "db_statistics.apps.DbStatisticsConfig", "django.contrib.staticfiles"]
-# Модели приложения исторически создаются через migrate --run-syncdb, а не
-# через миграции. Явная отметка нужна в том числе для корректного создания
-# тестовой БД при наличии пустого пакета migrations.
-MIGRATION_MODULES = {"db_statistics": None}
+# Схема db_statistics ведётся миграциями (db_statistics/migrations). Установки, созданные до
+# появления миграций, переносятся на них командой migrate: см. db_statistics/management/commands/migrate.py.
 
 # DBUser — единый пользователь и для входа в само приложение (см. собственную
 # сессионную аутентификацию в views.helpers._current_db_user), и для входа в

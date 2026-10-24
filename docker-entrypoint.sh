@@ -12,9 +12,12 @@ mkdir -p "$sqlite_dir"
 # so reconcile it before anything touches the SQLite file.
 chown -R appuser:appuser "$sqlite_dir"
 
-runuser -u appuser -- python manage.py migrate --noinput --run-syncdb
-# Индексы для уже существующих таблиц: --run-syncdb создаёт их только для новых таблиц.
-# Команда безопасна для повторного запуска (создаёт только недостающие индексы).
+# Миграции создают таблицы новых установок. --fake-initial помечает начальную миграцию применённой,
+# если её таблицы уже есть. Установки, созданные до миграций, переводит на историю миграций сама
+# команда migrate (db_statistics/management/commands/migrate.py); существующие таблицы не пересоздаются.
+runuser -u appuser -- python manage.py migrate --noinput --fake-initial
+# Индексы для уже существующих таблиц: миграция создаёт их только вместе с таблицами, а установки,
+# созданные до миграций, её не выполняют. Команда безопасна для повторного запуска (создаёт только недостающие).
 runuser -u appuser -- python manage.py ensure_indexes
 runuser -u appuser -- python manage.py recover_maintenance_jobs
 
