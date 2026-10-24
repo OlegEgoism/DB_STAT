@@ -97,6 +97,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "db.wsgi.application"
 
+# Размер кэша страниц SQLite в КиБ: 16 МБ покрывают частые списки и индексы приложения.
+SQLITE_CACHE_KIB = int(os.getenv("SQLITE_CACHE_KIB", "16384"))
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_NAME", BASE_DIR / "db.sqlite3"), "OPTIONS": {"timeout": 20}}}
 
 AUTH_PASSWORD_VALIDATORS = [
