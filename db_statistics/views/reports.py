@@ -97,7 +97,7 @@ def _run_report_job(job_id):
         sections = _report_sections(job.connection, job.language)
         pdf = _build_pdf(job.connection, job.user, sections, job.language)
         filename = f"db-report-{job.connection_id}-{datetime.now():%Y%m%d-%H%M%S}.pdf"
-        ReportJob.objects.filter(pk=job_id).update(status="completed", message="PDF-отчёт готов к скачиванию", content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
+        ReportJob.objects.filter(pk=job_id).update(status="completed", message=_completion_message(sections, job.language), content=pdf.getvalue(), filename=filename, duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
         _write_audit(
             "database_report", _format_audit_details([("Действие", "Формирование PDF-отчёта"), *_connection_audit_fields(job.connection, server_label=True), ("Разделов", len(sections) + 1), ("Результат", "отчёт сформирован")]), username=job.user.login if job.user else "system"
         )
@@ -106,6 +106,19 @@ def _run_report_job(job_id):
         ReportJob.objects.filter(pk=job_id).update(status="failed", message="Не удалось сформировать PDF-отчёт. Подробности см. в журнале сервера", duration_seconds=round(time.monotonic() - started_at, 3), finished=timezone.now())
     finally:
         close_old_connections()
+
+
+def _completion_message(sections, language="ru"):
+    """Итоговое сообщение задачи. Статус остаётся «completed», но неполный отчёт назван прямо.
+
+    Раздел считается не собранным, если для него заполнено предупреждение
+    (см. _collect). Без таких разделов сообщение прежнее.
+    """
+    failed_titles = [section["title"] for section in sections if section["warning"]]
+    if not failed_titles:
+        return "PDF-отчёт готов к скачиванию"
+    titles = ", ".join(failed_titles)
+    return _label(language, f"Готов, но неполный: не собраны разделы: {titles}", f"Ready, but incomplete: sections not collected: {titles}")
 
 
 def _register_fonts():
