@@ -62,6 +62,12 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3)" || exit 1
 
+# The container starts as root on purpose and there is no USER directive: the
+# entrypoint runs as root only to reconcile ownership of the data volume
+# (/app/data) and to add the host.docker.internal alias to /etc/hosts. It then
+# drops to appuser via runuser before migrations and gunicorn run, so the
+# application itself never executes as root. Adding USER appuser here would
+# break those two root-only steps.
 ENTRYPOINT ["/bin/sh", "/app/docker-entrypoint.sh"]
 # gunicorn: a real multi-worker WSGI server instead of Django's single-process
 # dev server; whitenoise (added to MIDDLEWARE) serves the collected static
