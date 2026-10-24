@@ -56,6 +56,29 @@ class AdminActionsIntegrationTests(PostgresTestCase):
         self.assertTrue(json.loads(response.content)["ok"])
 
 
+class TempTableDeleteIntegrationTests(PostgresTestCase):
+    def test_admin_drops_temp_table_of_another_session(self):
+        self._make_admin_session()
+        holder = self._target_connection()
+        try:
+            with holder.cursor() as cursor:
+                cursor.execute("CREATE TEMP TABLE dbstat_it_temp (id int)")
+                cursor.execute("SELECT n.nspname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'dbstat_it_temp'")
+                temp_schema = cursor.fetchone()[0]
+            response = self.post_json("/temp-tables/delete/", {"schema_name": temp_schema, "table_name": "dbstat_it_temp"})
+        finally:
+            holder.close()
+
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(json.loads(response.content)["ok"])
+
+    def _make_admin_session(self):
+        admin = DBUser.objects.create_user(login="it_admin_temp", email="it_admin_temp@example.com", password=PASSWORD, role=settings.ADMIN_ROLE)
+        admin.connections.add(self.connection)
+        self.client.logout()
+        self._login(admin.login)
+
+
 class FavoritesApiIntegrationTests(PostgresTestCase):
     def test_add_and_remove_favorite_table(self):
         key = f"{SCHEMA}\x1forders"
