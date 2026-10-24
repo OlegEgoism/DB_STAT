@@ -17,6 +17,11 @@
 «Настройки → PDF-отчёты».
 ```
 
+## Язык интерфейса
+
+- Сообщения на стороне Python (вход, блокировка, срок сессии, ошибка выбора языка, PDF-отчёт) переведены через gettext: исходный текст русский, английский перевод лежит в `db_statistics/locale/en/LC_MESSAGES/django.po`. После правки `.po` пересоберите `django.mo` (например, `pybabel compile -d db_statistics/locale -D django`; пакета Babel в `requirements.txt` нет).
+- Интерфейс в браузере (`static/js/i18n.js`) по-прежнему использует собственный словарь. Перевод JS-части на gettext — известный оставшийся пункт.
+
 ## Скачать образ из hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat

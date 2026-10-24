@@ -16,6 +16,11 @@ performance conclusion) — generated in the background, in Russian or English, 
 and downloads of finished files under "Settings → PDF Reports".
 ```
 
+## Interface language
+
+- Python-side messages (login, lockout, session duration, language selection error, PDF report) use gettext: the source text is Russian, and the English translation is in `db_statistics/locale/en/LC_MESSAGES/django.po`. After editing the `.po`, rebuild `django.mo` (for example, `pybabel compile -d db_statistics/locale -D django`; Babel is not listed in `requirements.txt`).
+- The browser interface (`static/js/i18n.js`) still uses its own dictionary. Moving the JS part to gettext is a known remaining item.
+
 ## Download image from hub.docker
 
 https://hub.docker.com/r/olegegoism/db-stat
