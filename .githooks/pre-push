@@ -1,6 +1,6 @@
 #!/bin/sh
 # Tracked in the repo — activate once per clone with `make hooks`
-# (git config core.hooksPath .githooks). See README's "make hooks" note.
+# (git config core.hooksPath .githooks). See docs/DEVELOPMENT.md (the Make commands table, `make hooks`).
 #
 # Runs `ruff check .` + `ruff format --check .` over the whole project, but
 # only when pushing the dev branch — same scope as .githooks/pre-commit.

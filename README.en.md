@@ -2,244 +2,51 @@
 
 [Русский](README.md) | **English**
 
-## Project Description
+DB STAT is a web application for monitoring and diagnosing PostgreSQL, Greenplum and Greengage databases: queries, locks, sizes, maintenance and PDF reports in one window.
 
-```
-Web application for monitoring and diagnostics of PostgreSQL/Greenplum/Greengage databases.
-The project helps assess the state of connected databases through a single interface.
-The application allows monitoring of databases.
-The main goal of DB STAT is to simplify daily monitoring of database health.
+[Video on YouTube](https://youtu.be/9NN8SoxMOZA)
 
-For each connection you can generate a full diagnostic PDF report (schema and largest-table
-sizes, active queries/sessions/locks, table access efficiency, VACUUM/ANALYZE stats, and a
-performance conclusion) — generated in the background, in Russian or English, with a history
-and downloads of finished files under "Settings → PDF Reports".
-```
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/db.png" width="420" alt="Database dashboard"><br><sub>Database — size and activity</sub></td>
+    <td align="center"><img src="screenshots/session.png" width="420" alt="Sessions"><br><sub>Sessions — who is doing what right now</sub></td>
+  </tr>
+</table>
 
-## Interface language
+## Features
 
-- Python-side messages (login, lockout, session duration, language selection error, PDF report) use gettext: the source text is Russian, and the English translation is in `db_statistics/locale/en/LC_MESSAGES/django.po`. After editing the `.po`, rebuild `django.mo` (for example, `pybabel compile -d db_statistics/locale -D django`; Babel is not listed in `requirements.txt`).
-- The browser interface (`static/js/i18n.js`) still uses its own dictionary. Moving the JS part to gettext is a known remaining item.
+- Active queries, sessions and locks; terminating processes (administrators only).
+- Sizes of databases, schemas and tables, temporary and TOAST tables.
+- VACUUM and ANALYZE in the background; PDF report for a connection in Russian or English.
+- Audit log; the roles "Administrator" and "Analyst".
 
-## Download image from hub.docker
+## Installation and running
 
-https://hub.docker.com/r/olegegoism/db-stat
+Detailed instructions are in [docs/DEVELOPMENT.en.md](docs/DEVELOPMENT.en.md).
 
-## Project Demo
+## First sign-in
 
-[![YouTube](https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/9NN8SoxMOZA) 
- 
-## Project Screenshots 
- 
-<table> 
-  <tr> 
-    <td align="center"> 
-      <img src="screenshots/db.png" width="700" alt="Database dashboard"><br> 
-      <sub>Database — size, activity, connection slots</sub> 
-    </td> 
-    <td align="center"> 
-      <img src="screenshots/memory.png" width="700" alt="Memory dashboard"><br> 
-      <sub>Memory — parameters and usage</sub> 
-    </td> 
-  </tr> 
-  <tr> 
-    <td align="center"> 
-      <img src="screenshots/service.png" width="700" alt="Service dashboard"><br> 
-      <sub>Maintenance — VACUUM/ANALYZE, live/dead rows</sub> 
-    </td> 
-    <td align="center"> 
-      <img src="screenshots/session.png" width="700" alt="Session dashboard"><br> 
-      <sub>Sessions — active user connections</sub> 
-    </td> 
-  </tr> 
-</table> 
- 
-## Running the project in development mode 
- 
-- .env file 
-``` 
-SECRET_KEY= 
-DEBUG=True 
-ALLOWED_HOSTS=* 
-CSRF_TRUSTED_ORIGINS=http://localhost:8000,http://127.0.0.1:8000 
-CSRF_COOKIE_SECURE=False 
-SESSION_COOKIE_SECURE=False 
-TIME_ZONE=Europe/Minsk 
-LANGUAGE_CODE=ru 
-SECURE_SSL_REDIRECT=False 
-SECURE_HSTS_SECONDS=0 
-SECURE_HSTS_INCLUDE_SUBDOMAINS=False 
-SECURE_HSTS_PRELOAD=False 
-SECURE_PROXY_SSL_HEADER=False 
-DB_CONNECTION_ENCRYPTION_KEY= 
-INITIAL_ADMIN_LOGIN=admin 
-INITIAL_ADMIN_EMAIL=admin@example.com 
-INITIAL_ADMIN_PASSWORD=admin 
-SQLITE_NAME=db.sqlite3 
-STATIC_URL=static/ 
-LOCALHOST_DB_HOST=127.0.0.1 
-``` 
-- Python version 3.12+ (the Docker image is built on 3.13, see `Dockerfile`) 
-- Install libraries: `requirements.txt` (runtime dependencies) and `requirements-dev.txt` (on top of them, adds ruff for code checks)
+1. Open the application in a browser (by default http://localhost:8000).
+2. Sign in as the administrator. The login and password are set on the first start.
+3. Add a connection: in the top bar click **+**, fill in the fields and click **Connect**.
 
-With plain `venv` + `pip`:
+Only an administrator creates connections. Greenplum tabs appear only for Greenplum and Greengage connections.
 
-```bash 
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-``` 
+## Security
 
-Or with [uv](https://docs.astral.sh/uv/) — same result, noticeably faster:
+- Set `SECRET_KEY`, `DB_CONNECTION_ENCRYPTION_KEY` and `INITIAL_ADMIN_PASSWORD`. The default values are insecure.
+- Do not expose the application to the internet without HTTPS.
+- Create a separate account for each person.
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+## Frequently asked questions
 
-uv venv --python 3.12
-source .venv/bin/activate
-uv pip install -r requirements-dev.txt
-```
+- **503 "connection limit exceeded".** Too many parallel requests to one database.
+- **"locked by another transaction".** The database is busy with another process. The application reports the reason after a few seconds.
+- **The PDF has no "Expensive queries" section.** The `pg_stat_statements` extension is not installed on the database.
 
-`uv venv` creates `.venv` in the same place as plain `venv`, so no need to
-reconfigure your IDE's interpreter. The `--python 3.12` flag matters if
-`python3` points to an older version on your system by default (Django 6
-requires Python 3.12+) — `uv` will find an installed `python3.12` itself, or
-download the right version if none is present.
- 
-- Create database tables and apply migrations (`db_statistics` models are managed by migrations in `db_statistics/migrations`). The same command works for a new database and for an existing installation: existing tables are not recreated
- 
-```bash 
-python manage.py migrate --fake-initial
-python manage.py ensure_indexes
-```
+## For developers
 
-`--fake-initial` marks the initial migration as applied when its tables already exist. This is how installations created before migrations are upgraded: `migrate` moves them onto the migration history itself (see `db_statistics/management/commands/migrate.py`). `ensure_indexes` adds indexes missing from an existing database (migrations create indexes only together with their tables). Safe to run again.
-
-- Schema changes (a field, table or index): change the model, create a migration and apply it. Commit the migration file together with the model change:
-
-```bash
-make migrations   # same as: python manage.py makemigrations
-make migrate
-```
-
- 
-- Create a user for logging into the application and Django Admin (`/admin/`). 
-- login: admin 
-- email: admin@example.com 
-- password: admin 
-```bash 
-python manage.py ensure_initial_admin 
-``` 
- 
-- Encrypt connection passwords that remained in plain text after upgrading from a version without encryption (a one-time command, safe to run repeatedly) 
- 
-```bash 
-python manage.py encrypt_connection_passwords 
-``` 
- 
-- Requeue interrupted background jobs (VACUUM/ANALYZE and PDF reports) after the server was stopped abruptly. Runs automatically at startup in Docker; `runserver` recovers jobs automatically
-
-```bash
-python manage.py recover_maintenance_jobs
-```
-
-- Start the server 
- 
-```bash 
-python manage.py runserver 
-``` 
- 
-- Tests. Unit tests need no external services. Integration tests (`test_integration_*`) run against a real PostgreSQL and are skipped until the `PG_TEST_*` variables are set:
-
-```bash
-PG_TEST_HOST=127.0.0.1 PG_TEST_PORT=5432 PG_TEST_USER=postgres PG_TEST_PASSWORD=... PG_TEST_DATABASE=postgres python manage.py test
-```
-
-- Code check and auto-fix 
- 
-```bash 
-python -m ruff check . 
-python -m ruff check . --fix 
-python -m ruff format . 
-``` 
- 
-## Browser smoke tests (Playwright)
-
-The `tests/e2e` directory checks sign-in, a saved connection, the "Tables", "Temporary tables" and "TOAST tables" tabs, search and sign-out in Chromium. The tests need a running application and a PostgreSQL database: they save a connection to this database in the application and, for the search test, create two tables with TOAST data there (they are dropped afterwards):
-
-```bash
-pip install -r requirements.txt -r requirements-e2e.txt
-python -m playwright install chromium
-E2E_PG_PASSWORD=... python -m pytest tests/e2e -q
-```
-
-The application address is set by `E2E_BASE_URL` (default `http://127.0.0.1:8000`). The first administrator is `admin` with the password from `E2E_ADMIN_PASSWORD` (default `admin12345`). If the application does not respond, the tests are skipped. In CI they run as a separate `e2e` job that does not block the build yet (`continue-on-error`).
-
-## Make Commands 
- 
-Main `Makefile` targets — full list with descriptions: `make help` or `make` (default). 
- 
-| Command                                | What it does                                                                                     | 
-|----------------------------------------|--------------------------------------------------------------------------------------------------| 
-| `make install`                         | Install development dependencies from requirements-dev.txt                                                       |
-| `make hooks`                           | Enable the project's git hooks for this clone (one-time, after cloning)                          | 
-| `make migrations`                      | Generate migrations after model changes (all apps, including `db_statistics`)                    |
-| `make migrate`                         | Apply migrations and add missing indexes (`migrate --fake-initial` and `ensure_indexes`)         |
-| `make run`                             | Start the development server                                                                     | 
-| `make shell`                           | Open an interactive Django shell                                                                 | 
-| `make admin`                           | Create the first administrator (see `INITIAL_ADMIN_*` in `.env`)                                 | 
-| `make lint` / `make lint-fix`          | Check code (without fixes / with auto-fix)                                                       | 
-| `make format`                          | Format code                                                                                       | 
-| `make collectstatic`                   | Collect static files (as during Docker image build)                                              | 
-| `make docker-build`                    | Build Docker image                                                                                 | 
-| `make docker-run` / `make docker-stop` | Start / stop Docker container                                                                     | 
-| `make clean`                           | Remove caches and locally collected static files                                                 | 
-| `make reset-db`                        | DANGEROUS: delete only the SQLite DB (migration files are kept), with confirmation               |
- 
-## Running the project in Docker 
- 
-- Build the Docker image 
- 
-```bash 
-docker build -t db-stat . 
-``` 
- 
-- Run the Docker container 
- 
-```bash 
-docker run --name db-stat --rm -p 8000:8000 olegegoism/db-stat:latest 
-``` 
-
-- At each container start the entrypoint applies migrations (`migrate --fake-initial`) and adds missing indexes, so an existing data volume is upgraded without manual steps.
-
-- Connection budget for target databases. Each gunicorn worker (`GUNICORN_WORKERS`, default 3) keeps its own pool: up to `DB_CONNECTION_POOL_MAX_CONN` connections (default 10) per saved connection. Background jobs (VACUUM/ANALYZE and PDF reports) take connections from the same pools.
-
-```
-Total on the target DB ≈ GUNICORN_WORKERS × DB_CONNECTION_POOL_MAX_CONN × number of saved connections in use
-```
-
-For example, 3 workers × 10 connections × 2 saved connections give up to 60 connections on the target DB. Make sure this fits within the target's `max_connections` with room left for other clients. When a pool is exhausted, the app responds with HTTP 503 and a "connection limit exceeded" message (the message text is in Russian, like the rest of the UI). With `DB_CONNECTION_POOL_MAX_CONN` above 20, `manage.py check` prints the warning `db_statistics.W003`. Details are in `.env.example`.
-
-## Backup 
- 
-The named volume `db-stat-data` is the only place where all application data is stored (users, saved connections, favorites, audit log).  
-None of this is automated by the image — backing up and restoring the volume must be done manually. 
- 
-- Create a backup (the container can be running at this time): 
- 
-```bash 
-docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \ 
-  tar czf /backup/db-stat-backup-$(date +%Y%m%d-%H%M%S).tar.gz -C /data . 
-``` 
- 
-- Restore from a backup (stop the container first so you don't write over an open DB file): 
- 
-```bash 
-docker stop db-stat 
-docker run --rm -v db-stat-data:/data -v "$(pwd)":/backup alpine \ 
-  sh -c "rm -rf /data/* && tar xzf /backup/db-stat-backup-FILE.tar.gz -C /data" 
-docker start db-stat 
-``` 
+Installation, configuration, Docker and development — in [docs/DEVELOPMENT.en.md](docs/DEVELOPMENT.en.md).
 
 ## License
 
