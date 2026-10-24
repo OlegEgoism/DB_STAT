@@ -57,9 +57,17 @@
                 })
                 .catch(error => {
                     if (requestId === this.requestId) {
-                        this.renderWarning(error.message || this.config.errorFallbackMessage);
+                        this.renderError(error.message || this.config.errorFallbackMessage);
                     }
                 });
+        }
+
+        // После ошибки прежние итоги больше не верны: без сброса кнопка «Далее» осталась бы
+        // активной по данным последней успешной загрузки, хотя подпись показывает «Страница 1 из 1».
+        renderError(message) {
+            this.state.page = 1;
+            this.state.totalCount = 0;
+            this.renderWarning(message);
         }
 
         renderWarning(message) {
