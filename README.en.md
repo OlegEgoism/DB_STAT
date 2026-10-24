@@ -104,8 +104,12 @@ download the right version if none is present.
 - Create database tables (`db_statistics` models don't use migrations — see `MIGRATION_MODULES` in `db/settings.py` — their tables are synced directly from the models) 
  
 ```bash 
-python manage.py migrate --run-syncdb 
-``` 
+python manage.py migrate --run-syncdb
+python manage.py ensure_indexes
+```
+
+`ensure_indexes` adds indexes missing from an existing database (`--run-syncdb` creates them only for new tables). Safe to run again.
+
  
 - Create a user for logging into the application and Django Admin (`/admin/`). 
 - login: admin 

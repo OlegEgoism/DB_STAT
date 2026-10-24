@@ -417,7 +417,7 @@ def database_pdf_report(request):
     _ensure_report_job_table()
     if request.method == "GET":
         if not request.GET.get("job_id"):
-            jobs = ReportJob.objects.select_related("connection", "user").filter(user=db_user).order_by("-created")
+            jobs = ReportJob.objects.select_related("connection", "user").defer("content").filter(user=db_user).order_by("-created")
             return JsonResponse({"ok": True, "reports": [_serialize_report_job(job) for job in jobs]})
         try:
             job = ReportJob.objects.select_related("connection", "user").filter(pk=request.GET.get("job_id"), user=db_user).first()
@@ -438,7 +438,7 @@ def database_pdf_report(request):
     if importlib.util.find_spec("reportlab") is None:
         return JsonResponse({"ok": False, "message": "Модуль ReportLab не установлен. Выполните pip install -r requirements.txt и перезапустите приложение"}, status=503)
     language = "en" if translation.get_language() == "en" else "ru"
-    existing = ReportJob.objects.select_related("connection", "user").filter(user=db_user, connection=db_connection, language=language, status__in=("queued", "running")).first()
+    existing = ReportJob.objects.select_related("connection", "user").defer("content").filter(user=db_user, connection=db_connection, language=language, status__in=("queued", "running")).first()
     if existing:
         return JsonResponse({"ok": True, "job": _serialize_report_job(existing)}, status=202)
     job = ReportJob.objects.create(user=db_user, connection=db_connection, language=language)

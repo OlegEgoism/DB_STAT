@@ -13,6 +13,9 @@ mkdir -p "$sqlite_dir"
 chown -R appuser:appuser "$sqlite_dir"
 
 runuser -u appuser -- python manage.py migrate --noinput --run-syncdb
+# Индексы для уже существующих таблиц: --run-syncdb создаёт их только для новых таблиц.
+# Команда безопасна для повторного запуска (создаёт только недостающие индексы).
+runuser -u appuser -- python manage.py ensure_indexes
 runuser -u appuser -- python manage.py recover_maintenance_jobs
 
 # Creates the first account (INITIAL_ADMIN_PASSWORD defaults to "admin" if

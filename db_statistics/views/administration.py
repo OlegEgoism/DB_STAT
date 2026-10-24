@@ -163,7 +163,7 @@ def maintenance_jobs(request):
         return JsonResponse({"ok": False, "message": "Требуется вход в приложение"}, status=401)
     _ensure_report_job_table()
     maintenance_jobs = [_serialize_maintenance_job(job) for job in MaintenanceJob.objects.select_related("connection", "user").filter(user=db_user)[:25]]
-    report_jobs = [_serialize_report_job(job) for job in ReportJob.objects.select_related("connection", "user").filter(user=db_user)[:25]]
+    report_jobs = [_serialize_report_job(job) for job in ReportJob.objects.select_related("connection", "user").defer("content").filter(user=db_user)[:25]]
     jobs = sorted([*maintenance_jobs, *report_jobs], key=lambda job: job["created"], reverse=True)[:25]
     return JsonResponse({"ok": True, "jobs": jobs})
 

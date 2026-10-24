@@ -285,6 +285,12 @@ class DBAudit(models.Model):
         verbose_name = "Аудит"
         verbose_name_plural = "Аудит"
         ordering = ("-created",)
+        indexes = [
+            # Фильтр журнала по пользователю с сортировкой по дате без временной сортировки.
+            models.Index(fields=["username", "created"], name="db_audit_username_created"),
+            # Фильтр журнала по типу действия с сортировкой по дате.
+            models.Index(fields=["action_type", "created"], name="db_audit_action_created"),
+        ]
 
     def __str__(self):
         return f"{self.username} - {self.action_type}"
@@ -342,6 +348,10 @@ class MaintenanceJob(models.Model):
         verbose_name = "Фоновая операция обслуживания"
         verbose_name_plural = "Фоновые операции обслуживания"
         ordering = ("-created",)
+        indexes = [
+            # Список задач пользователя «последние сверху» без сортировки в памяти.
+            models.Index(fields=["user", "created"], name="db_maint_user_created")
+        ]
 
     def __str__(self):
         return f"{self.get_operation_display()} {self.schema_name}.{self.table_name} — {self.get_status_display()}"
@@ -370,6 +380,10 @@ class ReportJob(models.Model):
         verbose_name = "Фоновое формирование отчёта"
         verbose_name_plural = "Фоновые формирования отчётов"
         ordering = ("-created",)
+        indexes = [
+            # Список отчётов пользователя «последние сверху» без сортировки в памяти.
+            models.Index(fields=["user", "created"], name="db_report_user_created")
+        ]
 
     def __str__(self):
         return f"PDF: {self.connection.name} — {self.get_status_display()}"

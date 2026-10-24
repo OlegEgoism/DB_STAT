@@ -102,7 +102,11 @@ uv pip install -r requirements.txt
 
 ```bash
 python manage.py migrate --run-syncdb
+python manage.py ensure_indexes
 ```
+
+`ensure_indexes` добавляет индексы, которых нет в уже существующей базе (`--run-syncdb` создаёт их только для новых таблиц). Команда безопасна для повторного запуска.
+
 
 - Создание пользователя для входа в приложение, и входа в Django Admin (`/admin/`).
 - логин: admin

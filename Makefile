@@ -28,6 +28,7 @@ migrations: ## Сгенерировать миграции для встроен
 
 migrate: ## Применить миграции Django и синхронизировать таблицы db_statistics (без миграций, см. MIGRATION_MODULES)
 	$(MANAGE) migrate --run-syncdb
+	$(MANAGE) ensure_indexes
 
 run: ## Запустить сервер разработки
 	$(MANAGE) runserver
