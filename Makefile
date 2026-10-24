@@ -10,7 +10,7 @@ PORT ?= 8000
 SQLITE_NAME ?= db.sqlite3
 
 .PHONY: help install hooks migrations migrate run shell admin \
-        lint lint-fix format collectstatic \
+        lint lint-fix format test test-pg collectstatic \
         docker-build docker-run docker-stop clean reset-db
 
 help: ## Показать список доступных команд
@@ -37,6 +37,12 @@ shell: ## Открыть интерактивную Django-оболочку
 
 admin: ## Создать первого администратора (см. INITIAL_ADMIN_* в .env)
 	$(MANAGE) ensure_initial_admin
+
+test: ## Запустить тесты без PostgreSQL (интеграционные пропускаются)
+	$(MANAGE) test
+
+test-pg: ## Запустить все тесты, включая интеграционные, против PostgreSQL (PG_TEST_HOST/PORT/USER/PASSWORD/DATABASE)
+	PG_TEST_HOST=$${PG_TEST_HOST:-127.0.0.1} PG_TEST_PORT=$${PG_TEST_PORT:-5432} PG_TEST_USER=$${PG_TEST_USER:-postgres} PG_TEST_PASSWORD=$${PG_TEST_PASSWORD:?задайте PG_TEST_PASSWORD} PG_TEST_DATABASE=$${PG_TEST_DATABASE:-postgres} $(MANAGE) test
 
 lint: ## Проверить код без исправлений
 	$(PYTHON) -m ruff check .
