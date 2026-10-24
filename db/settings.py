@@ -230,7 +230,14 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"verbose": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"}},
+    "filters": {"service_unavailable_as_warning": {"()": "db_statistics.logging_filters.ServiceUnavailableWarningFilter"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
     "root": {"handlers": ["console"], "level": "INFO"},
-    "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": False}, "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False}, "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False}},
+    # 503 — намеренный ответ (блокировка, таймаут, исчерпанный пул), а не сбой: журналируем как WARNING.
+    # Уровень django.request остаётся ERROR, поэтому 4xx по-прежнему не попадают в журнал.
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False, "filters": ["service_unavailable_as_warning"]},
+        "db_statistics": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
 }
