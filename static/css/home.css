@@ -1822,7 +1822,10 @@ body {
     text-transform: inherit;
     padding: 0;
     cursor: pointer;
-    overflow-wrap: break-word;
+    /* Кнопка не шире своей колонки: длинный заголовок переносится внутри слова, а не выходит за
+       колонку и не оказывается под соседним липким заголовком (он перехватывал клики). */
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .table-sort-btn i {
