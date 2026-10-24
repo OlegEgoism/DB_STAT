@@ -235,6 +235,8 @@
     const tableSizesApiUrl = '/tables/sizes/';
     const viewsListApiUrl = '/views/list/';
     const functionsListApiUrl = '/functions/list/';
+    const usersListApiUrl = '/users/list/';
+    const groupsListApiUrl = '/groups/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const toastTablesApiUrl = '/toast-tables/sizes/';
     const tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
@@ -464,8 +466,6 @@
     const maintenanceStatsApiUrl = '/maintenance/stats/';
     const maintenanceOperationApiUrl = '/maintenance/operation/';
     const maintenanceJobsApiUrl = '/maintenance/jobs/';
-    const usersListApiUrl = '/users/list/';
-    const groupsListApiUrl = '/groups/list/';
     const auditEventsApiUrl = '/audit/events/';
     const sidebarSettingsApiUrl = '/settings/sidebar/';
     const languageSettingsApiUrl = '/settings/language/';
