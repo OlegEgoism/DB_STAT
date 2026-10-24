@@ -4,6 +4,158 @@
     if (!paginationPageSizeOptions.length) paginationPageSizeOptions.push(10, 20, 50);
     const defaultPaginationPageSize = paginationPageSizeOptions.includes(Number(paginationConfig.default)) ? Number(paginationConfig.default) : paginationPageSizeOptions[0];
 
+    // ============================
+    // PagedTable: общий жизненный цикл вкладки с серверной пагинацией.
+    // Хранит состояние, загружает данные, отбрасывает устаревшие ответы (requestId),
+    // рисует таблицу и привязывает поиск, сортировку, пагинацию и фильтр избранного.
+    // config: state, apiUrl, ids {body, count, info, prev, next, search, favoritesFilter?},
+    //   sortAttr (атрибут кнопок сортировки), colspan, itemsKey, countLabel,
+    //   emptyMessage, loadingMessage, notConnectedMessage, errorFallbackMessage,
+    //   defaultDirection(sort), renderRow(item) -> html, renderSummary?(data | null)
+    // ============================
+    class PagedTable {
+        constructor(config) {
+            this.config = config;
+            this.state = config.state;
+            this.requestId = 0;
+            this.searchTimer = null;
+        }
+
+        element(key) {
+            const id = this.config.ids[key];
+            return id ? document.getElementById(id) : null;
+        }
+
+        findActiveConnection() {
+            return connections.find(c => String(c.id) === String(activeConnectionId));
+        }
+
+        buildParams(conn) {
+            const {state, config} = this;
+            const params = {
+                id: conn.id,
+                page: state.page,
+                page_size: state.pageSize,
+                search: state.search,
+                sort: state.sort,
+                direction: state.direction
+            };
+            if (config.ids.favoritesFilter) params.favorites_only = state.favoritesOnly;
+            return params;
+        }
+
+        refresh(conn = this.findActiveConnection()) {
+            const requestId = ++this.requestId;
+            if (!conn || !/^\d+$/.test(String(conn.id))) {
+                this.renderWarning(this.config.notConnectedMessage);
+                return;
+            }
+            this.renderWarning(this.config.loadingMessage);
+            connectionRequest(this.config.apiUrl, this.buildParams(conn))
+                .then(data => {
+                    if (requestId === this.requestId) this.render(data);
+                })
+                .catch(error => {
+                    if (requestId === this.requestId) {
+                        this.renderWarning(error.message || this.config.errorFallbackMessage);
+                    }
+                });
+        }
+
+        renderWarning(message) {
+            const tbody = this.element('body');
+            const count = this.element('count');
+            const info = this.element('info');
+            if (count) count.textContent = 'Нет данных';
+            if (info) info.textContent = 'Страница 1 из 1';
+            this.config.renderSummary?.(null);
+            if (tbody) tbody.innerHTML = `<tr><td colspan="${this.config.colspan}" class="text-muted">${escapeHtml(message)}</td></tr>`;
+            this.updatePaginationButtons();
+        }
+
+        render(data) {
+            const tbody = this.element('body');
+            if (!tbody) return;
+            const {state, config} = this;
+            state.totalCount = Number(data.total_count) || 0;
+            state.page = Number(data.page) || 1;
+            state.pageSize = Number(data.page_size) || defaultPaginationPageSize;
+            this.updateSortIndicators();
+            config.renderSummary?.(data);
+            const items = data[config.itemsKey] || [];
+            const totalPages = Math.max(Math.ceil(state.totalCount / state.pageSize), 1);
+            const count = this.element('count');
+            const info = this.element('info');
+            if (count) count.textContent = `${items.length} из ${state.totalCount} ${config.countLabel}`;
+            if (info) info.textContent = `Страница ${state.page} из ${totalPages}`;
+            tbody.innerHTML = items.length
+                ? items.map(item => config.renderRow(item)).join('')
+                : `<tr><td colspan="${config.colspan}" class="text-muted">${escapeHtml(config.emptyMessage)}</td></tr>`;
+            this.updatePaginationButtons();
+        }
+
+        updateSortIndicators() {
+            const {sortAttr} = this.config;
+            document.querySelectorAll(`[${sortAttr}]`).forEach(button => {
+                const isActive = button.getAttribute(sortAttr) === this.state.sort;
+                button.classList.toggle('active', isActive);
+                updateSortHeaderState(button, isActive, this.state.direction);
+            });
+        }
+
+        // Общий хелпер updatePaginationButtons(state, prevId, nextId) из модуля страницы.
+        updatePaginationButtons() {
+            updatePaginationButtons(this.state, this.config.ids.prev, this.config.ids.next);
+        }
+
+        bindControls() {
+            const {state, config} = this;
+            const favoritesFilter = this.element('favoritesFilter');
+            favoritesFilter?.addEventListener('change', () => {
+                state.favoritesOnly = favoritesFilter.value === 'favorites';
+                state.page = 1;
+                this.refresh();
+            });
+            const searchInput = this.element('search');
+            searchInput?.addEventListener('input', () => {
+                clearTimeout(this.searchTimer);
+                this.searchTimer = setTimeout(() => {
+                    state.search = searchInput.value.trim();
+                    state.page = 1;
+                    this.refresh();
+                }, 300);
+            });
+            document.querySelectorAll(`[${config.sortAttr}]`).forEach(button => {
+                button.addEventListener('click', () => {
+                    const sort = button.getAttribute(config.sortAttr);
+                    if (state.sort === sort) {
+                        state.direction = state.direction === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        state.sort = sort;
+                        state.direction = config.defaultDirection(sort);
+                    }
+                    state.page = 1;
+                    this.refresh();
+                });
+            });
+            this.element('prev')?.addEventListener('click', () => {
+                if (state.page > 1) {
+                    state.page -= 1;
+                    this.refresh();
+                }
+            });
+            this.element('next')?.addEventListener('click', () => {
+                const totalPages = Math.max(Math.ceil(state.totalCount / state.pageSize), 1);
+                if (state.page < totalPages) {
+                    state.page += 1;
+                    this.refresh();
+                }
+            });
+            this.updateSortIndicators();
+            this.updatePaginationButtons();
+        }
+    }
+
 // ============================
     // STATE
     // ============================
@@ -23,10 +175,6 @@
     let viewsRequestId = 0;
     let functionsState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'schema_name', direction: 'asc', search: '', favoritesOnly: false};
     let functionsRequestId = 0;
-    let tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
-    let tempTablesRequestId = 0;
-    let toastTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'toast_total_bytes', direction: 'desc', search: '', favoritesOnly: false};
-    let toastTablesRequestId = 0;
     let distributionTables = [];
     let selectedDistributionTable = null;
     let distributionPickerActiveIndex = -1;
@@ -76,6 +224,70 @@
     const functionsListApiUrl = '/functions/list/';
     const tempTablesApiUrl = '/temp-tables/sizes/';
     const toastTablesApiUrl = '/toast-tables/sizes/';
+    const tempTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'size_bytes', direction: 'desc', search: ''};
+    const tempTablesPager = new PagedTable({
+        state: tempTablesState,
+        apiUrl: tempTablesApiUrl,
+        ids: {body: 'tempTablesTableBody', count: 'tempTablesCount', info: 'tempTablePaginationInfo', prev: 'tempTablePrevPageBtn', next: 'tempTableNextPageBtn', search: 'tempTableSearchInput'},
+        sortAttr: 'data-temp-table-sort',
+        colspan: 5,
+        itemsKey: 'temp_tables',
+        countLabel: 'временных таблиц',
+        emptyMessage: 'Временные таблицы не найдены',
+        loadingMessage: 'Загрузка временных таблиц...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки временных таблиц',
+        errorFallbackMessage: 'Не удалось получить временные таблицы',
+        defaultDirection: sort => (sort === 'size_bytes' ? 'desc' : 'asc'),
+        renderRow: table => `
+            <tr>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td>${escapeHtml(table.table_owner || '-')}</td>
+                <td>${escapeHtml(table.table_size || '-')}</td>
+                <td class="backend-terminate-actions">
+                    ${canRunDestructiveActions() ? `<button type="button" class="btn btn-sm btn-outline-danger temp-table-delete-btn" data-temp-table-schema="${escapeHtml(table.schema_name)}" data-temp-table-name="${escapeHtml(table.table_name)}" title="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}" aria-label="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}"><i class="fas fa-trash"></i> Удалить</button>` : '—'}
+                </td>
+            </tr>
+        `,
+        renderSummary(data) {
+            updateTempTableDistributionChart(data ? (data.temp_table_distribution || data.temp_tables || []) : []);
+        }
+    });
+    const toastTablesState = {page: 1, pageSize: defaultPaginationPageSize, totalCount: 0, sort: 'toast_total_bytes', direction: 'desc', search: '', favoritesOnly: false};
+    const toastTablesPager = new PagedTable({
+        state: toastTablesState,
+        apiUrl: toastTablesApiUrl,
+        ids: {body: 'toastTablesTableBody', count: 'toastTablesCount', info: 'toastTablePaginationInfo', prev: 'toastTablePrevPageBtn', next: 'toastTableNextPageBtn', search: 'toastTableSearchInput', favoritesFilter: 'toastTableFavoritesFilter'},
+        sortAttr: 'data-toast-table-sort',
+        colspan: 8,
+        itemsKey: 'toast_tables',
+        countLabel: 'TOAST-таблиц',
+        emptyMessage: 'TOAST-таблицы с данными не найдены',
+        loadingMessage: 'Загрузка TOAST-таблиц...',
+        notConnectedMessage: 'Выберите сохранённое подключение для загрузки TOAST-таблиц',
+        errorFallbackMessage: 'Не удалось получить TOAST-таблицы',
+        defaultDirection: sort => (['schema_name', 'table_name', 'toast_table_name'].includes(sort) ? 'asc' : 'desc'),
+        renderRow: table => {
+            const share = Number(table.toast_share) || 0;
+            const shareBadge = share >= 50 ? ' <span class="badge bg-warning text-dark">&gt;50%</span>' : '';
+            const toastDetails = `${formatDatabaseSize(table.toast_bytes).value} ${formatDatabaseSize(table.toast_bytes).unit} + ${formatDatabaseSize(table.toast_index_bytes).value} ${formatDatabaseSize(table.toast_index_bytes).unit}`;
+            return `
+            <tr>
+                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
+                <td>${escapeHtml(table.schema_name || '-')}</td>
+                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
+                <td><code>${escapeHtml(table.toast_table_name || '-')}</code></td>
+                <td title="${escapeHtml(toastDetails)}">${escapeHtml(table.toast_total_size || '-')}</td>
+                <td>${escapeHtml(table.heap_size || '-')}</td>
+                <td>${share.toFixed(1)}%${shareBadge}</td>
+                <td>${Number(table.dead_chunks || 0).toLocaleString()}</td>
+            </tr>`;
+        },
+        renderSummary(data) {
+            const total = document.getElementById('toastTablesTotalSize');
+            if (total) total.textContent = data && toastTablesState.totalCount ? `${translateInterfaceText('Всего')}: ${data.all_toast_size || '-'}` : '';
+        }
+    });
     // Серверный statement_timeout (15 с) короче этого лимита, поэтому обычно сервер
     // сам сообщает причину раньше, чем сработает клиентский таймаут.
     const CONNECTION_REQUEST_TIMEOUT_MS = 20000;
@@ -4011,133 +4223,12 @@
     }
 
 
-    function updateToastTableSortIndicators() {
-        document.querySelectorAll('[data-toast-table-sort]').forEach(button => {
-            const isActive = button.dataset.toastTableSort === toastTablesState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, toastTablesState.direction);
-        });
-    }
-
-    function renderToastTablesWarning(message) {
-        const tbody = document.getElementById('toastTablesTableBody');
-        const count = document.getElementById('toastTablesCount');
-        const total = document.getElementById('toastTablesTotalSize');
-        const info = document.getElementById('toastTablePaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (total) total.textContent = '';
-        if (info) info.textContent = 'Страница 1 из 1';
-        if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
-    }
-
-    function renderToastTables(data) {
-        const tbody = document.getElementById('toastTablesTableBody');
-        const count = document.getElementById('toastTablesCount');
-        const total = document.getElementById('toastTablesTotalSize');
-        const info = document.getElementById('toastTablePaginationInfo');
-        if (!tbody) return;
-        toastTablesState.totalCount = Number(data.total_count) || 0;
-        toastTablesState.page = Number(data.page) || 1;
-        toastTablesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateToastTableSortIndicators();
-        const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
-        if (count) count.textContent = `${data.toast_tables?.length || 0} из ${toastTablesState.totalCount} TOAST-таблиц`;
-        if (total) total.textContent = toastTablesState.totalCount ? `${translateInterfaceText('Всего')}: ${data.all_toast_size || '-'}` : '';
-        if (info) info.textContent = `Страница ${toastTablesState.page} из ${totalPages}`;
-        if (!data.toast_tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-muted">TOAST-таблицы с данными не найдены</td></tr>';
-            updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
-            return;
-        }
-        tbody.innerHTML = data.toast_tables.map(table => {
-            const share = Number(table.toast_share) || 0;
-            const shareBadge = share >= 50 ? ' <span class="badge bg-warning text-dark">&gt;50%</span>' : '';
-            const toastDetails = `${formatDatabaseSize(table.toast_bytes).value} ${formatDatabaseSize(table.toast_bytes).unit} + ${formatDatabaseSize(table.toast_index_bytes).value} ${formatDatabaseSize(table.toast_index_bytes).unit}`;
-            return `
-            <tr>
-                <td class="favorite-column">${favoriteButton('table', `${table.schema_name}\u001f${table.table_name}`, `${table.schema_name}.${table.table_name}`)}</td>
-                <td>${escapeHtml(table.schema_name || '-')}</td>
-                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
-                <td><code>${escapeHtml(table.toast_table_name || '-')}</code></td>
-                <td title="${escapeHtml(toastDetails)}">${escapeHtml(table.toast_total_size || '-')}</td>
-                <td>${escapeHtml(table.heap_size || '-')}</td>
-                <td>${share.toFixed(1)}%${shareBadge}</td>
-                <td>${Number(table.dead_chunks || 0).toLocaleString()}</td>
-            </tr>`;
-        }).join('');
-        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
-    }
-
-    function refreshToastTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++toastTablesRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderToastTablesWarning('Выберите сохранённое подключение для загрузки TOAST-таблиц');
-            return;
-        }
-        renderToastTablesWarning('Загрузка TOAST-таблиц...');
-        connectionRequest(toastTablesApiUrl, {
-            id: conn.id,
-            page: toastTablesState.page,
-            page_size: toastTablesState.pageSize,
-            search: toastTablesState.search,
-            sort: toastTablesState.sort,
-            direction: toastTablesState.direction,
-            favorites_only: toastTablesState.favoritesOnly
-        })
-            .then(data => {
-                if (requestId === toastTablesRequestId) renderToastTables(data);
-            })
-            .catch(error => {
-                if (requestId === toastTablesRequestId) {
-                    renderToastTablesWarning(error.message || 'Не удалось получить TOAST-таблицы');
-                }
-            });
+    function refreshToastTablesForConnection(conn) {
+        toastTablesPager.refresh(conn);
     }
 
     function initToastTablesControls() {
-        let searchTimer = null;
-        document.getElementById('toastTableFavoritesFilter')?.addEventListener('change', function () {
-            toastTablesState.favoritesOnly = this.value === 'favorites';
-            toastTablesState.page = 1;
-            refreshToastTablesForConnection();
-        });
-        document.getElementById('toastTableSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                toastTablesState.search = this.value.trim();
-                toastTablesState.page = 1;
-                refreshToastTablesForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-toast-table-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.toastTableSort;
-                if (toastTablesState.sort === sort) {
-                    toastTablesState.direction = toastTablesState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    toastTablesState.sort = sort;
-                    toastTablesState.direction = ['schema_name', 'table_name', 'toast_table_name'].includes(sort) ? 'asc' : 'desc';
-                }
-                toastTablesState.page = 1;
-                refreshToastTablesForConnection();
-            });
-        });
-        document.getElementById('toastTablePrevPageBtn')?.addEventListener('click', function () {
-            if (toastTablesState.page > 1) {
-                toastTablesState.page -= 1;
-                refreshToastTablesForConnection();
-            }
-        });
-        document.getElementById('toastTableNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(toastTablesState.totalCount / toastTablesState.pageSize), 1);
-            if (toastTablesState.page < totalPages) {
-                toastTablesState.page += 1;
-                refreshToastTablesForConnection();
-            }
-        });
-        updateToastTableSortIndicators();
-        updatePaginationButtons(toastTablesState, 'toastTablePrevPageBtn', 'toastTableNextPageBtn');
+        toastTablesPager.bindControls();
     }
 
     function updateTempTableDistributionChart(tables = []) {
@@ -4196,84 +4287,11 @@
             `;
         }).join('');
     }
-    function renderTempTablesWarning(message) {
-        const tbody = document.getElementById('tempTablesTableBody');
-        const count = document.getElementById('tempTablesCount');
-        const info = document.getElementById('tempTablePaginationInfo');
-        if (count) count.textContent = 'Нет данных';
-        if (info) info.textContent = 'Страница 1 из 1';
-        updateTempTableDistributionChart([]);
-        if (tbody) tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${escapeHtml(message)}</td></tr>`;
-        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
-    }
-
-    function updateTempTableSortIndicators() {
-        document.querySelectorAll('[data-temp-table-sort]').forEach(button => {
-            const isActive = button.dataset.tempTableSort === tempTablesState.sort;
-            button.classList.toggle('active', isActive);
-            updateSortHeaderState(button, isActive, tempTablesState.direction);
-        });
-    }
-
-    function renderTempTables(data) {
-        const tbody = document.getElementById('tempTablesTableBody');
-        const count = document.getElementById('tempTablesCount');
-        const info = document.getElementById('tempTablePaginationInfo');
-        if (!tbody) return;
-        tempTablesState.totalCount = Number(data.total_count) || 0;
-        tempTablesState.page = Number(data.page) || 1;
-        tempTablesState.pageSize = Number(data.page_size) || defaultPaginationPageSize;
-        updateTempTableSortIndicators();
-        updateTempTableDistributionChart(data.temp_table_distribution || data.temp_tables || []);
-        const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
-        if (count) count.textContent = `${data.temp_tables?.length || 0} из ${tempTablesState.totalCount} временных таблиц`;
-        if (info) info.textContent = `Страница ${tempTablesState.page} из ${totalPages}`;
-        if (!data.temp_tables?.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted">Временные таблицы не найдены</td></tr>';
-            updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
-            return;
-        }
-        tbody.innerHTML = data.temp_tables.map(table => `
-            <tr>
-                <td>${escapeHtml(table.schema_name || '-')}</td>
-                <td><strong>${escapeHtml(table.table_name || '-')}</strong></td>
-                <td>${escapeHtml(table.table_owner || '-')}</td>
-                <td>${escapeHtml(table.table_size || '-')}</td>
-                <td class="backend-terminate-actions">
-                    ${canRunDestructiveActions() ? `<button type="button" class="btn btn-sm btn-outline-danger temp-table-delete-btn" data-temp-table-schema="${escapeHtml(table.schema_name)}" data-temp-table-name="${escapeHtml(table.table_name)}" title="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}" aria-label="Удалить временную таблицу ${escapeHtml(table.schema_name)}.${escapeHtml(table.table_name)}"><i class="fas fa-trash"></i> Удалить</button>` : '—'}
-                </td>
-            </tr>
-        `).join('');
-        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
-    }
-
-    function refreshTempTablesForConnection(conn = connections.find(c => String(c.id) === String(activeConnectionId))) {
-        const requestId = ++tempTablesRequestId;
-        if (!conn || !/^\d+$/.test(String(conn.id))) {
-            renderTempTablesWarning('Выберите сохранённое подключение для загрузки временных таблиц');
-            return;
-        }
-        renderTempTablesWarning('Загрузка временных таблиц...');
-        connectionRequest(tempTablesApiUrl, {
-            id: conn.id,
-            page: tempTablesState.page,
-            page_size: tempTablesState.pageSize,
-            search: tempTablesState.search,
-            sort: tempTablesState.sort,
-            direction: tempTablesState.direction
-        })
-            .then(data => {
-                if (requestId === tempTablesRequestId) renderTempTables(data);
-            })
-            .catch(error => {
-                if (requestId === tempTablesRequestId) {
-                    renderTempTablesWarning(error.message || 'Не удалось получить временные таблицы');
-                }
-            });
+    function refreshTempTablesForConnection(conn) {
+        tempTablesPager.refresh(conn);
     }
 
     function initTempTablesControls() {
-        let searchTimer = null;
         document.getElementById('tempTablesTableBody')?.addEventListener('click', function (event) {
             const button = event.target.closest('.temp-table-delete-btn');
             if (!button || button.disabled) return;
@@ -4294,42 +4312,7 @@
                     showToast(`❌ ${error.message || 'Не удалось удалить временную таблицу'}`);
                 });
         });
-        document.getElementById('tempTableSearchInput')?.addEventListener('input', function () {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => {
-                tempTablesState.search = this.value.trim();
-                tempTablesState.page = 1;
-                refreshTempTablesForConnection();
-            }, 300);
-        });
-        document.querySelectorAll('[data-temp-table-sort]').forEach(button => {
-            button.addEventListener('click', function () {
-                const sort = this.dataset.tempTableSort;
-                if (tempTablesState.sort === sort) {
-                    tempTablesState.direction = tempTablesState.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    tempTablesState.sort = sort;
-                    tempTablesState.direction = sort === 'size_bytes' ? 'desc' : 'asc';
-                }
-                tempTablesState.page = 1;
-                refreshTempTablesForConnection();
-            });
-        });
-        document.getElementById('tempTablePrevPageBtn')?.addEventListener('click', function () {
-            if (tempTablesState.page > 1) {
-                tempTablesState.page -= 1;
-                refreshTempTablesForConnection();
-            }
-        });
-        document.getElementById('tempTableNextPageBtn')?.addEventListener('click', function () {
-            const totalPages = Math.max(Math.ceil(tempTablesState.totalCount / tempTablesState.pageSize), 1);
-            if (tempTablesState.page < totalPages) {
-                tempTablesState.page += 1;
-                refreshTempTablesForConnection();
-            }
-        });
-        updateTempTableSortIndicators();
-        updatePaginationButtons(tempTablesState, 'tempTablePrevPageBtn', 'tempTableNextPageBtn');
+        tempTablesPager.bindControls();
     }
 
     function updateAuditPaginationButtons() {
