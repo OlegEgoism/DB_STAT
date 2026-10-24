@@ -1,3 +1,4 @@
+import os
 import sys
 from threading import Timer
 
@@ -32,8 +33,24 @@ class DbStatisticsConfig(AppConfig):
 
         connection_created.connect(_enable_sqlite_wal)
 
-        if not _running_tests():
+        if _runs_background_sweep():
             Timer(0.5, _resubmit_queued_jobs).start()
+
+
+def _runs_background_sweep():
+    """Запускать ли стартовый sweep очереди в этом процессе.
+
+    Sweep ставит задачи на выполнение, поэтому он нужен только серверным процессам: gunicorn
+    и `manage.py runserver`. Одноразовые команды (`shell`, `createsuperuser`, `check` и другие)
+    не должны запускать очередь: их процесс завершится, и задачи оборвутся на полпути.
+    Тесты тоже не запускают очередь.
+    """
+    if _running_tests():
+        return False
+    argv = sys.argv
+    if argv and os.path.basename(argv[0]) == "manage.py":
+        return len(argv) > 1 and argv[1] == "runserver"
+    return True
 
 
 def _running_tests():
