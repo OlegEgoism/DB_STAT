@@ -60,6 +60,11 @@ jobs:
           pip install tree-sitter tree-sitter-javascript
           python scripts/check_js.py
 
+      # В CI DEBUG не задан (False), поэтому STORAGES выбирает CompressedManifestStaticFilesStorage:
+      # ему нужен манифест от collectstatic, как в Docker-образе. Без этого шага тесты падают на {% static %}.
+      - name: Collect static files (manifest for DEBUG=False)
+        run: python manage.py collectstatic --noinput
+
       - name: Run tests
         env:
           # Без PG_TEST_HOST интеграционные тесты пропускаются молча, поэтому в CI они заданы явно.
