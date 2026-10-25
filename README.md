@@ -24,6 +24,10 @@ DB STAT — веб-приложение для мониторинга и диа�
 - VACUUM и ANALYZE в фоне; PDF-отчёт по подключению на русском или английском.
 - Журнал аудита; роли «Администратор» и «Аналитик».
 
+## Образ Docker
+
+db-stat - [olegegoism/db-stat](https://hub.docker.com/r/olegegoism/db-stat)
+
 ## Установка и запуск
 
 Подробная инструкция — в [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).

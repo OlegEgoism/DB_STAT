@@ -24,6 +24,10 @@ DB STAT is a web application for monitoring and diagnosing PostgreSQL, Greenplum
 - VACUUM and ANALYZE in the background; PDF report for a connection in Russian or English.
 - Audit log; the roles "Administrator" and "Analyst".
 
+## Image Docker
+
+db-stat - [olegegoism/db-stat](https://hub.docker.com/r/olegegoism/db-stat)
+
 ## Installation and running
 
 Detailed instructions are in [docs/DEVELOPMENT.en.md](docs/DEVELOPMENT.en.md).
