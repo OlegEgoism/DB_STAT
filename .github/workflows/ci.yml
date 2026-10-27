@@ -6,6 +6,22 @@ on:
   pull_request:
 
 jobs:
+  job-locks-portability:
+    name: Job locks (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # These tests use only the standard library and exercise real processes.
+      - name: Test cross-platform job locks
+        run: python -m unittest db_statistics.tests.test_job_locks -v
+
   lint-and-test:
     runs-on: ubuntu-latest
     env:

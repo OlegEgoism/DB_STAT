@@ -84,6 +84,37 @@ Each gunicorn worker keeps its own pool: up to `DB_CONNECTION_POOL_MAX_CONN` con
 
 ## Development
 
+### Windows (PowerShell)
+
+Use direct Python commands instead of the Make targets below. From the project root:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+```
+
+Create `.env` as described below (with your own keys and administrator password), then:
+
+```powershell
+python manage.py check
+python manage.py migrate --noinput --fake-initial
+python manage.py ensure_indexes
+python manage.py ensure_initial_admin
+python manage.py runserver 127.0.0.1:8000
+```
+
+Use `makemigrations` only after changing models; a first installation uses the existing migrations.
+For tests, run `python manage.py collectstatic --noinput`, then `python manage.py test`.
+Test job locks without installing Django: `python -m unittest db_statistics.tests.test_job_locks -v`.
+
+Background job locks use Python's built-in `msvcrt` on Windows and `fcntl` on Linux/macOS; neither needs a pip installation.
+Keep lock files on a local temporary filesystem shared by all application processes on the host.
+Gunicorn and `docker-entrypoint.sh` target Linux. On Windows, use `runserver` for development or a Linux Docker container for deployment.
+If installing `psycopg2` requires a source build, install C build tools and PostgreSQL headers/libraries (`pg_config` on PATH); this prerequisite is separate from the `fcntl` fix.
+
+### Linux/macOS
+
 Requires Python 3.12+ (the Docker image is built on 3.13). Run all commands in this section from the project root — the folder that contains the `Makefile`.
 
 ```bash

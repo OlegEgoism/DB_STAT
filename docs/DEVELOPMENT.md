@@ -84,6 +84,37 @@ docker start db-stat
 
 ## Разработка
 
+### Windows (PowerShell)
+
+Команды `make` ниже можно заменить прямыми вызовами Python. Из корня проекта:
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
+```
+
+Создайте `.env`, как описано ниже (с собственными ключами и паролем администратора), затем:
+
+```powershell
+python manage.py check
+python manage.py migrate --noinput --fake-initial
+python manage.py ensure_indexes
+python manage.py ensure_initial_admin
+python manage.py runserver 127.0.0.1:8000
+```
+
+`makemigrations` нужен только после изменения моделей; для первого запуска используйте существующие миграции.
+Тесты: `python manage.py collectstatic --noinput`, затем `python manage.py test`.
+Проверка блокировок без установки Django: `python -m unittest db_statistics.tests.test_job_locks -v`.
+
+Блокировки фоновых задач используют `msvcrt` на Windows и `fcntl` на Linux/macOS; оба модуля входят в Python, устанавливать их через pip не нужно.
+Храните lock-файлы в локальном временном каталоге; все процессы приложения должны использовать один и тот же каталог.
+Gunicorn и `docker-entrypoint.sh` предназначены для Linux; на Windows используйте `runserver` для разработки или Linux-контейнер Docker для развёртывания.
+Если установка `psycopg2` требует сборки из исходников, нужны инструменты сборки C и заголовки/библиотеки PostgreSQL (`pg_config` в PATH); это отдельное требование от исправления `fcntl`.
+
+### Linux/macOS
+
 Нужен Python 3.12+ (Docker-образ собирается на 3.13). Все команды раздела выполняйте из корня проекта — папки, где лежит `Makefile`.
 
 ```bash
